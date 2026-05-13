@@ -61,12 +61,15 @@ Las áreas de impacto se crean desde el encabezado completo de la plantilla, as�
 
 La importación real ya está disponible con `--apply`, pero debe usarse solo sobre una base sincronizada con el esquema de la Fase 1A.1.
 
+En el flujo del plan, `be-green-my-film` usa ahora exclusivamente el catálogo v23. Las dos medidas legacy del mismo protocolo quedan fuera del recorrido canónico y no deben aparecer en vistas, PDF ni contadores.
+
 Compatibilidad legacy:
 
 - se mantienen los campos antiguos de `Measure` porque todavía los consume parte del backend;
 - `department` singular y `ods` singular se rellenan con el primer valor detectado;
 - `verificationSources` se sigue llenando como texto resumido para no romper vistas antiguas;
 - `EsG`, `Scope` y `CategoryGhg` no forman parte de esta fase.
+- `HE` se normaliza funcionalmente como `HE / Home Economist`.
 
 ## Nota histórica
 

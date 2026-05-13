@@ -4,17 +4,21 @@ namespace App\Repository;
 
 use App\Entity\{Measure, Project, Category, Department, Ods, EsG};
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Gedmo\Translatable\TranslatableListener;
+use App\Service\PlanMeasureCatalogResolver;
 
 class MeasureRepository extends ServiceEntityRepository
 {
     private ProtocolRepository $protocolRepository;
+    private PlanMeasureCatalogResolver $catalogResolver;
 
-    public function __construct(ManagerRegistry $registry, ProtocolRepository $protocolRepository)
+    public function __construct(ManagerRegistry $registry, ProtocolRepository $protocolRepository, PlanMeasureCatalogResolver $catalogResolver)
     {
         parent::__construct($registry, Measure::class);
         $this->protocolRepository = $protocolRepository;
+        $this->catalogResolver = $catalogResolver;
     }
 
     /** Devuelve nombres de protocolos permitidos para el tipo de proyecto. */
@@ -34,6 +38,7 @@ class MeasureRepository extends ServiceEntityRepository
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
             ->orderBy('c.name', 'ASC');
+        $this->applyCatalogFilter($qb);
 
         $q = $qb->getQuery();
         if ($locale) {
@@ -53,6 +58,7 @@ class MeasureRepository extends ServiceEntityRepository
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
             ->orderBy('d.name', 'ASC');
+        $this->applyCatalogFilter($qb);
 
         $q = $qb->getQuery();
         if ($locale) {
@@ -72,6 +78,7 @@ class MeasureRepository extends ServiceEntityRepository
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
             ->orderBy('o.name', 'ASC');
+        $this->applyCatalogFilter($qb);
 
         $q = $qb->getQuery();
         if ($locale) {
@@ -91,11 +98,17 @@ class MeasureRepository extends ServiceEntityRepository
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
             ->orderBy('e.name', 'ASC');
+        $this->applyCatalogFilter($qb);
 
         $q = $qb->getQuery();
         if ($locale) {
             $q->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
         }
         return $q->getResult();
+    }
+
+    private function applyCatalogFilter(QueryBuilder $qb): void
+    {
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p');
     }
 }

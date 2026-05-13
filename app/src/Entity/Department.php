@@ -37,8 +37,17 @@ class Department
     public function getProjectType(): ?string { return $this->projectType; }
     public function setProjectType(?string $projectType): self { $this->projectType = $projectType; return $this; }
 
+    public function getDisplayName(): string
+    {
+        if ($this->code === 'he') {
+            return 'HE / Home Economist';
+        }
+
+        return $this->name ?? '';
+    }
+
     public function __toString(): string
     {
-        return $this->name ?? '';
+        return $this->getDisplayName();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Controller\Backend;
 
 use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department};
 use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository};
+use App\Service\PlanMeasureCatalogResolver;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
@@ -27,7 +28,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[IsGranted('ROLE_USER')]
 class PlanController extends AbstractController
 {
-    public function __construct(private TranslatorInterface $t) {}
+    public function __construct(
+        private TranslatorInterface $t,
+        private PlanMeasureCatalogResolver $catalogResolver
+    ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(
@@ -211,6 +215,7 @@ class PlanController extends AbstractController
             ->leftJoin('m.department', 'd')
             ->andWhere('p = :protocol')
             ->setParameter('protocol', $protocol);
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p');
 
         if ($isDept) {
             // Orden principal por Departamento
@@ -527,6 +532,7 @@ class PlanController extends AbstractController
         $baseQb = $measureRepository->createQueryBuilder('m')
             ->select('m.id AS id')
             ->join('m.protocol', 'p');
+        $this->catalogResolver->applyCatalogFilter($baseQb, 'm', 'p');
         if (!$protocol) {
             $baseQb->where('p.name IN (:protocols)')->setParameter('protocols', $protocols);
         } else {
@@ -558,6 +564,7 @@ class PlanController extends AbstractController
                 ELSE 5
             END AS HIDDEN rank"
         );
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p');
 
         // Orden por ranking y luego por nombre de la medida
         // Nombre para orden secundario: nameReview si existe, si no name
@@ -630,7 +637,9 @@ class PlanController extends AbstractController
 
         foreach ($plan->getPlanMeasures() as $pm) {
             $m = $pm->getMeasure();
-            if (!$m) continue;
+            if (!$m || !$this->catalogResolver->isCatalogMeasure($m)) {
+                continue;
+            }
             if ($m->getProtocol()?->getId() !== $plan->getProtocol()?->getId()) continue;
 
             $score = $m->getScore();
@@ -963,12 +972,17 @@ class PlanController extends AbstractController
             ->join('m.protocol', 'p')
             ->andWhere('p = :protocol')
             ->setParameter('protocol', $protocol)
+            ->addOrderBy('m.id', 'ASC')
             ->getQuery()->getResult();
 
         $pmByMeasureId = [];
         foreach ($plan->getPlanMeasures() as $pm) {
-            if ($pm->getMeasure() && $pm->getMeasure()->getProtocol()?->getId() === $protocol->getId()) {
-                $pmByMeasureId[$pm->getMeasure()->getId()] = $pm;
+            $measure = $pm->getMeasure();
+            if (!$measure || !$this->catalogResolver->isCatalogMeasure($measure)) {
+                continue;
+            }
+            if ($measure->getProtocol()?->getId() === $protocol->getId()) {
+                $pmByMeasureId[$measure->getId()] = $pm;
             }
         }
 
@@ -1350,7 +1364,7 @@ class PlanController extends AbstractController
         $departmentLabel = null;
         if ($filterDepartment && ctype_digit((string) $filterDepartment)) {
             $dept = $em->getRepository(Department::class)->find((int) $filterDepartment);
-            $departmentLabel = $dept?->getName();
+            $departmentLabel = $dept?->getDisplayName();
         }
 
         $odsLabel = null;
@@ -1405,33 +1419,6 @@ class PlanController extends AbstractController
         $filterPending         = $filters['pending_selection']  ?? null;
         $filterOnlyImplemented = $filters['only_implemented']   ?? null;
 
-        $measuresByDpto = [];
-        $noDeptLabel = $translator->trans('backend.plan.labels.no_department');
-
-        foreach ($plan->getPlanMeasures() as $pm) {
-            $m = $pm->getMeasure();
-
-            if ($filterDepartment && $m->getDepartment()?->getId() != $filterDepartment) continue;
-            if ($filterCategory && $m->getCategory()?->getId() != $filterCategory) continue;
-
-            if ($filterProtocol) {
-                $proto = $m->getProtocol();
-                $matchByName = $proto?->getName() === $filterProtocol;
-                $matchById   = $proto?->getId() == $filterProtocol;
-                if (!$matchByName && !$matchById) continue;
-            }
-
-            if ($filterOds && $m->getOds()?->getId() != $filterOds) continue;
-            if ($filterEsg && $m->getEsg()?->getId() != $filterEsg) continue;
-            if ($filterApplicable !== null && filter_var($filterApplicable, FILTER_VALIDATE_BOOLEAN) && !$pm->isApplicable()) continue;
-            if ($filterImplement  !== null && filter_var($filterImplement,  FILTER_VALIDATE_BOOLEAN) && !$pm->willImplement()) continue;
-            if ($filterPending    !== null && filter_var($filterPending,    FILTER_VALIDATE_BOOLEAN) && ($pm->isApplicable() !== null || $pm->willImplement() !== null)) continue;
-            if ($filterOnlyImplemented !== null && filter_var($filterOnlyImplemented, FILTER_VALIDATE_BOOLEAN) && !$pm->isImplemented()) continue;
-
-            $dpto = $m->getDepartment()?->getName() ?? $noDeptLabel;
-            $measuresByDpto[$dpto][] = $pm;
-        }
-
         $filtersArr = [
             'protocol'          => $filterProtocol,
             'category'          => $filterCategory,
@@ -1444,8 +1431,21 @@ class PlanController extends AbstractController
             'only_implemented'  => $filterOnlyImplemented,
         ];
 
-        $measuresTotal = $this->countFilteredMeasures($measureRepository, $protocolRepository, $project, $filtersArr);
         $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $filtersArr);
+
+        $measuresByDpto = [];
+        $noDeptLabel = $translator->trans('backend.plan.labels.no_department');
+        foreach ($filteredPlanMeasures as $pm) {
+            $m = $pm->getMeasure();
+            if (!$m) {
+                continue;
+            }
+
+            $dpto = $m->getPrimaryDepartment()?->getDisplayName() ?? $noDeptLabel;
+            $measuresByDpto[$dpto][] = $pm;
+        }
+
+        $measuresTotal = $this->countFilteredMeasures($measureRepository, $protocolRepository, $project, $filtersArr);
 
         // --- PUNTUACIÓN ALCANZADA (con filtros aplicados) ---
         $scoreMax = 0;
@@ -1453,6 +1453,9 @@ class PlanController extends AbstractController
 
         foreach ($filteredPlanMeasures as $pm) {
             $m = $pm->getMeasure();
+            if (!$m) {
+                continue;
+            }
             $score = (int) ($m->getScore() ?? 0);
             $scoreMax += $score;
 
@@ -1537,8 +1540,20 @@ class PlanController extends AbstractController
         $result = [];
         foreach ($plan->getPlanMeasures() as $pm) {
             $m = $pm->getMeasure();
+            if (!$m || !$this->catalogResolver->isCatalogMeasure($m)) {
+                continue;
+            }
 
-            if ($filters['department'] && $m->getDepartment()?->getId() != $filters['department']) continue;
+            if ($filters['department']) {
+                $departmentMatch = false;
+                foreach ($m->getResolvedDepartments() as $departmentItem) {
+                    if ($departmentItem->getId() == $filters['department']) {
+                        $departmentMatch = true;
+                        break;
+                    }
+                }
+                if (!$departmentMatch) continue;
+            }
             if ($filters['category'] && $m->getCategory()?->getId() != $filters['category']) continue;
 
             if ($filters['protocol']) {
@@ -1548,7 +1563,16 @@ class PlanController extends AbstractController
                 if (!$matchByName && !$matchById) continue;
             }
 
-            if ($filters['ods'] && $m->getOds()?->getId() != $filters['ods']) continue;
+            if ($filters['ods']) {
+                $odsMatch = false;
+                foreach ($m->getResolvedOdsItems() as $odsItem) {
+                    if ($odsItem->getId() == $filters['ods']) {
+                        $odsMatch = true;
+                        break;
+                    }
+                }
+                if (!$odsMatch) continue;
+            }
             if ($filters['esg'] && $m->getEsg()?->getId() != $filters['esg']) continue;
 
             if ($filters['is_applicable'] !== null && filter_var($filters['is_applicable'], FILTER_VALIDATE_BOOLEAN)) {
@@ -1578,6 +1602,7 @@ class PlanController extends AbstractController
         $protocols = $protocolRepository->getNamesForProjectType($project->getType());
 
         $qb = $measureRepository->createQueryBuilder('m')->join('m.protocol', 'p');
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p');
 
         if (!$filters['protocol'])   $qb->where('p.name IN (:protocols)')->setParameter('protocols', $protocols);
         else                         $qb->andWhere('p.name = :protocol')->setParameter('protocol', $filters['protocol']);

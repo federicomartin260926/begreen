@@ -114,7 +114,11 @@
               <th>{{ 'backend.plan.pdf.th.implemented_q'|trans }}</th>
             {% endif %}
             <th>{{ 'backend.plan.pdf.th.critical_reason'|trans }}</th>
+            <th>{{ 'backend.plan.measure.department'|trans }}</th>
             <th>{{ 'backend.plan.pdf.th.ods'|trans }}</th>
+            <th>{{ 'backend.plan.review.verification_sources'|trans }}</th>
+            <th>Áreas de impacto</th>
+            <th>Triple balance</th>
             <th>{{ 'backend.plan.pdf.th.esg'|trans }}</th>
             <th>{{ 'backend.plan.pdf.th.scope'|trans }}</th>
           </tr>
@@ -136,7 +140,59 @@
                 <div style="font-size:11px;color:#666;margin-top:4px;">{{ pm.criticalReason }}</div>
               {% endif %}
             </td>
-            <td>{{ pm.measure.ods.name|default('—') }}</td>
+            <td>
+              {% set departments = pm.measure ? pm.measure.resolvedDepartments : [] %}
+              {% if departments is not empty %}
+                {% for department in departments %}
+                  <span style="display:inline-block;border:1px solid #999;border-radius:999px;padding:2px 6px;margin:0 3px 3px 0;">{{ department.displayName }}</span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% set odsItems = pm.measure ? pm.measure.resolvedOdsItems : [] %}
+              {% if odsItems is not empty %}
+                {% for ods in odsItems %}
+                  <span style="display:inline-block;border:1px solid #999;border-radius:999px;padding:2px 6px;margin:0 3px 3px 0;">{{ ods.code is defined and ods.code ? ods.code : ods.name }}</span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% set sources = pm.measure ? pm.measure.resolvedVerificationSourceLinks : [] %}
+              {% if sources is not empty %}
+                <ol style="margin:0 0 0 18px;padding:0;">
+                  {% for link in sources %}
+                    {% set source = link.verificationSource %}
+                    <li>{{ link.priority }}. {{ source ? source.name : '—' }}</li>
+                  {% endfor %}
+                </ol>
+              {% else %}
+                {{ pm.measure.verificationSources|default('—') }}
+              {% endif %}
+            </td>
+            <td>
+              {% set impactAreas = pm.measure ? pm.measure.resolvedImpactAreas : [] %}
+              {% if impactAreas is not empty %}
+                {% for impactArea in impactAreas %}
+                  <span style="display:inline-block;border:1px solid #3fc38a;border-radius:999px;padding:2px 6px;margin:0 3px 3px 0;">{{ impactArea.name }}</span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% set axes = pm.measure ? pm.measure.resolvedTripleBalanceAxes : [] %}
+              {% if axes is not empty %}
+                {% for axis in axes %}
+                  <span style="display:inline-block;border:1px solid #777;border-radius:999px;padding:2px 6px;margin:0 3px 3px 0;">{{ axis.name }}</span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
             <td>{{ pm.measure.esg.name|default('—') }}</td>
             <td>{{ pm.measure.scope.name|default('—') }}</td>
           </tr>

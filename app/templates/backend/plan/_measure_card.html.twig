@@ -54,26 +54,61 @@
                 <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.description'|trans }}</dt>
                 <dd class="col-md-8 col-lg-10">{{ measure.description }}</dd>
             {% endif %}
-            {% if measure.department %}
+            {% set resolvedDepartments = measure.resolvedDepartments %}
+            {% if resolvedDepartments is not empty %}
                 <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.department'|trans }}</dt>
-                <dd class="col-md-8 col-lg-10">{{ measure.department.name }}</dd>
+                <dd class="col-md-8 col-lg-10 d-flex flex-wrap gap-1">
+                    {% for department in resolvedDepartments %}
+                        <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
+                    {% endfor %}
+                </dd>
             {% endif %}
-            {% if measure.ods %}
+            {% set resolvedOdsItems = measure.resolvedOdsItems %}
+            {% if resolvedOdsItems is not empty %}
                 <dt class="col-md-4 col-lg-2">ODS</dt>
-                <dd class="col-md-8 col-lg-10 d-flex align-items-center">
-                    {% if measure.ods.code is defined and measure.ods.code %}
-                        {{ logos.odsLogoFromCode(measure.ods.code, measure.ods.name, 24) }}
-                    {% endif %}
-                    <span>{{ measure.ods.name }}</span>
+                <dd class="col-md-8 col-lg-10 d-flex flex-wrap gap-1">
+                    {% for ods in resolvedOdsItems %}
+                        <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1">
+                            {% if ods.code is defined and ods.code %}
+                                {{ logos.odsLogoFromCode(ods.code, ods.name, 24) }}
+                            {% endif %}
+                            <span>{{ ods.code is defined and ods.code ? ods.code : ods.name }}</span>
+                        </span>
+                    {% endfor %}
                 </dd>
             {% endif %}
-
-            {% if measure.esg %}
-                <dt class="col-md-4 col-lg-2">ESG</dt>
-                <dd class="col-md-8 col-lg-10 d-flex align-items-center">
-                    {{ logos.esgLogo(measure.esg.name|default(''), 24) }}
-                    <span>{{ measure.esg.name }}</span>
+            {% set resolvedImpactAreas = measure.resolvedImpactAreas %}
+            {% if resolvedImpactAreas is not empty %}
+                <dt class="col-md-4 col-lg-2">Áreas de impacto</dt>
+                <dd class="col-md-8 col-lg-10 d-flex flex-wrap gap-1">
+                    {% for impactArea in resolvedImpactAreas %}
+                        <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
+                    {% endfor %}
                 </dd>
+            {% endif %}
+            {% set resolvedAxes = measure.resolvedTripleBalanceAxes %}
+            {% if resolvedAxes is not empty %}
+                <dt class="col-md-4 col-lg-2">Triple balance</dt>
+                <dd class="col-md-8 col-lg-10 d-flex flex-wrap gap-1">
+                    {% for axis in resolvedAxes %}
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>
+                    {% endfor %}
+                </dd>
+            {% endif %}
+            {% set verificationLinks = measure.resolvedVerificationSourceLinks %}
+            {% if verificationLinks is not empty %}
+                <dt class="col-md-4 col-lg-2">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
+                <dd class="col-md-8 col-lg-10">
+                    <ol class="mb-0 ps-3">
+                        {% for link in verificationLinks %}
+                            {% set source = link.verificationSource %}
+                            <li>{{ link.priority }}. {{ source ? source.name : '—' }}</li>
+                        {% endfor %}
+                    </ol>
+                </dd>
+            {% elseif measure.verificationSources %}
+                <dt class="col-md-4 col-lg-2">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
+                <dd class="col-md-8 col-lg-10">{{ measure.verificationSources }}</dd>
             {% endif %}
         </dl>
     </div>

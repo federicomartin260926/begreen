@@ -41,7 +41,7 @@ final class BeGreenMyFilmV23Importer
         'atz' => 'Atrezzo',
         'cast' => 'Casting',
         'cate' => 'Catering',
-        'he' => 'HE',
+        'he' => 'HE / Home Economist',
         'post' => 'Montaje',
         'cont' => 'Contabilidad',
         'sost' => 'Sostenibilidad',

@@ -270,6 +270,76 @@ class Measure
 
     public function setVerificationSources(?string $verificationSources): static { $this->verificationSources = $verificationSources; return $this; }
 
+    /** @return Department[] */
+    public function getResolvedDepartments(): array
+    {
+        if (!$this->departments->isEmpty()) {
+            return array_values($this->departments->toArray());
+        }
+
+        return $this->department ? [$this->department] : [];
+    }
+
+    /** @return Ods[] */
+    public function getResolvedOdsItems(): array
+    {
+        if (!$this->odsItems->isEmpty()) {
+            return array_values($this->odsItems->toArray());
+        }
+
+        return $this->ods ? [$this->ods] : [];
+    }
+
+    /** @return ImpactArea[] */
+    public function getResolvedImpactAreas(): array
+    {
+        return array_values($this->impactAreas->toArray());
+    }
+
+    /** @return TripleBalanceAxis[] */
+    public function getResolvedTripleBalanceAxes(): array
+    {
+        return array_values($this->tripleBalanceAxes->toArray());
+    }
+
+    /** @return MeasureVerificationSource[] */
+    public function getResolvedVerificationSourceLinks(): array
+    {
+        $links = $this->verificationSourceLinks->toArray();
+        usort($links, static fn (MeasureVerificationSource $left, MeasureVerificationSource $right): int => $left->getPriority() <=> $right->getPriority());
+
+        return $links;
+    }
+
+    public function getPrimaryDepartment(): ?Department
+    {
+        return $this->getResolvedDepartments()[0] ?? null;
+    }
+
+    public function getPrimaryOds(): ?Ods
+    {
+        return $this->getResolvedOdsItems()[0] ?? null;
+    }
+
+    public function getVerificationSourcesSummary(): ?string
+    {
+        if ($this->verificationSourceLinks->isEmpty()) {
+            return $this->verificationSources;
+        }
+
+        $parts = [];
+        foreach ($this->getResolvedVerificationSourceLinks() as $link) {
+            $source = $link->getVerificationSource();
+            if (!$source) {
+                continue;
+            }
+
+            $parts[] = sprintf('%d. %s', $link->getPriority(), $source->getName());
+        }
+
+        return $parts !== [] ? implode(' | ', $parts) : ($this->verificationSources ?? null);
+    }
+
     /** @return Collection<int, MeasureVerificationSource> */
     public function getVerificationSourceLinks(): Collection
     {

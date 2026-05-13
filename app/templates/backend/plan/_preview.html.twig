@@ -95,7 +95,11 @@
                             <th>{{ 'backend.plan.preview.th.implemented_q'|trans }}</th>
                         {% endif %}
                         <th>{{ 'backend.plan.preview.th.critical'|trans }}</th>
+                        <th>{{ 'backend.plan.measure.department'|trans }}</th>
                         <th>{{ 'backend.plan.preview.th.ods'|trans }}</th>
+                        <th>{{ 'backend.plan.review.verification_sources'|trans }}</th>
+                        <th>Áreas de impacto</th>
+                        <th>Triple balance</th>
                         <th>{{ 'backend.plan.preview.th.esg'|trans }}</th>
                         <th>{{ 'backend.plan.preview.th.scope'|trans }}</th>
                     </tr>
@@ -117,7 +121,61 @@
                                     <div class="small text-muted mt-1">{{ pm.criticalReason }}</div>
                                 {% endif %}
                             </td>
-                            <td>{{ pm.measure and pm.measure.ods ? pm.measure.ods.name : '—' }}</td>
+                            <td>
+                                {% set departments = pm.measure ? pm.measure.resolvedDepartments : [] %}
+                                {% if departments is not empty %}
+                                    {% for department in departments %}
+                                        <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set odsItems = pm.measure ? pm.measure.resolvedOdsItems : [] %}
+                                {% if odsItems is not empty %}
+                                    {% for ods in odsItems %}
+                                        <span class="badge bg-light text-dark border">
+                                            {{ ods.code is defined and ods.code ? ods.code : ods.name }}
+                                        </span>
+                                    {% endfor %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set sources = pm.measure ? pm.measure.resolvedVerificationSourceLinks : [] %}
+                                {% if sources is not empty %}
+                                    <ol class="mb-0 ps-3">
+                                        {% for link in sources %}
+                                            {% set source = link.verificationSource %}
+                                            <li>{{ link.priority }}. {{ source ? source.name : '—' }}</li>
+                                        {% endfor %}
+                                    </ol>
+                                {% else %}
+                                    {{ pm.measure and pm.measure.verificationSources ? pm.measure.verificationSources : '—' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set impactAreas = pm.measure ? pm.measure.resolvedImpactAreas : [] %}
+                                {% if impactAreas is not empty %}
+                                    {% for impactArea in impactAreas %}
+                                        <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set axes = pm.measure ? pm.measure.resolvedTripleBalanceAxes : [] %}
+                                {% if axes is not empty %}
+                                    {% for axis in axes %}
+                                        <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
                             <td>{{ pm.measure and pm.measure.esg ? pm.measure.esg.name : '—' }}</td>
                             <td>{{ pm.measure and pm.measure.scope ? pm.measure.scope.name : '—' }}</td>
                         </tr>
