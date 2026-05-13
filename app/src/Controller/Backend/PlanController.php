@@ -524,7 +524,9 @@ class PlanController extends AbstractController
         $perPage = 10;
 
         // START Número medida
-        $baseQb = $measureRepository->createQueryBuilder('m')->join('m.protocol', 'p');
+        $baseQb = $measureRepository->createQueryBuilder('m')
+            ->select('m.id AS id')
+            ->join('m.protocol', 'p');
         if (!$protocol) {
             $baseQb->where('p.name IN (:protocols)')->setParameter('protocols', $protocols);
         } else {
@@ -534,7 +536,7 @@ class PlanController extends AbstractController
         $baseIdsRows = $baseQb->getQuery()->getScalarResult();
         $positionById = [];
         foreach ($baseIdsRows as $idx => $row) {
-            $id = (int) $row['m_id'];
+            $id = (int) $row['id'];
             $positionById[$id] = $idx + 1;
         }
         // END Número medida
