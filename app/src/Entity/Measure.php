@@ -47,6 +47,10 @@ class Measure
     #[ORM\JoinColumn(nullable: true)]
     private ?Department $department = null;
 
+    #[ORM\ManyToMany(targetEntity: Department::class)]
+    #[ORM\JoinTable(name: 'measure_departments')]
+    private Collection $departments;
+
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
     private ?Category $category = null;
@@ -58,6 +62,10 @@ class Measure
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
     private ?Ods $ods = null;
+
+    #[ORM\ManyToMany(targetEntity: Ods::class)]
+    #[ORM\JoinTable(name: 'measure_ods_items')]
+    private Collection $odsItems;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
@@ -71,6 +79,18 @@ class Measure
     #[ORM\JoinColumn(nullable: true)]
     private ?CategoryGhg $categoryGhg = null;
 
+    #[ORM\ManyToOne(targetEntity: MeasureBlock::class, inversedBy: 'measures')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?MeasureBlock $measureBlock = null;
+
+    #[ORM\ManyToMany(targetEntity: ImpactArea::class)]
+    #[ORM\JoinTable(name: 'measure_impact_areas')]
+    private Collection $impactAreas;
+
+    #[ORM\ManyToMany(targetEntity: TripleBalanceAxis::class)]
+    #[ORM\JoinTable(name: 'measure_triple_balance_axes')]
+    private Collection $tripleBalanceAxes;
+
     #[Gedmo\Translatable]
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $implementation = null;
@@ -82,6 +102,9 @@ class Measure
     #[ORM\OneToMany(mappedBy: "measure", targetEntity: PlanMeasure::class)]
     private Collection $planMeasures;
 
+    #[ORM\OneToMany(mappedBy: "measure", targetEntity: MeasureVerificationSource::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $verificationSourceLinks;
+
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $mandatory = false;
 
@@ -89,9 +112,23 @@ class Measure
     #[Assert\Range(min: 0, max: 100, notInRangeMessage: 'La puntuación debe estar entre {{ min }} y {{ max }}.')]
     private ?int $score = null;
 
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $sourceRow = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $importHash = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $importVersion = null;
+
     public function __construct()
     {
+        $this->departments = new ArrayCollection();
+        $this->odsItems = new ArrayCollection();
+        $this->impactAreas = new ArrayCollection();
+        $this->tripleBalanceAxes = new ArrayCollection();
         $this->planMeasures = new ArrayCollection();
+        $this->verificationSourceLinks = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -116,6 +153,26 @@ class Measure
     public function getDepartment(): ?Department { return $this->department; }
     public function setDepartment(?Department $department): static { $this->department = $department; return $this; }
 
+    /** @return Collection<int, Department> */
+    public function getDepartments(): Collection
+    {
+        return $this->departments;
+    }
+
+    public function addDepartment(Department $department): self
+    {
+        if (!$this->departments->contains($department)) {
+            $this->departments->add($department);
+        }
+        return $this;
+    }
+
+    public function removeDepartment(Department $department): self
+    {
+        $this->departments->removeElement($department);
+        return $this;
+    }
+
     public function getCategory(): ?Category { return $this->category; }
     public function setCategory(?Category $category): static { $this->category = $category; return $this; }
 
@@ -124,6 +181,26 @@ class Measure
 
     public function getOds(): ?Ods { return $this->ods; }
     public function setOds(?Ods $ods): static { $this->ods = $ods; return $this; }
+
+    /** @return Collection<int, Ods> */
+    public function getOdsItems(): Collection
+    {
+        return $this->odsItems;
+    }
+
+    public function addOdsItem(Ods $ods): self
+    {
+        if (!$this->odsItems->contains($ods)) {
+            $this->odsItems->add($ods);
+        }
+        return $this;
+    }
+
+    public function removeOdsItem(Ods $ods): self
+    {
+        $this->odsItems->removeElement($ods);
+        return $this;
+    }
 
     public function getEsg(): ?EsG { return $this->esg; }
     public function setEsg(?EsG $esg): static { $this->esg = $esg; return $this; }
@@ -134,6 +211,57 @@ class Measure
     public function getCategoryGhg(): ?CategoryGhg { return $this->categoryGhg; }
     public function setCategoryGhg(?CategoryGhg $categoryGhg): static { $this->categoryGhg = $categoryGhg; return $this; }
 
+    public function getMeasureBlock(): ?MeasureBlock
+    {
+        return $this->measureBlock;
+    }
+
+    public function setMeasureBlock(?MeasureBlock $measureBlock): self
+    {
+        $this->measureBlock = $measureBlock;
+        return $this;
+    }
+
+    /** @return Collection<int, ImpactArea> */
+    public function getImpactAreas(): Collection
+    {
+        return $this->impactAreas;
+    }
+
+    public function addImpactArea(ImpactArea $impactArea): self
+    {
+        if (!$this->impactAreas->contains($impactArea)) {
+            $this->impactAreas->add($impactArea);
+        }
+        return $this;
+    }
+
+    public function removeImpactArea(ImpactArea $impactArea): self
+    {
+        $this->impactAreas->removeElement($impactArea);
+        return $this;
+    }
+
+    /** @return Collection<int, TripleBalanceAxis> */
+    public function getTripleBalanceAxes(): Collection
+    {
+        return $this->tripleBalanceAxes;
+    }
+
+    public function addTripleBalanceAxis(TripleBalanceAxis $axis): self
+    {
+        if (!$this->tripleBalanceAxes->contains($axis)) {
+            $this->tripleBalanceAxes->add($axis);
+        }
+        return $this;
+    }
+
+    public function removeTripleBalanceAxis(TripleBalanceAxis $axis): self
+    {
+        $this->tripleBalanceAxes->removeElement($axis);
+        return $this;
+    }
+
     public function getImplementation(): ?string { return $this->implementation; }
 
     public function setImplementation(?string $implementation): static { $this->implementation = $implementation; return $this; }
@@ -141,6 +269,31 @@ class Measure
     public function getVerificationSources(): ?string { return $this->verificationSources; }
 
     public function setVerificationSources(?string $verificationSources): static { $this->verificationSources = $verificationSources; return $this; }
+
+    /** @return Collection<int, MeasureVerificationSource> */
+    public function getVerificationSourceLinks(): Collection
+    {
+        return $this->verificationSourceLinks;
+    }
+
+    public function addVerificationSourceLink(MeasureVerificationSource $link): self
+    {
+        if (!$this->verificationSourceLinks->contains($link)) {
+            $this->verificationSourceLinks->add($link);
+            $link->setMeasure($this);
+        }
+        return $this;
+    }
+
+    public function removeVerificationSourceLink(MeasureVerificationSource $link): self
+    {
+        if ($this->verificationSourceLinks->removeElement($link)) {
+            if ($link->getMeasure() === $this) {
+                $link->setMeasure(null);
+            }
+        }
+        return $this;
+    }
 
      /**
      * @return Collection|PlanMeasure[]
@@ -175,5 +328,38 @@ class Measure
 
     public function getScore(): ?int { return $this->score; }
     public function setScore(?int $score): self { $this->score = $score; return $this; }
+
+    public function getSourceRow(): ?int
+    {
+        return $this->sourceRow;
+    }
+
+    public function setSourceRow(?int $sourceRow): self
+    {
+        $this->sourceRow = $sourceRow;
+        return $this;
+    }
+
+    public function getImportHash(): ?string
+    {
+        return $this->importHash;
+    }
+
+    public function setImportHash(?string $importHash): self
+    {
+        $this->importHash = $importHash;
+        return $this;
+    }
+
+    public function getImportVersion(): ?string
+    {
+        return $this->importVersion;
+    }
+
+    public function setImportVersion(?string $importVersion): self
+    {
+        $this->importVersion = $importVersion;
+        return $this;
+    }
 
 }

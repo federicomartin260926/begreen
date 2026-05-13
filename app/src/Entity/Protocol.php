@@ -25,6 +25,9 @@ class Protocol
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
+    #[ORM\Column(length: 80, nullable: true, unique: true)]
+    private ?string $code = null;
+
     #[Gedmo\Translatable]
     #[ORM\Column(length: 100)]
     #[Assert\NotBlank]
@@ -49,6 +52,9 @@ class Protocol
 
     // ===== Getters/Setters =====
     public function getId(): ?int { return $this->id; }
+
+    public function getCode(): ?string { return $this->code; }
+    public function setCode(?string $code): static { $this->code = $code; return $this; }
 
     public function getName(): ?string { return $this->name; }
     public function setName(string $name): static { $this->name = $name; return $this; }

@@ -171,6 +171,11 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 - Configuración basada en Symfony Translator
 - Traducciones de entidades con Gedmo + Stof Doctrine Extensions
 
+## Importación de medidas
+
+- La fase técnica actual se apoya en `PLANTILLA_PS_v23.xlsx`.
+- El flujo de lectura y validación está documentado en [docs/be-green-my-film-v23-import.md](../docs/be-green-my-film-v23-import.md).
+
 ## Seguridad
 
 - No commitear secretos reales
