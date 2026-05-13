@@ -178,6 +178,12 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 - La importación es idempotente por `protocol + importVersion + sourceRow`, con `importHash` como trazabilidad adicional.
 - En el flujo del plan, `be-green-my-film` consume exclusivamente las 200 medidas v23; las 2 medidas legacy del mismo protocolo quedan excluidas del recorrido canónico.
 
+## Tiers comerciales
+
+- Los tiers internos por proyecto son `basic`, `standard` y `pro`.
+- El detalle de reglas y bloqueo de funcionalidades está en [docs/commercial-tiers.md](../docs/commercial-tiers.md).
+- El pago real todavía no está implementado.
+
 ## Seguridad
 
 - No commitear secretos reales

@@ -38,7 +38,7 @@ class MeasureRepository extends ServiceEntityRepository
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
             ->orderBy('c.name', 'ASC');
-        $this->applyCatalogFilter($qb);
+        $this->applyCatalogFilter($qb, $project);
 
         $q = $qb->getQuery();
         if ($locale) {
@@ -50,7 +50,7 @@ class MeasureRepository extends ServiceEntityRepository
     /** @return Department[] */
     public function getDepartments(Project $project, ?string $locale = null): array
     {
-        $qb = $this->getEntityManager()->createQueryBuilder()
+        $legacyQb = $this->getEntityManager()->createQueryBuilder()
             ->select('DISTINCT d')
             ->from(Department::class, 'd')
             ->innerJoin(Measure::class, 'm', 'WITH', 'm.department = d')
@@ -58,19 +58,36 @@ class MeasureRepository extends ServiceEntityRepository
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
             ->orderBy('d.name', 'ASC');
-        $this->applyCatalogFilter($qb);
+        $this->applyCatalogFilter($legacyQb, $project);
 
-        $q = $qb->getQuery();
+        $multiQb = $this->getEntityManager()->createQueryBuilder()
+            ->select('DISTINCT d')
+            ->from(Department::class, 'd')
+            ->innerJoin(Measure::class, 'm', 'WITH', 'd MEMBER OF m.departments')
+            ->innerJoin('m.protocol', 'p')
+            ->where('p.name IN (:protocols)')
+            ->setParameter('protocols', $this->getProtocols($project))
+            ->orderBy('d.name', 'ASC');
+        $this->applyCatalogFilter($multiQb, $project);
+
+        $legacyQuery = $legacyQb->getQuery();
+        $multiQuery = $multiQb->getQuery();
         if ($locale) {
-            $q->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
+            $legacyQuery->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
+            $multiQuery->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
         }
-        return $q->getResult();
+
+        $result = $this->mergeDistinctEntitiesById(
+            $legacyQuery->getResult(),
+            $multiQuery->getResult()
+        );
+        return $result;
     }
 
     /** @return Ods[] */
     public function getOds(Project $project, ?string $locale = null): array
     {
-        $qb = $this->getEntityManager()->createQueryBuilder()
+        $legacyQb = $this->getEntityManager()->createQueryBuilder()
             ->select('DISTINCT o')
             ->from(Ods::class, 'o')
             ->innerJoin(Measure::class, 'm', 'WITH', 'm.ods = o')
@@ -78,13 +95,30 @@ class MeasureRepository extends ServiceEntityRepository
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
             ->orderBy('o.name', 'ASC');
-        $this->applyCatalogFilter($qb);
+        $this->applyCatalogFilter($legacyQb, $project);
 
-        $q = $qb->getQuery();
+        $multiQb = $this->getEntityManager()->createQueryBuilder()
+            ->select('DISTINCT o')
+            ->from(Ods::class, 'o')
+            ->innerJoin(Measure::class, 'm', 'WITH', 'o MEMBER OF m.odsItems')
+            ->innerJoin('m.protocol', 'p')
+            ->where('p.name IN (:protocols)')
+            ->setParameter('protocols', $this->getProtocols($project))
+            ->orderBy('o.name', 'ASC');
+        $this->applyCatalogFilter($multiQb, $project);
+
+        $legacyQuery = $legacyQb->getQuery();
+        $multiQuery = $multiQb->getQuery();
         if ($locale) {
-            $q->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
+            $legacyQuery->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
+            $multiQuery->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
         }
-        return $q->getResult();
+
+        $result = $this->mergeDistinctEntitiesById(
+            $legacyQuery->getResult(),
+            $multiQuery->getResult()
+        );
+        return $result;
     }
 
     /** @return EsG[] */
@@ -98,7 +132,7 @@ class MeasureRepository extends ServiceEntityRepository
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
             ->orderBy('e.name', 'ASC');
-        $this->applyCatalogFilter($qb);
+        $this->applyCatalogFilter($qb, $project);
 
         $q = $qb->getQuery();
         if ($locale) {
@@ -107,8 +141,42 @@ class MeasureRepository extends ServiceEntityRepository
         return $q->getResult();
     }
 
-    private function applyCatalogFilter(QueryBuilder $qb): void
+    private function applyCatalogFilter(QueryBuilder $qb, Project $project): void
     {
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p');
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
+    }
+
+    /**
+     * @param array<int, object> $first
+     * @param array<int, object> $second
+     * @return array<int, object>
+     */
+    private function mergeDistinctEntitiesById(array $first, array $second): array
+    {
+        $merged = [];
+
+        foreach (array_merge($first, $second) as $entity) {
+            if (!is_object($entity) || !method_exists($entity, 'getId')) {
+                continue;
+            }
+
+            $id = $entity->getId();
+            if ($id === null) {
+                continue;
+            }
+
+            $merged[$id] = $entity;
+        }
+
+        $merged = array_values($merged);
+
+        usort($merged, static function (object $left, object $right): int {
+            $leftName = method_exists($left, 'getName') ? (string) $left->getName() : '';
+            $rightName = method_exists($right, 'getName') ? (string) $right->getName() : '';
+
+            return strnatcasecmp($leftName, $rightName);
+        });
+
+        return $merged;
     }
 }

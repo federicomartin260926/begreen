@@ -96,6 +96,31 @@
                 </div>
             </div>
 
+            <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <strong>{{ 'backend.plan.tier.current'|trans }}:</strong> {{ projectTier|upper }}
+                    {% if projectTier == 'basic' %}
+                        <span class="ms-2">{{ 'backend.plan.tier.basic_notice'|trans }}</span>
+                    {% elseif projectTier == 'standard' %}
+                        <span class="ms-2">{{ 'backend.plan.tier.standard_notice'|trans }}</span>
+                    {% endif %}
+                </div>
+                <a href="#" class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">{{ 'backend.plan.upgrade_soon'|trans }}</a>
+            </div>
+
+            {% if commercialCards is not empty %}
+                <div class="row g-3 mb-3">
+                    {% for card in commercialCards %}
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="border rounded p-3 h-100 bg-light">
+                                <div class="fw-semibold">{{ card.label }}</div>
+                                <div class="small text-muted">{{ card.reason }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
             {# ---- CONTENIDO PRINCIPAL ---- #}
             {% if planComplete %}
                 {# Mostrar formulario de medidas personalizadas y Finalizar #}

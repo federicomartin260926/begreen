@@ -5,6 +5,7 @@ namespace App\DataFixtures;
 use App\Entity\Project;
 use App\Entity\ProjectMembership;
 use App\Entity\ProjectPhaseDate;
+use App\Entity\ProjectSubscription;
 use App\Repository\UserRepository;
 use App\Repository\OdsRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -54,6 +55,13 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
                 ->setType('rodaje')
                 ->setUser($user)
                 ->setEmissionSourceName('MITECO'); // Valor por defecto
+
+            $subscription = (new ProjectSubscription())
+                ->setProject($project)
+                ->setTier(ProjectSubscription::TIER_BASIC)
+                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+                ->setSource(ProjectSubscription::SOURCE_SYSTEM);
+            $project->setSubscription($subscription);
 
             $manager->persist($project);
 

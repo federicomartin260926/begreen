@@ -429,6 +429,8 @@ backend:
 
       name: "Project name"
       name_ph: "Enter the project name"
+      commercial_tier: "Commercial tier"
+      commercial_tier_current: "Current tier"
       type: "Type"
       emission_source: "Emission factors source"
       emission_source_options:
@@ -585,6 +587,13 @@ backend:
       download: "Download"
       send_to_crew: "Send to crew"
       spinner_pdf: "Generating PDF…"
+    tier:
+      current: "Current tier"
+      basic_notice: "Available in Standard or Pro to unlock the full catalog and remove the watermark."
+      standard_notice: "Available in Pro for advanced features."
+    features_blocked: "Blocked features"
+    features_blocked_help: "The current tier limits some export and management options."
+    upgrade_soon: "Upgrade plan · Coming soon"
     preview_modal:
       title: "Plan view by department with applied filters"
       loading: "Loading preview ..."
@@ -1550,4 +1559,3 @@ backend:
       import:
         file_label: "Excel file"
         invalid_mime: "Please upload a valid Excel file (.xlsx)"
-

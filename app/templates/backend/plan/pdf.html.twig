@@ -29,11 +29,28 @@
     .chart-box { page-break-inside: avoid; }
     .chart-box img { width: 100%; height: auto; max-height: 68mm; display: block; }
     .chart-caption { text-align: center; font-size: 11px; margin-top: 1.5mm; color: #555; font-weight: 600; line-height: 1.2; }
+    .watermark {
+      position: fixed;
+      top: 35%;
+      left: 8%;
+      right: 8%;
+      text-align: center;
+      font-size: 56px;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.12);
+      transform: rotate(-28deg);
+      z-index: 0;
+    }
   </style>
 </head>
 <body>
 
+  {% if hasWatermark is defined and hasWatermark %}
+    <div class="watermark">PLAN BASIC - BEGREENMYFRIEND</div>
+  {% endif %}
+
   {# --- Portada --- #}
+  <div style="position:relative;z-index:1;">
   <h2>{{ 'backend.plan.pdf.h2'|trans({'%project%': project_short}) }}</h2>
   <div class="meta">
     {{ 'backend.plan.pdf.status'|trans({
@@ -238,6 +255,7 @@
       </tr>
     </table>
   {% endif %}
+  </div>
 
 </body>
 </html>

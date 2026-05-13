@@ -3,15 +3,19 @@
 namespace App\Tests\Service;
 
 use App\Entity\Measure;
+use App\Entity\Project;
+use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
+use App\Repository\ProjectSubscriptionRepository;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\ProjectFeatureGate;
 use PHPUnit\Framework\TestCase;
 
 final class PlanMeasureCatalogResolverTest extends TestCase
 {
     public function testCanonicalProtocolUsesV23ImportVersion(): void
     {
-        $resolver = new PlanMeasureCatalogResolver();
+        $resolver = $this->createResolver();
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE);
 
@@ -23,17 +27,18 @@ final class PlanMeasureCatalogResolverTest extends TestCase
 
     public function testCatalogMeasureDetectionSkipsLegacyBeGreenMyFilmRows(): void
     {
-        $resolver = new PlanMeasureCatalogResolver();
+        $resolver = $this->createResolver();
 
-        $canonicalProtocol = (new Protocol())
-            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE);
+        $basicProject = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $standardProject = $this->createProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $proProject = $this->createProjectWithTier(ProjectSubscription::TIER_PRO);
 
         $legacyMeasure = (new Measure())
-            ->setProtocol($canonicalProtocol)
+            ->setProtocol((new Protocol())->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE))
             ->setImportVersion(null);
 
         $v23Measure = (new Measure())
-            ->setProtocol($canonicalProtocol)
+            ->setProtocol((new Protocol())->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE))
             ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION);
 
         $otherProtocol = (new Protocol())
@@ -43,8 +48,60 @@ final class PlanMeasureCatalogResolverTest extends TestCase
             ->setProtocol($otherProtocol)
             ->setImportVersion(null);
 
-        self::assertFalse($resolver->isCatalogMeasure($legacyMeasure));
-        self::assertTrue($resolver->isCatalogMeasure($v23Measure));
-        self::assertTrue($resolver->isCatalogMeasure($otherMeasure));
+        self::assertFalse($resolver->isCatalogMeasure($legacyMeasure, $basicProject));
+        self::assertTrue($resolver->isCatalogMeasure($v23Measure, $basicProject));
+        self::assertTrue($resolver->isCatalogMeasure($otherMeasure, $basicProject));
+
+        self::assertSame(50, $this->countVisibleMeasures($resolver, $basicProject));
+        self::assertSame(100, $this->countVisibleMeasures($resolver, $standardProject));
+        self::assertSame(200, $this->countVisibleMeasures($resolver, $proProject));
+    }
+
+    private function createResolver(): PlanMeasureCatalogResolver
+    {
+        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
+        $subscriptionRepository->method('findOneByProject')->willReturn(null);
+
+        $featureGate = new ProjectFeatureGate($subscriptionRepository);
+
+        return new PlanMeasureCatalogResolver($featureGate);
+    }
+
+    private function createProjectWithTier(string $tier): Project
+    {
+        $project = new Project();
+        $subscription = (new ProjectSubscription())
+            ->setTier($tier)
+            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+            ->setSource(ProjectSubscription::SOURCE_MANUAL);
+
+        $project->setSubscription($subscription);
+
+        return $project;
+    }
+
+    private function countVisibleMeasures(PlanMeasureCatalogResolver $resolver, Project $project): int
+    {
+        $scores = array_merge(
+            array_fill(0, 28, 5),
+            array_fill(0, 22, 4),
+            array_fill(0, 50, 3),
+            array_fill(0, 87, 2),
+            array_fill(0, 13, 1),
+        );
+
+        $count = 0;
+        foreach ($scores as $score) {
+            $measure = (new Measure())
+                ->setProtocol((new Protocol())->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE))
+                ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+                ->setScore($score);
+
+            if ($resolver->isCatalogMeasure($measure, $project)) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 }

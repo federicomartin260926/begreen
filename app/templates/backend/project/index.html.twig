@@ -96,6 +96,7 @@
                 <th>{{ 'backend.projects.table.name'|trans }}</th>
                 <th class="text-center">{{ 'backend.projects.table.type'|trans }}</th>
                 <th class="text-center">{{ 'backend.projects.table.country'|trans }}</th>
+                <th class="text-center">Tier</th>
                 {% if is_admin %}
                   <th class="text-left">{{ 'backend.projects.table.owner'|trans }}</th>
                 {% endif %}
@@ -116,6 +117,12 @@
                   {% else %}{{ 'backend.aux.project_type.generic'|trans }}{% endif %}
                 </td>
                 <td class="text-center">{{ project.country }}</td>
+                <td class="text-center">
+                  {% set tier = project.subscription ? project.subscription.tier : 'basic' %}
+                  <span class="badge {% if tier == 'pro' %}bg-success{% elseif tier == 'standard' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                    {{ tier|upper }}
+                  </span>
+                </td>
 
                 {% if is_admin %}
                   <td class="text-left">

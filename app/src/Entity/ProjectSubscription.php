@@ -1,0 +1,140 @@
+<?php
+
+namespace App\Entity;
+
+use App\Repository\ProjectSubscriptionRepository;
+use App\Entity\Traits\TimestampableTrait;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
+
+#[ORM\Entity(repositoryClass: ProjectSubscriptionRepository::class)]
+#[ORM\HasLifecycleCallbacks]
+#[ORM\Table(name: 'project_subscription')]
+class ProjectSubscription
+{
+    use TimestampableTrait;
+
+    public const TIER_BASIC = 'basic';
+    public const TIER_STANDARD = 'standard';
+    public const TIER_PRO = 'pro';
+
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_PENDING_PAYMENT = 'pending_payment';
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const SOURCE_SYSTEM = 'system';
+    public const SOURCE_MANUAL = 'manual';
+    public const SOURCE_PAYPAL = 'paypal';
+
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: 'integer')]
+    private ?int $id = null;
+
+    #[ORM\OneToOne(inversedBy: 'subscription')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private ?Project $project = null;
+
+    #[ORM\Column(length: 20)]
+    #[Assert\Choice(choices: [self::TIER_BASIC, self::TIER_STANDARD, self::TIER_PRO])]
+    private string $tier = self::TIER_BASIC;
+
+    #[ORM\Column(length: 20)]
+    #[Assert\Choice(choices: [self::STATUS_ACTIVE, self::STATUS_PENDING_PAYMENT, self::STATUS_CANCELLED])]
+    private string $status = self::STATUS_ACTIVE;
+
+    #[ORM\Column(length: 20)]
+    #[Assert\Choice(choices: [self::SOURCE_SYSTEM, self::SOURCE_MANUAL, self::SOURCE_PAYPAL])]
+    private string $source = self::SOURCE_SYSTEM;
+
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $paidAmountCents = null;
+
+    #[ORM\Column(length: 3, options: ['default' => 'EUR'])]
+    private string $currency = 'EUR';
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $paymentReference = null;
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function getProject(): ?Project
+    {
+        return $this->project;
+    }
+
+    public function setProject(?Project $project): self
+    {
+        $this->project = $project;
+        return $this;
+    }
+
+    public function getTier(): string
+    {
+        return $this->tier;
+    }
+
+    public function setTier(string $tier): self
+    {
+        $this->tier = $tier;
+        return $this;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status): self
+    {
+        $this->status = $status;
+        return $this;
+    }
+
+    public function getSource(): string
+    {
+        return $this->source;
+    }
+
+    public function setSource(string $source): self
+    {
+        $this->source = $source;
+        return $this;
+    }
+
+    public function getPaidAmountCents(): ?int
+    {
+        return $this->paidAmountCents;
+    }
+
+    public function setPaidAmountCents(?int $paidAmountCents): self
+    {
+        $this->paidAmountCents = $paidAmountCents;
+        return $this;
+    }
+
+    public function getCurrency(): string
+    {
+        return $this->currency;
+    }
+
+    public function setCurrency(string $currency): self
+    {
+        $this->currency = $currency;
+        return $this;
+    }
+
+    public function getPaymentReference(): ?string
+    {
+        return $this->paymentReference;
+    }
+
+    public function setPaymentReference(?string $paymentReference): self
+    {
+        $this->paymentReference = $paymentReference;
+        return $this;
+    }
+}

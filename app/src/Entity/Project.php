@@ -45,6 +45,10 @@ class Project
     #[Assert\Valid]
     private Collection $phaseDates;
 
+    #[ORM\OneToOne(mappedBy: 'project', targetEntity: ProjectSubscription::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[Assert\Valid]
+    private ?ProjectSubscription $subscription = null;
+
     #[ORM\OneToMany(mappedBy: 'project', targetEntity: CrewMember::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[Assert\Valid]
     private Collection $crewMembers;
@@ -207,6 +211,20 @@ class Project
         if (!$this->phaseDates->contains($phaseDate)) {
             $this->phaseDates[] = $phaseDate;
             $phaseDate->setProject($this);
+        }
+        return $this;
+    }
+
+    public function getSubscription(): ?ProjectSubscription
+    {
+        return $this->subscription;
+    }
+
+    public function setSubscription(?ProjectSubscription $subscription): self
+    {
+        $this->subscription = $subscription;
+        if ($subscription && $subscription->getProject() !== $this) {
+            $subscription->setProject($this);
         }
         return $this;
     }

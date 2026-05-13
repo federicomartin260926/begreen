@@ -63,6 +63,8 @@ class ProjectType extends AbstractType
             'backend.projects.form.event_attendees.options.virtual'    => 'virtual',
         ];
 
+        $showCommercialTier = (bool) $options['show_commercial_tier'];
+
         $builder
             // ====== Datos básicos ======
             ->add('name', TextType::class, [
@@ -95,6 +97,21 @@ class ProjectType extends AbstractType
             ->add('country', CountryType::class, [
                 'label' => 'backend.projects.form.country',
                 'data'  => 'ES',
+            ])
+            ->add('commercialTier', ChoiceType::class, [
+                'label' => 'backend.projects.form.commercial_tier',
+                'mapped' => false,
+                'required' => false,
+                'choices' => [
+                    'Basic' => 'basic',
+                    'Standard' => 'standard',
+                    'Pro' => 'pro',
+                ],
+                'choice_translation_domain' => false,
+                'placeholder' => false,
+                'data' => null,
+                'disabled' => !$showCommercialTier,
+                'row_attr' => $showCommercialTier ? [] : ['class' => 'd-none'],
             ])
 
             // ====== Rodaje: tipo + género dependiente ======
@@ -282,6 +299,7 @@ class ProjectType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => Project::class,
+            'show_commercial_tier' => false,
         ]);
     }
 }

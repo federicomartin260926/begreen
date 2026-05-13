@@ -7,6 +7,8 @@ use App\Form\{ CrewMemberImportType, ProjectType, CrewMemberType, CrewMemberColl
 use App\Repository\{ ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository };
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Entity\ProjectSubscription;
+use App\Service\ProjectFeatureGate;
 use Gedmo\Translatable\Entity\Translation;
 
 use Doctrine\Common\Collections\ArrayCollection;
@@ -29,7 +31,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[IsGranted('ROLE_USER')]
 class ProjectController extends AbstractController
 {
-    public function __construct(private readonly TranslatorInterface $t) {}
+    public function __construct(private readonly TranslatorInterface $t, private readonly ProjectFeatureGate $featureGate) {}
 
     #[Route('/', name: 'index')]
     public function index(
@@ -116,6 +118,7 @@ class ProjectController extends AbstractController
         return $this->render('backend/project/index.html.twig', [
             'projects'      => $projects,
             'activeProject' => $activeProject,
+            'featureGate'   => $this->featureGate,
             'filters'       => [
                 'name'      => $name,
                 'type'      => $type,
@@ -139,6 +142,7 @@ class ProjectController extends AbstractController
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
         $project = new Project();
+        $this->ensureBasicSubscription($project);
 
         // Fases por defecto
         foreach (['actividad', 'preproduccion', 'postproduccion'] as $phaseName) {
@@ -148,7 +152,9 @@ class ProjectController extends AbstractController
         }
         $this->reorderPhases($project);
 
-        $form = $this->createForm(ProjectType::class, $project);
+        $form = $this->createForm(ProjectType::class, $project, [
+            'show_commercial_tier' => false,
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -164,6 +170,8 @@ class ProjectController extends AbstractController
 
             $project->addProjectMembership($membership);
 
+            $this->ensureBasicSubscription($project);
+
             $em->persist($project);
             $em->persist($membership);
             $em->flush();
@@ -177,6 +185,7 @@ class ProjectController extends AbstractController
         return $this->render('backend/project/form.html.twig', [
             'form' => $form->createView(),
             'edit' => false,
+            'commercialTier' => $this->featureGate->getTier($project),
         ]);
     }
 
@@ -186,6 +195,7 @@ class ProjectController extends AbstractController
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
 
         $this->reorderPhases($project);
+        $showCommercialTier = $this->isGranted('ROLE_ADMIN') || $this->isGranted('ROLE_SUPER_ADMIN');
 
         // Guardar fases originales antes de modificar
         $originalPhases = new ArrayCollection();
@@ -193,7 +203,12 @@ class ProjectController extends AbstractController
             $originalPhases->add($phaseDate);
         }
 
-        $form = $this->createForm(ProjectType::class, $project);
+        $form = $this->createForm(ProjectType::class, $project, [
+            'show_commercial_tier' => $showCommercialTier,
+        ]);
+        if ($form->has('commercialTier')) {
+            $form->get('commercialTier')->setData($this->featureGate->getTier($project));
+        }
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -203,6 +218,10 @@ class ProjectController extends AbstractController
                 if (!$project->getPhaseDates()->contains($originalPhase)) {
                     $em->remove($originalPhase);
                 }
+            }
+
+            if ($showCommercialTier && $form->has('commercialTier')) {
+                $this->syncCommercialTier($project, (string) $form->get('commercialTier')->getData(), $em);
             }
 
             $em->flush();
@@ -222,6 +241,8 @@ class ProjectController extends AbstractController
             'edit'         => true,
             'project'      => $project,
             'lockedPhases' => $lockedPhases
+            ,
+            'commercialTier' => $this->featureGate->getTier($project),
         ]);
     }
 
@@ -253,6 +274,7 @@ class ProjectController extends AbstractController
 
         // 1) Clonar datos básicos del proyecto
         $newProject = new Project();
+        $this->ensureBasicSubscription($newProject);
         $newProject
             ->setName($project->getName() . ' (copia)')
             ->setType($project->getType())
@@ -325,6 +347,40 @@ class ProjectController extends AbstractController
         $this->addFlash('success', 'backend.projects.flash.cloned');
 
         return $this->redirectToRoute('backend_project_index');
+    }
+
+    private function ensureBasicSubscription(Project $project): ProjectSubscription
+    {
+        $subscription = $project->getSubscription();
+        if (!$subscription) {
+            $subscription = new ProjectSubscription();
+            $project->setSubscription($subscription);
+        }
+
+        $subscription
+            ->setTier(ProjectSubscription::TIER_BASIC)
+            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+            ->setSource(ProjectSubscription::SOURCE_SYSTEM)
+            ->setCurrency('EUR')
+            ->setPaidAmountCents(null)
+            ->setPaymentReference(null);
+
+        return $subscription;
+    }
+
+    private function syncCommercialTier(Project $project, string $tier, EntityManagerInterface $em): void
+    {
+        $subscription = $project->getSubscription() ?? new ProjectSubscription();
+        $subscription
+            ->setProject($project)
+            ->setTier(in_array($tier, [ProjectSubscription::TIER_BASIC, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO], true) ? $tier : ProjectSubscription::TIER_BASIC)
+            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+            ->setSource(ProjectSubscription::SOURCE_MANUAL);
+
+        if (!$project->getSubscription()) {
+            $project->setSubscription($subscription);
+            $em->persist($subscription);
+        }
     }
 
     #[Route('/{id}/edit-crew', name: 'edit_crew')]

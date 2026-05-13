@@ -5,6 +5,7 @@ namespace App\Controller\Backend;
 use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department};
 use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository};
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\ProjectFeatureGate;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
@@ -30,7 +31,8 @@ class PlanController extends AbstractController
 {
     public function __construct(
         private TranslatorInterface $t,
-        private PlanMeasureCatalogResolver $catalogResolver
+        private PlanMeasureCatalogResolver $catalogResolver,
+        private ProjectFeatureGate $featureGate
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -173,7 +175,7 @@ class PlanController extends AbstractController
             $text = trim((string) $request->request->get('custom_measures', ''));
             $plan->setCustomMeasures($text !== '' ? $text : null);
 
-            $planComplete = $this->isPlanCompleteForProtocol($plan, $measureRepository);
+            $planComplete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepository);
             $plan->setStatus($planComplete ? 'completo' : 'incompleto');
             $plan->setStatusChangedAt(new \DateTimeImmutable());
             $em->flush();
@@ -191,7 +193,7 @@ class PlanController extends AbstractController
         }
 
         // Si ya está completo, dirige a done (resumen)
-        $planComplete = $this->isPlanCompleteForProtocol($plan, $measureRepository);
+        $planComplete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepository);
         if ($planComplete) {
             // Mantén el status sincronizado
             if ($plan->getStatus() !== 'completo') {
@@ -215,7 +217,7 @@ class PlanController extends AbstractController
             ->leftJoin('m.department', 'd')
             ->andWhere('p = :protocol')
             ->setParameter('protocol', $protocol);
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p');
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
 
         if ($isDept) {
             // Orden principal por Departamento
@@ -234,7 +236,7 @@ class PlanController extends AbstractController
         $currentMeasure = $measures[$index] ?? null;
 
         // ¿Plan completo?
-        $planComplete = $this->isPlanCompleteForProtocol($plan, $measureRepository);
+        $planComplete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepository);
         if ($planComplete && $index > 0) {
             return $this->redirectToRoute('backend_plan_measures');
         }
@@ -368,6 +370,9 @@ class PlanController extends AbstractController
         return $this->render('backend/plan/measures.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
+            'projectTier'      => $this->featureGate->getTier($project),
+            'commercialCards'  => $this->buildCommercialFeatureCards($project),
+            'hasWatermark'     => $this->featureGate->hasWatermark($project),
 
             // navegación y medida actual
             'index'            => $index,
@@ -532,7 +537,7 @@ class PlanController extends AbstractController
         $baseQb = $measureRepository->createQueryBuilder('m')
             ->select('m.id AS id')
             ->join('m.protocol', 'p');
-        $this->catalogResolver->applyCatalogFilter($baseQb, 'm', 'p');
+        $this->catalogResolver->applyCatalogFilter($baseQb, 'm', 'p', $project);
         if (!$protocol) {
             $baseQb->where('p.name IN (:protocols)')->setParameter('protocols', $protocols);
         } else {
@@ -564,7 +569,7 @@ class PlanController extends AbstractController
                 ELSE 5
             END AS HIDDEN rank"
         );
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p');
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
 
         // Orden por ranking y luego por nombre de la medida
         // Nombre para orden secundario: nameReview si existe, si no name
@@ -581,8 +586,20 @@ class PlanController extends AbstractController
 
         // Filtros
         if ($category)        { $qb->andWhere('m.category = :category')->setParameter('category', $category); }
-        if ($department)      { $qb->andWhere('m.department = :department')->setParameter('department', $department); }
-        if ($ods)             { $qb->andWhere('m.ods = :ods')->setParameter('ods', $ods); }
+        if ($department) {
+            $departmentEntity = $em->getRepository(Department::class)->find((int) $department);
+            if ($departmentEntity) {
+                $qb->andWhere('(m.department = :department OR :department MEMBER OF m.departments)')
+                    ->setParameter('department', $departmentEntity);
+            }
+        }
+        if ($ods) {
+            $odsEntity = $em->getRepository(Ods::class)->find((int) $ods);
+            if ($odsEntity) {
+                $qb->andWhere('(m.ods = :ods OR :ods MEMBER OF m.odsItems)')
+                    ->setParameter('ods', $odsEntity);
+            }
+        }
         if ($esg)             { $qb->andWhere('m.esg = :esg')->setParameter('esg', $esg); }
         if ($isApplicable)    { $qb->andWhere('pm.isApplicable = true'); }
         if ($willImplement)   { $qb->andWhere('pm.willImplement = true'); }
@@ -611,7 +628,7 @@ class PlanController extends AbstractController
             'pending_selection' => $pendingSelection,
             'only_implemented'  => $onlyImplemented,
         ];
-        $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $filtersArr);
+        $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $project, $filtersArr);
 
         $effective = 0; $nonApplicable = 0; $agreed = 0; $implemented = 0;
         foreach ($filteredPlanMeasures as $pm) {
@@ -637,7 +654,7 @@ class PlanController extends AbstractController
 
         foreach ($plan->getPlanMeasures() as $pm) {
             $m = $pm->getMeasure();
-            if (!$m || !$this->catalogResolver->isCatalogMeasure($m)) {
+            if (!$m || !$this->catalogResolver->isCatalogMeasure($m, $project)) {
                 continue;
             }
             if ($m->getProtocol()?->getId() !== $plan->getProtocol()?->getId()) continue;
@@ -656,6 +673,9 @@ class PlanController extends AbstractController
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
+            'projectTier'      => $this->featureGate->getTier($project),
+            'commercialCards'  => $this->buildCommercialFeatureCards($project),
+            'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'planMeasures'     => $plan->getPlanMeasures(),
             'measures'         => $measures,
             'currentPage'      => $page,
@@ -718,6 +738,9 @@ class PlanController extends AbstractController
         $measure = $measureRepo->find($measureId);
         if (!$measure) {
             return new JsonResponse(['success' => false, 'error' => 'Measure not found'], 404);
+        }
+        if (!$this->catalogResolver->isCatalogMeasure($measure, $project)) {
+            return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
         }
 
         // Asegura Plan
@@ -821,7 +844,7 @@ class PlanController extends AbstractController
         $em->flush();
 
         // Estado del plan
-        $complete = $this->isPlanCompleteForProtocol($plan, $measureRepo);
+        $complete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepo);
         $plan->setStatus($complete ? 'completo' : 'incompleto');
         $plan->setStatusChangedAt(new \DateTimeImmutable());
         $em->flush();
@@ -963,6 +986,7 @@ class PlanController extends AbstractController
      */
     private function isPlanCompleteForProtocol(
         Plan $plan,
+        Project $project,
         MeasureRepository $measureRepository
     ): bool {
         $protocol = $plan->getProtocol();
@@ -978,7 +1002,7 @@ class PlanController extends AbstractController
         $pmByMeasureId = [];
         foreach ($plan->getPlanMeasures() as $pm) {
             $measure = $pm->getMeasure();
-            if (!$measure || !$this->catalogResolver->isCatalogMeasure($measure)) {
+            if (!$measure || !$this->catalogResolver->isCatalogMeasure($measure, $project)) {
                 continue;
             }
             if ($measure->getProtocol()?->getId() === $protocol->getId()) {
@@ -1050,6 +1074,9 @@ class PlanController extends AbstractController
         if (!$measure) {
             return new JsonResponse(['success' => false, 'error' => 'Measure not found'], 404);
         }
+        if (!$this->catalogResolver->isCatalogMeasure($measure, $project)) {
+            return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
+        }
 
         // Asegurar Plan (debe existir; no se crea aquí)
         $plan = $planRepo->findOneBy(['project' => $project]);
@@ -1066,6 +1093,24 @@ class PlanController extends AbstractController
             $pm = (new PlanMeasure())->setPlan($plan)->setMeasure($measure);
             $em->persist($pm);
             $em->flush();
+        }
+
+        $maxEvidenceCount = $this->featureGate->getMaxEvidenceCount($project);
+        if ($maxEvidenceCount !== null) {
+            $currentEvidenceCount = $this->countProjectEvidenceFiles($plan);
+            $incomingEvidenceCount = 0;
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    $incomingEvidenceCount++;
+                }
+            }
+
+            if ($currentEvidenceCount + $incomingEvidenceCount > $maxEvidenceCount) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error' => sprintf('Basic permite un máximo de %d evidencias por proyecto.', $maxEvidenceCount),
+                ], 403);
+            }
         }
 
         // Directorio de subida
@@ -1133,6 +1178,9 @@ class PlanController extends AbstractController
         $measure = $measureRepo->find($measureId);
         if (!$measure) {
             return new JsonResponse(['success' => false, 'error' => 'Measure not found'], 404);
+        }
+        if (!$this->catalogResolver->isCatalogMeasure($measure, $project)) {
+            return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
         }
 
         $plan = $planRepo->findOneBy(['project' => $project]);
@@ -1431,7 +1479,7 @@ class PlanController extends AbstractController
             'only_implemented'  => $filterOnlyImplemented,
         ];
 
-        $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $filtersArr);
+        $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $project, $filtersArr);
 
         $measuresByDpto = [];
         $noDeptLabel = $translator->trans('backend.plan.labels.no_department');
@@ -1445,7 +1493,7 @@ class PlanController extends AbstractController
             $measuresByDpto[$dpto][] = $pm;
         }
 
-        $measuresTotal = $this->countFilteredMeasures($measureRepository, $protocolRepository, $project, $filtersArr);
+        $measuresTotal = $this->countFilteredMeasures($measureRepository, $protocolRepository, $project, $filtersArr, $em);
 
         // --- PUNTUACIÓN ALCANZADA (con filtros aplicados) ---
         $scoreMax = 0;
@@ -1507,6 +1555,8 @@ class PlanController extends AbstractController
         return [
             'project'        => $project,
             'plan'           => $plan,
+            'projectTier'    => $this->featureGate->getTier($project),
+            'hasWatermark'   => $this->featureGate->hasWatermark($project),
             'activeFilters'  => $activeFilters,
             'measuresByDpto' => $measuresByDpto,
             'planChartsUrls' => $planChartsUrls,
@@ -1535,12 +1585,12 @@ class PlanController extends AbstractController
         return $dompdf->output();
     }
 
-    private function getFilteredPlanMeasures(Plan $plan, array $filters): array
+    private function getFilteredPlanMeasures(Plan $plan, Project $project, array $filters): array
     {
         $result = [];
         foreach ($plan->getPlanMeasures() as $pm) {
             $m = $pm->getMeasure();
-            if (!$m || !$this->catalogResolver->isCatalogMeasure($m)) {
+            if (!$m || !$this->catalogResolver->isCatalogMeasure($m, $project)) {
                 continue;
             }
 
@@ -1597,18 +1647,31 @@ class PlanController extends AbstractController
         MeasureRepository $measureRepository,
         ProtocolRepository $protocolRepository,
         Project $project,
-        array $filters): int
+        array $filters,
+        EntityManagerInterface $em): int
     {
         $protocols = $protocolRepository->getNamesForProjectType($project->getType());
 
         $qb = $measureRepository->createQueryBuilder('m')->join('m.protocol', 'p');
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p');
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
 
         if (!$filters['protocol'])   $qb->where('p.name IN (:protocols)')->setParameter('protocols', $protocols);
         else                         $qb->andWhere('p.name = :protocol')->setParameter('protocol', $filters['protocol']);
         if ($filters['category'])    $qb->andWhere('m.category = :category')->setParameter('category', $filters['category']);
-        if ($filters['department'])  $qb->andWhere('m.department = :department')->setParameter('department', $filters['department']);
-        if ($filters['ods'])         $qb->andWhere('m.ods = :ods')->setParameter('ods', $filters['ods']);
+        if ($filters['department']) {
+            $departmentEntity = $em->getRepository(Department::class)->find((int) $filters['department']);
+            if ($departmentEntity) {
+                $qb->andWhere('(m.department = :department OR :department MEMBER OF m.departments)')
+                    ->setParameter('department', $departmentEntity);
+            }
+        }
+        if ($filters['ods']) {
+            $odsEntity = $em->getRepository(Ods::class)->find((int) $filters['ods']);
+            if ($odsEntity) {
+                $qb->andWhere('(m.ods = :ods OR :ods MEMBER OF m.odsItems)')
+                    ->setParameter('ods', $odsEntity);
+            }
+        }
         if ($filters['esg'])         $qb->andWhere('m.esg = :esg')->setParameter('esg', $filters['esg']);
         if ($filters['is_applicable']) {
             $qb->join('m.planMeasures', 'pm')->andWhere('pm.isApplicable = true');
@@ -1634,7 +1697,7 @@ class PlanController extends AbstractController
      *  - Alcance: En alcance (Aplicables) vs Fuera de alcance (base: Totales)
      * Terminología alineada a los filtros.
      */
-        private function buildChartsConfig(
+    private function buildChartsConfig(
         int $measuresTotal,
         int $effective,
         int $nonApplicable,
@@ -1748,6 +1811,50 @@ class PlanController extends AbstractController
                 ]],
             ],
         ];
+    }
+
+    private function buildCommercialFeatureCards(Project $project): array
+    {
+        $definitions = [
+            'sustainability_plan.department_pdf' => 'PDF por departamentos',
+            'sustainability_plan.advanced_exports' => 'Exportaciones avanzadas',
+            'sustainability_plan.custom_comments' => 'Comentarios personalizados',
+            'sustainability_plan.internal_notes' => 'Notas internas',
+            'sustainability_plan.responsibles' => 'Responsables',
+            'sustainability_plan.checklist' => 'Checklist',
+            'sustainability_plan.custom_measures' => 'Medidas custom',
+            'sustainability_plan.branding' => 'Branding',
+        ];
+
+        $cards = [];
+        foreach ($definitions as $feature => $label) {
+            $state = $this->featureGate->getFeatureState($project, $feature);
+            if ($state['visible'] && !$state['enabled']) {
+                $cards[] = [
+                    'label' => $label,
+                    'reason' => $state['reason'] ?? null,
+                ];
+            }
+        }
+
+        return $cards;
+    }
+
+    private function countProjectEvidenceFiles(Plan $plan): int
+    {
+        $paths = [];
+        foreach ($plan->getPlanMeasures() as $pm) {
+            $evidence = trim((string) $pm->getEvidence());
+            if ($evidence === '') {
+                continue;
+            }
+
+            foreach (array_filter(array_map('trim', explode("\n", $evidence))) as $path) {
+                $paths[$path] = true;
+            }
+        }
+
+        return count($paths);
     }
 
 

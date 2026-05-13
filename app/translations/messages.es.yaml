@@ -430,6 +430,8 @@ backend:
 
       name: "Nombre del proyecto"
       name_ph: "Ingresa el nombre del proyecto"
+      commercial_tier: "Tier comercial"
+      commercial_tier_current: "Tier actual"
       type: "Tipo"
       emission_source: "Fuente de factores de emisión"
       emission_source_options:
@@ -586,6 +588,13 @@ backend:
       download: "Descargar"
       send_to_crew: "Enviar al ET"
       spinner_pdf: "Generando PDF…"
+    tier:
+      current: "Tier actual"
+      basic_notice: "Disponible en Standard o Pro para ampliar catálogo y quitar marca de agua."
+      standard_notice: "Disponible en Pro para funciones avanzadas."
+    features_blocked: "Funciones bloqueadas"
+    features_blocked_help: "El tier actual limita algunas opciones de exportación y gestión."
+    upgrade_soon: "Mejorar plan · Próximamente"
     preview_modal:
       title: "Vista del plan por departamento con filtros aplicados"
       loading: "Cargando vista ..."
