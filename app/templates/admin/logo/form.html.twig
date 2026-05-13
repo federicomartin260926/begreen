@@ -1,0 +1,84 @@
+{% extends 'base_backend.html.twig' %}
+{% block title %}{{ edit ? 'backend.logo.form.title_edit'|trans : 'backend.logo.form.title_new'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item"><a href="{{ path('admin_cms_index') }}">{{ 'backend.cms.index.breadcrumb'|trans }}</a></li>
+  <li class="breadcrumb-item"><a href="{{ path('admin_logo_index') }}">{{ 'backend.logo.index.breadcrumb'|trans }}</a></li>
+  <li class="breadcrumb-item active">{{ edit ? 'backend.common.edit'|trans : 'backend.common.new'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h2">{{ edit ? 'backend.logo.form.h1_edit'|trans : 'backend.logo.form.h1_new'|trans }}</h1>
+        <div class="d-flex gap-2">
+          <button form="logo_form" class="btn btn-primary">
+            <i class="bi bi-save"></i> {{ edit ? 'backend.common.update'|trans : 'backend.common.create'|trans }}
+          </button>
+        </div>
+      </div>
+
+      {{ form_start(form, {
+        'attr': { 'enctype': 'multipart/form-data', 'id': 'logo_form' }
+      }) }}
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          {{ form_row(form.name, { label: 'backend.logo.form.name'|trans }) }}
+        </div>
+
+        <div class="col-md-6">
+          {{ form_row(form.url, {
+            label: 'backend.logo.form.url'|trans,
+            row_attr: { class: 'mb-0' }
+          }) }}
+          <small class="text-muted">{{ 'backend.logo.form.url_help'|trans }}</small>
+        </div>
+
+        <div class="col-md-6">
+          {{ form_row(form.imageFile, {
+            label: 'backend.logo.form.image'|trans,
+            attr: { accept: '.png,.jpg,.jpeg,.svg' }
+          }) }}
+          <small class="text-muted d-block">{{ 'backend.logo.form.image_help'|trans }}</small>
+        </div>
+
+        <div class="col-md-3">
+          {{ form_row(form.sortOrder, { label: 'backend.logo.form.order'|trans }) }}
+        </div>
+
+        <div class="col-md-3 d-flex align-items-center">
+          {{ form_row(form.isActive, { label: 'backend.logo.form.active'|trans }) }}
+        </div>
+
+        {% if edit and logo is defined and logo.imagePath %}
+          <div class="col-12">
+            <label class="form-label d-block">{{ 'backend.logo.form.preview'|trans }}</label>
+            <div class="border rounded p-3 d-inline-flex align-items-center gap-3">
+              <img src="{{ logo.imagePath }}" alt="{{ logo.name ?: 'Logo' }}" class="img-fluid" style="max-height:70px">
+              <div class="small text-muted">
+                {{ 'backend.logo.form.current_path'|trans }} <code>{{ logo.imagePath }}</code>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <hr>
+      <div class="d-flex justify-content-between mt-4">
+        <a href="{{ path('admin_logo_index') }}" class="btn btn-outline-secondary text-decoration-none">
+          <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+        </a>
+        <button class="btn btn-success">
+          {{ edit ? 'backend.common.update'|trans : 'backend.common.create'|trans }}
+        </button>
+      </div>
+
+      {{ form_end(form) }}
+    </div>
+  </div>
+</div>
+{% endblock %}

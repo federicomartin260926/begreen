@@ -1,0 +1,35 @@
+{% extends 'pdf/base.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'backend.emission.reports.overview.title'|trans }}{% endblock %}
+
+{% block body %}
+  <h1>{{ 'backend.emission.reports.overview.h1'|trans }}</h1>
+  <h2>{{ project.name }} ({{ project.type|capitalize }})</h2>
+
+  {% for phase, categories in reportData %}
+    <h3>{{ 'backend.emission.reports.overview.phase_heading'|trans({'{phase}': phase}) }}</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'backend.emission.reports.overview.th.category'|trans }}</th>
+          <th>{{ 'backend.emission.reports.overview.th.emissions'|trans }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set total = 0 %}
+        {% for category, emission in categories %}
+          <tr>
+            <td>{{ category }}</td>
+            <td>{{ emission|number_format(2, '.', ',') }}</td>
+          </tr>
+          {% set total = total + emission %}
+        {% endfor %}
+        <tr class="total">
+          <td>{{ 'backend.emission.reports.overview.total_phase'|trans({'{phase}': phase}) }}</td>
+          <td>{{ total|number_format(2, '.', ',') }}</td>
+        </tr>
+      </tbody>
+    </table>
+  {% endfor %}
+{% endblock %}

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+>
+    <php>
+        <server name="APP_ENV" value="test"/>
+        <server name="APP_DEBUG" value="1"/>
+        <server name="DATABASE_URL" value="mysql://begreen:begreen@db:3306/begreenmyfriend?serverVersion=11.3&amp;charset=utf8mb4"/>
+        <server name="MAILER_DSN" value="null://null"/>
+        <server name="MESSENGER_TRANSPORT_DSN" value="null://null"/>
+        <server name="DEFAULT_LOCALE" value="es"/>
+        <server name="SECONDARY_LOCALE" value="en"/>
+        <server name="LOCALES" value="es,en"/>
+        <server name="APP_SECRET" value="test-secret"/>
+    </php>
+
+    <testsuites>
+        <testsuite name="Smoke">
+            <directory>tests/Smoke</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

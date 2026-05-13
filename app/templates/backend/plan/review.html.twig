@@ -1,0 +1,414 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.plan.review.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.plan.review.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div
+    class="container my-4"
+    data-controller="plan-review"
+    data-plan-review-i18n-value="{{ {
+        'loading_preview':               'backend.plan.review.stimulus.loading_preview'|trans,
+        'preview_error':                 'backend.plan.review.stimulus.preview_error'|trans,
+        'pdf_error_http':                'backend.plan.review.stimulus.pdf_error_http'|trans,
+        'pdf_error_generic':             'backend.plan.review.stimulus.pdf_error_generic'|trans,
+        'pdf_default_filename':          'backend.plan.review.stimulus.pdf_default_filename'|trans,
+        'implemented_require_will_html': 'backend.plan.review.stimulus.implemented_require_will_html'|trans|raw,
+        'implemented_yes':               'backend.plan.review.stimulus.implemented_yes'|trans,
+        'implemented_no':                'backend.plan.review.stimulus.implemented_no'|trans,
+        'save_error_generic':            'backend.plan.review.stimulus.save_error_generic'|trans,
+        'network_error':                 'backend.plan.review.stimulus.network_error'|trans,
+        'modal.error_title':             'backend.plan.review.stimulus.modal.error_title'|trans,
+        'modal.notice_title':            'backend.plan.review.stimulus.modal.notice_title'|trans,
+        'modal.missing_title':           'backend.plan.review.stimulus.modal.missing_title'|trans,
+        'modal.default_title':           'backend.plan.review.stimulus.modal.default_title'|trans,
+        'save_missing_fields_html':      'backend.plan.review.stimulus.save_missing_fields_html'|trans|raw,
+        'upload_invalid_response':       'backend.plan.review.stimulus.upload_invalid_response'|trans,
+        'upload_failed_http':            'backend.plan.review.stimulus.upload_failed_http'|trans,
+        'evidence_upload_failed':        'backend.plan.review.stimulus.evidence_upload_failed'|trans,
+        'evidence_delete_confirm':       'backend.plan.review.stimulus.evidence_delete_confirm'|trans,
+        'evidence_delete_error':         'backend.plan.review.stimulus.evidence_delete_error'|trans,
+        'evidence_delete_failed':        'backend.plan.review.stimulus.evidence_delete_failed'|trans,
+        'evidence_max_files':            'backend.plan.review.stimulus.evidence_max_files'|trans,
+        'evidence_selected_files':       'backend.plan.review.stimulus.evidence_selected_files'|trans,
+        'evidence_max_size':             'backend.plan.review.stimulus.evidence_max_size'|trans,
+        'evidence_oversized_list_intro': 'backend.plan.review.stimulus.evidence_oversized_list_intro'|trans
+    }|json_encode|e('html_attr') }}">
+    <div class="row justify-content-center">
+        <div class="col-12 bg-white p-4 rounded shadow">
+            <h2 class="mb-4">
+                {{ 'backend.plan.h2'|trans({'%project%': project.name})|raw }}
+                <span>
+                    <a
+                        href="{{ path('backend_project_edit', { id: project.id }) }}"
+                        class="ms-2 small link-primary"
+                        target="_blank" rel="noopener"
+                        title="{{ 'backend.plan.review.open_project_title'|trans }}">
+                        <i class="bi bi-box-arrow-up-right fs-5"></i>
+                    </a>
+                </span>
+            </h2>
+
+            <div class="d-flex align-items-center mb-3">
+                {# Estado del plan #}
+                <span
+                    class="badge bg-success"
+                    data-bs-toggle="popover"
+                    data-bs-trigger="hover"
+                    data-bs-html="true"
+                    data-bs-content="{{ 'backend.plan.review.badges.status_popover'|trans({'%status%': ('backend.plan.status.' ~ plan.status)|trans })|e('html_attr') }}">
+                    <i class="bi bi-exclamation-circle"></i>
+                    {{ 'backend.plan.review.plan_status'|trans({'%status%': ('backend.plan.status.' ~ plan.status)|trans }) }}
+                    {% if plan.statusChangedAt %}
+                        <span class="ms-2 small">
+                            ({{ plan.statusChangedAt|date('d/m/Y H:i') }})
+                        </span>
+                    {% endif %}
+                </span>
+
+                {# Protocolo #}
+                {% if plan.protocol %}
+                    <span
+                        class="badge bg-success ms-1"
+                        data-bs-toggle="popover"
+                        data-bs-trigger="hover"
+                        data-bs-html="true"
+                        data-bs-content="{{ 'backend.plan.badges.protocol_popover'|trans({'%protocol%': plan.protocol.name})|e('html_attr') }}">
+                        <i class="bi bi-exclamation-circle"></i> {{ plan.protocol.name }}
+                    </span>
+                {% endif %}
+
+                {# Tipo de proyecto con icono (i18n) #}
+                {% set typeKey   = (project.type ?? '')|lower %}
+                {% set typeIcon  = typeKey == 'evento' ? 'bi-calendar-event' : 'bi-camera-reels' %}
+                {% set typeLabel = ('backend.project.type.' ~ typeKey)|trans %}
+
+                <span
+                    class="badge bg-secondary ms-1"
+                    data-bs-toggle="popover"
+                    data-bs-trigger="hover"
+                    data-bs-html="true"
+                    data-bs-content="{{ 'backend.plan.badges.type_popover'|trans({'%type%': typeLabel})|e('html_attr') }}">
+                <i class="bi {{ typeIcon }}"></i> {{ typeLabel }}
+                </span>
+
+
+                {# Puntuación #}
+                {% if scoreMax > 0 %}
+                    <span
+                        class="badge bg-warning text-dark ms-1"
+                        data-bs-toggle="popover"
+                        data-bs-trigger="hover"
+                        data-bs-html="true"
+                        data-bs-content="{{ 'backend.plan.score.total_popover'|trans({'%gained%': scoreGained, '%max%': scoreMax})|e('html_attr') }}">
+                        <i class="bi bi-star-fill me-1"></i>{{ scoreGained }} / {{ scoreMax }}
+                    </span>
+                {% endif %}
+            </div>
+
+            {# ACCIONES #}
+            <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
+                <div class="d-flex gap-2">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            title="{{ 'backend.plan.review.actions.preview_title'|trans }}"
+                            data-action="plan-review#loadPreview">
+                        <i class="bi bi-eye"></i> {{ 'backend.plan.review.actions.preview'|trans }}
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-outline-primary"
+                            data-action="plan-review#downloadPdf">
+                        <i class="bi bi-download"></i> {{ 'backend.plan.review.actions.download'|trans }}
+                    </button>
+
+                    {# Spinner overlay (descarga) #}
+                    <div data-plan-review-target="spinner"
+                         class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                         style="background: rgba(255,255,255,0.6); z-index: 2000;">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status"></div>
+                            <div class="mt-2 small text-muted">{{ 'backend.plan.review.generating_pdf'|trans }}</div>
+                        </div>
+                    </div>
+
+                    <button type="button"
+                            class="btn btn-outline-success"
+                            data-bs-toggle="modal"
+                            data-bs-target="#etEmailModal">
+                        <i class="bi bi-envelope-paper"></i> {{ 'backend.plan.review.actions.send_to_crew'|trans }}
+                    </button>
+
+
+                    {# Permitimos eliminar el plan a cualquiera menos al Gestor #}
+                    {% if not is_granted('ROLE_MANAGER') or is_granted('ROLE_SUPER_ADMIN') %}
+                    <form action="{{ path('backend_plan_delete') }}" method="post" onsubmit="return confirm('{{ 'backend.plan.delete.confirm'|trans|e('js') }}');">
+                        <button class="btn btn-outline-danger">
+                            <i class="bi bi-trash"></i> {{ 'backend.plan.delete.btn'|trans }}
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# FILTROS #}
+            {% include 'backend/plan/_filters.html.twig' %}
+
+            {# TABLA DE MEDIDAS #}
+            {% include 'backend/plan/_list.html.twig' %}
+
+            {# PAGINACIÓN #}
+            {% include 'backend/plan/_pagination.html.twig' with {
+                currentPage: currentPage,
+                totalPages: totalPages
+            } %}
+
+            {# GRÁFICOS #}
+            <div
+                data-controller="plan-charts"
+                data-plan-charts-charts-config-value='{{ planChartsConfig|json_encode|e('html_attr') }}'>
+
+                <div class="row g-4 mt-4">
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="ratio ratio-16x9">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="summary"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="ratio ratio-16x9">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="alcance"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="ratio ratio-16x9">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="commitment"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="ratio ratio-16x9">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="implementation"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# MODAL vista previa #}
+    <div class="modal fade" id="planPreviewModal" tabindex="-1" aria-labelledby="planPreviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="planPreviewModalLabel">{{ 'backend.plan.review.preview_modal.title'|trans }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                </div>
+                <div class="modal-body" id="plan-preview-body">
+                    <div class="text-center text-muted">{{ 'backend.plan.review.preview_modal.loading'|trans }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# MODAL Email ET #}
+    <div class="modal fade"
+         id="etEmailModal"
+         tabindex="-1"
+         aria-labelledby="etEmailModalLabel"
+         aria-hidden="true"
+         data-bs-backdrop="static"
+         data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content position-relative">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="etEmailModalLabel">{{ 'backend.plan.review.et_modal.title'|trans }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                </div>
+
+                <div class="modal-body">
+                    {# Agrupa por departamento #}
+                    {% set crewByDept = {} %}
+                    {% for cm in project.crewMembers|default([]) %}
+                        {% set dname = cm.department ? cm.department.name : 'backend.plan.labels.no_department'|trans %}
+                        {% if crewByDept[dname] is defined %}
+                            {% set crewByDept = crewByDept|merge({ (dname): crewByDept[dname]|merge([cm]) }) %}
+                        {% else %}
+                            {% set crewByDept = crewByDept|merge({ (dname): [cm] }) %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if crewByDept is empty %}
+                        <div class="alert alert-warning">
+                            {{ 'backend.plan.review.et_modal.no_crew'|trans }}
+                            <a href="{{ path('backend_project_edit', { id: project.id }) }}" class="alert-link" target="_blank" rel="noopener">
+                                {{ 'backend.plan.review.et_modal.add_crew'|trans }}
+                            </a>
+                        </div>
+                    {% else %}
+                        <form method="post"
+                              action="{{ path('backend_plan_review', app.request.query.all) }}"
+                              data-plan-review-target="etForm"
+                              data-action="submit->plan-review#submitEtEmails">
+                            <input type="hidden" name="action" value="send_et_emails">
+
+                            {# Filtros actuales como hidden #}
+                            <input type="hidden" name="filter_protocol"          value="{{ filters.protocol|default('') }}">
+                            <input type="hidden" name="filter_category"          value="{{ filters.category|default('') }}">
+                            <input type="hidden" name="filter_department"        value="{{ filters.department|default('') }}">
+                            <input type="hidden" name="filter_ods"               value="{{ filters.ods|default('') }}">
+                            <input type="hidden" name="filter_esg"               value="{{ filters.esg|default('') }}">
+                            <input type="hidden" name="filter_is_applicable"     value="{{ filters.is_applicable|default('') }}">
+                            <input type="hidden" name="filter_will_implement"    value="{{ filters.will_implement|default('') }}">
+                            <input type="hidden" name="filter_pending_selection" value="{{ filters.pending_selection|default('') }}">
+                            <input type="hidden" name="filter_only_implemented"  value="{{ filters.only_implemented|default('') }}">
+
+                            <div class="mb-2 small text-muted">
+                                {{ 'backend.plan.review.et_modal.helper'|trans }}
+                            </div>
+
+                            <div class="accordion" id="etEmailAccordion">
+                                {% for dept, members in crewByDept %}
+                                    {% set deptId = 'dept-' ~ loop.index %}
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="{{ deptId }}-hdr">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{{ deptId }}-col" aria-expanded="false" aria-controls="{{ deptId }}-col">
+                                                {{ dept }}
+                                            </button>
+                                        </h2>
+                                        <div id="{{ deptId }}-col" class="accordion-collapse collapse" aria-labelledby="{{ deptId }}-hdr" data-bs-parent="#etEmailAccordion">
+                                            <div class="accordion-body">
+                                                <div class="bg-light rounded-3 px-3 py-2 mb-2 border">
+                                                    <div class="form-check m-0">
+                                                        <input class="form-check-input"
+                                                               type="checkbox"
+                                                               id="{{ deptId }}-all"
+                                                               data-action="click->plan-review#toggleDepartment change->plan-review#toggleDepartment"
+                                                               data-plan-review-dept-id-param="{{ deptId }}"
+                                                               data-dept-id="{{ deptId }}">
+                                                        <label class="form-check-label" for="{{ deptId }}-all">
+                                                            {{ 'backend.plan.review.et_modal.select_department'|trans }}
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <div class="d-flex align-items-center gap-2 mb-2">
+                                                    <div class="flex-grow-1 border-top" style="opacity:.35"></div>
+                                                    <div class="small text-muted">{{ 'backend.plan.review.et_modal.members'|trans }}</div>
+                                                    <div class="flex-grow-1 border-top" style="opacity:.35"></div>
+                                                </div>
+
+                                                <div class="row row-cols-1 row-cols-md-2 g-2 ps-3 border-start border-2 border-light">
+                                                    {% for m in members %}
+                                                        <div class="col">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input"
+                                                                       type="checkbox"
+                                                                       value="{{ m.id }}"
+                                                                       name="crew_ids[]"
+                                                                       id="crew-{{ m.id }}"
+                                                                       data-dept="{{ deptId }}"
+                                                                       data-action="change->plan-review#updateEtCounter">
+                                                                <label class="form-check-label" for="crew-{{ m.id }}">
+                                                                    {{ m.name ?? 'backend.plan.review.et_modal.no_name'|trans }} — <span class="text-muted">{{ m.email }}</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="mt-3 d-flex justify-content-between align-items-center">
+                                <div class="small">
+                                    {{ 'backend.plan.review.et_modal.selected'|trans }} <strong data-plan-review-target="etCounter">0</strong>
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn btn-success" data-plan-review-target="etSubmitBtn">
+                                        <i class="bi bi-send"></i> {{ 'backend.plan.review.et_modal.send_emails'|trans }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mt-2 d-none alert alert-warning py-2 px-3" data-plan-review-target="etWarning">
+                                {{ 'backend.plan.email.select_member'|trans }}
+                            </div>
+
+                            <div class="d-none position-absolute top-0 start-0 w-100 h-100 align-items-center justify-content-center"
+                                 data-plan-review-target="etSpinner"
+                                 style="background: rgba(255,255,255,0.75); z-index: 1056;">
+                                <div class="text-center">
+                                    <div class="spinner-border" role="status" aria-label="{{ 'backend.plan.review.et_modal.processing_aria'|trans }}"></div>
+                                    <div class="mt-2 small text-muted">{{ 'backend.plan.review.et_modal.processing'|trans }}</div>
+                                </div>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Modal de errores de evidencias #}
+    <div class="modal fade" id="evidenceErrorModal" tabindex="-1" aria-labelledby="evidenceErrorModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="evidenceErrorModalLabel">{{ 'backend.plan.review.evidence_modal.title'|trans }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                </div>
+                <div class="modal-body" data-plan-review-target="errorModalBody">
+                    <!-- contenido desde Stimulus -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ 'backend.common.close'|trans }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Modal genérico #}
+    <div class="modal fade" id="appModal" tabindex="-1" aria-labelledby="appModalLabel" aria-hidden="true">
+        <div class="modal-dialog" data-plan-review-target="modalDialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="appModalLabel" data-plan-review-target="modalTitle">{{ 'backend.common.message'|trans }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                </div>
+                <div class="modal-body" data-plan-review-target="modalBody">
+                    <!-- contenido dinámico -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">{{ 'backend.common.ok'|trans }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

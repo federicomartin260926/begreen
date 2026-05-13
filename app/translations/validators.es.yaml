@@ -1,0 +1,17 @@
+form.captcha_message: Please confirm you are not a robot.
+
+backend:
+  project:
+    validation:
+      start_required: "La fecha de inicio es obligatoria."
+      end_required: "La fecha de fin es obligatoria."
+      end_before_start: "La fecha de fin no puede ser anterior a la de inicio."
+      overlap: "Las fases deben estar en orden cronológico y sin solaparse."
+  admin:
+    communication:
+      form:
+        mime_invalid: "Formato no válido. Sube un PDF, Word o Excel."
+    emission:
+      import:
+        mime_invalid: "Por favor, sube un archivo Excel válido (.xlsx)."
+        max_size: "El archivo es demasiado grande (máx. 5 MB)."

@@ -1,0 +1,60 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    contact_email: '%env(CONTACT_EMAIL)%'
+    app.mail_from: '%env(APP_MAIL_FROM)%'
+    communication_files_directory: '%kernel.project_dir%/public/uploads/communication_files'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    App\Controller\HomeController:
+        arguments:
+            $contactEmail: '%contact_email%'
+
+    App\Security\LoginSuccessHandler:
+        arguments:
+            $router: '@router'
+            $httpUtils: '@security.http_utils'
+
+    #Esto hace que Symfony pueda inyectar los repositorios en los servicios
+    App\Repository\:
+        resource: '../src/Repository'
+        tags: ['doctrine.repository_service']
+
+    Twig\Extra\String\StringExtension: ~
+
+    App\Service\PdfService: ~
+
+    App\Twig\AppExtension:
+        tags: ['twig.extension']
+
+    App\EventListener\CrewMemberListener:
+        tags:
+        - { name: doctrine.orm.entity_listener, event: prePersist, entity: App\Entity\CrewMember }
+        - { name: doctrine.orm.entity_listener, event: preUpdate, entity: App\Entity\CrewMember }
+
+    App\EventSubscriber\LocaleSubscriber:
+        arguments:
+            $defaultLocale: '%kernel.default_locale%'
+
+    Gedmo\Translatable\TranslatableListener: '@stof_doctrine_extensions.listener.translatable'
+
+    App\EventSubscriber\TranslatableLocaleSubscriber:
+        arguments:
+            $translatableListener: '@stof_doctrine_extensions.listener.translatable'
+        tags: ['kernel.event_subscriber']
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

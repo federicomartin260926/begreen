@@ -1,0 +1,132 @@
+{# templates/admin/auxiliary/form.html.twig #}
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}
+  {{ (edit ? 'backend.common.edit' : 'backend.common.new')|trans }} {{ name|trans }}
+{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item">
+    <a class="text-decoration-none" href="{{ path('admin_auxiliary_index') }}">{{ 'backend.aux.index.breadcrumb'|trans }}</a>
+  </li>
+  <li class="breadcrumb-item">
+    <a class="text-decoration-none" href="{{ path('admin_auxiliary_list', { type: type }) }}">{{ name|trans }}</a>
+  </li>
+  <li class="breadcrumb-item active" aria-current="page">
+    {{ (edit ? 'backend.common.edit' : 'backend.common.new')|trans }}
+  </li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-9 bg-white p-4 rounded shadow">
+      <h2 class="mb-4">{{ (edit ? 'backend.common.edit' : 'backend.common.new')|trans }} {{ name|trans }}</h2>
+
+      {{ form_start(form) }}
+      {{ form_errors(form) }}
+
+      {# ========= 1) Campos NO traducibles (siempre fuera de tabs) ========= #}
+      {# Filtramos fuera todo lo que sea traducción: name, description y sus sufijos _en #}
+      {% set translatable = ['name','description'] %}
+      <div class="mb-3">
+        {% for field in form %}
+          {% set fname = field.vars.name %}
+          {% if fname != '_token'
+                and fname not in translatable
+                and not (fname matches '/_(?:en)$/') %}
+            <div class="mb-3">
+              {{ form_label(field, null, { label_attr: { class: 'form-label' } }) }}
+              {{ form_widget(field) }}
+              {{ form_errors(field) }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      {# ========= 2) Tabs de idiomas (incluye ES y EN) ========= #}
+      {% set locales = locales ?? ['es','en'] %}
+      {% set default_locale = default_locale ?? 'es' %}
+
+
+
+      <ul class="nav nav-tabs mt-3" id="i18nTabs" role="tablist">
+        {% for loc in locales %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link bg_tabs_lang {{ loop.first ? 'active' : '' }}"
+                    id="tab-{{ loc }}"
+                    data-bs-toggle="tab"
+                    data-bs-target="#pane-{{ loc }}"
+                    type="button" role="tab" aria-controls="pane-{{ loc }}"
+                    aria-selected="{{ loop.first ? 'true' : 'false' }}">
+              {{ loc|upper }}
+            </button>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <div class="tab-content bg_tabs_lang border border-top-0 p-3 rounded-bottom" id="i18nTabsContent">
+        {% for loc in locales %}
+          <div class="tab-pane fade {{ loop.first ? 'show active' : '' }}"
+               id="pane-{{ loc }}" role="tabpanel" aria-labelledby="tab-{{ loc }}">
+            {# ES (locale por defecto): usar campos MAPEADOS del entity #}
+            {% if loc == default_locale %}
+              {# name #}
+              {% if form.name is defined %}
+                <div class="mb-3">
+                  {{ form_label(form.name, 'backend.aux.form.name'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
+                  {{ form_widget(form.name) }}
+                  {{ form_errors(form.name) }}
+                </div>
+              {% endif %}
+
+              {# description si existe en el form para esta entidad #}
+              {% if form.description is defined %}
+                <div class="mb-3">
+                  {{ form_label(form.description, 'backend.aux.form.description'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
+                  {{ form_widget(form.description) }}
+                  {{ form_errors(form.description) }}
+                </div>
+              {% endif %}
+
+            {% else %}
+              {# Otros locales (EN): usar campos *_en (unmapped) #}
+              {% set name_field = attribute(form, 'name_' ~ loc) is defined ? attribute(form, 'name_' ~ loc) : null %}
+              {% if name_field %}
+                <div class="mb-3">
+                  {{ form_label(name_field, 'backend.aux.form.name'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
+                  {{ form_widget(name_field) }}
+                  {{ form_errors(name_field) }}
+                </div>
+              {% endif %}
+
+              {% set desc_field = attribute(form, 'description_' ~ loc) is defined ? attribute(form, 'description_' ~ loc) : null %}
+              {% if desc_field %}
+                <div class="mb-3">
+                  {{ form_label(desc_field, 'backend.aux.form.description'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
+                  {{ form_widget(desc_field) }}
+                  {{ form_errors(desc_field) }}
+                </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      {{ form_row(form._token) }}
+
+      <div class="d-flex justify-content-between mt-4">
+        <a href="{{ path('admin_auxiliary_list', { type: type }) }}" class="btn btn-outline-secondary text-decoration-none">
+          <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+        </a>
+        <button class="btn btn-success">
+          {{ (edit ? 'backend.common.update' : 'backend.common.create')|trans }}
+        </button>
+      </div>
+
+      {{ form_end(form, { render_rest: false }) }}
+    </div>
+  </div>
+</div>
+{% endblock %}

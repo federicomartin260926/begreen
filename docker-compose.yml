@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: begreen-php
+    volumes:
+      - ./app:/var/www/html   # Sólo un volumen, evita duplicados
+    expose:
+      - 9000
+    depends_on:
+      - mariadb
+
+  nginx:
+    image: nginx:latest
+    container_name: begreen-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./app:/var/www/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+
+  mariadb:
+    image: mariadb:11.3
+    container_name: begreen-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: begreenmyfriend
+      MYSQL_USER: begreen
+      MYSQL_PASSWORD: begreen
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+    - "3307:3306"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: begreen-pma
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mariadb
+      MYSQL_ROOT_PASSWORD: root
+
+volumes:
+  db_data:
+

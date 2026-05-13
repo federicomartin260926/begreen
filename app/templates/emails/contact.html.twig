@@ -1,0 +1,9 @@
+<h2>Nuevo mensaje de contacto</h2>
+<p><strong>Nombre:</strong> {{ data.name }}</p>
+<p><strong>Empresa:</strong> {{ data.company }}</p>
+<p><strong>Departamento:</strong> {{ data.department }}</p>
+<p><strong>Email:</strong> {{ data.email }}</p>
+{% if data.phone %}
+<p><strong>Teléfono:</strong> {{ data.phone }}</p>
+{% endif %}
+<p><strong>Mensaje:</strong><br>{{ data.message|nl2br }}</p>

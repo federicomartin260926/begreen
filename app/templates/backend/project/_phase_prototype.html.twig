@@ -1,0 +1,32 @@
+<div class="card mb-3 p-3 border position-relative phase-entry-wrapper bg_green_3" data-collection-id="__phase__">
+    <div class="row">
+        <div class="col-12 col-md-4 form-label-over">
+            <label class="form-label">{{ 'backend.projects.form.phase'|trans }}</label>
+            <input
+                type="text"
+                class="form-control text-start"
+                readonly
+                data-project-target="label"
+                data-phase="postproduccion"
+                value="{{ 'backend.projects.form.phase_postprod'|trans }}"
+            >
+            {{ form_widget(prototype.phase, {'attr': {'hidden': 'hidden'}}) }}
+        </div>
+        <div class="col-12 col-md-4 form-label-over">
+            {{ form_label(prototype.startDate) }}
+            {{ form_widget(prototype.startDate) }}
+            {{ form_errors(prototype.startDate) }}
+        </div>
+        <div class="col-12 col-md-4 form-label-over">
+            {{ form_label(prototype.endDate) }}
+            {{ form_widget(prototype.endDate) }}
+            {{ form_errors(prototype.endDate) }}
+        </div>
+    </div>
+
+    <div class="text-end mt-0">
+        <button type="button" class="btn btn-sm btn-primary w-auto" data-action="project#removeItem">
+        <i class="bi bi-trash"></i> {{ 'backend.projects.form.remove_phase'|trans }}
+        </button>
+    </div>
+</div>

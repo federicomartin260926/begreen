@@ -1,0 +1,9 @@
+form:
+  name: Name
+  phone: Phone
+  company: Company
+  department: Department
+  email: Email
+  message: Message
+  send: Send
+  send_message: Send message

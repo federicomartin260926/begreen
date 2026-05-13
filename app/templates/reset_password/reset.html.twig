@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+<div class="container mt-5">
+    <h1>{{ 'reset_password.title'|trans }}</h1>
+    {{ form_start(resetForm) }}
+        <div class="mb-3">
+            {{ form_label(resetForm.plainPassword) }}
+            {{ form_widget(resetForm.plainPassword, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(resetForm.plainPassword) }}
+        </div>
+        <button type="submit" class="btn btn-success">{{ 'reset_password.submit_password'|trans }}</button>
+    {{ form_end(resetForm) }}
+</div>
+{% endblock %}

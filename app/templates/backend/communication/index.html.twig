@@ -1,0 +1,111 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.communication.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">
+        {{ 'backend.communication.breadcrumb'|trans }}
+    </li>
+{% endblock %}
+
+{% block body %}
+
+    <div class="container my-4">
+        <div class="row justify-content-center">
+            <div class="col-12 bg-white p-4 rounded shadow">
+                <h2 class="mb-4">{{ 'backend.communication.available_documents'|trans }}</h2>
+                {% if files is empty %}
+                    <p>{{ 'backend.communication.no_documents'|trans }}</p>
+                {% else %}
+                    <table class="table table-hover green_table_1">
+                        <thead class="table-success">
+                            <tr>
+                                <th>{{ 'backend.communication.table.name'|trans }}</th>
+                                <th>{{ 'backend.communication.table.description'|trans }}</th>
+                                <th>{{ 'backend.communication.table.actions'|trans }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in files %}
+                                <tr>
+                                    <td>{{ file.originalFilename }}</td>
+                                    <td>{{ file.description ? file.description : '' }}</td>
+                                    <td>
+                                        <a
+                                            href="{{ path('backend_communication_download', {id: file.id}) }}"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="hover"
+                                            data-bs-placement="right"
+                                            data-bs-content="{{ 'backend.communication.action.download'|trans }}"
+                                            class="btn" download>
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        {% if file.originalFilename ends with '.pdf' %}
+                                            <a href="#"
+                                               class="btn"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#pdfPreviewModal"
+                                               data-url="{{ path('backend_communication_download', {id: file.id}) }}"
+                                               data-bs-trigger="hover"
+                                               data-bs-placement="right"
+                                               data-bs-content="{{ 'backend.communication.action.preview'|trans }}">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+{# Modal para previsualización PDF #}
+<div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-labelledby="pdfPreviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfPreviewLabel">{{ 'backend.communication.preview_modal.title'|trans }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+      </div>
+      <div class="modal-body" style="height: 60vh; overflow-y: auto;">
+        <iframe id="pdfPreviewIframe" src="" frameborder="0" style="width: 100%; height: 100%;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+        // Inicializar todos los popovers en botones con data-bs-content
+        const popoverTriggerList = [].slice.call(document.querySelectorAll('a[data-bs-content]'));
+        popoverTriggerList.forEach((popoverTriggerEl) => {
+            new bootstrap.Popover(popoverTriggerEl, {
+            trigger: 'hover',
+            container: 'body'
+            });
+        });
+
+        // Gestionar apertura del modal y carga del iframe
+        const modal = document.getElementById('pdfPreviewModal');
+        const iframe = document.getElementById('pdfPreviewIframe');
+
+        modal.addEventListener('show.bs.modal', (event) => {
+            const button = event.relatedTarget;
+            const url = button.getAttribute('data-url');
+            iframe.src = url;
+        });
+
+        modal.addEventListener('hidden.bs.modal', () => {
+            iframe.src = '';
+        });
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% trans_default_domain 'messages' %}
+
+<template id="tpl-transport">
+  <div class="row g-3">
+    <div class="col-md-12 row pb-3">
+      <div class="col-md-6">
+        <label class="form-label d-block">{{ 'backend.emission.transport_tpl.trip_type'|trans }}</label>
+        <div class="btn-group" role="group" data-transport-form-target="viajeToggle">
+          <input type="hidden" data-field="tipo_viaje" />
+          <button type="button" class="btn btn-outline-primary rounded-start"
+                  data-value="ida"
+                  data-action="click->transport-form#selectTipoViaje">
+            {{ 'backend.emission.transport_tpl.one_way'|trans }}
+          </button>
+          <button type="button" class="btn btn-outline-primary rounded-end"
+                  data-value="ida_vuelta"
+                  data-action="click->transport-form#selectTipoViaje">
+            {{ 'backend.emission.transport_tpl.round_trip'|trans }}
+          </button>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label d-block">{{ 'backend.emission.transport_tpl.calc_type'|trans }}</label>
+        <div class="btn-group" role="group" data-transport-form-target="calculoToggle">
+          <input type="hidden" data-field="tipo_calculo" />
+          <button type="button" class="btn btn-outline-primary rounded-start"
+                  data-value="distancia"
+                  data-action="click->transport-form#selectTipoCalculo toggle->transport-form#toggleTransportFields">
+            {{ 'backend.emission.transport_tpl.by_distance'|trans }}
+          </button>
+          <button type="button" class="btn btn-outline-primary rounded-end"
+                  data-value="ubicaciones"
+                  data-action="click->transport-form#selectTipoCalculo toggle->transport-form#toggleTransportFields">
+            {{ 'backend.emission.transport_tpl.by_locations'|trans }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-12 row pb-3" id="transport-ubicaciones-fields">
+      <div class="col-md-6" data-controller="ors-autocomplete">
+        <label class="form-label">{{ 'backend.emission.transport_tpl.from'|trans }}</label>
+        <input type="text"
+               name="desde"
+               id="input-desde"
+               class="form-control"
+               autocomplete="off"
+               data-ors-autocomplete-target="input"
+               data-field="desde"
+               placeholder="{{ 'backend.emission.transport_tpl.from_ph'|trans }}"/>
+        <div class="ors-suggestions-list" data-ors-autocomplete-target="suggestions"></div>
+      </div>
+      <div class="col-md-6" data-controller="ors-autocomplete">
+        <label class="form-label">{{ 'backend.emission.transport_tpl.to'|trans }}</label>
+        <input type="text"
+               name="hasta"
+               id="input-hasta"
+               class="form-control"
+               autocomplete="off"
+               data-ors-autocomplete-target="input"
+               data-field="hasta"
+               placeholder="{{ 'backend.emission.transport_tpl.to_ph'|trans }}"/>
+        <div class="ors-suggestions-list" data-ors-autocomplete-target="suggestions"></div>
+      </div>
+      <div class="col-md-6">
+        {# Botón calcular #}
+        <button type="button"
+                id="calcular-distancia-btn"
+                class="btn btn-sm btn-success mt-3"
+                style="width: 150px"
+                data-action="click->transport-form#calcularDistancia">
+          {{ 'backend.emission.transport_tpl.calc_distance'|trans }}
+        </button>
+
+        {# Botón recalcular (oculto por defecto) #}
+        <button type="button"
+                id="recalcular-distancia-btn"
+                class="btn btn-sm btn-outline-secondary mt-3 d-none"
+                style="width: 150px"
+                data-action="click->transport-form#reCalcularDistancia">
+          {{ 'backend.emission.transport_tpl.recalc'|trans }}
+        </button>
+
+        <input type="hidden" id="calculated-distance" data-field="distancia_calculada" />
+        <span id="mensaje-distancia" class="mt-2 d-block"></span>
+        <div id="distance-error-message" class="text-danger mt-2"></div>
+      </div>
+    </div>
+
+    <div class="col-md-12 row pb-3 d-none" id="carretera-distancia-fields">
+      <div class="col-md-6">
+        <label class="form-label">{{ 'backend.emission.transport_tpl.distance'|trans }}</label>
+        <input type="number" class="form-control" data-field="distancia_valor"
+               placeholder="{{ 'backend.emission.transport_tpl.distance_ph'|trans }}" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">{{ 'backend.emission.transport_tpl.unit'|trans }}</label>
+        <select class="form-select" data-field="distancia_unidad">
+          <option value="km">{{ 'backend.emission.transport_tpl.kilometers'|trans }}</option>
+          <option value="milla">{{ 'backend.emission.transport_tpl.miles'|trans }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="col-md-12 row pb-3" data-transport-form-target="vehiculosRow">
+      <div class="col-md-6">
+        <label class="form-label">{{ 'backend.emission.transport_tpl.vehicles_count'|trans }}</label>
+        <input type="number" class="form-control" data-field="vehiculos" />
+      </div>
+    </div>
+
+    <div class="col-md-12 row pb-3 d-none" data-transport-form-target="personasRow">
+      <div class="col-md-6">
+        <label class="form-label">{{ 'backend.emission.transport_tpl.people_count'|trans }}</label>
+        <input type="number" class="form-control" data-field="personas" min="1" />
+      </div>
+    </div>
+
+    <div class="col-md-12 row pb-3">
+      <div class="col-12">
+        <label class="form-label">{{ 'backend.emission.transport_tpl.extra_info'|trans }}</label>
+        <textarea class="form-control" data-field="info_adicional"></textarea>
+      </div>
+    </div>
+  </div>
+</template>

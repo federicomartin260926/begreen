@@ -1,0 +1,18 @@
+form.captcha_message: Please confirm you are not a robot.
+
+backend:
+  admin:
+    communication:
+      form:
+        mime_invalid: "Invalid file format. Please upload a PDF, Word or Excel file."
+    emission:
+      import:
+        mime_invalid: "Please upload a valid Excel file (.xlsx)."
+        max_size: "The file is too large (max 5 MB)."
+
+  project:
+    validation:
+      start_required: "The start date is required."
+      end_required: "The end date is required."
+      end_before_start: "The end date cannot be earlier than the start date."
+      overlap: "Phases must be in chronological order and must not overlap."

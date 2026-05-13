@@ -1,0 +1,122 @@
+<form method="get" id="plan-filters-form" class="w-100 mb-5">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <select
+                class="selectpicker"
+                name="category"
+                id="filter-category"
+                data-style="form-select border"
+                data-width="100%"
+                data-live-search="true"
+                data-none-selected-text="{{ 'backend.plan.filters.category_all'|trans }}"
+                data-dt-filter="category">
+                <option value="">{{ 'backend.plan.filters.category_all'|trans }}</option>
+                {% for category in categories %}
+                    <option value="{{ category.id }}" {{ filters.category == category.id ? 'selected' : '' }}>
+                        {{ category.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select
+                class="selectpicker"
+                name="department"
+                id="filter-department"
+                data-style="form-select border"
+                data-width="100%"
+                data-live-search="true"
+                data-none-selected-text="{{ 'backend.plan.filters.department_all'|trans }}"
+                data-dt-filter="department">
+                <option value="">{{ 'backend.plan.filters.department_all'|trans }}</option>
+                {% for department in departments %}
+                    <option value="{{ department.id }}" {{ filters.department == department.id ? 'selected' : '' }}>
+                        {{ department.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select
+                class="selectpicker"
+                name="ods"
+                id="filter-ods"
+                data-style="form-select border"
+                data-width="100%"
+                data-live-search="true"
+                data-none-selected-text="{{ 'backend.plan.filters.ods_all'|trans }}"
+                data-dt-filter="ods">
+                <option value="">{{ 'backend.plan.filters.ods_all'|trans }}</option>
+                {% for ods in odsList %}
+                    <option value="{{ ods.id }}" {{ filters.ods == ods.id ? 'selected' : '' }}>
+                        {{ ods.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 text-end">
+            <button type="button" id="reset-filters" class="btn btn-outline-secondary w-100">
+                <i class="bi bi-x-circle"></i> {{ 'backend.common.clear_filters'|trans }}
+            </button>
+        </div>
+    </div>
+
+    <div class="row mt-2 g-2">
+        <div class="col-md-2">
+            <div class="form-check">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="is_applicable"
+                       id="filter-is-applicable"
+                       value="1"
+                       {{ filters.is_applicable ? 'checked' : '' }}
+                       data-dt-filter="is_applicable">
+                <label class="form-check-label" for="filter-is-applicable">
+                    {{ 'backend.plan.filters.only_applicable'|trans }}
+                </label>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="will_implement"
+                       id="filter-will-implement"
+                       value="1"
+                       {{ filters.will_implement ? 'checked' : '' }}
+                       data-dt-filter="will_implement">
+                <label class="form-check-label" for="filter-will-implement">
+                    {{ 'backend.plan.filters.only_to_implement'|trans }}
+                </label>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="only_implemented"
+                       id="filter-only-implemented"
+                       value="1"
+                       {{ filters.only_implemented ? 'checked' : '' }}
+                       data-dt-filter="only_implemented">
+                <label class="form-check-label" for="filter-only-implemented">
+                    {{ 'backend.plan.filters.only_implemented'|trans }}
+                </label>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="is_critical"
+                       id="filter-is-critical"
+                       value="1"
+                       {{ filters.is_critical ? 'checked' : '' }}
+                       data-dt-filter="is_critical">
+                <label class="form-check-label" for="filter-is-critical">
+                    {{ 'backend.plan.filters.only_critical'|trans }}
+                </label>
+            </div>
+        </div>
+    </div>
+</form>

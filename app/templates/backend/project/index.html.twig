@@ -1,0 +1,226 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.projects.list.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.projects.list.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ 'backend.projects.list.h2'|trans }}</h2>
+        <a href="{{ path('backend_project_new') }}" class="btn btn-success text-decoration-none">
+          {{ 'backend.projects.actions.new'|trans }}
+        </a>
+      </div>
+
+      {# ---- FILTROS ---- #}
+      <form method="get"
+            id="projects-filters-form"
+            class="w-100 mb-4"
+            data-controller="project-list"
+            data-project-list-target="form">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-2">
+            <input type="text"
+                name="name" id="f-name"
+                class="form-control"
+                value="{{ filters.name|default('') }}"
+                placeholder="{{ 'backend.projects.filters.name'|trans }}">
+          </div>
+
+          <div class="col-md-2">
+            <select
+                class="selectpicker"
+                name="type"
+                id="f-type"
+                data-style="form-select border"
+                data-width="100%"
+                data-live-search="true"
+                data-none-selected-text="{{ 'backend.projects.filters.all'|trans }}">
+                <option value="">{{ 'backend.projects.filters.all'|trans }}</option>
+                <option value="rodaje" {{ filters.type == 'rodaje' ? 'selected' : '' }}>{{ 'backend.aux.project_type.filming'|trans }}</option>
+                <option value="evento" {{ filters.type == 'evento' ? 'selected' : '' }}>{{ 'backend.aux.project_type.event'|trans }}</option>
+            </select>
+          </div>
+
+          <div class="col-md-2">
+            <input type="text" name="country" id="f-country" class="form-control"
+                   value="{{ filters.country|default('') }}" placeholder="{{ 'backend.projects.filters.country'|trans }}">
+          </div>
+
+          {% if is_admin %}
+          <div class="col-md-2">
+            <input type="text" name="owner" id="f-owner" class="form-control"
+                   value="{{ filters.owner|default('') }}" placeholder="{{ 'backend.projects.filters.owner'|trans }}">
+          </div>
+          {% endif %}
+
+          <div class="col-md-2">
+            <input type="date" title="{{ 'backend.projects.filters.from'|trans }}" name="date_from" id="f-from" class="form-control"
+                   value="{{ filters.date_from|default('') }}">
+          </div>
+          <div class="col-md-2">
+            <input type="date" title="{{ 'backend.projects.filters.to'|trans }}" name="date_to" id="f-to" class="form-control"
+                   value="{{ filters.date_to|default('') }}">
+          </div>
+
+          <div class="col-md-100 text-end">
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> {{ 'backend.projects.actions.search'|trans }}
+              </button>
+              <a href="{{ path('backend_project_index') }}"
+                 id="reset-filters"
+                 class="btn btn-outline-secondary"
+                 title="{{ 'backend.projects.filters.reset'|trans }}">
+                 <i class="bi bi-x-circle"></i> {{ 'backend.projects.filters.reset'|trans }}
+              </a>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      {% if projects is empty %}
+        <div class="alert alert-info">{{ 'backend.projects.list.empty'|trans }}</div>
+      {% else %}
+        <div class="table-responsive" data-project-list-target="list">
+          <table id="projects-table" class="table table-hover green_table_1">
+            <thead>
+              <tr>
+                <th>{{ 'backend.projects.table.name'|trans }}</th>
+                <th class="text-center">{{ 'backend.projects.table.type'|trans }}</th>
+                <th class="text-center">{{ 'backend.projects.table.country'|trans }}</th>
+                {% if is_admin %}
+                  <th class="text-left">{{ 'backend.projects.table.owner'|trans }}</th>
+                {% endif %}
+                <th class="text-center">{{ 'backend.projects.table.created_at'|trans }}</th>
+                {% if projects|length > 1 %}
+                  <th class="text-center">{{ 'backend.projects.table.active'|trans }}</th>
+                {% endif %}
+                <th class="text-center">{{ 'backend.projects.table.actions'|trans }}</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for project in projects %}
+              <tr>
+                <td>{{ project.name }}</td>
+                <td class="text-center">
+                  {% if project.type == 'rodaje' %}{{ 'backend.aux.project_type.filming'|trans }}
+                  {% elseif project.type == 'evento' %}{{ 'backend.aux.project_type.event'|trans }}
+                  {% else %}{{ 'backend.aux.project_type.generic'|trans }}{% endif %}
+                </td>
+                <td class="text-center">{{ project.country }}</td>
+
+                {% if is_admin %}
+                  <td class="text-left">
+                    {% if project.user %}
+                        {{ (project.user.name|default('')) ~ (project.user.surnames ? ' ' ~ project.user.surnames : '') ~ (project.user.email ? ' (' ~ project.user.email ~ ')' : '') }}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                {% endif %}
+                <td class="text-center" data-order="{{ project.createdAt ? 'A' ~ project.createdAt|date('U') : '' }}">
+                  {{ project.createdAt ? project.createdAt|date('d/m/Y') : '' }}
+                </td>
+
+                {% if projects|length > 1 %}
+                  <td class="text-center">
+                    {% if activeProject and project.id == activeProject.id %}
+                      <i class="bi bi-check-lg text-success" title="{{ 'backend.projects.table.active'|trans }}"></i>
+                    {% endif %}
+                  </td>
+                {% endif %}
+
+                <td class="text-center">
+                  <a
+                    href="{{ path('backend_project_edit', {id: project.id}) }}"
+                    data-bs-toggle="popover"
+                    data-bs-trigger="hover"
+                    data-bs-content="{{ 'backend.common.edit'|trans }}"
+                    class="btn">
+                    <i class="bi bi-pencil-square"></i>
+                  </a>
+
+                  <a
+                    href="{{ path('backend_project_clone', {id: project.id}) }}"
+                    data-bs-toggle="popover"
+                    data-bs-trigger="hover"
+                    data-bs-content="{{ 'backend.projects.actions.clone'|trans }}"
+                    class="btn">
+                    <i class="bi bi-files"></i>
+                  </a>
+
+                  <form
+                    method="post"
+                    action="{{ path('backend_project_select_project', {id: project.id}) }}"
+                    class="d-inline-block"
+                    data-bs-toggle="popover"
+                    data-bs-trigger="hover"
+                    data-bs-content="{{ 'backend.projects.actions.select'|trans }}">
+                    <button class="btn" title="{{ 'backend.projects.actions.select'|trans }}">
+                      <i class="bi bi-check2-square"></i>
+                    </button>
+                  </form>
+
+                  <form
+                    method="post"
+                    action="{{ path('backend_project_delete', {id: project.id}) }}"
+                    class="d-inline-block"
+                    data-bs-toggle="popover"
+                    data-bs-trigger="hover"
+                    data-bs-content="{{ 'backend.common.delete'|trans }}"
+                    onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ project.id) }}">
+                    <button class="btn"><i class="bi bi-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if totalPages > 1 %}
+          {% set q = app.request.query.all %}
+          <nav aria-label="{{ 'backend.projects.pagination'|trans }}" class="mt-3">
+            <ul class="pagination justify-content-center">
+
+              {# Prev #}
+              {% set prevPage = currentPage - 1 %}
+              <li class="page-item {{ currentPage == 1 ? 'disabled' : '' }}">
+                <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': prevPage < 1 ? 1 : prevPage})) }}" tabindex="-1" aria-disabled="{{ currentPage == 1 ? 'true' : 'false' }}">
+                  &laquo;
+                </a>
+              </li>
+
+              {# Números #}
+              {% for p in 1..totalPages %}
+                <li class="page-item {{ p == currentPage ? 'active' : '' }}">
+                  <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': p})) }}">{{ p }}</a>
+                </li>
+              {% endfor %}
+
+              {# Next #}
+              {% set nextPage = currentPage + 1 %}
+              <li class="page-item {{ currentPage == totalPages ? 'disabled' : '' }}">
+                <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': nextPage > totalPages ? totalPages : nextPage})) }}">
+                  &raquo;
+                </a>
+              </li>
+
+            </ul>
+          </nav>
+        {% endif %}
+
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

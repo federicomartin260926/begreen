@@ -1,0 +1,56 @@
+{# templates/admin/emission_activity/pdf.html.twig #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('es') }}">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Helvetica, sans-serif; font-size: 12px; }
+        h1, h2 { text-align: center; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #333; padding: 4px 6px; text-align: left; }
+        th { background-color: #eee; }
+        .no-data { margin-top: 40px; text-align: center; font-style: italic; }
+    </style>
+</head>
+<body>
+    {% trans_default_domain 'messages' %}
+
+    <h1>{{ 'backend.admin.emission.pdf.title'|trans }}</h1>
+
+    {% if sourceName and sourceYear %}
+        <h2>
+            {{ 'backend.admin.emission.pdf.subtitle'|trans({
+                '%source%': sourceName,
+                '%year%': sourceYear
+            }) }}
+        </h2>
+    {% endif %}
+
+    {% if activities is not empty %}
+        <table>
+            <thead>
+                <tr>
+                    <th>{{ 'backend.admin.emission.pdf.th.category'|trans }}</th>
+                    <th>{{ 'backend.admin.emission.pdf.th.ghg_category'|trans }}</th>
+                    <th>{{ 'backend.admin.emission.pdf.th.name'|trans }}</th>
+                    <th>{{ 'backend.admin.emission.pdf.th.unit'|trans }}</th>
+                    <th>{{ 'backend.admin.emission.pdf.th.factor'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in activities %}
+                    <tr>
+                        <td>{{ activity.category ? activity.category.name : 'backend.common.unassigned'|trans }}</td>
+                        <td>{{ activity.categoryGhg ? activity.categoryGhg.name : 'backend.common.unassigned'|trans }}</td>
+                        <td>{{ activity.name }}</td>
+                        <td>{{ activity.unit }}</td>
+                        <td>{{ activity.emissionFactor }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="no-data">{{ 'backend.admin.emission.pdf.no_data'|trans }}</p>
+    {% endif %}
+</body>
+</html>

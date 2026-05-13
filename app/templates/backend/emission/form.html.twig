@@ -1,0 +1,94 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}
+  {{ record is defined
+    ? 'backend.emission.form.title_edit'|trans
+    : 'backend.emission.form.title_new'|trans }}
+{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item" aria-current="page">
+    <a href="{{ path('backend_emission_index') }}" class="text-decoration-none">
+      {{ 'backend.emission.form.breadcrumb.list_title'|trans }}
+    </a>
+  </li>
+  <li class="breadcrumb-item active" aria-current="page">
+    {{ record is defined
+      ? 'backend.emission.form.breadcrumb.edit'|trans
+      : 'backend.emission.form.breadcrumb.new'|trans }}
+  </li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+
+      <h2 class="mb-4">
+        {{ record is defined
+          ? 'backend.emission.form.heading_edit'|trans
+          : 'backend.emission.form.heading_new'|trans }}
+      </h2>
+
+      <div class="mb-4 d-grid bg_green_3 rounded p-3"
+           style="grid-template-columns: max-content 1fr; row-gap: 0.5rem; column-gap: 1rem;">
+        <div><strong>{{ 'backend.emission.form.project_label'|trans }}:</strong></div>
+        <div>{{ project.name }}</div>
+
+        <div><strong>{{ 'backend.emission.form.phases_label'|trans }}:</strong></div>
+        <div>
+          <ul class="list-unstyled mb-0">
+            {% for pd in project.phaseDates %}
+              <li>
+                {{ project.getPhaseLabel(pd.phase)|trans }}
+                &nbsp; - &nbsp;
+                <i class="bi bi-clock-history"></i>
+                {{ pd.startDate ? pd.startDate|date('d/m/Y') : 'backend.emission.form.date_placeholder'|trans }}
+                -
+                {{ pd.endDate ? pd.endDate|date('d/m/Y') : 'backend.emission.form.date_placeholder'|trans }}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div><strong>{{ 'backend.emission.form.category_label'|trans }}:</strong></div>
+        <div><span class="badge text-bg-secondary">{{ category.name }}</span></div>
+      </div>
+
+      {{ form_start(form, {
+        attr: {
+          'data-controller': 'emission',
+          'data-emission-target': 'form',
+          'data-category': category.name|lower|replace({' ': '_'})
+        }
+      }) }}
+
+        {# Plantilla genérica mientras no haya subformularios específicos por categoría #}
+        {# {% include 'backend/emission/_' ~ category.name|lower|replace({' ': '_'}) ~ '.html.twig' %} #}
+        {% include 'backend/emission/_otros.html.twig' %}
+
+        {# Campo oculto para guardar datos personalizados #}
+        <input
+          type="hidden"
+          name="calculationDetails"
+          data-emission-target="detailsField"
+          value="{{ form.vars.value.calculationDetails|e('html_attr') }}"
+        />
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="{{ path('backend_emission_index', { category: category.name }) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> {{ 'backend.common.save'|trans }}
+          </button>
+        </div>
+
+      {{ form_end(form) }}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

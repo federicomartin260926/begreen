@@ -1,0 +1,551 @@
+{% trans_default_domain 'messages' %}
+
+<template id="tpl-electricidad-contador">
+  <div class="alert alert-info bg_green_3 border-0 mb-4">
+    <i class="bi bi-info-circle-fill me-2"></i>
+    {{ 'backend.emission.energy_tpl.counter.info'|trans }}
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.space_name'|trans }}</label>
+      <input type="text" class="form-control" data-field="contador_localizacion" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.reading_date'|trans }}</label>
+      <input type="date" class="form-control" data-field="contador_fecha_lectura" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.supplier'|trans }}</label>
+      <input type="text" class="form-control" data-field="contador_comercializadora" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.tariff'|trans }}</label>
+      <select class="form-select" data-field="contador_tarifa" required>
+        <option value="">{{ 'backend.common.select'|trans }}</option>
+        <option value="estandar">{{ 'backend.common.standard'|trans }}</option>
+        <option value="renovable">{{ 'backend.common.renewable'|trans }}</option>
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.counter.initial_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="contador_lectura_inicial" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.counter.final_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="contador_lectura_final" required />
+    </div>
+  </div>
+</template>
+
+<template id="tpl-electricidad-medidor">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.meter.meter_or_dept'|trans }}</label>
+      <input type="text" class="form-control" data-field="medidor_numero" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.reading_date'|trans }}</label>
+      <input type="date" class="form-control" data-field="medidor_fecha_lectura" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.supplier'|trans }}</label>
+      <input type="text" class="form-control" data-field="medidor_comercializadora" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.tariff'|trans }}</label>
+      <select class="form-select" data-field="medidor_tarifa" required>
+        <option value="">{{ 'backend.common.select'|trans }}</option>
+        <option value="estandar">{{ 'backend.common.standard'|trans }}</option>
+        <option value="renovable">{{ 'backend.common.renewable'|trans }}</option>
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.meter.consumption_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="medidor_consumo" required />
+    </div>
+  </div>
+</template>
+
+<template id="tpl-electricidad-gaffer">
+  <div class="alert alert-info bg_green_3 border-0 mb-4">
+    <i class="bi bi-info-circle-fill me-2"></i>
+    {{ 'backend.emission.energy_tpl.gaffer.info'|trans }}
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.meter.meter_or_dept'|trans }}</label>
+      <input type="text" class="form-control" data-field="gaffer_numero" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.reading_date'|trans }}</label>
+      <input type="date" class="form-control" data-field="gaffer_fecha_lectura" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.supplier'|trans }}</label>
+      <input type="text" class="form-control" data-field="gaffer_comercializadora" required />
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.tariff'|trans }}</label>
+      <select class="form-select" data-field="gaffer_tarifa" required>
+        <option value="">{{ 'backend.common.select'|trans }}</option>
+        <option value="estandar">{{ 'backend.common.standard'|trans }}</option>
+        <option value="renovable">{{ 'backend.common.renewable'|trans }}</option>
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.gaffer.estimated_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="gaffer_consumo_estimado" required />
+    </div>
+  </div>
+</template>
+
+<template id="tpl-electricidad-estimacion_espacio">
+  <div class="alert alert-info bg_green_3 border-0 mb-4">
+    <i class="bi bi-info-circle-fill me-2"></i>
+    {{ 'backend.emission.energy_tpl.space.info'|trans }}
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.common.space_name'|trans }}</label>
+      <input type="text" class="form-control" data-field="espacio_nombre_espacio" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.space.space_type'|trans }}</label>
+      <select class="form-select" data-field="espacio_tipo_espacio" required>
+        <option value="">{{ 'backend.common.select'|trans }}</option>
+        <option value="bar_pub_club">{{ 'backend.emission.energy_tpl.space.type.bar_pub_club'|trans }}</option>
+        <option value="hotel_conferencias">{{ 'backend.emission.energy_tpl.space.type.hotel_conference'|trans }}</option>
+        <option value="museo_galeria">{{ 'backend.emission.energy_tpl.space.type.museum_gallery'|trans }}</option>
+        <option value="escuela_comunitario">{{ 'backend.emission.energy_tpl.space.type.school_community'|trans }}</option>
+        <option value="teatro_concierto">{{ 'backend.emission.energy_tpl.space.type.theatre_concert'|trans }}</option>
+        <option value="universidad">{{ 'backend.emission.energy_tpl.space.type.university'|trans }}</option>
+        <option value="otros">{{ 'backend.emission.energy_tpl.space.type.other'|trans }}</option>
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.space.total_area'|trans }}</label>
+      <input type="number" step="0.1" class="form-control" data-field="espacio_superficie_total" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.space.used_area'|trans }}</label>
+      <input type="number" step="0.1" class="form-control" data-field="espacio_superficie_utilizada" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.space.hours'|trans }}</label>
+      <input type="number" step="0.1" class="form-control" data-field="espacio_horas_uso" required />
+    </div>
+
+    <div class="col-md-12">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.space.description'|trans }}</label>
+      <textarea class="form-control" data-field="espacio_descripcion_espacio" rows="2" placeholder="{{ 'backend.emission.energy_tpl.space.description_ph'|trans }}"></textarea>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.space.estimated_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="espacio_estimacion_consumo" required />
+    </div>
+  </div>
+</template>
+
+<template id="tpl-electricidad-factura">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.space_name'|trans }}</label>
+    <input type="text" class="form-control" data-field="factura_nombre_espacio" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.invoice.number'|trans }}</label>
+    <input type="text" class="form-control" data-field="factura_numero" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.invoice.period'|trans }}</label>
+    <input type="text" class="form-control" data-field="factura_periodo" placeholder="{{ 'backend.emission.energy_tpl.invoice.period_ph'|trans }}" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.supplier'|trans }}</label>
+    <input type="text" class="form-control" data-field="factura_comercializadora" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.tariff'|trans }}</label>
+    <select class="form-select" data-field="factura_tarifa" required>
+      <option value="">{{ 'backend.common.select'|trans }}</option>
+      <option value="estandar">{{ 'backend.common.standard'|trans }}</option>
+      <option value="renovable">{{ 'backend.common.renewable'|trans }}</option>
+    </select>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.invoice.total_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="factura_consumo" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.space.total_area'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="factura_superficie_total" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.space.used_area'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="factura_superficie_utilizada" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.invoice.usage_time_pct'|trans }}</label>
+      <input type="number" step="0.1" class="form-control" data-field="factura_tiempo_uso" placeholder="{{ 'backend.emission.energy_tpl.invoice.usage_time_pct_ph'|trans }}" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.invoice.estimated_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="factura_consumo_estimado" required />
+    </div>
+  </div>
+</template>
+
+<template id="tpl-electricidad-vehiculo">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.vehicle.name'|trans }}</label>
+      <input type="text" class="form-control" data-field="vehiculo_nombre" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.vehicle.distance_km'|trans }}</label>
+      <input type="number" step="0.1" class="form-control" data-field="vehiculo_distancia_km" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.vehicle.consumption_per_100'|trans }}</label>
+      <input type="number" step="0.1" class="form-control" data-field="vehiculo_consumo_kwh_100km" placeholder="{{ 'backend.emission.energy_tpl.vehicle.consumption_per_100_ph'|trans }}" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.vehicle.total_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="vehiculo_consumo" required />
+    </div>
+  </div>
+</template>
+
+<template id="tpl-electricidad-generador">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.generator.charging_place'|trans }}</label>
+      <input type="text" class="form-control" data-field="generador_lugar_carga" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.generator.name'|trans }}</label>
+      <input type="text" class="form-control" data-field="generador_nombre" required />
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{{ 'backend.emission.energy_tpl.generator.total_kwh'|trans }}</label>
+      <input type="number" step="0.01" class="form-control" data-field="generador_consumo" required />
+    </div>
+  </div>
+</template>
+
+<template id="tpl-remoto">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.remote.person_name'|trans }}</label>
+    <input type="text" class="form-control" data-field="remoto_nombre_persona" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.remote.days'|trans }}</label>
+    <input type="number" class="form-control" data-field="remoto_dias" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.remote.devices'|trans }}</label>
+
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" data-field="remoto_pc" />
+      <label class="form-check-label">{{ 'backend.emission.energy_tpl.remote.device.pc'|trans }}</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" data-field="remoto_portatil" />
+      <label class="form-check-label">{{ 'backend.emission.energy_tpl.remote.device.laptop'|trans }}</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" data-field="remoto_monitor" />
+      <label class="form-check-label">{{ 'backend.emission.energy_tpl.remote.device.monitor'|trans }}</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" data-field="remoto_tablet" />
+      <label class="form-check-label">{{ 'backend.emission.energy_tpl.remote.device.tablet'|trans }}</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" data-field="remoto_movil" />
+      <label class="form-check-label">{{ 'backend.emission.energy_tpl.remote.device.phone'|trans }}</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" data-field="remoto_camara" />
+      <label class="form-check-label">{{ 'backend.emission.energy_tpl.remote.device.camera'|trans }}</label>
+    </div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.supplier'|trans }}</label>
+    <input type="text" class="form-control" data-field="remoto_comercializadora" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.tariff'|trans }}</label>
+    <select class="form-select" data-field="remoto_tarifa" required>
+      <option value="">{{ 'backend.common.select'|trans }}</option>
+      <option value="estandar">{{ 'backend.common.standard'|trans }}</option>
+      <option value="renovable">{{ 'backend.common.renewable'|trans }}</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.remote.hours'|trans }}</label>
+    <input type="number" class="form-control" data-field="remoto_horas" required />
+  </div>
+</template>
+
+<template id="tpl-animacion">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.person_name'|trans }}</label>
+    <input type="text" class="form-control" data-field="animacion_nombre_persona" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.workplace'|trans }}</label>
+    <input type="text" class="form-control" data-field="animacion_lugar_trabajo" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.role'|trans }}</label>
+    <input type="text" class="form-control" data-field="animacion_puesto_trabajo" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.days_running'|trans }}</label>
+    <input type="number" class="form-control" data-field="animacion_dias_funcionamiento" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.supplier'|trans }}</label>
+    <input type="text" class="form-control" data-field="animacion_comercializadora" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.cpu'|trans }}</label>
+    <input type="text" class="form-control" data-field="animacion_procesador" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.ram_gb'|trans }}</label>
+    <input type="number" step="1" class="form-control" data-field="animacion_ram" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.gpu'|trans }}</label>
+    <input type="text" class="form-control" data-field="animacion_grafica" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.monitors'|trans }}</label>
+    <input type="number" class="form-control" data-field="animacion_monitores" required />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.animation.hours'|trans }}</label>
+    <input type="number" class="form-control" data-field="animacion_horas" required />
+  </div>
+</template>
+
+<template id="tpl-montaje_edicion">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.edit.type'|trans }}</label>
+    <select class="form-select" data-field="montaje_tipo_estudio" required>
+      <option value="">{{ 'backend.common.select'|trans }}</option>
+      <option value="pequeno">{{ 'backend.emission.energy_tpl.edit.type_small'|trans }}</option>
+      <option value="mediano">{{ 'backend.emission.energy_tpl.edit.type_medium'|trans }}</option>
+      <option value="grande">{{ 'backend.emission.energy_tpl.edit.type_large'|trans }}</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.edit.hours'|trans }}</label>
+    <input type="number" class="form-control" data-field="montaje_horas_funcionamiento" required />
+  </div>
+</template>
+
+<template id="tpl-almacenamiento">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.storage.type'|trans }}</label>
+    <select class="form-select" data-field="almacenamiento_tipo" required>
+      <option value="">{{ 'backend.common.select'|trans }}</option>
+      <option value="disco_duro">{{ 'backend.emission.energy_tpl.storage.hdd'|trans }}</option>
+      <option value="lto">{{ 'backend.emission.energy_tpl.storage.lto'|trans }}</option>
+      <option value="nube">{{ 'backend.emission.energy_tpl.storage.cloud'|trans }}</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.storage.cloud_provider'|trans }}</label>
+    <select class="form-select" data-field="almacenamiento_proveedor_nube" required>
+      <option value="">{{ 'backend.common.select'|trans }}</option>
+      <option value="google_cloud">Google Cloud</option>
+      <option value="azure">Azure (Microsoft)</option>
+      <option value="aws">AWS (Amazon)</option>
+      <option value="otro">{{ 'backend.emission.energy_tpl.storage.other'|trans }}</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.storage.region'|trans }}</label>
+    <input type="text" class="form-control" data-field="almacenamiento_region_datos" placeholder="{{ 'backend.emission.energy_tpl.storage.region_ph'|trans }}" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.storage.archived_gb'|trans }}</label>
+    <input type="number" step="0.01" class="form-control" data-field="almacenamiento_datos_archivados" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.storage.months'|trans }}</label>
+    <input type="number" step="1" min="1" class="form-control" data-field="almacenamiento_duracion_meses" value="1" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.storage.replication'|trans }}</label>
+    <input type="number" step="0.1" min="1" class="form-control" data-field="almacenamiento_factor_replicacion" value="1" required />
+  </div>
+</template>
+
+<template id="tpl-gas_generador">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.space_name'|trans }}</label>
+    <input type="text" class="form-control" data-field="generador_nombre_espacio" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.gas.source'|trans }}</label>
+    <select class="form-select" data-field="generador_origen_dato" required>
+      <option value="">{{ 'backend.common.select'|trans }}</option>
+      <option value="factura">{{ 'backend.emission.energy_tpl.gas.source_invoice'|trans }}</option>
+      <option value="estimacion_gaffer">{{ 'backend.emission.energy_tpl.gas.source_gaffer'|trans }}</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.gas.supply'|trans }}</label>
+    <input type="text" class="form-control" data-field="generador_abastecimiento" placeholder="{{ 'backend.emission.energy_tpl.gas.supply_ph'|trans }}" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.generator.name'|trans }}</label>
+    <input type="text" class="form-control" data-field="generador_nombre" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.gas.fuel_type'|trans }}</label>
+    <select class="form-select" data-field="generador_tipo_combustible" required>
+      <option value="">{{ 'backend.common.select'|trans }}</option>
+      <option value="gasolina">{{ 'backend.emission.energy_tpl.gas.fuel.gasoline'|trans }}</option>
+      <option value="diesel">{{ 'backend.emission.energy_tpl.gas.fuel.diesel'|trans }}</option>
+      <option value="adblue">{{ 'backend.emission.energy_tpl.gas.fuel.adblue'|trans }}</option>
+      <option value="hvo">{{ 'backend.emission.energy_tpl.gas.fuel.hvo'|trans }}</option>
+      <option value="biodiesel">{{ 'backend.emission.energy_tpl.gas.fuel.biodiesel'|trans }}</option>
+      <option value="gtl">{{ 'backend.emission.energy_tpl.gas.fuel.gtl'|trans }}</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.gas.total_liters'|trans }}</label>
+    <input type="number" step="0.01" class="form-control" data-field="generador_total_combustible" required />
+  </div>
+</template>
+
+<template id="tpl-gas_caldera">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.space_name'|trans }}</label>
+    <input type="text" class="form-control" data-field="caldera_nombre_espacio" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.date'|trans }}</label>
+    <input type="date" class="form-control" data-field="caldera_fecha" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.supplier'|trans }}</label>
+    <input type="text" class="form-control" data-field="caldera_comercializadora" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.tariff'|trans }}</label>
+    <select class="form-select" data-field="caldera_tarifa" required>
+      <option value="">{{ 'backend.common.select'|trans }}</option>
+      <option value="estandar">{{ 'backend.common.standard'|trans }}</option>
+      <option value="renovable">{{ 'backend.emission.energy_tpl.common.tariff_cert_ren'|trans }}</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.space.total_area'|trans }}</label>
+    <input type="number" step="0.1" class="form-control" data-field="caldera_superficie_total" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.boiler.used_area_lower'|trans }}</label>
+    <input type="number" step="0.1" class="form-control" data-field="caldera_superficie_utilizada" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.boiler.unit'|trans }}</label>
+    <select class="form-select" data-field="caldera_unidad_consumo" required>
+      <option value="kwh">kWh</option>
+      <option value="m3">m³</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">
+      {{ 'backend.emission.energy_tpl.boiler.consumption'|trans }}
+      (<span data-field="caldera_unidad_texto">kWh</span>)
+    </label>
+    <input type="number" step="0.01" class="form-control" data-field="caldera_consumo_gas" required />
+  </div>
+</template>
+
+<template id="tpl-gas_propano">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.space_name'|trans }}</label>
+    <input type="text" class="form-control" data-field="propano_nombre_espacio" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.date'|trans }}</label>
+    <input type="date" class="form-control" data-field="propano_fecha" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.propane.loads_number'|trans }}</label>
+    <input type="number" step="1" min="0" class="form-control" data-field="propano_numero_cargas" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.propane.kg_per_load'|trans }}</label>
+    <input type="number" step="0.1" min="0" class="form-control" data-field="propano_kg_por_carga" required />
+  </div>
+</template>
+
+<template id="tpl-gas_bombona">
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.common.space_name'|trans }}</label>
+    <input type="text" class="form-control" data-field="bombona_nombre_espacio" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.cylinder.use_period'|trans }}</label>
+    <input type="text" class="form-control" data-field="bombona_periodo_uso" placeholder="{{ 'backend.emission.energy_tpl.cylinder.use_period_ph'|trans }}" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.cylinder.kg_per'|trans }}</label>
+    <input type="number" step="0.1" min="0" class="form-control" data-field="bombona_kg" required />
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">{{ 'backend.emission.energy_tpl.cylinder.units_used'|trans }}</label>
+    <input type="number" step="1" min="0" class="form-control" data-field="bombona_cantidad" required />
+  </div>
+</template>

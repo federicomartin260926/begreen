@@ -1,0 +1,129 @@
+{# templates/backend/plan/_preview.html.twig #}
+<style>
+    #plan-preview-content thead th{
+        background-color: #3FC38A0D !important;
+    }
+</style>
+
+<div id="plan-preview-content" class="px-4 py-3">
+    <h2 class="text-center">
+        {{ 'backend.plan.preview.title'|trans({
+            '%project%': project.name|slice(0, 50) ~ (project.name|length > 50 ? '…' : '')
+        }) }}
+    </h2>
+
+    <div class="text-center text-muted mb-2">
+        {{ 'backend.plan.preview.status'|trans({
+            '%status%': ('backend.plan.status.' ~ plan.status)|trans
+        })|raw }}
+        <br>
+        {# ---línea: puntuación --- #}
+        {% if scoreMax is defined and scoreMax > 0 %}
+            <strong>{{ 'backend.plan.pdf.score.title'|trans }}</strong>
+            {{ 'backend.plan.pdf.score.value'|trans({
+            '%gained%': scoreGained,
+            '%max%': scoreMax,
+            '%pct%': (scorePct ~ '%')
+            }) }}
+        {% else %}
+            <strong>{{ 'backend.plan.pdf.score.title'|trans }}</strong>
+            {{ 'backend.plan.pdf.score.na'|trans }}
+        {% endif %}
+    </div>
+
+    {# Bloque filtros activos #}
+    {% if activeFilters is not empty %}
+        <div class="alert alert-secondary small mb-4">
+            <strong>{{ 'backend.plan.preview.filters_applied'|trans }}</strong>
+            <ul class="mb-0 ps-3">
+                {% for name, value in activeFilters %}
+                    <li>{{ name }}: {{ value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <div class="text-center text-muted mb-4">
+        {{ 'backend.plan.preview.date'|trans }} {{ "now"|date("d/m/Y") }}<br>
+        {{ 'backend.plan.preview.user'|trans }} {{ app.user.fullName ?? app.user.email }}
+    </div>
+
+    {% if measuresByDpto is empty %}
+        <p class="text-center fw-semibold">{{ 'backend.plan.preview.empty'|trans }}</p>
+    {% else %}
+        <h4>{{ 'backend.plan.preview.summary_by_department'|trans }}</h4>
+        <table class="table table-bordered table-sm">
+            <thead class="bg_green_1">
+                <tr>
+                    <th>{{ 'backend.plan.preview.th.department'|trans }}</th>
+                    <th>{{ 'backend.plan.preview.th.total_measures'|trans }}</th>
+                    <th>{{ 'backend.plan.preview.th.applicable'|trans }}</th>
+                    <th>{{ 'backend.plan.preview.th.to_implement'|trans }}</th>
+                    <th>{{ 'backend.plan.preview.th.critical_yes'|trans }}</th>
+                    {% if plan.status == 'completo' %}
+                        <th>{{ 'backend.plan.preview.th.implemented'|trans }}</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for dpto, measures in measuresByDpto %}
+                <tr>
+                    <td>{{ dpto }}</td>
+                    <td>{{ measures|length }}</td>
+                    <td>{{ measures|filter(pm => pm.isApplicable)|length }}</td>
+                    <td>{{ measures|filter(pm => pm.willImplement)|length }}</td>
+                    <td>{{ measures|filter(pm => pm.isCritical)|length }}</td>
+                    {% if plan.status == 'completo' %}
+                        <td>{{ measures|filter(pm => pm.isImplemented)|length }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <hr class="my-4">
+
+        {% for dpto, measures in measuresByDpto %}
+            <h5 class="mt-4">{{ dpto }}</h5>
+            <table class="table table-bordered table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>{{ 'backend.plan.preview.th.measure'|trans }}</th>
+                        <th>{{ 'backend.plan.preview.th.applicable_q'|trans }}</th>
+                        <th>{{ 'backend.plan.preview.th.implement_q'|trans }}</th>
+                        {% if plan.status == 'completo' %}
+                            <th>{{ 'backend.plan.preview.th.implemented_q'|trans }}</th>
+                        {% endif %}
+                        <th>{{ 'backend.plan.preview.th.critical'|trans }}</th>
+                        <th>{{ 'backend.plan.preview.th.ods'|trans }}</th>
+                        <th>{{ 'backend.plan.preview.th.esg'|trans }}</th>
+                        <th>{{ 'backend.plan.preview.th.scope'|trans }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pm in measures %}
+                        <tr>
+                            <td>{{ pm.measure.displayNameForReview }}</td>
+                            <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                            <td>{{ pm.willImplement ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                            {% if plan.status == 'completo' %}
+                                <td>{{ pm.isImplemented ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                            {% endif %}
+                            <td>
+                                {{ pm.isCritical is same as(true)
+                                    ? ('backend.plan.preview.yes'|trans)
+                                    : (pm.isCritical is same as(false) ? ('backend.plan.preview.no'|trans) : '—') }}
+                                {% if pm.criticalReason %}
+                                    <div class="small text-muted mt-1">{{ pm.criticalReason }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ pm.measure and pm.measure.ods ? pm.measure.ods.name : '—' }}</td>
+                            <td>{{ pm.measure and pm.measure.esg ? pm.measure.esg.name : '—' }}</td>
+                            <td>{{ pm.measure and pm.measure.scope ? pm.measure.scope.name : '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    {% endif %}
+</div>

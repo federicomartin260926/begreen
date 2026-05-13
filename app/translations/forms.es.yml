@@ -1,0 +1,11 @@
+form:
+  name: Nombre
+  phone: Teléfono
+  company: Empresa
+  department: Departamento
+  email: Correo electrónico
+  message: Mensaje
+  send: Enviar
+  send_message: Enviar mensaje
+
+activity: Actividad

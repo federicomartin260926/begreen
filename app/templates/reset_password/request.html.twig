@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ 'reset_password.text'|trans }}{% endblock %}
+
+{% block body %}
+
+    
+    <div class="text-center breadcrumb_container py-5">        
+        <!-- Contenido del Subheader -->
+        <div class="container">
+            <h1 class="fw-bold text-gray">{{'reset_password.email_subject'|trans}}</h1>
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb justify-content-center mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ path('home') }}" class="text-decoration-none">{{"home"|trans}}</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {{'reset_password.email_subject'|trans}}
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                {{ form_start(requestForm) }}
+                    <div class="mb-3">
+                        {{ form_label(requestForm.email) }}
+                        {{ form_widget(requestForm.email, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_errors(requestForm.email) }}
+                    </div>
+                    <button type="submit" class="btn btn-primary">{{ 'reset_password.submit_email'|trans }}</button>
+                {{ form_end(requestForm) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'backend.emission.landing.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active">{{ 'backend.emission.landing.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4"
+     data-controller="emission"
+     data-emission-i18n-value='{{ {
+        "backend.emission.chart.title.by_activity": "backend.emission.chart.title.by_activity"|trans,
+        "backend.emission.chart.title.by_phase": "backend.emission.chart.title.by_phase"|trans,
+        "backend.emission.chart.legend.by_activity": "backend.emission.chart.legend.by_activity"|trans,
+        "backend.emission.chart.legend.by_phase": "backend.emission.chart.legend.by_phase"|trans,
+        "backend.emission.chart.axis.kgco2e": "backend.emission.chart.axis.kgco2e"|trans,
+        "backend.emission.chart.unit.kgco2e": "backend.emission.chart.unit.kgco2e"|trans
+        }|json_encode|e('html_attr') }}'
+     data-emission-chart-data-value='{{ chartData|json_encode(constant("JSON_HEX_TAG"))|e("html_attr") }}'>
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="">
+          {{ 'backend.emission.landing.heading'|trans }}
+          <strong>{{ project.name }}</strong>
+          <span class="badge text-bg-secondary"><small>{{ project.type|capitalize }}</small></span>
+        </h2>
+      </div>
+
+      <button type="button" class="btn btn-outline-secondary mb-4" data-bs-toggle="modal" data-bs-target="#reportModal">
+        <i class="bi bi-file-earmark-pdf me-2"></i> {{ 'backend.emission.landing.reports_btn'|trans }}
+      </button>
+
+      <h4 class="mb-3">{{ 'backend.emission.landing.select_phase'|trans }}</h4>
+
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mt-2">
+        {% for phase in phases %}
+          {% set icon = 'bi-calendar-event' %}
+          {% set bg = 'bg-light' %}
+
+          {# Etiqueta de fase traducida según tipo de proyecto #}
+          {% if project.type == 'rodaje' %}
+            {% set phaseKeyMap = {
+              'preproduccion': 'backend.emission.phase.preproduccion',
+              'actividad': 'backend.emission.phase.rodaje',
+              'postproduccion': 'backend.emission.phase.postproduccion'
+            } %}
+            {% set icon = {
+              'preproduccion': 'bi-tools',
+              'actividad': 'bi-camera-reels',
+              'postproduccion': 'bi-laptop'
+            }[phase.phase] ?? icon %}
+            {% set bg = {
+              'preproduccion': 'bg-warning-subtle',
+              'actividad': 'bg-primary-subtle',
+              'postproduccion': 'bg-success-subtle'
+            }[phase.phase] ?? bg %}
+          {% elseif project.type == 'evento' %}
+            {% set phaseKeyMap = {
+              'preproduccion': 'backend.emission.phase.montaje',
+              'actividad': 'backend.emission.phase.evento',
+              'postproduccion': 'backend.emission.phase.desmontaje'
+            } %}
+            {% set icon = {
+              'preproduccion': 'bi-hammer',
+              'actividad': 'bi-megaphone',
+              'postproduccion': 'bi-box-arrow-down'
+            }[phase.phase] ?? icon %}
+            {% set bg = {
+              'preproduccion': 'bg-warning-subtle',
+              'actividad': 'bg-danger-subtle',
+              'postproduccion': 'bg-secondary-subtle'
+            }[phase.phase] ?? bg %}
+          {% else %}
+            {% set phaseKeyMap = {} %}
+          {% endif %}
+
+          {% set phaseLabel = (phaseKeyMap[phase.phase] is defined)
+              ? (phaseKeyMap[phase.phase]|trans)
+              : (phase.phase|capitalize) %}
+
+          <div class="col">
+            <a href="{{ path('backend_emission_index', { phase: phase.id }) }}" class="text-decoration-none">
+              <div class="card h-100 shadow-sm border-0 {{ bg }}"
+                   onmouseover="this.classList.add('shadow-lg')"
+                   onmouseout="this.classList.remove('shadow-lg')">
+                <div class="card-body d-flex flex-column justify-content-between">
+                  <div>
+                    <h5 class="card-title d-flex align-items-center">
+                      <i class="{{ icon }} me-2 text-dark"></i> {{ phaseLabel }}
+                    </h5>
+                    <p class="card-text text-muted">
+                      <i class="bi bi-calendar-event me-1"></i>
+                      {{ phase.startDate|date('d/m/Y') }} – {{ phase.endDate|date('d/m/Y') }}
+                    </p>
+                  </div>
+                  <div class="text-end">
+                    <i class="bi bi-arrow-right-circle fs-4 text-dark"></i>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+
+      <hr>
+      <h4 class="mb-3">{{ 'backend.emission.landing.chart_title'|trans }}</h4>
+      <div class="row justify-content-center mb-5">
+        <div class="col-lg-10">
+          <canvas height="100" data-emission-target="chart" data-chart-category="fases"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="reportModalLabel">
+          <i class="bi bi-file-earmark-pdf me-2"></i> {{ 'backend.emission.landing.modal.title'|trans }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3 text-center">{{ 'backend.emission.landing.modal.subtitle'|trans }}</p>
+        <div class="d-grid gap-2">
+          <a href="{{ path('report_emission_overview_pdf') }}" class="btn btn-outline-dark">
+            <i class="bi bi-diagram-3-fill me-2"></i> {{ 'backend.emission.landing.modal.report_overview'|trans }}
+          </a>
+          <a href="{{ path('report_emission_detailed_pdf') }}" class="btn btn-outline-dark">
+            <i class="bi bi-table me-2"></i> {{ 'backend.emission.landing.modal.report_detailed'|trans }}
+          </a>
+          <a href="{{ path('report_emission_by_activity_pdf') }}" class="btn btn-outline-dark">
+            <i class="bi bi-list-check me-2"></i> {{ 'backend.emission.landing.modal.report_by_activity'|trans }}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

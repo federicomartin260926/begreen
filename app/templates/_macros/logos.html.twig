@@ -1,0 +1,40 @@
+{# templates/_macros/logos.html.twig #}
+{% macro odsLogoFromCode(odsCode, odsName = null, size = 24, className = '') %}
+  {% if odsCode %}
+    {# Asumimos que el archivo se llama igual que el código, ej: ODS1.svg #}
+    {% set file = 'build/images/ods/' ~ odsCode|upper ~ '.svg' %}
+    <img
+      src="{{ asset(file) }}"
+      alt="ODS {{ odsName ?? odsCode|upper }}"
+      width="{{ size }}"
+      height="{{ size }}"
+      class="logo-img me-2 {{ className }}"
+      loading="lazy">
+  {% endif %}
+{% endmacro %}
+
+{% macro logo(path, alt, size = 24, className = '') %}
+  <img
+    src="{{ asset(path) }}"
+    alt="{{ alt }}"
+    width="{{ size }}"
+    height="{{ size }}"
+    class="logo-img me-2 {{ className }}"
+    loading="lazy">
+{% endmacro %}
+
+{% macro esgLogo(esgName, size = 24, className = '') %}
+  {% set key = (esgName ?? '')|trim %}
+  {% set map = {
+    'E':'build/images/esg/esg-e.svg',
+    'S':'build/images/esg/esg-s.svg',
+    'G':'build/images/esg/esg-g.svg',
+    'Ambiental':'build/images/esg/esg-e.svg',
+    'Social':'build/images/esg/esg-s.svg',
+    'Gobernanza':'build/images/esg/esg-g.svg'
+  } %}
+  {% set path = map[key]|default(null) %}
+  {% if path %}
+    {{ _self.logo(path, 'ESG ' ~ key, size, className) }}
+  {% endif %}
+{% endmacro %}

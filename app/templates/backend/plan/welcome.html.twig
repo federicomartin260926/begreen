@@ -1,0 +1,60 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.plan.welcome.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item active" aria-current="page">{{ 'backend.plan.welcome.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 bg-white p-4 rounded shadow text-center">
+      <div class="mb-3">
+        <img src="{{ asset('build/images/welcome.jpg') }}" alt="{{ 'backend.plan.welcome.img_alt'|trans }}" width="124" height="142" class="img-fluid">
+      </div>
+
+      {# Mensaje de bienvenida #}
+      <section id="welcome-block" class="text-center">
+        <h1 class="mb-3">{{ 'backend.plan.welcome.h1'|trans }}</h1>
+        <h2 class="h5 mb-3">{{ 'backend.plan.welcome.h2'|trans }}</h2>
+        <p class="mb-4">{{ 'backend.plan.welcome.intro'|trans }}</p>
+        <button id="btn-start" class="btn btn-success px-4">{{ 'backend.plan.welcome.start_btn'|trans }}</button>
+      </section>
+
+      {# Formulario selección de protocolo (manual, sin FormType) #}
+      <section id="protocol-form-block" class="d-none">
+        <h4 class="mb-3">{{ 'backend.plan.welcome.select_title'|trans }}</h4>
+
+        <form action="{{ path('backend_plan_select_protocol') }}" method="post" class="d-grid gap-3">
+          <div class="d-flex justify-content-center">
+            <select class="form-select w-auto mb-4" id="protocol_id" name="protocol_id" style="max-width:300px" required>
+              <option value="" selected disabled>{{ 'backend.plan.welcome.select_placeholder'|trans }}</option>
+              {% for proto in protocols %}
+                <option value="{{ proto.id }}" {% if plan.protocol and plan.protocol.id == proto.id %}selected{% endif %}>
+                  {{ proto.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <p class="mb-4">{{ 'backend.plan.welcome.helper_text'|trans }}</p>
+
+          <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">{{ 'backend.plan.welcome.continue'|trans }}</button>
+          </div>
+        </form>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('btn-start')?.addEventListener('click', function () {
+  document.getElementById('welcome-block')?.classList.add('d-none');
+  document.getElementById('protocol-form-block')?.classList.remove('d-none');
+});
+</script>
+{% endblock %}

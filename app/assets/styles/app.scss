@@ -1,0 +1,464 @@
+$primary: #006E56;
+$secondary: #015E4A;
+$success: #006E56;
+$danger: #E57373;
+$info: #4DD0E1;
+$warning: #FFD54F;
+$light: #F1F1F1;
+$dark: #212121;
+
+// Importa Bootstrap
+@import "~bootstrap/scss/bootstrap";
+@import 'app.css';
+
+// @media (max-width: 767.98px) {
+//     #sidebar {
+//         position: absolute !important;
+//         top: 0;
+//         left: 0;
+//         height: 100vh;
+//         z-index: 1050;
+//     }
+// }
+@media (max-width: 767.98px) {
+    #sidebar {
+        width: 65px !important;
+        min-width: 65px !important;
+    }
+}
+
+/* Sidebar colapsado (desktop) */
+#sidebar.collapsed {
+    width: 65px !important;
+    min-width: 65px !important;
+    overflow-x: hidden;
+}
+
+/* Oculta textos y otros elementos no deseados */
+#sidebar.collapsed .nav span,
+#sidebar.collapsed .breadcrumb,
+#sidebar.collapsed .navbar-brand img {
+    display: none !important;
+}
+
+/* Oculta completamente el bloque de administración (versión desktop) */
+#sidebar.collapsed .admin-desktop-section {
+    display: none !important;
+}
+
+/* Iconos generales */
+#sidebar .nav i {
+    font-size: 1.2rem;
+}
+
+/* Espaciado general de enlaces */
+#sidebar a {
+    padding: 5px 2px !important;
+}
+
+/* Padding del submenú de administración cuando está expandido (solo modo normal) */
+#sidebar:not(.collapsed) #adminCollapse {
+    padding-left: 1.5rem; /* ps-4 */
+}
+
+.dropdown-menu .dropdown-item.active {
+    color: #fff !important;
+    background-color: var(--bs-dropdown-link-active-bg);
+}
+
+#home{
+    /* Carrusel home */
+    /* Contenedor del carrusel */
+    .logo-marquee {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    /* Ajusta la velocidad: mayor valor = más lento */
+    --speed: 35s;
+    padding-block: 0.75rem;
+    }
+
+    /* Pista de logos que se desplaza */
+    .logo-track {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;               /* separación entre logos */
+    width: max-content;
+    animation: marquee var(--speed) linear infinite;
+    will-change: transform;
+    }
+
+    /* Cada “tarjeta” de logo */
+    .logo-item {
+    flex: 0 0 auto;
+    width: 160px;              /* ancho uniforme */
+    height: 90px;              /* alto uniforme */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    }
+
+    /* Imagen del logo */
+    .logo-item img {
+    max-height: 70px;
+    width: auto;
+    object-fit: contain;
+    filter: grayscale(0.25);
+    opacity: 0.95;
+    transition: transform .2s ease, filter .2s ease, opacity .2s ease;
+    }
+
+    /* Efecto hover */
+    .logo-item img:hover {
+    transform: scale(1.06);
+    filter: grayscale(0);
+    opacity: 1;
+    }
+
+    /* Pausa la animación al pasar el ratón */
+    .logo-marquee:hover .logo-track {
+    animation-play-state: paused;
+    }
+
+    /* Animación marquee */
+    @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+    }
+
+    /* Accesibilidad: si el usuario tiene motion reducido */
+    @media (prefers-reduced-motion: reduce) {
+        .logo-track {
+            animation: none;
+        }
+    }
+}
+
+#clientes {
+  .client-carousel-wrapper {
+    overflow-x: auto; // scroll activado aquí
+    white-space: nowrap;
+    }
+
+    .client-carousel {
+    display: flex;
+    gap: 1rem;
+    width: max-content;
+    }
+
+    .client-logo {
+    width: calc(100% / 10);
+    max-width: 120px;
+    height: 100px;
+    flex-shrink: 0;
+    }
+
+}
+
+#contactar .contact-form-wrapper {
+    border-radius: 10px;
+    box-shadow: 0px 0px 40px 0px rgba(0, 0, 0, 0.14);
+    margin: 0 -70px 0 0;
+    padding: 80px 120px;
+    background-color: #fff; // fondo blanco para que resalte sobre la sección verde
+    color: #000; // texto oscuro sobre fondo claro
+    position: relative;
+    margin-bottom: -150px; /* Hace que se suba 150px sobre el footer */
+    z-index: 10; /* Para que quede por encima del footer */
+
+    form .form-control {
+        border-radius: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    #contactar .contact-form-wrapper {
+        margin: 0;
+        padding: 15px;
+    }
+}
+
+#Footer {
+    position: relative;
+    z-index: 1;
+    padding-top: 150px !important;
+    color: white;
+    font-weight: 500;
+    background-color: #006e56;
+
+    a {
+        color: white !important;
+    }
+
+    .list-footer li {
+        margin-bottom: 1rem;
+    }
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+
+#politica_privacidad, #aviso_legal, #accesibilidad, #app_register, #app_login, #app_profile{
+    h3{
+        margin-bottom: 1.5rem;
+        color: #414552;
+        font-weight: 500;
+    }
+
+    h4{
+        margin-bottom: 1.4rem;
+        margin-bottom: 1.3rem;
+        color: #414552;
+        font-weight: 500;
+    }
+
+    li{
+        margin-bottom: 0.6rem;
+    }
+}
+
+.breadcrumb_container {
+    background-color: #f7f7f7 !important;
+    margin-top: -3rem;
+    margin-bottom: 3rem;
+
+    h1 {
+        font-size: 56px;
+    }
+}
+
+
+//---------------------------------BACKEND-----------------------------------------//
+
+.green_table_1{
+    thead th, tfoot td {
+        background-color: #3FC38A0D !important;
+    }
+}
+
+.table-hover.green_table_1{
+    > tbody > tr:hover > * {
+        --bs-table-bg-state: rgba(63, 195, 138, 0.05) !important;
+    }
+}
+
+table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
+    box-shadow: inset 0 0 0 9999px rgba(63, 195, 138, 0.05);
+}
+
+
+/* Estilo principal para inputs con label superpuesto */
+.form-label-over {
+    position: relative;
+    margin-bottom: 1.5rem;
+
+    label {
+        position: absolute;
+        top: -0.6rem;
+        left: 0.75rem;
+        background: #fff;
+        padding: 0 0.35rem;
+        font-size: 0.85rem;
+        color: #6c757d;
+        z-index: 1;
+    }
+
+    input,
+    select,
+    textarea {
+        padding: 0.75rem 0.75rem;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        position: relative;
+        top: 0.25rem;
+        margin-right: 0.5rem;
+    }
+
+    .form-check-label {
+        position: static;
+        font-size: 1rem;
+        padding-left: 0.25rem;
+    }
+}
+
+.row .form-label-over > label {
+    left: 1.5rem;
+}
+
+/* Opcional: mejorar alineación de checkbox y radio con Bootstrap */
+.form-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        margin-top: 0;
+    }
+
+    label {
+        margin-bottom: 0;
+    }
+}
+
+.phase-entry-wrapper .form-label-over label {
+    left: 1.2rem;
+    border-radius: 25px;
+    border-top: var(--bs-border-width) solid var(--bs-border-color);
+}
+
+#backend_project_edit_crew .form-label-over label {
+    left: 1.2rem;
+    border-radius: 25px;
+    border-top: var(--bs-border-width) solid var(--bs-border-color);
+}
+
+#Footer_be {
+    position: relative;
+    z-index: 1;
+    color: white;
+    font-weight: 500;
+    background-color: #006e56;
+
+    a {
+        color: white !important;
+    }
+
+    .list-footer li {
+        margin-bottom: 1rem;
+    }
+}
+
+
+//---------------------------------PLAN-----------------------------------------//
+
+#backend_plan_measures{
+    .measure-card {
+        border-radius: 16px;
+        border: none;
+        background: #fff;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+    .measure-card .badge {
+        font-size: 0.95em;
+        margin-right: .7rem;
+    }
+    .measure-card h5 {
+        font-size: 1.1rem;
+    }
+    .measure-card .btn-outline-danger,
+    .measure-card .btn-outline-success {
+        min-width: 110px;
+    }
+    .measure-card .active-btn {
+        background: #dc3545 !important;
+        color: #fff !important;
+        border-color: #dc3545 !important;
+    }
+    .measure-card .active-btn-success {
+        background: #198754 !important;
+        color: #fff !important;
+        border-color: #198754 !important;
+    }
+    .measure-card .btn-outline-danger:not(.active-btn) {
+        background: #fff;
+        color: #dc3545;
+    }
+    .measure-card .btn-outline-success:not(.active-btn-success) {
+        background: #fff;
+        color: #198754;
+        border-color: #198754;
+    }
+    .measure-details {
+        font-size: 0.97em;
+        color: #444;
+        margin-top: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    .measure-card .more-link {
+        color: #198754;
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 0.98em;
+    }
+    .pagination {
+        margin-top: 1rem;
+    }
+
+    #plan-filters-form .form-select {
+        min-width: 120px;
+    }
+}
+
+#backend_plan_review{
+    .measure-card {
+        border-radius: 16px;
+        border: none;
+        background: #fff;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+    .measure-card .badge {
+        font-size: 0.95em;
+        margin-right: .7rem;
+    }
+    .measure-card h5 {
+        font-size: 1.1rem;
+    }
+    .measure-card .btn-outline-danger,
+    .measure-card .btn-outline-success {
+        min-width: 110px;
+    }
+    .measure-card .active-btn {
+        background: #dc3545 !important;
+        color: #fff !important;
+        border-color: #dc3545 !important;
+    }
+    .measure-card .active-btn-success {
+        background: #198754 !important;
+        color: #fff !important;
+        border-color: #198754 !important;
+    }
+    .measure-card .btn-outline-danger:not(.active-btn) {
+        background: #fff;
+        color: #dc3545;
+    }
+    .measure-card .btn-outline-success:not(.active-btn-success) {
+        background: #fff;
+        color: #198754;
+        border-color: #198754;
+    }
+    .measure-details {
+        font-size: 0.97em;
+        color: #444;
+        margin-top: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    .measure-card .more-link {
+        color: #198754;
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 0.98em;
+    }
+    .pagination {
+        margin-top: 1rem;
+    }
+
+    #plan-filters-form .form-select {
+        min-width: 120px;
+    }
+}
+

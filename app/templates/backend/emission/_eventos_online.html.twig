@@ -1,0 +1,82 @@
+<div class="row">
+    <div class="col-md-6 mb-3">
+        {{ form_label(form.registeredAt) }}
+        {{ form_widget(form.registeredAt, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.registeredAt) }}
+    </div>
+
+    <div class="col-md-6 mb-3">
+        {{ form_label(form.activity) }}
+        {{ form_widget(form.activity) }}
+        {{ form_errors(form.activity) }}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Participantes en evento virtual</label>
+        <input type="number" class="form-control" data-field="participantes_evento_virtual" min="0" required />
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Duración promedio de asistencia virtual (horas)</label>
+        <input type="number" step="0.1" class="form-control" data-field="duracion_asistencia_virtual" min="0" required />
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Consultas en motores de búsqueda (uds.)</label>
+        <input type="number" class="form-control" data-field="consultas_busqueda" min="0" />
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Duración de los ensayos o transmisiones de prueba (horas)</label>
+        <input type="number" step="0.1" class="form-control" data-field="duracion_ensayos" min="0" required />
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Participantes en ensayos o pruebas (número de dispositivos)</label>
+        <input type="number" class="form-control" data-field="participantes_ensayos" min="0" required />
+    </div>
+</div>
+
+<hr class="my-4">
+
+<h5>Ubicación de los participantes (%)</h5>
+
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Europa y Europa del Este</label>
+        <input type="number" class="form-control" data-field="ubicacion_europa" min="0" max="100" />
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Oriente Medio y África</label>
+        <input type="number" class="form-control" data-field="ubicacion_africa" min="0" max="100" />
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">América del Norte y Central</label>
+        <input type="number" class="form-control" data-field="ubicacion_america_norte" min="0" max="100" />
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Sudamérica</label>
+        <input type="number" class="form-control" data-field="ubicacion_sudamerica" min="0" max="100" />
+    </div>
+    <div class="col-md-4 mb-3">
+        <label class="form-label">Asia Pacífico</label>
+        <input type="number" class="form-control" data-field="ubicacion_asia" min="0" max="100" />
+    </div>
+</div>
+
+<hr class="my-4">
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="{{ form.amount.vars.id }}" class="form-label">
+            {{ form.amount.vars.label }}
+            <span data-emission-target="unit" class="text-muted"></span>
+        </label>
+        {{ form_widget(form.amount, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.amount) }}
+    </div>
+</div>

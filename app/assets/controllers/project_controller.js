@@ -1,0 +1,242 @@
+// assets/controllers/project_controller.js
+import { Controller } from "@hotwired/stimulus";
+
+export default class extends Controller {
+  static targets = [
+    "type",
+    "label",
+    "list",
+    "addButton",
+    // nuevos
+    "filmingType",
+    "filmingGenre",
+    "filmingGenreRow",
+  ];
+
+  static values = {
+    prototype: String,
+    index: Number,
+
+    // FASES (según tipo de proyecto)
+    labelPreEvent: String,
+    labelPreFilming: String,
+    labelPostEvent: String,
+    labelPostFilming: String,
+    labelActivity: String,
+
+    // Mensajes
+    errorMissingDates: String,
+    logPrototypeMissing: String,
+    logCannotInsert: String,
+  };
+
+  connect() {
+    if (!this.hasIndexValue) {
+      this.indexValue = this.listTarget.querySelectorAll("[data-collection-id]").length;
+    }
+    this.updateLabels();
+    this.toggleAddButton();
+    this.toggleConditionalRows();
+    this.setupFilmingGenreOptions(); // inicializa opciones según el valor actual
+  }
+
+  typeTargetConnected() {
+    this.updateLabels();
+    this.toggleConditionalRows();
+    this.setupFilmingGenreOptions();
+  }
+
+  // === Mostrar/Ocultar por tipo de proyecto
+  toggleConditionalRows() {
+    const projectType = this.typeTarget?.value || "";
+    const rows = this.element.querySelectorAll("[data-show-when]");
+    rows.forEach((row) => {
+      const rule = (row.dataset.showWhen || "").trim();
+      const visible = this.matchesTypeRule(rule, projectType);
+      row.classList.toggle("d-none", !visible);
+      const inputs = row.querySelectorAll("input, select, textarea, button");
+      inputs.forEach((el) => (el.disabled = !visible && el.type !== "hidden"));
+    });
+  }
+
+  matchesTypeRule(rule, currentType) {
+    if (!rule) return true;
+    const parts = rule.split(",").map((s) => s.trim());
+    for (const part of parts) {
+      const [k, v] = part.split(":").map((s) => s.trim());
+      if (k === "type" && v === currentType) return true;
+    }
+    return false;
+  }
+  // === /Mostrar/Ocultar
+
+  updateLabels() {
+    const projectType = this.typeTarget.value; // 'evento' | 'rodaje'
+    const labels = {
+      preproduccion: projectType === "evento" ? this.labelPreEventValue : this.labelPreFilmingValue,
+      postproduccion: projectType === "evento" ? this.labelPostEventValue : this.labelPostFilmingValue,
+      actividad: this.labelActivityValue,
+    };
+
+    this.labelTargets.forEach((input) => {
+      const phase = input.dataset.phase;
+      if (labels[phase]) input.value = labels[phase];
+    });
+  }
+
+  change(event) {
+    if (event.target === this.typeTarget) {
+      this.updateLabels();
+      this.toggleConditionalRows();
+      this.setupFilmingGenreOptions();
+    }
+  }
+
+  // === Filming type -> genre options
+  onFilmingTypeChange() {
+    this.setupFilmingGenreOptions();
+  }
+
+  setupFilmingGenreOptions() {
+  if (!this.hasFilmingTypeTarget || !this.hasFilmingGenreTarget) return;
+
+  const type = this.filmingTypeTarget.value; // feature|short|tv_series|tv_program|''
+  const allowed = new Set(
+    type === "tv_program"
+      ? ["informativo", "entretenimiento", "cultural", "educativo", "religioso"]
+      : type === ""
+        ? [] // nada seleccionado → ocultamos todas salvo placeholder
+        : ["ficcion", "documental", "animacion", "experimental"]
+  );
+
+  // mostrar/ocultar fila de género
+  if (this.hasFilmingGenreRowTarget) {
+    const show = !!type;
+    this.filmingGenreRowTarget.classList.toggle("d-none", !show);
+    this.filmingGenreRowTarget
+      .querySelectorAll("select, input, textarea, button")
+      .forEach((el) => (el.disabled = !show));
+  }
+
+  const select = this.filmingGenreTarget;
+  const current = select.value;
+
+  // NO reconstruimos. Solo ocultamos/deshabilitamos las no permitidas.
+  Array.from(select.options).forEach((opt) => {
+    if (opt.value === "") {
+      opt.hidden = false;
+      opt.disabled = false;
+      return;
+    }
+    const isAllowed = allowed.has(opt.value);
+    opt.hidden = !isAllowed;
+    opt.disabled = !isAllowed;
+  });
+
+  // Si el valor actual ya no es válido, resetea a placeholder
+  if (current && !allowed.has(current)) {
+    select.value = "";
+  }
+}
+
+
+  // Pequeño helper para traducciones: usa data-attrs del form si los tienes, o deja el key como label
+  t(key) {
+    try {
+      // Si en algún momento inyectas un mapa de traducciones en data-*, úsalo aquí.
+      return this.element?.dataset?.[key] || window?.i18n?.t?.(key) || this.fallbackLabel(key);
+    } catch (_) {
+      return this.fallbackLabel(key);
+    }
+  }
+  fallbackLabel(key) {
+    // Último recurso: devuelve un texto amigable si el sistema de i18n no está accesible en JS.
+    const map = {
+      "backend.projects.form.filming_genre.options.ficcion": "Ficción",
+      "backend.projects.form.filming_genre.options.documental": "Documental",
+      "backend.projects.form.filming_genre.options.animacion": "Animación",
+      "backend.projects.form.filming_genre.options.experimental": "Experimental",
+      "backend.projects.form.filming_genre.options.informativo": "Informativo",
+      "backend.projects.form.filming_genre.options.entretenimiento": "Entretenimiento",
+      "backend.projects.form.filming_genre.options.cultural": "Cultural",
+      "backend.projects.form.filming_genre.options.educativo": "Educativo",
+      "backend.projects.form.filming_genre.options.religioso": "Religioso",
+    };
+    return map[key] || key;
+  }
+
+  // === Botón añadir fase postproducción (igual que antes)
+  addPostproduccion(event) {
+    event.preventDefault();
+    const alreadyExists = this.element.querySelector('[data-phase="postproduccion"]');
+    if (alreadyExists) return;
+
+    const prototypeContainer = document.querySelector("#phase-prototype");
+    const prototypeHtml = prototypeContainer?.dataset.projectPrototype;
+
+    if (!prototypeHtml) {
+      console.error(this.logPrototypeMissingValue || "Prototipo no encontrado.");
+      return;
+    }
+
+    const html = prototypeHtml.replace(/__phase__/g, this.indexValue);
+    const temp = document.createElement("div");
+    temp.innerHTML = html.trim();
+
+    const newItem = temp.firstElementChild;
+    if (!newItem) {
+      console.error(this.logCannotInsertValue || "No se pudo insertar la fase.");
+      return;
+    }
+
+    newItem.setAttribute("data-collection-id", this.indexValue);
+
+    const hiddenInput = newItem.querySelector('input[type="hidden"][name$="[phase]"]');
+    if (hiddenInput) hiddenInput.value = "postproduccion";
+    const labelInput = newItem.querySelector('[data-project-target="label"]');
+    if (labelInput) labelInput.dataset.phase = "postproduccion";
+
+    this.indexValue++;
+    this.listTarget.appendChild(newItem);
+
+    this.updateLabels();
+    this.toggleAddButton();
+  }
+
+  removeItem(event) {
+    const button = event.currentTarget;
+    const item = button.closest("[data-collection-id]");
+    if (item) {
+      const wasPost = item.querySelector('[data-phase="postproduccion"]') !== null;
+      item.remove();
+      if (wasPost) this.toggleAddButton();
+    }
+  }
+
+  toggleAddButton() {
+    const alreadyExists = this.element.querySelector('[data-phase="postproduccion"]');
+    if (this.hasAddButtonTarget) {
+      this.addButtonTarget.classList.toggle("d-none", !!alreadyExists);
+    }
+  }
+
+  validateFormBeforeSubmit(event) {
+    const dateFields = this.element.querySelectorAll('input[type="date"]');
+    let isValid = true;
+
+    dateFields.forEach((input) => {
+      if (!input.value) {
+        input.classList.add("is-invalid");
+        isValid = false;
+      } else {
+        input.classList.remove("is-invalid");
+      }
+    });
+
+    if (!isValid) {
+      event.preventDefault();
+      event.stopPropagation();
+      alert(this.errorMissingDatesValue || "Por favor, completa todas las fechas.");
+    }
+  }
+}

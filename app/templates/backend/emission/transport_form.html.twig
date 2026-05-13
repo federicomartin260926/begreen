@@ -1,0 +1,164 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ edit ? 'backend.emission.transport_form.title_edit'|trans : 'backend.emission.transport_form.title_new'|trans }}{% endblock %}
+
+{% block stylesheets %}
+  {{ parent() }}
+  <style>
+    .ors-suggestions-list {
+      position: absolute;
+      background: #fff;
+      z-index: 999;
+      width: 100%;
+      border: 1px solid #dee2e6;
+      border-top: none;
+      max-height: 220px;
+      max-width: 400px;
+      overflow-y: auto;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.07);
+    }
+    .ors-suggestion { padding: 8px 12px; cursor: pointer; font-size: 0.97em; }
+    .ors-suggestion:hover, .ors-suggestion.active { background: #f1f7ff; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg);} }
+  </style>
+{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item" aria-current="page">
+    <a href="{{ path('backend_emission_index') }}" class="text-decoration-none">
+      {{ 'backend.emission.transport_form.breadcrumb.list_title'|trans }}
+    </a>
+  </li>
+  <li class="breadcrumb-item active">
+    {{ edit ? 'backend.emission.transport_form.breadcrumb.edit'|trans : 'backend.emission.transport_form.breadcrumb.new'|trans }}
+  </li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4"
+     data-controller="transport-form"
+     data-transport-form-category-id-value="{{ category.id }}"
+     data-transport-form-calculation-details-value="{{ record.calculationDetails|default('{}')|e('html_attr') }}"
+     data-transport-form-activity-id-value="{{ activityId }}"
+     data-transport-form-i18n-value='{{ {
+       select: "backend.common.select"|trans,
+       loading: "backend.common.loading"|trans,
+       activities_load_error: "backend.emission.transport_js.activities_load_error"|trans,
+       must_calc_amount_first: "backend.emission.transport_js.must_calc_amount_first"|trans,
+       parse_error: "backend.emission.transport_js.parse_error"|trans,
+       json_malformed: "backend.emission.transport_js.json_malformed"|trans,
+       missing_required_fields: "backend.emission.transport_js.missing_required_fields"|trans,
+       must_pick_from_suggestions: "backend.emission.transport_js.must_pick_from_suggestions"|trans,
+       calculating: "backend.emission.transport_js.calculating"|trans,
+       calc_distance: "backend.emission.transport_tpl.calc_distance"|trans,
+       recalc: "backend.emission.transport_tpl.recalc"|trans,
+       same_points_error: "backend.emission.transport_js.same_points_error"|trans,
+       distance_ok: "backend.emission.transport_js.distance_ok"|trans,
+       no_road_nearby: "backend.emission.transport_js.no_road_nearby"|trans,
+       generic_calc_error: "backend.emission.transport_js.generic_calc_error"|trans,
+       calc_exception: "backend.emission.transport_js.calc_exception"|trans
+     }|json_encode|e('html_attr') }}'>
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+      <h2>{{ edit ? 'backend.emission.transport_form.heading_edit'|trans : 'backend.emission.transport_form.heading_new'|trans }}</h2>
+
+      <div class="mb-4 d-grid bg_green_3 rounded p-3" style="grid-template-columns: max-content 1fr; row-gap: 0.5rem; column-gap: 1rem;">
+        <div><strong>{{ 'backend.emission.transport_form.project_label'|trans }}:</strong></div>
+        <div>{{ project.name }}</div>
+
+        <div><strong>{{ 'backend.emission.transport_form.phases_label'|trans }}:</strong></div>
+        <div>
+          <ul class="list-unstyled mb-0">
+          {% for pd in project.phaseDates %}
+            <li>
+              {{ project.getPhaseLabel(pd.phase)|trans }}
+              &nbsp; - &nbsp;
+              <i class="bi bi-clock-history"></i>
+              {{ pd.startDate ? pd.startDate|date('d/m/Y') : 'backend.emission.transport_form.date_placeholder'|trans }}
+              -
+              {{ pd.endDate ? pd.endDate|date('d/m/Y') : 'backend.emission.transport_form.date_placeholder'|trans }}
+            </li>
+          {% endfor %}
+          </ul>
+        </div>
+
+        <div><strong>{{ 'backend.emission.transport_form.category_label'|trans }}:</strong></div>
+        <div><span class="badge text-bg-secondary">{{ category.name }}</span></div>
+      </div>
+
+      {{ form_start(form) }}
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            {{ form_label(form.registeredAt) }}
+            {{ form_widget(form.registeredAt, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.registeredAt) }}
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            {{ form_label(form.subCategory) }}
+            {{ form_widget(form.subCategory, {
+              'attr': {
+                'class': 'form-select',
+                'data-transport-form-target': 'subCategory'
+              }
+            }) }}
+            {{ form_errors(form.subCategory) }}
+          </div>
+        </div>
+
+        <div class="row" data-transport-form-target="activityRow" style="display:none">
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="activity-select">{{ 'backend.emission.transport_form.activity_label'|trans }}</label>
+            <select
+              name="activityId"
+              id="activity-select"
+              class="form-select"
+              data-transport-form-target="activitySelect"
+              data-action="change->transport-form#updateUnitLabel">
+              <!-- Opciones se llenan por JS -->
+            </select>
+            {% if app.request.method == 'POST' and app.request.get('activityId') is empty %}
+              <div class="invalid-feedback d-block">{{ 'backend.emission.transport_form.activity_required'|trans }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="p-4 bg_green_1 mb-3 shadow-sm d-none" id="dynamic-fields" data-transport-form-target="dynamicFields"></div>
+
+        <div id="amount-wrapper" data-transport-form-target="amountWrapper" class="d-none">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="energy_emission_amount">
+                {{ 'backend.emission.transport_form.amount_label'|trans }}
+                <span data-transport-form-target="unitLabel"></span>
+              </label>
+              {{ form_widget(form.amount, { 'attr': {'class': 'form-control', 'id': 'input-amount', 'readonly': true} }) }}
+            </div>
+          </div>
+        </div>
+
+        {{ form_row(form.calculationDetails) }}
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="{{ path('backend_emission_index', { category: category.name }) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+          </a>
+          <button class="btn btn-primary">
+            <i class="bi bi-save"></i> {{ 'backend.common.save'|trans }}
+          </button>
+        </div>
+
+      {{ form_end(form) }}
+    </div>
+  </div>
+
+  {# TEMPLATES #}
+  {% include 'backend/emission/_transport_templates.html.twig' %}
+</div>
+{% endblock %}

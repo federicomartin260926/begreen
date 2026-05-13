@@ -1,0 +1,47 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.aux.index.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active">{{ 'backend.aux.index.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+      <h2 class="mb-4">{{ 'backend.aux.index.h2'|trans }}</h2>
+
+      <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% set auxiliaryItems = [
+          { path: 'protocol',     icon: 'bi-diagram-3',       label: 'backend.aux.entity.protocol' },
+          { path: 'category_ghg', icon: 'bi-cloud-fog2',      label: 'backend.aux.entity.category_ghg' },
+          { path: 'category',     icon: 'bi-tags',            label: 'backend.aux.entity.category' },
+          { path: 'department',   icon: 'bi-building',        label: 'backend.aux.entity.department' },
+          { path: 'ods',          icon: 'bi-globe',           label: 'backend.aux.entity.ods' },
+          { path: 'esg',          icon: 'bi-bar-chart-line',  label: 'backend.aux.entity.esg' },
+          { path: 'scope',        icon: 'bi-layers',          label: 'backend.aux.entity.scope' },
+          { path: 'position',     icon: 'bi-person-badge',    label: 'backend.aux.entity.position' }
+        ] %}
+
+        {% for item in auxiliaryItems %}
+          <div class="col">
+            <a href="{{ path('admin_auxiliary_list', { type: item.path }) }}" class="text-decoration-none">
+              <div class="card h-100 border-0 shadow-sm bg-white"
+                   onmouseover="this.classList.add('shadow-lg','bg-light')"
+                   onmouseout="this.classList.remove('shadow-lg','bg-light')">
+                <div class="card-body text-center">
+                  <i class="bi {{ item.icon }} fs-1 text-secondary"></i>
+                  <h5 class="card-title mt-2">{{ item.label|trans }}</h5>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

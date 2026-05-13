@@ -1,0 +1,205 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.plan.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.plan.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4" data-controller="plan-measures">
+    <div class="row justify-content-center">
+        <div class="col-12 bg-white p-4 rounded shadow">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="mb-0">
+                    {{ 'backend.plan.h2'|trans({'%project%': project.name})|raw }}
+                </h2>
+
+                <form action="{{ path('backend_plan_delete') }}" method="post" onsubmit="return confirm('{{ 'backend.plan.delete.confirm'|trans|e('js') }}');">
+                    <button class="btn btn-outline-danger">
+                        <i class="bi bi-trash"></i> {{ 'backend.plan.delete.btn'|trans }}
+                    </button>
+                </form>
+            </div>
+
+            {# --- Línea de badges: protocolo + tipo de proyecto + obligatoria --- #}
+            <div class="d-flex justify-content-between align-items-start text-muted mb-3">
+                <div class="d-flex align-items-center flex-wrap gap-1">
+                    {# Badge de Protocolo #}
+                    {% if plan.protocol %}
+                        <span
+                            class="badge bg-success"
+                            data-bs-toggle="popover"
+                            data-bs-trigger="hover"
+                            data-bs-html="true"
+                            data-bs-content="{{ 'backend.plan.badges.protocol_popover'|trans({'%protocol%': plan.protocol.name})|e('html_attr') }}">
+                            <i class="bi bi-exclamation-circle"></i> {{ plan.protocol.name }}
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-exclamation-circle"></i> —
+                        </span>
+                    {% endif %}
+
+                    {# Badge de tipo de proyecto con icono (i18n) #}
+                    {% set typeKey   = (project.type ?? '')|lower %}
+                    {% set typeIcon  = typeKey == 'evento' ? 'bi-calendar-event' : 'bi-camera-reels' %}
+                    {% set typeLabel = ('backend.project.type.' ~ typeKey)|trans %}
+
+                    <span
+                        class="badge bg-secondary"
+                        data-bs-toggle="popover"
+                        data-bs-trigger="hover"
+                        data-bs-html="true"
+                        data-bs-content="{{ 'backend.plan.badges.type_popover'|trans({'%type%': typeLabel})|e('html_attr') }}">
+                        <i class="bi {{ typeIcon }}"></i> {{ typeLabel }}
+                    </span>
+
+                    {# Badge de medida obligatoria (solo si la medida actual lo es) #}
+                    {% if measure and measure.mandatory %}
+                        <span
+                            class="badge bg-danger-subtle text-danger border border-danger-subtle"
+                            data-bs-toggle="popover"
+                            data-bs-trigger="hover"
+                            data-bs-html="true"
+                            data-bs-content="{{ 'backend.plan.badges.mandatory_popover'|trans|e('html_attr') }}">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            {{ 'backend.plan.badges.mandatory'|trans }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div class="text-end">
+                    {% if measure %}
+                        {% if scoreMax > 0 %}
+                            <div
+                                class="fw-semibold"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="hover"
+                                data-bs-html="true"
+                                data-bs-content="{{ 'backend.plan.score.total_popover'|trans({'%gained%': scoreGained, '%max%': scoreMax})|e('html_attr') }}">
+                                <i class="bi bi-star-fill me-1 text-warning me-2"></i>{{ scoreGained }} / {{ scoreMax }}
+                            </div>
+                        {% endif %}
+                        <div
+                            class="small text-muted"
+                            data-bs-toggle="popover"
+                            data-bs-trigger="hover"
+                            data-bs-html="true"
+                            data-bs-content="{{ 'backend.plan.score.current_popover'|trans({'%score%': (measure.score is not null ? measure.score : 0)})|e('html_attr') }}">
+                            {{ 'backend.plan.score.current_label'|trans }}
+                            <i class="bi bi-star-fill ms-1 me-1 text-warning"></i>{{ measure.score is not null ? measure.score : '—' }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# ---- CONTENIDO PRINCIPAL ---- #}
+            {% if planComplete %}
+                {# Mostrar formulario de medidas personalizadas y Finalizar #}
+                <div class="border rounded p-4 bg_green_1 shadow">
+                    <h4 class="mb-3">{{ 'backend.plan.complete.title'|trans }}</h4>
+                    <p class="text-muted">{{ 'backend.plan.complete.help'|trans }}</p>
+
+                    <form action="{{ path('backend_plan_measures', app.request.query.all) }}" method="post" class="d-grid gap-3">
+                        <div>
+                            <textarea
+                                id="custom-measures"
+                                name="custom_measures"
+                                class="form-control"
+                                rows="5"
+                                placeholder="{{ 'backend.plan.complete.textarea_ph'|trans }}">{{ plan.customMeasures }}</textarea>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="submit" name="finalize" class="btn btn-success">{{ 'backend.plan.complete.finalize_btn'|trans }}</button>
+                        </div>
+                    </form>
+                </div>
+            {% else %}
+                {# Tarjeta de la medida actual #}
+                {% if measure %}
+                    {% include 'backend/plan/_measure_card.html.twig' with {
+                        measure: measure,
+                        planMeasures: planMeasures
+                    } %}
+                {% else %}
+                    <div class="alert alert-info">{{ 'backend.plan.measures.no_items'|trans }}</div>
+                {% endif %}
+            {% endif %}
+
+            {% if not planComplete %}
+                {# ——— Navegación medida a medida ——— #}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        {% set hasPrev = index > 0 %}
+                        {% set hasNext = total > 0 and (index + 1) < total %}
+                        {% set nextEnabled = hasNext and canGoNext %}
+
+                        <a class="btn btn-outline-secondary text-decoration-none {% if not hasPrev %}disabled{% endif %}"
+                           href="{% if hasPrev %}{{ path('backend_plan_measures', { i: index - 1 }) }}{% else %}#{% endif %}"
+                           {% if not hasPrev %}tabindex="-1" aria-disabled="true"{% endif %}>
+                            <i class="bi bi-chevron-left"></i> {{ 'backend.common.prev'|trans }}
+                        </a>
+
+                        <a class="btn btn-outline-secondary ms-2 text-decoration-none {% if not nextEnabled %}disabled{% endif %}"
+                           href="{% if nextEnabled %}{{ path('backend_plan_measures', { i: index + 1 }) }}{% else %}#{% endif %}"
+                           {% if not nextEnabled %}tabindex="-1" aria-disabled="true"{% endif %}>
+                            {{ 'backend.common.next'|trans }} <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </div>
+
+                    <div class="text-muted">
+                        {% if total > 0 %}
+                            {{ 'backend.plan.progress'|trans({'%current%': index + 1, '%total%': total}) }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {# ——— Gráficos ——— #}
+            <div class="col-12 mt-4"
+                 data-controller="plan-charts"
+                 data-plan-charts-charts-config-value='{{ planChartsConfig|json_encode|e('html_attr') }}'>
+
+                <div class="row g-4">
+                    <div class="col-12 col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="ratio ratio-16x9">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="summary"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="ratio ratio-16x9">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="alcance"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="ratio ratio-16x9">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="commitment"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

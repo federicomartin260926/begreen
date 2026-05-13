@@ -1,0 +1,197 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ edit ? 'backend.admin.emission.form.title_edit'|trans : 'backend.admin.emission.form.title_new'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item">
+    <a class="text-decoration-none" href="{{ path('admin_emission_activity_index') }}">
+      {{ 'backend.admin.emission.form.breadcrumb.list'|trans }}
+    </a>
+  </li>
+  <li class="breadcrumb-item active">
+    {{ edit ? 'backend.admin.emission.form.breadcrumb.edit'|trans : 'backend.admin.emission.form.breadcrumb.new'|trans }}
+  </li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10 bg-white p-4 rounded shadow">
+      <h2 class="mb-4">
+        {{ edit ? 'backend.admin.emission.form.heading_edit'|trans : 'backend.admin.emission.form.heading_new'|trans }}
+      </h2>
+
+      {{ form_start(form) }}
+        <div class="row">
+          {% set disabledAttr = edit ? {'disabled': 'disabled'} : {} %}
+
+          <div class="col-md-8 mb-3">
+            {{ form_label(form.sourceName) }}
+            {{ form_widget(form.sourceName, { 'attr': disabledAttr|merge({'class': 'form-control'}) }) }}
+            {{ form_errors(form.sourceName) }}
+          </div>
+
+          <div class="col-md-4 mb-3">
+            {{ form_label(form.sourceYear) }}
+            {{ form_widget(form.sourceYear, { 'attr': disabledAttr|merge({'class': 'form-control'}) }) }}
+            {{ form_errors(form.sourceYear) }}
+          </div>
+        </div>
+
+        {# ===== TABS de traducción (ES / EN) ===== #}
+        <hr>
+        <div class="mb-4">
+          <ul class="nav nav-tabs" id="i18nTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link bg_tabs_lang active" id="tab-es"
+                      data-bs-toggle="tab" data-bs-target="#pane-es"
+                      type="button" role="tab" aria-controls="pane-es" aria-selected="true">
+                ES
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link bg_tabs_lang" id="tab-en"
+                      data-bs-toggle="tab" data-bs-target="#pane-en"
+                      type="button" role="tab" aria-controls="pane-en" aria-selected="false">
+                EN
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content bg_tabs_lang border-start border-end border-bottom p-3 rounded-bottom" id="i18nTabsContent">
+            {# --- Español (valores base mapeados a la entidad) --- #}
+            <div class="tab-pane fade show active" id="pane-es" role="tabpanel" aria-labelledby="tab-es" tabindex="0">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                    {{ form_label(form.name) }}
+                    {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.name) }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                    {{ form_label(form.unit) }}
+                    {{ form_widget(form.unit, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.unit) }}
+                    </div>
+                </div>
+            </div>
+
+            {# --- Inglés (campos unmapped *_en) --- #}
+            <div class="tab-pane fade" id="pane-en" role="tabpanel" aria-labelledby="tab-en" tabindex="0">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  {{ form_row(attribute(form, 'name_en')) }}
+                </div>
+                <div class="col-md-6 mb-3">
+                  {{ form_row(attribute(form, 'unit_en')) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          {{ form_label(form.emissionFactor) }}
+          {{ form_widget(form.emissionFactor, {'attr': {'class': 'form-control', 'step': 'any'}}) }}
+          {{ form_errors(form.emissionFactor) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.category) }}
+            {{ form_widget(form.category, {'attr': {'class': 'form-select'}}) }}
+            {{ form_errors(form.category) }}
+        </div>
+
+        <div class="mb-3" id="subcategory-group" style="display:none;">
+            {{ form_label(form.subcategory) }}
+            {{ form_widget(form.subcategory, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.subcategory) }}
+        </div>
+
+        <div class="mb-3">
+          {{ form_label(form.categoryGhg) }}
+          {{ form_widget(form.categoryGhg, {'attr': {'class': 'form-select'}}) }}
+          {{ form_errors(form.categoryGhg) }}
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a href="{{ path('admin_emission_activity_index') }}" class="btn btn-outline-secondary text-decoration-none">
+            <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> {{ 'backend.common.save'|trans }}
+          </button>
+        </div>
+      {{ form_end(form) }}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const categorySelect    = document.getElementById('{{ form.category.vars.id }}');
+      const subcategorySelect = document.getElementById('{{ form.subcategory.vars.id }}');
+      const subcategoryGroup  = document.getElementById('subcategory-group');
+
+      if (!categorySelect || !subcategorySelect || !subcategoryGroup) return;
+
+      function clearSubcategories() {
+        subcategorySelect.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.text  = '{{ "backend.admin.emission.form.subcategory_placeholder"|trans|e('js') }}';
+        placeholder.selected = true;
+        placeholder.disabled = true;
+        subcategorySelect.appendChild(placeholder);
+      }
+
+      function loadSubcategories(categoryId, selectedValue = null) {
+        if (!categoryId) {
+          subcategoryGroup.style.display = 'none';
+          clearSubcategories();
+          return;
+        }
+
+        fetch('/index.php{{ path('admin_emission_activity_subcategories') }}?categoryId=' + encodeURIComponent(categoryId))
+          .then(r => r.json())
+          .then(data => {
+            clearSubcategories();
+
+            if (!data || Object.keys(data).length === 0) {
+              subcategoryGroup.style.display = 'none';
+              return;
+            }
+
+            subcategoryGroup.style.display = '';
+            for (const [label, value] of Object.entries(data)) {
+              const option = document.createElement('option');
+              option.value = value;
+              option.text  = label;
+              if (selectedValue && String(selectedValue) === String(value)) {
+                option.selected = true;
+              }
+              subcategorySelect.appendChild(option);
+            }
+          })
+          .catch(() => {
+            subcategoryGroup.style.display = 'none';
+            clearSubcategories();
+          });
+      }
+
+      // Cambio en Category => recargar subcategorías
+      categorySelect.addEventListener('change', function () {
+        loadSubcategories(this.value || '');
+      });
+
+      // Inicializar (modo edición)
+      const currentCategoryId  = categorySelect.value || null;
+      const currentSubcategory = '{{ form.subcategory.vars.value|default('')|e('js') }}';
+      loadSubcategories(currentCategoryId, currentSubcategory);
+    });
+  </script>
+{% endblock %}

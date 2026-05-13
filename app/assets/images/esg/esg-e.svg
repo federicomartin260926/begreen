@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <style>
+      .bg{fill:#1E8E3E;}
+      .txt{fill:#fff;font-family:Inter,Arial,sans-serif;font-weight:800;font-size:60px;dominant-baseline:middle;text-anchor:middle;}
+    </style>
+  </defs>
+  <circle cx="64" cy="64" r="56" class="bg"/>
+  <text x="64" y="72" class="txt">E</text>
+</svg>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('es') }}">
+<head>
+  <meta charset="UTF-8">
+  {% set project_short = project.name|slice(0, 50) ~ (project.name|length > 50 ? '…' : '') %}
+  <title>{{ 'backend.plan.pdf.title'|trans({'%project%': project_short}) }}</title>
+  <style>
+    /* Página A4 apaisada + margen consistente para PDF */
+    @page { size: A4 landscape; margin: 10mm; }
+
+    /* Tipografía y layout base */
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #333; margin: 0; }
+    h2, h3 { text-align: center; }
+    h2 { font-size: 18px; margin: 0 0 6px; }
+    h3 { font-size: 14px; margin: 0 0 8px; }
+
+    .meta { text-align: center; margin: 8px 0 16px; font-size: 13px; }
+
+    /* Tablas de resumen y detalle */
+    .summary-table, .detail-table { width: 100%; border-collapse: collapse; margin: 0 0 18px; }
+    th, td { border: 1px solid #999; padding: 6px; text-align: left; vertical-align: top; }
+    th { background-color: rgba(63, 195, 138, 0.40); }
+    .page-break { page-break-before: always; }
+
+    /* Cuadrícula 2×2 de gráficos (tabla fija = más robusta en dompdf) */
+    table.charts-2col { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.charts-2col td { width: 50%; vertical-align: top; padding: 2.5mm; }
+
+    .chart-box { page-break-inside: avoid; }
+    .chart-box img { width: 100%; height: auto; max-height: 68mm; display: block; }
+    .chart-caption { text-align: center; font-size: 11px; margin-top: 1.5mm; color: #555; font-weight: 600; line-height: 1.2; }
+  </style>
+</head>
+<body>
+
+  {# --- Portada --- #}
+  <h2>{{ 'backend.plan.pdf.h2'|trans({'%project%': project_short}) }}</h2>
+  <div class="meta">
+    {{ 'backend.plan.pdf.status'|trans({
+        '%status%': ('backend.plan.status.' ~ plan.status)|trans
+    })|raw }}<br>
+    {{ 'backend.plan.pdf.date'|trans }} {{ "now"|date("d/m/Y") }}<br>
+    {{ 'backend.plan.pdf.user'|trans }} {{ app.user.fullName ?? app.user.email }}<br>
+
+    {# ---línea: puntuación --- #}
+    {% if scoreMax is defined and scoreMax > 0 %}
+        <strong>{{ 'backend.plan.pdf.score.title'|trans }}</strong>
+        {{ 'backend.plan.pdf.score.value'|trans({
+        '%gained%': scoreGained,
+        '%max%': scoreMax,
+        '%pct%': (scorePct ~ '%')
+        }) }}
+    {% else %}
+        <strong>{{ 'backend.plan.pdf.score.title'|trans }}</strong>
+        {{ 'backend.plan.pdf.score.na'|trans }}
+    {% endif %}
+  </div>
+
+
+  {% if activeFilters is not empty %}
+    <div style="margin:0 0 16px;font-size:12px;background-color:rgb(204.2,222.8,218.8);border:1px solid rgb(153.4,190.6,182.6);padding:8px 12px;border-radius:4px;">
+      <strong>{{ 'backend.plan.pdf.filters_applied'|trans }}</strong>
+      <ul style="margin:6px 0 0 20px;padding:0;">
+        {% for name, value in activeFilters %}
+          <li>{{ name }}: {{ value }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if measuresByDpto is not empty %}
+    <h3>{{ 'backend.plan.pdf.summary_by_department'|trans }}</h3>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>{{ 'backend.plan.pdf.th.department'|trans }}</th>
+          <th>{{ 'backend.plan.pdf.th.total_measures'|trans }}</th>
+          <th>{{ 'backend.plan.pdf.th.applicable'|trans }}</th>
+          <th>{{ 'backend.plan.pdf.th.to_implement'|trans }}</th>
+          <th>{{ 'backend.plan.pdf.th.critical_yes'|trans }}</th>
+          {% if plan.status == 'completo' %}
+            <th>{{ 'backend.plan.pdf.th.implemented'|trans }}</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for dpto, measures in measuresByDpto %}
+        <tr>
+          <td>{{ dpto }}</td>
+          <td>{{ measures|length }}</td>
+          <td>{{ measures|filter(pm => pm.isApplicable)|length }}</td>
+          <td>{{ measures|filter(pm => pm.willImplement)|length }}</td>
+          <td>{{ measures|filter(pm => pm.isCritical)|length }}</td>
+          {% if plan.status == 'completo' %}
+            <td>{{ measures|filter(pm => pm.isImplemented)|length }}</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    {# --- Detalle por departamento --- #}
+    {% for dpto, measures in measuresByDpto %}
+      <h3>{{ dpto }}</h3>
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th>{{ 'backend.plan.pdf.th.measure'|trans }}</th>
+            <th>{{ 'backend.plan.pdf.th.applicable_q'|trans }}</th>
+            <th>{{ 'backend.plan.pdf.th.implement_q'|trans }}</th>
+            {% if plan.status == 'completo' %}
+              <th>{{ 'backend.plan.pdf.th.implemented_q'|trans }}</th>
+            {% endif %}
+            <th>{{ 'backend.plan.pdf.th.critical_reason'|trans }}</th>
+            <th>{{ 'backend.plan.pdf.th.ods'|trans }}</th>
+            <th>{{ 'backend.plan.pdf.th.esg'|trans }}</th>
+            <th>{{ 'backend.plan.pdf.th.scope'|trans }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for pm in measures %}
+          <tr>
+            <td>{{ pm.measure.displayNameForReview }}</td>
+            <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+            <td>{{ pm.willImplement ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+            {% if plan.status == 'completo' %}
+              <td>{{ pm.isImplemented ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+            {% endif %}
+            <td>
+              {{ pm.isCritical is same as(true)
+                  ? ('backend.plan.preview.yes'|trans)
+                  : (pm.isCritical is same as(false) ? ('backend.plan.preview.no'|trans) : '—') }}
+              {% if pm.criticalReason %}
+                <div style="font-size:11px;color:#666;margin-top:4px;">{{ pm.criticalReason }}</div>
+              {% endif %}
+            </td>
+            <td>{{ pm.measure.ods.name|default('—') }}</td>
+            <td>{{ pm.measure.esg.name|default('—') }}</td>
+            <td>{{ pm.measure.scope.name|default('—') }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+  {% else %}
+    <p style="text-align:center;margin-top:60px;font-style:italic;">{{ 'backend.plan.pdf.empty'|trans }}</p>
+  {% endif %}
+
+  {% if planChartsUrls is defined and planChartsUrls %}
+    <div class="page-break"></div>
+    <h3>{{ 'backend.plan.pdf.charts.title'|trans }}</h3>
+    <table class="charts-2col">
+      <tr>
+        <td>
+          <div class="chart-box">
+            <img src="{{ planChartsUrls.summary }}" alt="{{ 'backend.plan.charts.measures'|trans }}">
+            <div class="chart-caption">{{ 'backend.plan.charts.measures'|trans }}</div>
+          </div>
+        </td>
+        <td>
+          <div class="chart-box">
+            <img src="{{ planChartsUrls.alcance }}" alt="{{ 'backend.plan.charts.reach'|trans }}">
+            <div class="chart-caption">{{ 'backend.plan.charts.reach'|trans }}</div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="chart-box">
+            <img src="{{ planChartsUrls.commitment }}" alt="{{ 'backend.plan.charts.commitment'|trans }}">
+            <div class="chart-caption">{{ 'backend.plan.charts.commitment'|trans }}</div>
+          </div>
+        </td>
+        <td>
+          <div class="chart-box">
+            <img src="{{ planChartsUrls.implementation }}" alt="{{ 'backend.plan.charts.performance'|trans }}">
+            <div class="chart-caption">{{ 'backend.plan.charts.performance'|trans }}</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  {% endif %}
+
+</body>
+</html>

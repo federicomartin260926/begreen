@@ -1,0 +1,112 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.admin.users.list.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">
+        {{ 'backend.admin.users.breadcrumb.section'|trans }}
+    </li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+
+    <div class="row justify-content-center">
+        <div class="col-12 bg-white p-4 rounded shadow">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="">{{ 'backend.admin.users.list.h2'|trans }}</h2>
+                <a href="{{ path('admin_users_new') }}" class="btn btn-success text-decoration-none">
+                    <i class="bi bi-plus-circle"></i> {{ 'backend.admin.users.list.new_user'|trans }}
+                </a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover green_table_1" data-controller="datatable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>{{ 'backend.admin.users.form.name'|trans }}</th>
+                            <th>{{ 'backend.admin.users.form.surnames'|trans }}</th>
+                            <th>{{ 'backend.admin.users.form.email'|trans }}</th>
+                            <th>{{ 'backend.admin.users.form.phone'|trans }}</th>
+                            <th>{{ 'backend.admin.users.form.roles'|trans }}</th>
+                            <th>{{ 'backend.admin.users.form.verified'|trans }}</th>
+                            <th class="text-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.surnames }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.phone ?? '-' }}</td>
+                                <td>
+                                    {% for role in user.roles %}
+                                        <span class="badge bg-secondary">{{ ('backend.roles.' ~ role)|trans }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% if user.isVerified %}
+                                        <span class="badge bg-success">{{ 'backend.common.yes'|trans }}</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">{{ 'backend.common.no'|trans }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {# Editar #}
+                                    <a
+                                        href="{{ path('admin_users_edit', {id: user.id}) }}"
+                                        data-bs-toggle="popover"
+                                        data-bs-trigger="hover"
+                                        data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                        class="btn">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+
+                                    {# Impersonar: solo si tienes permiso, no eres el mismo usuario y NO estás ya impersonando #}
+                                    {% if is_granted('ROLE_ALLOWED_TO_SWITCH')
+                                            and app.user
+                                            and user.userIdentifier != app.user.userIdentifier
+                                            and not is_granted('ROLE_PREVIOUS_ADMIN') %}
+                                        <a
+                                        href="{{ path('app_backend', {'_switch_user': user.userIdentifier}) }}"
+                                        data-bs-toggle="popover"
+                                        data-bs-trigger="hover"
+                                        data-bs-content="{{ 'backend.common.impersonate'|trans }}"
+                                        class="btn">
+                                        <i class="bi bi-person-badge"></i>
+                                        </a>
+                                    {% endif %}
+
+                                    {# Borrar #}
+                                    <form
+                                        action="{{ path('admin_users_delete', {id: user.id}) }}"
+                                        method="post"
+                                        data-bs-toggle="popover"
+                                        data-bs-trigger="hover"
+                                        data-bs-content="{{ 'backend.common.delete'|trans }}"
+                                        class="d-inline"
+                                        onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ user.id) }}">
+                                        <button class="btn">
+                                        <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center">{{ 'backend.admin.users.list.empty'|trans }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

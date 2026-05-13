@@ -1,0 +1,99 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{'auth.sign_in'|trans}}{% endblock %}
+
+{% block body %}
+
+    <div class="text-center breadcrumb_container py-5">
+        <!-- Contenido del Subheader -->
+        <div class="container">
+            <h1 class="fw-bold text-gray">{{'auth.sign_in'|trans}}</h1>
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb justify-content-center mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ path('home') }}" class="text-decoration-none">{{"home"|trans}}</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {{'auth.sign_in'|trans}}
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <form method="post" class="needs-validation" novalidate>
+                    {% if error %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ error.messageKey|trans(error.messageData, 'security') }}
+                        </div>
+                    {% endif %}
+
+                    {% if app.user %}
+                        <div class="mb-3">
+                            {{ 'auth.logged_in_as'|trans({'%user%': app.user.userIdentifier}) }},
+                            <a href="{{ path('app_logout') }}">{{ 'auth.logout'|trans }}</a>
+                        </div>
+                    {% endif %}
+
+                    <h1 class="h3 mb-3 fw-normal">{{ 'auth.please_sign_in'|trans }}</h1>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">{{ 'email'|trans }}</label>
+                        <input type="email"
+                            value="{{ last_username }}"
+                            name="_username"
+                            id="username"
+                            class="form-control"
+                            autocomplete="email"
+                            required
+                            autofocus>
+                        <div class="invalid-feedback">
+                            {{ 'email'|trans }} {{ 'is_required'|trans([], 'messages') }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">{{ 'auth.password'|trans }}</label>
+                        <input type="password"
+                            name="_password"
+                            id="password"
+                            class="form-control"
+                            autocomplete="current-password"
+                            required>
+                        <div class="invalid-feedback">
+                            {{ 'auth.password'|trans }} {{ 'is_required'|trans([], 'messages') }}
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="_remember_me" id="_remember_me">
+                        <label class="form-check-label" for="_remember_me">
+                            {{ 'auth.remember_me'|trans }}
+                        </label>
+                    </div>
+
+                    <button class="btn btn-success btn-begreen mt-3 btn" type="submit">
+                        {{ 'auth.sign_in'|trans }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="container my-5 text-center">
+        <p>
+            <a href="{{ path('app_forgot_password') }}" class="text-decoration-none">{{ 'login.forgot_password'|trans }}</a>
+        </p>
+        <p>
+            {{'login.no_account'|trans}}
+            <a href="{{ path('app_register') }}" class="text-decoration-none">{{ 'login.register'|trans }}</a>
+        </p>
+
+    </div>
+{% endblock %}

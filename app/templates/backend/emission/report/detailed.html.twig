@@ -1,0 +1,52 @@
+{% extends 'pdf/base.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'backend.emission.reports.detailed.title'|trans }}{% endblock %}
+
+{% block body %}
+  <h1>{{ 'backend.emission.reports.detailed.h1'|trans }}</h1>
+
+  <p><strong>{{ 'backend.emission.reports.detailed.project'|trans }}:</strong> {{ project.name }}</p>
+  <p><strong>{{ 'backend.emission.reports.detailed.type'|trans }}:</strong> {{ project.type|capitalize }}</p>
+  <p><strong>{{ 'backend.emission.reports.detailed.total_records'|trans }}:</strong> {{ records|length }}</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>{{ 'backend.emission.reports.detailed.th.phase'|trans }}</th>
+        <th>{{ 'backend.emission.reports.detailed.th.date'|trans }}</th>
+        <th>{{ 'backend.emission.reports.detailed.th.category'|trans }}</th>
+        <th>{{ 'backend.emission.reports.detailed.th.activity'|trans }}</th>
+        <th>{{ 'backend.emission.reports.detailed.th.amount'|trans }}</th>
+        <th>{{ 'backend.emission.reports.detailed.th.unit'|trans }}</th>
+        <th>{{ 'backend.emission.reports.detailed.th.emission'|trans }}</th>
+        <th>{{ 'backend.emission.reports.detailed.th.details'|trans }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+        {% set details = record.calculationDetails ? record.calculationDetails|json_decode : {} %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ record.phase.getPhase(project.type) }}</td>
+          <td>{{ record.createdAt|date('d/m/Y') }}</td>
+          <td>{{ record.activity.category.name }}</td>
+          <td>{{ record.activity.name }}</td>
+          <td class="text-right">{{ record.amount }}</td>
+          <td>{{ record.activity.unit }}</td>
+          <td class="text-right">{{ record.emission|number_format(2, '.', ',') }}</td>
+          <td class="small">
+            {% if details %}
+              {% for key, value in details %}
+                <strong>{{ key|replace({'_': ' '})|capitalize }}:</strong> {{ value }}<br>
+              {% endfor %}
+            {% else %}
+              –
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

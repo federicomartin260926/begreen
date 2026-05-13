@@ -1,0 +1,130 @@
+{% extends 'base_backend.html.twig' %}
+{% block title %}{{ 'backend.cms.counters.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item"><a href="{{ path('admin_cms_index') }}">{{ 'backend.cms.index.breadcrumb'|trans }}</a></li>
+  <li class="breadcrumb-item active">{{ 'backend.cms.counters.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h2">{{ 'backend.cms.counters.h1'|trans }}</h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#counterModal-new">
+          <i class="bi bi-plus-circle"></i> {{ 'backend.common.new'|trans }}
+        </button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover green_table_1">
+          <thead>
+            <tr>
+              <th>{{ 'backend.cms.counters.table.type'|trans }}</th>
+              <th>{{ 'backend.cms.counters.table.value'|trans }}</th>
+              <th class="dt-nosort text-end">{{ 'backend.common.action'|trans }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t,c in countersByType %}
+              <tr>
+                <td class="text-capitalize">{{ ('backend.cms.counters.type.' ~ t)|trans }}</td>
+                <td>{{ c ? c.value : 0 }}</td>
+                <td class="text-end">
+                  <button class="btn" data-bs-toggle="modal" data-bs-target="#counterModal-{{ t }}">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <hr>
+      <div class="d-flex justify-content-between">
+        <a href="{{ path('admin_cms_index') }}" class="btn btn-outline-secondary text-decoration-none">
+          <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+        </a>
+      </div>
+
+      {# --- Modal NUEVO --- #}
+      <div class="modal fade" id="counterModal-new" tabindex="-1" aria-labelledby="counterModalLabel-new" aria-hidden="true">
+        <div class="modal-dialog">
+          <form method="post" action="{{ path('admin_cms_counters') }}" class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="counterModalLabel-new">{{ 'backend.cms.counters.modal.new.title'|trans }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" name="_token" value="{{ csrf_token }}">
+              <div class="mb-3">
+                <label for="counter_type_new" class="form-label">{{ 'backend.cms.counters.form.type'|trans }}</label>
+                <select id="counter_type_new" name="type" class="form-select" required>
+                  <option value="">{{ 'backend.common.select'|trans }}</option>
+                  {# Valores fijos, labels traducidos #}
+                  <option value="eventos">{{ 'backend.cms.counters.type.eventos'|trans }}</option>
+                  <option value="rodajes">{{ 'backend.cms.counters.type.rodajes'|trans }}</option>
+                  <option value="compensado">{{ 'backend.cms.counters.type.compensado'|trans }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="counter_value_new" class="form-label">{{ 'backend.cms.counters.form.value'|trans }}</label>
+                <input id="counter_value_new" name="value" type="number" class="form-control" min="0" step="1" required>
+              </div>
+              <p class="text-muted small mb-0">
+                {{ 'backend.cms.counters.modal.new.note'|trans }}
+              </p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ 'backend.common.cancel'|trans }}</button>
+              <button type="submit" class="btn btn-primary">{{ 'backend.common.save'|trans }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {# --- Modales por TIPO --- #}
+      {% for t,c in countersByType %}
+        <div class="modal fade" id="counterModal-{{ t }}" tabindex="-1" aria-labelledby="counterModalLabel-{{ t }}" aria-hidden="true">
+          <div class="modal-dialog">
+            <form method="post" action="{{ path('admin_cms_counters') }}" class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="counterModalLabel-{{ t }}">
+                  {{ 'backend.cms.counters.modal.edit.title'|trans({'%type%': ('backend.cms.counters.type.' ~ t)|trans}) }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <div class="mb-3">
+                  <label for="counter_type_{{ t }}" class="form-label">{{ 'backend.cms.counters.form.type'|trans }}</label>
+                  <select id="counter_type_{{ t }}" name="type" class="form-select" required>
+                    <option value="eventos"    {{ t == 'eventos'    ? 'selected' : '' }}>{{ 'backend.cms.counters.type.eventos'|trans }}</option>
+                    <option value="rodajes"    {{ t == 'rodajes'    ? 'selected' : '' }}>{{ 'backend.cms.counters.type.rodajes'|trans }}</option>
+                    <option value="compensado" {{ t == 'compensado' ? 'selected' : '' }}>{{ 'backend.cms.counters.type.compensado'|trans }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="counter_value_{{ t }}" class="form-label">{{ 'backend.cms.counters.form.value'|trans }}</label>
+                  <input id="counter_value_{{ t }}" name="value" type="number" class="form-control" min="0" step="1" value="{{ c ? c.value : 0 }}" required>
+                </div>
+                <p class="text-muted small mb-0">
+                  {{ 'backend.cms.counters.modal.edit.note'|trans({'%type%': ('backend.cms.counters.type.' ~ t)|trans}) }}
+                </p>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ 'backend.common.cancel'|trans }}</button>
+                <button type="submit" class="btn btn-primary">{{ 'backend.common.save'|trans }}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

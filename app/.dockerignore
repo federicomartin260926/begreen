@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env.local
+.env.*.local
+.vscode
+var
+vendor
+node_modules
+public/uploads
+public/build
+docker/legacy
+*.log
+*.cache
+*.sql

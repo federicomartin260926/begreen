@@ -1,0 +1,26 @@
+# config/packages/framework.yaml
+framework:
+  secret: '%env(APP_SECRET)%'
+
+  session:
+    enabled: true
+    handler_id: null
+    cookie_secure: auto
+    cookie_samesite: lax
+
+  # CSRF tradicional (basado en sesión)
+  csrf_protection:
+    enabled: true
+
+  # CSRF en formularios Symfony (por defecto)
+  form:
+    csrf_protection:
+      enabled: true
+      field_name: _token
+      field_attr: { }
+
+when@test:
+  framework:
+    test: true
+    session:
+      storage_factory_id: session.storage.factory.mock_file

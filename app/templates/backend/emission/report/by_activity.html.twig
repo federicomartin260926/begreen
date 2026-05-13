@@ -1,0 +1,56 @@
+{% extends 'pdf/base.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'backend.emission.reports.by_activity.title'|trans }}{% endblock %}
+
+{% block body %}
+  <h1 style="text-align:center; margin-bottom:20px;">
+    {{ 'backend.emission.reports.by_activity.title'|trans }}
+  </h1>
+  <h2 style="text-align:center;">
+    {{ project.name }} ({{ project.type|capitalize }})
+  </h2>
+
+  {% set phaseLabels = {
+    'preproduccion': project.type == 'evento'
+      ? 'backend.emission.reports.by_activity.phase.setup'|trans
+      : 'backend.emission.reports.by_activity.phase.preproduction'|trans,
+    'actividad': project.type == 'evento'
+      ? 'backend.emission.reports.by_activity.phase.event'|trans
+      : 'backend.emission.reports.by_activity.phase.shoot'|trans,
+    'postproduccion': project.type == 'evento'
+      ? 'backend.emission.reports.by_activity.phase.teardown'|trans
+      : 'backend.emission.reports.by_activity.phase.postproduction'|trans
+  } %}
+
+  <table style="width:100%; border-collapse:collapse; font-size:12px;">
+    <thead>
+      <tr>
+        <th style="border:1px solid #000; padding:6px;">
+          {{ 'backend.emission.reports.by_activity.th.activity'|trans }}
+        </th>
+        <th style="border:1px solid #000; padding:6px;">
+          {{ 'backend.emission.reports.by_activity.th.category'|trans }}
+        </th>
+        {% for key, label in phaseLabels %}
+          <th style="border:1px solid #000; padding:6px;">{{ label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for activity, phases in data %}
+        <tr>
+          <td style="border:1px solid #000; padding:6px;">{{ activity }}</td>
+          <td style="border:1px solid #000; padding:6px;">
+            {{ activityCategories[activity]|default('backend.common.no_category'|trans) }}
+          </td>
+          {% for key, label in phaseLabels %}
+            <td style="border:1px solid #000; padding:6px;">
+              {{ phases[key]|default(0.0)|number_format(2, '.', ',') }} {{ 'backend.emission.reports.by_activity.units.kg_co2e'|trans }}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

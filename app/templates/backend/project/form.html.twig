@@ -1,0 +1,392 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ edit ? 'backend.projects.form.title_edit'|trans : 'backend.projects.form.title_new'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item">
+    <a href="{{ path('backend_project_index') }}" class="text-decoration-none">{{ 'backend.projects.list.breadcrumb'|trans }}</a>
+  </li>
+  <li class="breadcrumb-item active">{{ edit ? project.name : 'backend.common.new'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+      <h2 class="mb-5">{{ edit ? 'backend.projects.form.h2_edit'|trans : 'backend.projects.form.h2_new'|trans }}</h2>
+
+      {{ form_start(form, {
+        attr: {
+            'data-controller': 'project',
+            'data-project-target': 'form',
+            'data-action': 'submit->project#validateFormBeforeSubmit',
+            'data-project-index-value': form.phaseDates|length,
+
+            'data-project-label-pre-event-value': 'backend.projects.phases.pre_event'|trans,
+            'data-project-label-pre-filming-value': 'backend.projects.phases.pre_filming'|trans,
+            'data-project-label-post-event-value': 'backend.projects.phases.post_event'|trans,
+            'data-project-label-post-filming-value': 'backend.projects.phases.post_filming'|trans,
+            'data-project-label-activity-value': 'backend.projects.phases.activity'|trans,
+
+            'data-project-error-missing-dates-value': 'backend.projects.form.error_missing_dates'|trans,
+            'data-project-log-prototype-missing-value': 'backend.projects.form.log_prototype_missing'|trans,
+            'data-project-log-cannot-insert-value': 'backend.projects.form.log_cannot_insert'|trans
+        }
+      }) }}
+
+        {{ form_errors(form) }}
+
+        {# ========= DATOS DEL PROYECTO ========= #}
+        <fieldset class="border rounded p-3 mb-4">
+            <legend class="float-none w-auto px-2 fw-semibold">{{ 'backend.projects.form.fs_project'|trans }}</legend>
+
+            {# Nombre (fila completa) #}
+            <div class="row">
+                <div class="form-label-over mb-3">
+                    {{ form_label(form.name) }}
+                    {{ form_widget(form.name) }}
+                </div>
+            </div>
+
+            {# Fila en 3 columnas: País, Tipo, Fuente #}
+            <div class="row">
+                <div class="col-12 col-md-4 form-label-over mb-3">
+                {{ form_label(form.country) }}
+                {{ form_widget(form.country) }}
+                </div>
+                <div class="col-12 col-md-4 form-label-over mb-3">
+                {{ form_label(form.type) }}
+                {{ form_widget(form.type) }}
+                </div>
+                <div class="col-12 col-md-4 form-label-over mb-3">
+                {{ form_label(form.emissionSourceName) }}
+                {{ form_widget(form.emissionSourceName) }}
+                </div>
+            </div>
+
+            {# --------- SUBTÍTULO RODAJE (y campos) --------- #}
+            <div class="border-top pt-3 mt-4" data-show-when="type:rodaje">
+            <h6 class="text-muted mb-3">{{ 'backend.projects.form.subsection_filming'|trans }}</h6>
+
+            <div class="row">
+                <div class="col-12 col-md-6 form-label-over mb-3">
+                {{ form_label(form.filmingType) }}
+                {{ form_widget(form.filmingType) }}
+                </div>
+
+                {# fila/columna que se oculta si no hay filmingType #}
+                <div class="col-12 col-md-6 form-label-over mb-3"
+                    data-project-target="filmingGenreRow">
+                {{ form_label(form.filmingGenre) }}
+                {{ form_widget(form.filmingGenre, {
+                    attr: form.filmingGenre.vars.attr|merge({'data-project-target': 'filmingGenre'})
+                }) }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12 col-md-4 form-label-over mb-2">
+                {{ form_label(form.liveTv) }}
+                {{ form_widget(form.liveTv) }}
+                </div>
+                <div class="col-12 col-md-4 form-label-over mb-2">
+                {{ form_label(form.advert) }}
+                {{ form_widget(form.advert) }}
+                </div>
+                <div class="col-12 col-md-4 form-label-over mb-2">
+                {{ form_label(form.corporateVideo) }}
+                {{ form_widget(form.corporateVideo) }}
+                </div>
+                <div class="col-12 col-md-4 form-label-over mb-2">
+                {{ form_label(form.musicVideo) }}
+                {{ form_widget(form.musicVideo) }}
+                </div>
+                <div class="col-12 col-md-4 form-label-over mb-2">
+                {{ form_label(form.onlineContent) }}
+                {{ form_widget(form.onlineContent) }}
+                </div>
+                <div class="col-12 col-md-4 form-label-over mb-2">
+                {{ form_label(form.shooting) }}
+                {{ form_widget(form.shooting) }}
+                </div>
+            </div>
+            </div>
+
+            {# --------- SUBTÍTULO EVENTO (y campos) --------- #}
+            <div class="border-top pt-3 mt-4" data-show-when="type:evento">
+                <h6 class="text-muted mb-4">{{ 'backend.projects.form.subsection_event'|trans }}</h6>
+                <div class="row">
+                <div class="col-12 col-md-4 col-lg-3 form-label-over mb-3">
+                    {{ form_label(form.eventTypePrimary) }}
+                    {{ form_widget(form.eventTypePrimary) }}
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 form-label-over mb-3">
+                    {{ form_label(form.eventModality) }}
+                    {{ form_widget(form.eventModality) }}
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 form-label-over mb-3">
+                    {{ form_label(form.eventAttendeesType) }}
+                    {{ form_widget(form.eventAttendeesType) }}
+                </div>
+                <div class="col-12 col-md-4 col-lg-3 form-label-over mb-3">
+                    {{ form_label(form.eventAttendeesCount) }}
+                    {{ form_widget(form.eventAttendeesCount) }}
+                </div>
+                </div>
+
+            </div>
+
+            {# --------- SUBTÍTULO CAMPOS COMUNES --------- #}
+            <div class="border-top pt-3 mt-4">
+                <h6 class="text-muted mb-4">{{ 'backend.projects.form.subsection_common'|trans }}</h6>
+                <div class="row">
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.medio) }}
+                        {{ form_widget(form.medio) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.presupuesto) }}
+                        {{ form_widget(form.presupuesto) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.cine) }}
+                        {{ form_widget(form.cine) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.fechas) }}
+                        {{ form_widget(form.fechas) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.tvField) }}
+                        {{ form_widget(form.tvField) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.plataformasStreaming) }}
+                        {{ form_widget(form.plataformasStreaming) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.agencia) }}
+                        {{ form_widget(form.agencia) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.internet) }}
+                        {{ form_widget(form.internet) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.redesSociales) }}
+                        {{ form_widget(form.redesSociales) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.fotografia) }}
+                        {{ form_widget(form.fotografia) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.radio) }}
+                        {{ form_widget(form.radio) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.episodios) }}
+                        {{ form_widget(form.episodios) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.duracionEpisodio) }}
+                        {{ form_widget(form.duracionEpisodio) }}
+                    </div>
+                    <div class="col-12 col-md-6 form-label-over mb-3">
+                        {{ form_label(form.productora) }}
+                        {{ form_widget(form.productora) }}
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        {# ========= /DATOS DEL PROYECTO ========= #}
+
+
+        {# ========= FECHAS POR FASE ========= #}
+        <fieldset class="border rounded p-3 mb-4">
+          <legend class="float-none w-auto px-2 fw-semibold">{{ 'backend.projects.form.fs_phases'|trans }}</legend>
+
+          <div data-project-target="list">
+            {% for phaseForm in form.phaseDates %}
+              <div class="card mb-3 p-3 border position-relative phase-entry-wrapper bg_green_1" data-collection-id="{{ loop.index }}">
+                <div class="row">
+                  <div class="col-12 col-md-4 form-label-over">
+                    <label class="form-label">{{ 'backend.projects.form.phase'|trans }}</label>
+                    <input type="text"
+                           class="form-control text-start"
+                           readonly
+                           data-project-target="label"
+                           data-phase="{{ phaseForm.phase.vars.value }}"
+                           value="
+                           {% if phaseForm.phase.vars.value == 'actividad' %}{{ 'backend.projects.phases.activity'|trans }}
+                           {% elseif phaseForm.phase.vars.value == 'preproduccion' %}{{ 'backend.projects.phases.pre'|trans }}
+                           {% elseif phaseForm.phase.vars.value == 'postproduccion' %}{{ 'backend.projects.phases.post'|trans }}
+                           {% endif %}">
+                    {{ form_widget(phaseForm.phase) }}
+                  </div>
+                  <div class="col-12 col-md-4 form-label-over">
+                    {{ form_row(phaseForm.startDate) }}
+                  </div>
+                  <div class="col-12 col-md-4 form-label-over">
+                    {{ form_row(phaseForm.endDate) }}
+                  </div>
+                </div>
+
+                {% if phaseForm.phase.vars.value == 'postproduccion' %}
+                  {% set phaseId = phaseForm.vars.data.id %}
+                  {% if lockedPhases is defined and not lockedPhases[phaseId] %}
+                    <div class="text-end mt-0">
+                      <button type="button" class="btn btn-sm btn-primary w-auto" data-action="project#removeItem">
+                        <i class="bi bi-trash"></i> {{ 'backend.projects.form.remove_phase'|trans }}
+                      </button>
+                    </div>
+                  {% endif %}
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex justify-content-start" data-project-target="addButton">
+            <button type="button" class="btn btn-outline-secondary mb-2" data-action="project#addPostproduccion">
+              <i class="bi bi-plus-circle"></i> {{ 'backend.projects.form.add_post_phase'|trans }}
+            </button>
+          </div>
+        </fieldset>
+        {# ========= /FECHAS POR FASE ========= #}
+
+        {# ========= EQUIPO TÉCNICO (SOLO VISTA) ========= #}
+        {% set crew = project.crewMembers ?? [] %}
+        {% if edit and crew is not empty %}
+        <fieldset class="border rounded p-3 mb-4">
+            <legend class="float-none w-auto px-2 fw-semibold">{{ 'backend.projects.form.fs_crew'|trans }}</legend>
+
+            <div class="table-responsive">
+            <table class="table align-middle table-hover green_table_1">
+                <thead>
+                <tr>
+                    <th>{{ 'backend.projects.form.crew.name'|trans }}</th>
+                    <th>{{ 'backend.projects.form.crew.role'|trans }}</th>
+                    <th>{{ 'backend.projects.form.crew.contact'|trans }}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for c in crew %}
+                <tr>
+                    <td>
+                    {% if c.name is defined and c.name %}
+                        {{ c.name }}
+                        {% if c.surnames is defined and c.surnames %} {{ c.surnames }}{% endif %}
+                    {% else %}
+                        {{ c.email ?? '—' }}
+                    {% endif %}
+                    </td>
+                    <td>
+                    {% if c.role is defined and c.role %}
+                        {{ c.role }}
+                    {% elseif c.department is defined and c.department %}
+                        {{ c.department }}
+                    {% elseif c.position is defined and c.position %}
+                        {{ c.position }}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                    </td>
+                    <td>
+                    {% set hasEmail = c.email is defined and c.email %}
+                    {% set hasPhone = c.phone is defined and c.phone %}
+                    {% if hasEmail or hasPhone %}
+                        {% if hasEmail %}<div>{{ c.email }}</div>{% endif %}
+                        {% if hasPhone %}<div class="small text-muted">{{ c.phone }}</div>{% endif %}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+
+            <a href="{{ path('backend_project_edit_crew', { id: project.id }) }}" class="btn btn-outline-primary">
+                {{ 'backend.common.edit'|trans }}
+            </a>
+        </fieldset>
+        {% endif %}
+        {% if edit and crew is empty %}
+        <fieldset class="border rounded p-3 mb-4">
+            <legend class="float-none w-auto px-2 fw-semibold">{{ 'backend.projects.form.fs_crew'|trans }}</legend>
+            <div class="mb-3">
+                <em class="text-muted">{{ 'backend.projects.form.crew.no_crew'|trans }}</em>
+            </div>
+            <a href="{{ path('backend_project_edit_crew', { id: project.id }) }}" class="btn btn-outline-primary">
+                {{ 'backend.projects.form.crew_btn'|trans }}
+            </a>
+        </fieldset>
+        {% endif %}
+        {# ========= /EQUIPO TÉCNICO ========= #}
+
+        {# ========= MIEMBROS DEL PROYECTO (SOLO VISTA) ========= #}
+        {% set memberships = project.projectMemberships ?? [] %}
+        {% if edit and memberships is not empty %}
+          <fieldset class="border rounded p-3 mb-4">
+            <legend class="float-none w-auto px-2 fw-semibold">{{ 'backend.projects.form.fs_members'|trans }}</legend>
+
+            <div class="table-responsive">
+              <table class="table align-middle table-hover green_table_1">
+                <thead>
+                  <tr>
+                    <th>{{ 'backend.projects.members.user'|trans }}</th>
+                    <th class="text-center">{{ 'backend.projects.members.creator'|trans }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for m in memberships %}
+                  {% set member = m.user %}
+                  {% set isCreator = project.user and member and member.id == project.user.id %}
+                  <tr>
+                    <td>
+                      {% if member %}
+                        {{ member.name ? member.name ~ ' ' ~ member.surnames : member.email }}
+                        <div class="small text-muted">{{ member.email }}</div>
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-center" data-order="{{ isCreator ? 1 : 0 }}">
+                      {% if isCreator %}
+                        <i class="bi bi-check-lg text-success" title="{{ 'backend.projects.members.creator'|trans }}"></i>
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </fieldset>
+        {% endif %}
+        {# ========= /MIEMBROS DEL PROYECTO ========= #}
+
+        {# ========= BOTONES ========= #}
+        <div class="d-flex justify-content-between">
+          <a href="{{ path('backend_project_index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> {{ edit ? 'backend.common.update'|trans : 'backend.common.create'|trans }}
+          </button>
+        </div>
+
+      {{ form_end(form) }}
+
+      {% if form.phaseDates.vars.prototype is defined %}
+        <div id="phase-prototype"
+             data-project-prototype="{{ include('backend/project/_phase_prototype.html.twig', { prototype: form.phaseDates.vars.prototype })|e('html_attr') }}"
+             hidden></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

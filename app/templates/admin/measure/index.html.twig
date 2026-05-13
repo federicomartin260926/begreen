@@ -1,0 +1,300 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.measures.list.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.measures.list.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+
+    <div class="row justify-content-center">
+        <div class="col-12 bg-white p-4 rounded shadow">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="">{{ 'backend.measures.list.h2'|trans }}</h2>
+                <div class="d-flex gap-2">
+                    <a href="{{ path('admin_measures_new') }}" class="btn btn-success text-decoration-none">
+                        <i class="bi bi-plus-circle"></i> {{ 'backend.measures.actions.new'|trans }}
+                    </a>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
+                <div class="d-flex gap-2">
+                    <a href="{{ path('admin_measures_export_pdf') }}" class="btn btn-outline-primary text-decoration-none">
+                        <i class="bi bi-file-earmark-pdf"></i> {{ 'backend.measures.actions.download_pdf'|trans }}
+                    </a>
+                    <a href="#" class="btn btn-outline-primary text-decoration-none" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="bi bi-upload"></i> {{ 'backend.measures.actions.import_excel'|trans }}
+                    </a>
+                    <a
+                        href="{{ path('admin_measures_template_download') }}"
+                        data-bs-toggle="popover"
+                        data-bs-trigger="hover"
+                        data-bs-content="{{ 'backend.measures.actions.download_template_hint'|trans }}"
+                        class="text-decoration-none"
+                        download>
+                        <i class="bi bi-file-earmark-excel fs-5"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="d-flex gap-3 mb-4 align-items-end flex-wrap bg_green_3 p-3">
+                <select id="filter-protocol" class="form-select" style="max-width: 200px;" data-dt-filter="1">
+                    <option value="">{{ 'backend.measures.filters.all_protocols'|trans }}</option>
+                    {% set protocols = [] %}
+                    {% for measure in measures %}
+                        {% if measure.protocol and measure.protocol.name not in protocols %}
+                            {% set protocols = protocols|merge([measure.protocol.name]) %}
+                            <option value="{{ measure.protocol.name }}">{{ measure.protocol.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+
+                <select id="filter-emission-source" class="form-select" style="max-width: 200px;" data-dt-filter="2">
+                    <option value="">{{ 'backend.measures.filters.all_ghg_categories'|trans }}</option>
+                    {% set sources = [] %}
+                    {% for measure in measures %}
+                        {% if measure.categoryGhg and measure.categoryGhg.name not in sources %}
+                            {% set sources = sources|merge([measure.categoryGhg.name]) %}
+                            <option value="{{ measure.categoryGhg.name }}">{{ measure.categoryGhg.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+
+                <select id="filter-category" class="form-select" style="max-width: 200px;" data-dt-filter="3">
+                    <option value="">{{ 'backend.measures.filters.all_categories'|trans }}</option>
+                    {% set categories = [] %}
+                    {% for measure in measures %}
+                        {% if measure.category and measure.category.name not in categories %}
+                            {% set categories = categories|merge([measure.category.name]) %}
+                            <option value="{{ measure.category.name }}">{{ measure.category.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+
+                <select id="filter-department" class="form-select" style="max-width: 200px;" data-dt-filter="4">
+                    <option value="">{{ 'backend.measures.filters.all_departments'|trans }}</option>
+                    {% set departments = [] %}
+                    {% for measure in measures %}
+                        {% if measure.department and measure.department.name not in departments %}
+                            {% set departments = departments|merge([measure.department.name]) %}
+                            <option value="{{ measure.department.name }}">{{ measure.department.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+
+                <select id="filter-ods" class="form-select" style="max-width: 200px;" data-dt-filter="8">
+                    <option value="">{{ 'backend.measures.filters.all_ods'|trans }}</option>
+                    {% set odsList = [] %}
+                    {% for measure in measures %}
+                        {% if measure.ods and measure.ods.name not in odsList %}
+                            {% set odsList = odsList|merge([measure.ods.name]) %}
+                            <option value="{{ measure.ods.name }}">{{ measure.ods.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+
+                <select id="filter-esg" class="form-select" style="max-width: 200px;" data-dt-filter="9">
+                    <option value="">{{ 'backend.measures.filters.all_esg'|trans }}</option>
+                    {% set esgList = [] %}
+                    {% for measure in measures %}
+                        {% if measure.esg and measure.esg.name not in esgList %}
+                            {% set esgList = esgList|merge([measure.esg.name]) %}
+                            <option value="{{ measure.esg.name }}">{{ measure.esg.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+
+                <select id="filter-scope" class="form-select" style="max-width: 200px;" data-dt-filter="10">
+                    <option value="">{{ 'backend.measures.filters.all_scopes'|trans }}</option>
+                    {% set scopeList = [] %}
+                    {% for measure in measures %}
+                        {% if measure.scope and measure.scope.name not in scopeList %}
+                            {% set scopeList = scopeList|merge([measure.scope.name]) %}
+                            <option value="{{ measure.scope.name }}">{{ measure.scope.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+
+                <select id="filter-mandatory" class="form-select" style="max-width: 200px;" data-dt-filter="12">
+                    <option value="">{{ 'backend.measures.filters.all_mandatory'|trans }}</option>
+                    <option value="{{ 'backend.common.yes'|trans }}">{{ 'backend.measures.filters.only_mandatory'|trans }}</option>
+                    <option value="{{ 'backend.common.no'|trans }}">{{ 'backend.measures.filters.only_not_mandatory'|trans }}</option>
+                </select>
+
+                <div class="d-flex align-items-end gap-2">
+                    <div>
+                        <input type="number"
+                            class="form-control"
+                            style="min-width: 160px; max-width: 200px;"
+                            placeholder="{{ 'backend.measures.filters.score_min'|trans }}"
+                            min="0" max="100" step="1"
+                            data-dt-range-min="11"
+                            data-dt-for="#measures-table">
+                    </div>
+                    <div>
+                        <input type="number"
+                            class="form-control"
+                            style="min-width: 160px; max-width: 200px;"
+                            placeholder="{{ 'backend.measures.filters.score_max'|trans }}"
+                            min="0" max="100" step="1"
+                            data-dt-range-max="11"
+                            data-dt-for="#measures-table">
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-outline-secondary" id="reset-dt-filters">
+                    <i class="bi bi-x-circle"></i> {{ 'backend.measures.filters.reset'|trans }}
+                </button>
+            </div>
+
+            {% if measures is empty %}
+                <div class="alert alert-info">{{ 'backend.measures.list.empty'|trans }}</div>
+            {% else %}
+                <div class="table-responsive">
+                    <table id="measures-table"
+                        class="table table-hover green_table_1 table-bordered dt-responsive nowrap w-100"
+                        data-controller="datatable">
+                        <thead>
+                            <tr>
+                                <th>{{ 'backend.measures.table.name'|trans }}</th>
+                                <th>{{ 'backend.measures.table.protocol'|trans }}</th>
+                                <th>{{ 'backend.measures.table.ghg_category'|trans }}</th>
+                                <th>{{ 'backend.measures.table.category'|trans }}</th>
+                                <th>{{ 'backend.measures.table.department'|trans }}</th>
+                                <th>{{ 'backend.measures.table.description'|trans }}</th>
+                                <th>{{ 'backend.measures.table.implementation'|trans }}</th>
+                                <th>{{ 'backend.measures.table.verification_sources'|trans }}</th>
+                                <th>{{ 'backend.measures.table.ods'|trans }}</th>
+                                <th>{{ 'backend.measures.table.esg'|trans }}</th>
+                                <th>{{ 'backend.measures.table.scope'|trans }}</th>
+                                <th>{{ 'backend.measures.table.score'|trans }}</th>
+                                <th>{{ 'backend.measures.table.mandatory'|trans }}</th>
+                                <th class="text-end">{{ 'backend.common.actions'|trans }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for measure in measures %}
+                                {# --- construir lista de campos faltantes --- #}
+                                {% set missing = [] %}
+                                {% if measure.name is empty %}{% set missing = missing|merge(['Nombre']) %}{% endif %}
+                                {% if measure.department is null %}{% set missing = missing|merge(['Departamento']) %}{% endif %}
+                                {% if measure.category is null %}{% set missing = missing|merge(['Categoría']) %}{% endif %}
+                                {% if measure.protocol is null %}{% set missing = missing|merge(['Protocolo']) %}{% endif %}
+                                {% if measure.ods is null %}{% set missing = missing|merge(['ODS']) %}{% endif %}
+                                {% if measure.esg is null %}{% set missing = missing|merge(['ESG']) %}{% endif %}
+                                {% if measure.scope is null %}{% set missing = missing|merge(['Alcance']) %}{% endif %}
+                                {% if measure.categoryGhg is null %}{% set missing = missing|merge(['Categoría GHG']) %}{% endif %}
+
+                                {% set isComplete = missing is empty %}
+                                <tr>
+                                    <td>
+                                        {% if isComplete %}
+                                            <i class="bi bi-check-circle-fill text-success me-1"
+                                                tabindex="0" role="button"
+                                                data-bs-toggle="popover"
+                                                data-bs-trigger="hover focus"
+                                                data-bs-placement="top"
+                                                data-bs-container="body"
+                                                data-bs-title="{{ 'backend.admin.measure.popover.complete.title'|trans }}"
+                                                data-bs-content="{{ 'backend.admin.measure.popover.complete.content'|trans }}"
+                                                aria-label="{{ 'backend.admin.measure.popover.complete.aria'|trans }}">
+                                            </i>
+                                        {% else %}
+                                            <i class="bi bi-x-circle-fill text-danger me-1"
+                                                tabindex="0" role="button"
+                                                data-bs-toggle="popover"
+                                                data-bs-trigger="hover focus"
+                                                data-bs-placement="top"
+                                                data-bs-container="body"
+                                                data-bs-title="{{ 'backend.admin.measure.popover.incomplete.title'|trans }}"
+                                                data-bs-content="{{ 'backend.admin.measure.popover.incomplete.content'|trans({'%missing%': missing|join(', ')}) }}"
+                                                aria-label="{{ 'backend.admin.measure.popover.incomplete.aria'|trans }}">
+                                            </i>
+                                        {% endif %}
+                                        {{ measure.name }}
+                                    </td>
+                                    <td>{{ measure.protocol ? measure.protocol.name : '' }}</td>
+                                    <td>{{ measure.categoryGhg ? measure.categoryGhg.name : '' }}</td>
+                                    <td>{{ measure.category ? measure.category.name : '' }}</td>
+                                    <td>{{ measure.department ? measure.department.name : '' }}</td>
+                                    <td>{{ measure.description ? measure.description : '' }}</td>
+                                    <td>{{ measure.implementation ? measure.implementation|u.truncate(60, '…') : '' }}</td>
+                                    <td>{{ measure.verificationSources ? measure.verificationSources|u.truncate(60, '…') : '' }}</td>
+                                    <td>{{ measure.ods ? measure.ods.name : '' }}</td>
+                                    <td>{{ measure.esg ? measure.esg.name : '' }}</td>
+                                    <td>{{ measure.scope ? measure.scope.name : '' }}</td>
+                                    <td>
+                                        {% if measure.score is not null %}
+                                            <span class="badge bg-success ms-3">{{ measure.score }}</span>
+                                        {% else %}
+                                            <span class="text-muted ms-3">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if measure.mandatory %}
+                                            <span class="badge bg-success ms-3">{{ 'backend.common.yes'|trans }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary ms-3">{{ 'backend.common.no'|trans }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{{ path('admin_measures_edit', {'id': measure.id}) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" action="{{ path('admin_measures_delete', {'id': measure.id}) }}" class="d-inline" onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_measure_' ~ measure.id) }}">
+                                            <button class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+{# Modal de importación #}
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg"> {# más ancho para que quepan las notas #}
+    <div class="modal-content">
+      <form method="post" action="{{ path('admin_measures_import') }}" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importModalLabel">{{ 'backend.measures.import.title'|trans }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            {{ form_widget(importForm.file, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(importForm.file) }}
+            <div class="form-text">
+              {{ 'backend.measures.import.lang_info_title'|trans }}
+            </div>
+          </div>
+
+          <div class="alert alert-info mt-2 small" role="alert">
+            {{ 'backend.measures.import.lang_info_html'|trans|raw }}
+          </div>
+
+          {{ form_rest(importForm) }}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'backend.common.cancel'|trans }}</button>
+          <button type="submit" class="btn btn-primary">{{ 'backend.measures.import.cta'|trans }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

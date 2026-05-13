@@ -1,0 +1,214 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'backend.emission.index.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">
+        {{ 'backend.emission.index.breadcrumb'|trans }}
+    </li>
+{% endblock %}
+
+{% block body %}
+<div
+    class="container my-4"
+    data-controller="emission"
+    data-emission-i18n-value='{{ {
+        "backend.emission.chart.title.by_activity": "backend.emission.chart.title.by_activity"|trans,
+        "backend.emission.chart.title.by_phase": "backend.emission.chart.title.by_phase"|trans,
+        "backend.emission.chart.legend.by_activity": "backend.emission.chart.legend.by_activity"|trans,
+        "backend.emission.chart.legend.by_phase": "backend.emission.chart.legend.by_phase"|trans,
+        "backend.emission.chart.axis.kgco2e": "backend.emission.chart.axis.kgco2e"|trans,
+        "backend.emission.chart.unit.kgco2e": "backend.emission.chart.unit.kgco2e"|trans
+        }|json_encode|e('html_attr') }}'
+    data-emission-chart-data-value='{{ chartDataByCategory|json_encode|e('html_attr') }}'>
+    <div class="row justify-content-center">
+        <div class="col-12 bg-white p-4 rounded shadow">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="">
+                    {{ 'backend.emission.index.heading'|trans }}
+                    <strong>{{ project.name }}</strong>
+                </h2>
+            </div>
+
+            <div class="d-flex align-items-center mb-3">
+                {# Normalizamos a una clave canónica #}
+                {% set typeKey = (project.type ?? '')|lower %}
+                {% set typeIcon = typeKey == 'evento' ? 'bi-calendar-event' : 'bi-camera-reels' %}
+                {% set typeLabel = ('backend.project.type.' ~ typeKey)|trans %}
+
+                <span
+                    class="badge bg-secondary ms-1"
+                    data-bs-toggle="popover"
+                    data-bs-trigger="hover"
+                    data-bs-html="true"
+                    data-bs-content="{{ 'backend.plan.badges.type_popover'|trans({'%type%': typeLabel})|e('html_attr') }}">
+                    <i class="bi {{ typeIcon }}"></i> {{ typeLabel }}
+                </span>
+            </div>
+
+
+            <button type="button" class="btn btn-outline-secondary mb-4" data-bs-toggle="modal" data-bs-target="#reportModal">
+                <i class="bi bi-file-earmark-pdf me-2"></i> {{ 'backend.emission.index.reports_btn'|trans }}
+            </button>
+
+            {% if categoriesVM is empty %}
+                <div class="alert alert-info">{{ 'backend.emission.index.no_categories'|trans }}</div>
+            {% else %}
+                <ul class="nav nav-tabs mb-3" id="categoryTabs" role="tablist">
+                    {% for cat in categoriesVM %}
+                        {% set isActive = (selectedCategoryId and cat.id == selectedCategoryId) or (not selectedCategoryId and loop.first) %}
+                        <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link {{ isActive ? 'active' : '' }}"
+                            id="tab-{{ loop.index }}"
+                            data-bs-toggle="tab"
+                            data-bs-target="#cat-{{ loop.index }}"
+                            data-category-id="{{ cat.id }}"
+                            type="button"
+                            role="tab">
+                            {{ cat.name }} <span class="badge bg-secondary">{{ cat.records|length }}</span>
+                        </button>
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="tab-content">
+                    {% for cat in categoriesVM %}
+                        {% set isActive = (selectedCategoryId and cat.id == selectedCategoryId) or (not selectedCategoryId and loop.first) %}
+                        <div class="tab-pane fade {{ isActive ? 'show active' : '' }}" id="cat-{{ loop.index }}" role="tabpanel">
+                            <div class="d-flex justify-content-end mb-3">
+                                <a href="{{
+                                    cat.id == energyId
+                                    ? path('backend_emission_new_energy')
+                                    : (cat.id in [transportId, tripsId]
+                                        ? path('backend_emission_new_transport', {'category': cat.id})
+                                        : path('backend_emission_new', {'category': cat.id}))
+                                }}"
+                                class="btn btn-sm btn-success shadow-sm px-4 py-1 d-inline-flex align-items-center gap-1 text-decoration-none">
+                                <i class="bi bi-plus-circle-fill fs-5"></i>
+                                <span class="fw-semibold">{{ 'backend.emission.index.new_record'|trans }}</span>
+                                </a>
+                            </div>
+
+                        {% if cat.records is empty %}
+                            <div class="alert alert-light">{{ 'backend.emission.index.no_records'|trans }}</div>
+                        {% else %}
+                            <div class="table-responsive">
+                                <table class="table table-hover green_table_1 align-middle">
+                                    <thead>
+                                    <tr>
+                                        <th>{{ 'backend.emission.index.th.activity'|trans }}</th>
+                                        <th>{{ 'backend.emission.index.th.phase'|trans }}</th>
+                                        <th>{{ 'backend.emission.index.th.unit'|trans }}</th>
+                                        <th>{{ 'backend.emission.index.th.amount'|trans }}</th>
+                                        <th title="{{ 'backend.emission.index.th.emission_title'|trans }}">{{ 'backend.emission.index.th.emission'|trans }}</th>
+                                        <th>{{ 'backend.emission.index.th.date'|trans }}</th>
+                                        <th>{{ 'backend.emission.index.th.actions'|trans }}</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% set total = 0 %}
+                                    {% for record in cat.records %}
+                                        {% set total = total + record.emission %}
+                                        <tr>
+                                        <td>
+                                            {{ record.activity.name }}
+                                            {% if record.activity.subcategory %}
+                                            <span class="text-muted">
+                                                ({{ ('backend.emission.subcat.' ~ record.activity.subcategory)|trans }})
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ project.getPhaseLabel(record.phase.phase)|trans }}</td>
+                                        <td>{{ record.activity.unit }}</td>
+                                        <td>{{ record.amount }}</td>
+                                        <td>{{ record.emission|number_format(2, ',', '.') }}</td>
+                                        <td>{{ record.registeredAt|date('d/m/Y') }}</td>
+                                        <td>
+                                            <a href="{{
+                                            cat.id == energyId
+                                                ? path('backend_emission_edit_energy', { id: record.id })
+                                                : (cat.id in [transportId, tripsId]
+                                                    ? path('backend_emission_edit_transport', { id: record.id })
+                                                    : path('backend_emission_edit', { id: record.id }))
+                                            }}"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="hover"
+                                            data-bs-placement="right"
+                                            data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                            class="btn">
+                                            <i class="bi bi-pencil"></i>
+                                            </a>
+
+                                            <form
+                                            action="{{ path('backend_emission_delete', { id: record.id }) }}"
+                                            method="post"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="hover"
+                                            data-bs-placement="right"
+                                            data-bs-content="{{ 'backend.common.delete'|trans }}"
+                                            class="d-inline"
+                                            onsubmit="return confirm('{{ 'backend.common.confirm_delete'|trans }}');">
+                                            <input type="hidden" name="categoryId" value="{{ cat.id }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
+                                            <button class="btn"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                    <tfoot class="fw-bold">
+                                    <tr>
+                                        <td colspan="4">{{ 'backend.emission.index.total'|trans }}</td>
+                                        <td>{{ total|number_format(2, ',', '.') }}</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <canvas
+                            data-emission-target="chart"
+                            data-chart-category="{{ cat.name }}"
+                            height="100"
+                            class="mt-4">
+                            </canvas>
+                        {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="reportModalLabel">
+            <i class="bi bi-file-earmark-pdf me-2"></i> {{ 'backend.emission.index.modal.title'|trans }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3 text-center">{{ 'backend.emission.index.modal.subtitle'|trans }}</p>
+        <div class="d-grid gap-2">
+          <a href="{{ path('report_emission_overview_pdf') }}" class="btn btn-outline-dark">
+            <i class="bi bi-diagram-3-fill me-2"></i> {{ 'backend.emission.index.modal.report_overview'|trans }}
+          </a>
+          <a href="{{ path('report_emission_detailed_pdf') }}" class="btn btn-outline-dark">
+            <i class="bi bi-table me-2"></i> {{ 'backend.emission.index.modal.report_detailed'|trans }}
+          </a>
+          <a href="{{ path('report_emission_by_activity_pdf') }}" class="btn btn-outline-dark">
+            <i class="bi bi-list-check me-2"></i> {{ 'backend.emission.index.modal.report_by_activity'|trans }}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

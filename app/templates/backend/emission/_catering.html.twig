@@ -1,0 +1,25 @@
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        {{ form_label(form.registeredAt) }}
+        {{ form_widget(form.registeredAt, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.registeredAt) }}
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6 mb-3">
+        {{ form_label(form.activity) }}
+        {{ form_widget(form.activity, {'attr': {'class': 'form-select'}}) }}
+        {{ form_errors(form.activity) }}
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label" for="{{ form.amount.vars.id }}">
+            {{ form.amount.vars.label }}
+            <span data-emission-target="unit" class="text-muted"></span>
+        </label>
+        {{ form_widget(form.amount, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.amount) }}
+    </div>
+</div>

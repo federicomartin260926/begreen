@@ -1,0 +1,109 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ name|trans }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item">
+    <a class="text-decoration-none" href="{{ path('admin_auxiliary_index') }}">{{ 'backend.aux.index.breadcrumb'|trans }}</a>
+  </li>
+  <li class="breadcrumb-item active">{{ name|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">{{ name|trans }}</h2>
+        <a href="{{ path('admin_auxiliary_new', {type: type}) }}" class="btn btn-success text-decoration-none">
+          <i class="bi bi-plus-lg"></i> {{ 'backend.common.new'|trans }}
+        </a>
+      </div>
+
+      {% if items is empty %}
+        <div class="alert alert-info">{{ 'backend.aux.list.empty'|trans }}</div>
+      {% else %}
+        <div class="table-responsive">
+          <table class="table table-hover green_table_1" data-controller="datatable">
+            <thead>
+              <tr>
+                <th>{{ 'backend.aux.table.name'|trans }}</th>
+
+                {% if type == 'department' %}
+                  <th class="text-center">{{ 'backend.aux.table.project_type'|trans }}</th>
+                {% endif %}
+
+                {% if type == 'position' %}
+                  <th class="text-center">{{ 'backend.aux.table.department'|trans }}</th>
+                {% endif %}
+
+                <th width="200" class="text-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for item in items %}
+                <tr>
+                  <td>{{ item.name }}</td>
+
+                  {% if type == 'department' %}
+                    {% set pt = item.projectType ?? '' %}
+                    <td class="text-center">
+                      {{ pt == 'rodaje' ? 'backend.aux.project_type.filming'|trans
+                        : (pt == 'evento' ? 'backend.aux.project_type.event'|trans
+                        : 'backend.aux.project_type.generic'|trans) }}
+                    </td>
+                  {% endif %}
+
+                  {% if type == 'position' %}
+                    <td class="text-center">
+                      {% if item.department %}
+                        {% set pt = item.department.projectType ?? null %}
+                        {{ item.department.name }}
+                        ({{ pt == 'rodaje' ? 'backend.aux.project_type.filming'|trans
+                          : (pt == 'evento' ? 'backend.aux.project_type.event'|trans
+                          : 'backend.aux.project_type.generic'|trans) }})
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                  {% endif %}
+
+                  <td class="text-center">
+                    <a href="{{ path('admin_auxiliary_edit', {type: type, id: item.id}) }}"
+                       class="btn"
+                       data-bs-toggle="popover" data-bs-trigger="hover"
+                       data-bs-content="{{ 'backend.common.edit'|trans }}">
+                      <i class="bi bi-pencil-square"></i>
+                    </a>
+
+                    <form method="post"
+                          action="{{ path('admin_auxiliary_delete', {type: type, id: item.id}) }}"
+                          class="d-inline"
+                          onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');"
+                          data-bs-toggle="popover" data-bs-trigger="hover"
+                          data-bs-content="{{ 'backend.common.delete'|trans }}">
+                      <input type="hidden" name="_token" value="{{ csrf_token('delete_' ~ item.id) }}">
+                      <button class="btn"><i class="bi bi-trash"></i></button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
+      <hr>
+      <div class="d-flex justify-content-between">
+        <a href="{{ path('admin_auxiliary_index') }}" class="btn btn-outline-secondary text-decoration-none">
+          <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

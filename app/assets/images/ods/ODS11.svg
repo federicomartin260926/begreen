@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <style>
+      .bg{fill:#fd9d24;}
+      .num{fill:#fff;font-family:Inter,Arial,sans-serif;font-weight:800;font-size:64px;dominant-baseline:middle;text-anchor:middle;}
+    </style>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="16" class="bg"/>
+  <text x="64" y="68" class="num">11</text>
+</svg>

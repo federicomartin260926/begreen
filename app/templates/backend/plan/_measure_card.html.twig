@@ -1,0 +1,205 @@
+{# Se espera: measure y planMeasures #}
+<div class="measure-card mb-4 bg_green_1 shadow">
+    {# Aviso de cambio de grupo (categoría/departamento) #}
+    {% if groupChanged == 'si' and prevGroupName and nextGroupName %}
+    {% set isDept = (groupingBy == 'department') %}
+    {% set doneKey = isDept
+        ? 'backend.plan.group.completed.department'
+        : 'backend.plan.group.completed.category' %}
+    {% set nextKey = isDept
+        ? 'backend.plan.group.next.department'
+        : 'backend.plan.group.next.category' %}
+
+    <div
+        class="alert alert-success text-center"
+        data-plan-measures-target="groupAlert"
+        tabindex="-1">
+        {{ doneKey|trans({'%prev%': prevGroupName})|raw }}
+        {{ nextKey|trans({'%next%': nextGroupName})|raw }}
+    </div>
+    {% endif %}
+
+    {% import '_macros/logos.html.twig' as logos %}
+    {% set categoryIcons = {
+        'Alojamientos':'bi-house-door',
+        'Transporte':'bi-truck',
+        'Viajes':'bi-airplane',
+        'Energía':'bi-lightning-charge',
+        'Catering':'bi-cup-straw',
+        'Materiales':'bi-box-seam',
+        'Agua':'bi-droplet',
+        'Residuos':'bi-recycle'
+    } %}
+
+    {# Cat y nombre seguros #}
+    {% set cat = measure.category ?? null %}
+    {% set catName = cat ? cat.name : (nextCategoryName ?? prevCategoryName ?? null) %}
+    {% set catIcon = catName ? (categoryIcons[catName]|default('bi-info-circle')) : 'bi-info-circle' %}
+
+    <div class="d-flex align-items-center mb-2">
+        <span class="badge bg-light border text-dark me-2">
+            <i class="bi {{ catIcon }}"></i>
+            {{ catName ?? '—' }}
+        </span>
+    </div>
+    <h5 class="fw-bold">{{ measure.name }}</h5>
+
+    <div class="measure-details bg-white shadow-sm">
+        <dl class="row mb-0">
+            {% if measure.implementation %}
+                <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.implementation'|trans }}</dt>
+                <dd class="col-md-8 col-lg-10">{{ measure.implementation }}</dd>
+            {% endif %}
+            {% if measure.description %}
+                <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.description'|trans }}</dt>
+                <dd class="col-md-8 col-lg-10">{{ measure.description }}</dd>
+            {% endif %}
+            {% if measure.department %}
+                <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.department'|trans }}</dt>
+                <dd class="col-md-8 col-lg-10">{{ measure.department.name }}</dd>
+            {% endif %}
+            {% if measure.ods %}
+                <dt class="col-md-4 col-lg-2">ODS</dt>
+                <dd class="col-md-8 col-lg-10 d-flex align-items-center">
+                    {% if measure.ods.code is defined and measure.ods.code %}
+                        {{ logos.odsLogoFromCode(measure.ods.code, measure.ods.name, 24) }}
+                    {% endif %}
+                    <span>{{ measure.ods.name }}</span>
+                </dd>
+            {% endif %}
+
+            {% if measure.esg %}
+                <dt class="col-md-4 col-lg-2">ESG</dt>
+                <dd class="col-md-8 col-lg-10 d-flex align-items-center">
+                    {{ logos.esgLogo(measure.esg.name|default(''), 24) }}
+                    <span>{{ measure.esg.name }}</span>
+                </dd>
+            {% endif %}
+        </dl>
+    </div>
+
+    {# Busca el PlanMeasure de esta medida #}
+    {% set pm = null %}
+    {% for item in planMeasures %}
+        {% if item.measure.id == measure.id %}
+            {% set pm = item %}
+        {% endif %}
+    {% endfor %}
+
+    {# Helpers de estado #}
+    {% set applicable = pm ? pm.isApplicable : null %}   {# null|true|false #}
+    {% set critical  = pm ? pm.isCritical  : null %}     {# null|true|false #}
+    {% set reason    = pm ? pm.criticalReason : '' %}
+    {% set willImpl  = pm is not null ? pm.willImplement : null %}
+    {% set implDone  = pm ? pm.isImplemented : false %}
+
+    <div class="mt-4">
+
+        {# 1) ¿Aplica? #}
+        <div class="text-center mb-2">{{ 'backend.plan.q.apply'|trans }}</div>
+        <div class="d-flex justify-content-center gap-3 mb-3">
+            {# No aplica #}
+            <button
+                type="button"
+                class="btn {% if applicable is same as(false) %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
+                data-plan-measures-target="actionBtn"
+                data-measure-id="{{ measure.id }}"
+                data-field="isApplicable"
+                data-value="false">
+                {% if applicable is same as(false) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                {{ 'backend.plan.answers.not_applicable'|trans }}
+            </button>
+
+            {# Aplica #}
+            <button
+                type="button"
+                class="btn {% if applicable is same as(true) %}btn-success{% else %}btn-outline-success{% endif %} px-4"
+                data-plan-measures-target="actionBtn"
+                data-measure-id="{{ measure.id }}"
+                data-field="isApplicable"
+                data-value="true">
+                {% if applicable is same as(true) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                {{ 'backend.plan.answers.applicable'|trans }}
+            </button>
+        </div>
+
+        {# 2) ¿Crítica? (solo visible si Aplica == true) #}
+        {% if applicable is same as(true) %}
+            <div class="text-center mb-2">{{ 'backend.plan.q.critical'|trans }}</div>
+            <div class="d-flex justify-content-center gap-3 mb-3">
+                {# No #}
+                <button
+                    type="button"
+                    class="btn {% if critical is same as(false) %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
+                    data-plan-measures-target="actionBtn"
+                    data-measure-id="{{ measure.id }}"
+                    data-field="critical"
+                    data-value="false">
+                    {% if critical is same as(false) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                    {{ 'backend.common.no'|trans }}
+                </button>
+
+                {# Sí #}
+                <button
+                    type="button"
+                    class="btn {% if critical is same as(true) %}btn-success{% else %}btn-outline-success{% endif %} px-4"
+                    data-plan-measures-target="actionBtn"
+                    data-measure-id="{{ measure.id }}"
+                    data-field="critical"
+                    data-value="true">
+                    {% if critical is same as(true) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                    {{ 'backend.common.yes'|trans }}
+                </button>
+            </div>
+
+            {# Motivo (solo visible si Crítica == true) #}
+            {% if critical is same as(true) %}
+                <div class="d-flex justify-content-center mb-3">
+                    <div class="w-100 text-center" style="max-width: 500px;">
+                        <label for="crit-reason-{{ measure.id }}" class="form-label">{{ 'backend.plan.q.critical_reason'|trans }}</label>
+                        <textarea
+                            id="crit-reason-{{ measure.id }}"
+                            rows="3"
+                            class="form-control"
+                            placeholder="{{ 'backend.plan.q.critical_reason_ph'|trans }}"
+                            data-plan-measures-target="criticalReason"
+                            data-measure-id="{{ measure.id }}"
+                        >{{ reason }}</textarea>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+
+        {# 3) ¿Vas a implementar? (solo visible si Aplica == true y Crítica respondida) #}
+        {% if applicable is same as(true) and critical is not null %}
+            <div class="text-center mb-2">{{ 'backend.plan.q.implement'|trans }}</div>
+            <div class="d-flex justify-content-center gap-3 mb-3">
+
+                {# No implementar #}
+                <button
+                    type="button"
+                    class="btn {% if willImpl is same as(false) %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
+                    data-plan-measures-target="actionBtn"
+                    data-measure-id="{{ measure.id }}"
+                    data-field="willImplement"
+                    data-value="false">
+                    {% if willImpl is same as(false) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                    {{ 'backend.plan.answers.not_implement'|trans }}
+                </button>
+
+                {# Implementar #}
+                <button
+                    type="button"
+                    class="btn {% if willImpl is same as(true) %}btn-success{% else %}btn-outline-success{% endif %} px-4"
+                    data-plan-measures-target="actionBtn"
+                    data-measure-id="{{ measure.id }}"
+                    data-field="willImplement"
+                    data-value="true">
+                    {% if willImpl is same as(true) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                    {{ 'backend.plan.answers.implement'|trans }}
+                </button>
+            </div>
+        {% endif %}
+
+    </div>
+</div>

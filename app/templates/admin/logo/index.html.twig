@@ -1,0 +1,89 @@
+{% extends 'base_backend.html.twig' %}
+{% block title %}{{ 'backend.logo.index.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item">
+    <a href="{{ path('admin_cms_index') }}">{{ 'backend.cms.index.breadcrumb'|trans }}</a>
+  </li>
+  <li class="breadcrumb-item active">{{ 'backend.logo.index.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 bg-white p-4 rounded shadow">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h2">{{ 'backend.logo.index.h1'|trans }}</h1>
+        <a href="{{ path('admin_logo_new') }}" class="btn btn-primary">
+          <i class="bi bi-plus-circle"></i> {{ 'backend.common.new'|trans }}
+        </a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover green_table_1" data-controller="datatable">
+          <thead>
+            <tr>
+              <th class="text-center dt-nosort">{{ 'backend.logo.table.order'|trans }}</th>
+              <th>{{ 'backend.logo.table.logo'|trans }}</th>
+              <th>{{ 'backend.logo.table.name'|trans }}</th>
+              <th>URL</th>
+              <th class="text-center">{{ 'backend.logo.table.active'|trans }}</th>
+              <th class="text-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in logos %}
+              <tr>
+                <td class="text-center">{{ l.sortOrder }}</td>
+                <td style="width:140px">
+                  {% if l.imagePath %}
+                    <img src="{{ l.imagePath }}" alt="{{ l.name }}" class="img-fluid" style="max-height:50px">
+                  {% endif %}
+                </td>
+                <td>{{ l.name }}</td>
+                <td class="text-truncate" style="max-width:260px">
+                  {% if l.url %}
+                    <a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.url }}</a>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <span class="badge {{ l.isActive ? 'bg-success' : 'bg-secondary' }}">
+                    {{ l.isActive ? 'backend.common.yes'|trans : 'backend.common.no'|trans }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  <a href="{{ path('admin_logo_edit', {id:l.id}) }}" class="btn" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-content="{{ 'backend.common.edit'|trans }}">
+                    <i class="bi bi-pencil-square"></i>
+                  </a>
+                  <form action="{{ path('admin_logo_delete', {id:l.id}) }}"
+                        method="post"
+                        class="d-inline"
+                        onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}')"
+                        data-bs-toggle="popover"
+                        data-bs-trigger="hover"
+                        data-bs-content="{{ 'backend.common.delete'|trans }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete_logo_'~l.id) }}">
+                    <button class="btn"><i class="bi bi-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted">{{ 'backend.logo.empty'|trans }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <hr>
+      <div class="d-flex justify-content-between">
+        <a href="{{ path('admin_cms_index') }}" class="btn btn-outline-secondary text-decoration-none">
+          <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

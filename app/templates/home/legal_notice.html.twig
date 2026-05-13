@@ -1,0 +1,43 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{'nav.home'|trans}} | Be Green My Friend{% endblock %}
+
+{% block body %}
+    <div class="text-center breadcrumb_container py-5">
+
+      <!-- Contenido del Subheader -->
+      <div class="container">
+            <h1 class="fw-bold text-gray">{{"footer.legal"|trans}}</h1>
+
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb justify-content-center mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ path('home') }}" class="text-decoration-none">{{"home"|trans}}</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                      {{"footer.legal"|trans}}
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+
+
+  <section>
+    <div class="container my-5">
+      {% if app.request.locale == 'es' %}
+        {% include 'home/_legal_notice_es.html.twig' %}
+      {% elseif app.request.locale == 'en' %}
+        {% include 'home/_legal_notice_en.html.twig' %}
+      {% endif %}
+    </div>
+  </section>
+
+
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+{% endblock %}

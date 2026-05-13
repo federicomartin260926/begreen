@@ -1,0 +1,72 @@
+{# templates/admin/measure/pdf.html.twig #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ 'backend.measures.pdf.title'|trans }}</title>
+    <style>
+        @page { size: A4 landscape; margin: 20mm; }
+        body { font-family: Arial, sans-serif; font-size: 11px; }
+        h1 { text-align: center; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+        th, td { border: 1px solid #999; padding: 6px 4px; text-align: left; vertical-align: top; }
+        th { background-color: #f2f2f2; }
+        .protocol-title {
+            font-size: 14px; font-weight: bold; margin: 20px 0 10px; padding: 6px;
+            background-color: #e0e0e0; border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+
+<h1>{{ 'backend.measures.pdf.title'|trans }}</h1>
+
+{% set currentProtocol = null %}
+{% for measure in measures %}
+    {% if measure.protocol and currentProtocol != measure.protocol.name %}
+        {% if not loop.first %}
+            <br><br>
+        {% endif %}
+        <div class="protocol-title">{{ measure.protocol.name }}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>{{ 'backend.measures.table.name'|trans }}</th>
+                    <th>{{ 'backend.measures.table.ghg_category'|trans }}</th>
+                    <th>{{ 'backend.measures.table.category'|trans }}</th>
+                    <th>{{ 'backend.measures.table.department'|trans }}</th>
+                    <th>{{ 'backend.measures.table.implementation'|trans }}</th>
+                    <th>{{ 'backend.measures.table.verification_sources'|trans }}</th>
+                    <th>{{ 'backend.measures.table.ods'|trans }}</th>
+                    <th>{{ 'backend.measures.table.esg'|trans }}</th>
+                    <th>{{ 'backend.measures.table.scope'|trans }}</th>
+                    <th>{{ 'backend.measures.table.score'|trans }}</th>
+                    <th>{{ 'backend.measures.table.mandatory'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+        {% set currentProtocol = measure.protocol.name %}
+    {% endif %}
+
+    <tr>
+        <td>{{ measure.name }}</td>
+        <td>{{ measure.categoryGhg ? measure.categoryGhg.name : '' }}</td>
+        <td>{{ measure.category ? measure.category.name : '' }}</td>
+        <td>{{ measure.department ? measure.department.name : '' }}</td>
+        <td>{{ measure.implementation ? measure.implementation|u.truncate(100, '…') : '' }}</td>
+        <td>{{ measure.verificationSources ? measure.verificationSources|u.truncate(100, '…') : '' }}</td>
+        <td>{{ measure.ods ? measure.ods.name : '' }}</td>
+        <td>{{ measure.esg ? measure.esg.name : '' }}</td>
+        <td>{{ measure.scope ? measure.scope.name : '' }}</td>
+        <td>{{ measure.score is not null ? measure.score : '—' }}</td>
+        <td>{{ measure.mandatory ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</td>
+    </tr>
+
+    {% if loop.last or (measures[loop.index].protocol.name is defined and measures[loop.index].protocol.name != currentProtocol) %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endfor %}
+
+</body>
+</html>

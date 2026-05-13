@@ -1,0 +1,212 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ edit ? 'backend.measures.form.title_edit'|trans : 'backend.measures.form.title_new'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item">
+        <a class="text-decoration-none" href="{{ path('admin_measures_index') }}">{{ 'backend.measures.list.breadcrumb'|trans }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+        {{ edit ? measure.name : 'backend.common.new'|trans }}
+    </li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-12 bg-white p-4 rounded shadow">
+        <h2 class="mb-5">{{ edit ? 'backend.measures.form.h2_edit'|trans : 'backend.measures.form.h2_new'|trans }}</h2>
+
+        {{ form_start(form, {
+            attr: {
+                'data-controller': 'measure-form',
+                'data-measure-form-departments-base-value': path('admin_departments_by_protocol'),
+                'data-measure-form-current-department-value': edit and measure.department ? measure.department.id : ''
+            }
+        }) }}
+            {{ form_errors(form) }}
+            {# ==========================
+               Campos no traducibles
+               ========================== #}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form_label(form.protocol) }}
+                    {{ form_widget(form.protocol, {
+                        attr: {
+                            class: 'form-select',
+                            'data-measure-form-target': 'protocol',
+                            'data-action': 'change->measure-form#onProtocolChange'
+                        }
+                    }) }}
+                    {{ form_errors(form.protocol) }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form_label(form.category) }}
+                    {{ form_widget(form.category, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.category) }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form_label(form.categoryGhg) }}
+                    {{ form_widget(form.categoryGhg, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.categoryGhg) }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form_label(form.department) }}
+                    {{ form_widget(form.department, {
+                        attr: {
+                            class: 'form-select',
+                            'data-measure-form-target': 'department'
+                        }
+                    }) }}
+                    {{ form_errors(form.department) }}
+                </div>
+            </div>
+
+            {# ==========================
+               TABS de traducción (ES / EN)
+               ========================== #}
+            <hr>
+            <div class="mb-4">
+                <ul class="nav nav-tabs" id="i18nTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link bg_tabs_lang active" id="tab-es"
+                                data-bs-toggle="tab" data-bs-target="#pane-es"
+                                type="button" role="tab" aria-controls="pane-es" aria-selected="true">
+                            ES
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link bg_tabs_lang" id="tab-en"
+                                data-bs-toggle="tab" data-bs-target="#pane-en"
+                                type="button" role="tab" aria-controls="pane-en" aria-selected="false">
+                            EN
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content bg_tabs_lang border-start border-end border-bottom p-3 rounded-bottom" id="i18nTabsContent">
+                    {# --- Español (valores base mapeados a la entidad) --- #}
+                    <div class="tab-pane fade show active" id="pane-es" role="tabpanel" aria-labelledby="tab-es" tabindex="0">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                {{ form_label(form.name) }}
+                                {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+                                {{ form_errors(form.name) }}
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                {{ form_label(form.nameReview) }}
+                                {{ form_widget(form.nameReview, {'attr': {'class': 'form-control'}}) }}
+                                {{ form_errors(form.nameReview) }}
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                {{ form_label(form.verificationSources) }}
+                                {{ form_widget(form.verificationSources, {'attr': {'class': 'form-control'}}) }}
+                                {{ form_errors(form.verificationSources) }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form_label(form.description) }}
+                            {{ form_widget(form.description, {'attr': {'class': 'form-control', 'rows': 4}}) }}
+                            {{ form_errors(form.description) }}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form_label(form.implementation) }}
+                            {{ form_widget(form.implementation, {'attr': {'class': 'form-control', 'rows': 4}}) }}
+                            {{ form_errors(form.implementation) }}
+                        </div>
+                    </div>
+
+                    {# --- Inglés (campos unmapped *_en) --- #}
+                    <div class="tab-pane fade" id="pane-en" role="tabpanel" aria-labelledby="tab-en" tabindex="0">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                {{ form_label(form.name_en) }}
+                                {{ form_widget(form.name_en, {'attr': {'class': 'form-control'}}) }}
+                                {{ form_errors(form.name_en) }}
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                {{ form_label(form.nameReview_en) }}
+                                {{ form_widget(form.nameReview_en, {'attr': {'class': 'form-control'}}) }}
+                                {{ form_errors(form.nameReview_en) }}
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                {{ form_label(form.verificationSources_en) }}
+                                {{ form_widget(form.verificationSources_en, {'attr': {'class': 'form-control'}}) }}
+                                {{ form_errors(form.verificationSources_en) }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form_label(form.description_en) }}
+                            {{ form_widget(form.description_en, {'attr': {'class': 'form-control', 'rows': 4}}) }}
+                            {{ form_errors(form.description_en) }}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form_label(form.implementation_en) }}
+                            {{ form_widget(form.implementation_en, {'attr': {'class': 'form-control', 'rows': 4}}) }}
+                            {{ form_errors(form.implementation_en) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.ods) }}
+                    {{ form_widget(form.ods, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.ods) }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.esg) }}
+                    {{ form_widget(form.esg, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.esg) }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.scope) }}
+                    {{ form_widget(form.scope, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.scope) }}
+                </div>
+            </div>
+
+            <hr>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.score) }}
+                    {{ form_widget(form.score, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.score) }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.mandatory) }}
+                    <div class="form-check mt-2">
+                        {{ form_widget(form.mandatory, {'attr': {'class': 'form-check-input'}}) }}
+                    </div>
+                    {{ form_errors(form.mandatory) }}
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="d-flex justify-content-between">
+                <a href="{{ path('admin_measures_index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+                </a>
+                <button class="btn btn-primary">
+                    <i class="bi bi-save"></i> {{ edit ? 'backend.common.update'|trans : 'backend.common.create'|trans }}
+                </button>
+            </div>
+        {{ form_end(form) }}
+        </div>
+    </div>
+</div>
+{% endblock %}

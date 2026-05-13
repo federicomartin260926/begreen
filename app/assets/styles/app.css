@@ -1,0 +1,110 @@
+/* Basic Styles */
+
+html{height:100%}
+body{-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+body.mfn-body-offset-header{transition: 0.3s;}
+/* TwentyTwenty */
+
+*,*::before,*::after{box-sizing:inherit;-webkit-font-smoothing:antialiased}
+
+/* Typography */
+
+h1,h2,h3,h4,h5,h6{margin-bottom:15px}
+h1 a,h2 a,h3 a,h4 a,h5 a,h6 a{font-weight:inherit}
+h1 a:hover,h2 a:hover,h3 a:hover,h4 a:hover,h5 a:hover,h6 a:hover{text-decoration:none}
+p{margin:0 0 15px}
+em,i{font-style:italic}
+b,strong,dt{font-weight:700}
+.big{font-size:110%;line-height:180%}
+.bypostauthor{border-color:#eee}
+.gallery-caption{display:block}
+
+/* Code Hightlighter */
+
+code,pre,q{font-family:Consolas,monospace!important;border:1px solid #e8e8e8;background:#fff;border-radius:3px}
+code,q{padding:2px 4px;white-space:nowrap;margin:0 2px;color:#2991d6}
+pre{padding:21px 15px 20px;margin:15px 0;display:block;line-height:21px!important;background:#fff;background:-moz-linear-gradient(top,#fff 50%,#fafafa 50%);background:-webkit-linear-gradient(top,#fff 50%,#fafafa 50%);background:-o-linear-gradient(top,#fff 50%,#fafafa 50%);background:linear-gradient(top,#fff 50%,#fafafa 50%);background-size:42px 42px;white-space:pre-wrap;white-space:-moz-pre-wrap;white-space:-pre-wrap;white-space:-o-pre-wrap}
+code p,pre p{margin-bottom:0!important}
+
+/* Links */
+
+a, a:visited, a:focus, a:hover{text-decoration:none !important;outline:0}
+a:hover{text-decoration:underline}
+p a, p a:visited{line-height:inherit}
+
+.navbar a:not(.btn-success), header a:not(.btn-success), .nav-link {
+    color: rgba(0, 0, 0, 0.65) !important;
+}
+
+.btn-outline-success.bg-white.custom-hover:hover {
+  color: #198754;
+}
+
+
+.btn-begreen {
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    border-radius: 4px 4px 4px 4px !important;
+    padding: 15px 60px 15px 60px !important;
+}
+
+.text-gray {
+    color: #4C5369;
+}
+
+h1, h2, h3, h4, .text-logo #logo {
+    font-family: "Rubik",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+}
+
+.bg_green_1 {
+    background-color: #3FC38A0D !important;
+}
+
+.bg_green_2 {
+    background-color: #3FC38A1A !important;
+}
+
+.bg_green_3 {
+    background-color: #3FC38A26 !important;
+}
+
+.nav-tabs .bg_tabs_lang.active, .tab-content.bg_tabs_lang {
+    background-color: #3FC38A26 !important;
+    border-bottom-color: #EFEFEF !important;
+}
+
+/* ===== Overrides globales para bootstrap-select (BS5) ===== */
+
+.bootstrap-select > .dropdown-toggle.form-select::after {
+    border: none !important;
+}
+
+/* Texto del placeholder (cuando no hay selección) */
+.bootstrap-select > .dropdown-toggle.bs-placeholder,
+.bootstrap-select > .dropdown-toggle.bs-placeholder:focus,
+.bootstrap-select > .dropdown-toggle.bs-placeholder:hover {
+  /* usa el color de texto “normal” del tema */
+  color: var(--bs-body-color);
+  opacity: .95; /* un pelín más marcado */
+}
+
+/* Fondo del menú */
+.bootstrap-select .dropdown-menu {
+  background-color: var(--bs-body-bg); /* o var(--bs-light) */
+}
+
+/* Ítems */
+.bootstrap-select .dropdown-menu .dropdown-item {
+  color: var(--bs-body-color);
+}
+
+/* Hover/active */
+.bootstrap-select .dropdown-menu .dropdown-item:hover,
+.bootstrap-select .dropdown-menu .dropdown-item:focus {
+  background-color: var(--bs-tertiary-bg); /* o #f1f3f5 */
+  color: var(--bs-body-color);
+}
+
+
+
+

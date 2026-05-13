@@ -1,0 +1,267 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{'nav.home'|trans}} | Be Green My Friend{% endblock %}
+
+{% block body %}
+
+    <section id="philosophy" class="bg-white py-5">
+        <div class="container">
+            <div class="row">
+                <!-- Texto principal -->
+                <div class="col-md-6">
+                    <h1 class="fw-bold text-gray mt-md-5">{{'home.title_1'|trans}}</h1>
+                    <p class="lead mt-4">
+                        {{'home.text_1'|trans}}
+                    </p>
+                    <a href="#contactar" class="btn btn-success btn-begreen mt-3 text-decoration-none">{{ 'menu.contact'|trans }}</a>
+                </div>
+
+                <!-- Imagen decorativa -->
+                <div class="col-md-6 text-center d-none d-md-block">
+                    <img src="{{ asset('build/images/begreenmyfriend.svg') }}" alt="Ilustración sostenibilidad" class="img-fluid">
+                </div>
+            </div>
+
+            <!-- Contadores -->
+            <section class="py-5 bg-white">
+                <div class="container">
+                    <div class="row text-center justify-content-center">
+                    <div class="col-md-4 mb-4">
+                        <div class="d-flex justify-content-center">
+                            <!-- Ícono con fondo circular -->
+                            <div class="bg-success text-white rounded-circle d-flex justify-content-center me-3  align-items-center"
+                                style="width: 64px; height: 64px;">
+                                <i class="bi bi-ticket-perforated fs-4"></i>
+                            </div>
+
+                            <!-- Contador -->
+                            <div class="text-start">
+                                <div class="h2 fw-bold text-success">
+                                    <span class="counter" data-target="{{ home_counters.eventos|default(0) }}">0</span>+
+                                </div>
+                                <p class="mb-0">{{"events"|trans}}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 mb-4">
+                        <div class="d-flex justify-content-center">
+                            <!-- Ícono con fondo circular -->
+                            <div class="bg-success text-white rounded-circle d-flex justify-content-center me-3  align-items-center"
+                                style="width: 64px; height: 64px;">
+                                <i class="bi bi-camera-video fs-4"></i>
+                            </div>
+
+                            <!-- Contador -->
+                            <div class="text-start">
+                                <div class="h2 fw-bold text-success">
+                                    <span class="counter" data-target="{{ home_counters.rodajes|default(0) }}">0</span>+
+                                </div>
+                                <p class="mb-0">{{"filming"|trans}}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 mb-4">
+                        <div class="d-flex justify-content-center">
+                            <!-- Ícono con fondo circular -->
+                            <div class="bg-success text-white rounded-circle d-flex justify-content-center me-3  align-items-center"
+                                style="width: 64px; height: 64px;">
+                                <i class="bi bi-cloud fs-4"></i>
+                            </div>
+
+                            <!-- Contador -->
+                            <div class="text-start">
+                                <div class="h2 fw-bold text-success">
+                                    <span class="counter" data-target="{{ home_counters.compensado|default(0) }}">0</span>+
+                                </div>
+                                <p class="mb-0 d-none d-md-block">CO₂ {{"offset"|trans}}</p>
+                                <p class="mb-0 d-md-none">Servers</p>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <section id="servicios" class="py-5 bg_green_1">
+        <div class="container">
+            <div class="row">
+                <!-- Imagen (oculta en mobile) -->
+                <div class="col-md-5 d-none d-md-block text-center">
+                    <img src="{{ asset('build/images/elaboramos-tu-plan.svg') }}" alt="Elaboramos tu plan" class="img-fluid">
+                </div>
+
+                <!-- Contenido -->
+                <div class="col-md-7">
+                    <span class="text-gray text-uppercase">{{"step"|trans}} 1</span>
+                    <h2 class="my-4 fw-bold text-gray">{{"home.step_1_title"|trans}}</h2>
+                    <p class="mt-3">
+                        {{"home.step_1_text"|trans}}
+                    </p>
+
+                    <ul class="list-unstyled mt-4">
+                        <li class="d-flex align-items-start mb-3">
+                            <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                            <span>{{"home.step_1_text_li_1"|trans}}</span>
+                        </li>
+                        <li class="d-flex align-items-start mb-3">
+                            <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                            <span>{{"home.step_1_text_li_2"|trans}}</span>
+                        </li>
+                        <li class="d-flex align-items-start">
+                            <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                            <span>{{"home.step_1_text_li_3"|trans}}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="servicios-2" class="py-5 bg_green_2">
+        <div class="container">
+        <div class="row">
+            <!-- Texto -->
+            <div class="col-lg-6 order-2 order-lg-1">
+            <span class="text-uppercase text-gray">{{"step"|trans}} 2</span>
+            <h2 class="my-4 fw-bold text-gray">{{"home.step_2_title"|trans}}</h2>
+            <p>{{"home.step_2_text"|trans}}</p>
+            <ul class="list-unstyled mt-4">
+                <li class="mb-3 d-flex">
+                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                <span>{{"home.step_2_text_li_1"|trans}}</span>
+                </li>
+                <li class="mb-3 d-flex">
+                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                <span>{{"home.step_2_text_li_2"|trans}}</span>
+                </li>
+                <li class="mb-3 d-flex">
+                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                <span>{{"home.step_2_text_li_3"|trans}}</span>
+                </li>
+            </ul>
+            </div>
+
+            <!-- Imagen -->
+            <div class="col-lg-6 d-none d-md-block order-1 order-lg-2 text-center mb-4 mb-lg-0">
+            <img src="{{ asset('build/images/medimos-la-huella.svg') }}" alt="Medimos la huella de carbono" class="img-fluid">
+            </div>
+        </div>
+        </div>
+    </section>
+
+    <section id="servicios-3" class="py-5 bg_green_3">
+        <div class="container">
+        <div class="row">
+
+            <!-- Imagen (visible solo en dispositivos grandes) -->
+            <div class="col-lg-6 d-none d-lg-block text-center">
+            <img src="{{ asset('build/images/compensamos.svg') }}" alt="Compensamos" class="img-fluid">
+            </div>
+
+            <!-- Contenido -->
+            <div class="col-lg-6">
+            <span class="text-gray text-uppercase">{{"step"|trans}} 3</span>
+            <h2 class="my-4 fw-bold text-gray">{{"home.step_3_title"|trans}}</h2>
+            <p>{{"home.step_3_text"|trans}}</p>
+            <ul class="list-unstyled">
+                <li class="mb-3 d-flex">
+                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                <span>{{"home.step_3_text_li_1"|trans}}</span>
+                </li>
+                <li class="mb-3 d-flex">
+                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                <span>{{"home.step_3_text_li_2"|trans}}</span>
+                </li>
+                <li class="mb-3 d-flex">
+                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                <span>{{"home.step_3_text_li_3"|trans}}</span>
+                </li>
+            </ul>
+            </div>
+
+        </div>
+        </div>
+    </section>
+
+    <section id="clientes" class="py-5 bg-white">
+        <div class="container">
+            {% set groups = client_logos|batch(logo_chunk, null) %}
+            {% for group in groups %}
+            <div class="logo-marquee mb-4" style="--speed: 35s;">
+                <ul class="logo-track">
+                {% for i in 1..2 %}
+                    {% for l in group %}
+                    {% if l %}
+                        {% set img = l.imagePath %}
+                        {% set name = l.name %}
+                        {% set hasAlt = name is defined and name is not empty and name != '-' %}
+                        <li class="logo-item" {% if hasAlt %}title="{{ name }}"{% endif %}>
+                        {% if l.url %}
+                            <a href="{{ l.url }}" target="_blank" rel="noopener" class="d-inline-block">
+                            <img src="{{ img }}" {% if hasAlt %}alt="{{ name|e }}"{% endif %} loading="lazy">
+                            </a>
+                        {% else %}
+                            <img src="{{ img }}" {% if hasAlt %}alt="{{ name|e }}"{% endif %} loading="lazy">
+                        {% endif %}
+                        </li>
+                    {% endif %}
+                    {% endfor %}
+                {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="contactar" class="py-5 bg-white text-white">
+        <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+            <div class="contact-form-wrapper bg-white text-dark">
+                <h3 class="text-gray elementor-size-default">{{"home.form.title"|trans}}</h3>
+                <br>
+                {{ form_start(form, { action: path('home', { _locale: app.request.locale }) }) }}
+                <div class="mb-3">
+                    {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.name) }}
+                </div>
+                <div class="mb-3">
+                    {{ form_widget(form.company, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.company) }}
+                </div>
+                <div class="mb-3">
+                    {{ form_widget(form.department, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.department) }}
+                </div>
+                <div class="mb-3">
+                    {{ form_widget(form.email, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.email) }}
+                </div>
+                <div class="mb-3">
+                    {{ form_widget(form.phone, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.phone) }}
+                </div>
+                <div class="mb-3">
+                    {{ form_widget(form.message, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.message) }}
+                </div>
+                {{ form_row(form.captcha) }}
+                {{ form_errors(form) }}
+                {{ form_row(form.submit) }}
+                {{ form_end(form) }}
+            </div>
+            </div>
+        </div>
+        </div>
+    </section>
+
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  {{ encore_entry_script_tags('home') }}
+{% endblock %}

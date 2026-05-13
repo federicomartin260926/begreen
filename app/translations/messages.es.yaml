@@ -1,0 +1,1557 @@
+# === NAV / GLOBAL ===
+nav:
+  home: "Inicio"
+  events: "Eventos"
+  filming: "Rodajes"
+  offset: "Compensado"
+  backend: "Backend"
+
+projects:
+  name: "Proyectos"
+
+# === AUTH ===
+auth:
+  please_sign_in: "Por favor, inicia sesión"
+  remember_me: "Recordarme"
+  sign_in: "Iniciar sesión"
+  logged_in_as: "Has iniciado sesión como %user%"
+  logout: "Cerrar sesión"
+  register: "Registro"
+  user_register: "Registro de usuario"
+  password: "Contraseña"
+  send: "Enviar"
+  profile: "Perfil"
+  set_new_password: "Establecer nueva contraseña"
+  submit: "Enviar"
+  new_password: "Nueva contraseña"
+  agree_terms: "Acepto los términos y condiciones"
+
+login:
+  forgot_password: "He olvidado la contraseña"
+  no_account: "¿No tienes cuenta?"
+  register: "Regístrate"
+
+# === FORMS / PROFILE ===
+form:
+  name: "Nombre"
+  surnames: "Apellidos"
+  phone: "Teléfono"
+  name_required: "El nombre es obligatorio."
+  name_min: "El nombre debe tener al menos {{ limit }} caracteres."
+  name_max: "El nombre no puede tener más de {{ limit }} caracteres."
+  surnames_required: "Los apellidos son obligatorios."
+  surnames_min: "Los apellidos deben tener al menos {{ limit }} caracteres."
+  surnames_max: "Los apellidos no pueden tener más de {{ limit }} caracteres."
+  success_message: "Mensaje enviado correctamente."
+  save_profile: "Guardar perfil"
+  change_password: "Cambiar contraseña"
+  new_password: "Nueva contraseña"
+  repeat_password: "Repetir contraseña"
+  passwords_do_not_match: "Las contraseñas no coinciden."
+  profile_updated: "Perfil actualizado correctamente."
+  password_changed_logout: "Contraseña cambiada correctamente. Por seguridad, inicia sesión nuevamente."
+  profile: "Perfil"
+  profile_data: "Datos del perfil"
+  change_password_title: "Cambiar contraseña"
+  password_required: "Por favor, introduce una contraseña."
+  password_min: "La contraseña debe tener al menos {{ limit }} caracteres."
+
+# === RESET PASSWORD ===
+reset_password:
+  title: "¿Olvidaste tu contraseña?"
+  email_label: "Email"
+  email_subject: "Restablece tu contraseña"
+  email_message: >
+    Hola, <br><br>
+    Para restablecer tu contraseña, haz clic en el siguiente enlace:<br>
+    <a href="%resetUrl%">%resetUrl%</a><br><br>
+    Este enlace expirará en 1 hora.
+  request_success: "Si el email está registrado, se ha enviado un enlace de restablecimiento."
+  invalid_token: "El token es inválido o ha expirado."
+  email_not_found: "No se encontró ningún usuario con ese email."
+  password_label: "Nueva contraseña"
+  password_reset_success: "Tu contraseña ha sido restablecida."
+  submit_email: "Enviar enlace"
+  submit_password: "Guardar nueva contraseña"
+
+# === MENU (PUBLIC) ===
+menu:
+  services: "Servicios"
+  customers: "Clientes"
+  contact: "Contactar"
+  backend: "Backend"
+
+# === FOOTER ===
+footer:
+  policy: "Política de privacidad"
+  legal: "Aviso legal"
+  accessibility: "Accesibilidad"
+  text: "Impulsa la sostenibilidad con soluciones personalizadas para un futuro más verde."
+
+# === HOME ===
+home:
+  title_1: "Genera emociones y reduce emisiones"
+  text_1: "Te ayudamos a hacer tus rodajes y eventos más sostenibles, ofreciendo soluciones innovadoras para reducir el impacto ambiental y contribuir a un futuro más responsable."
+
+  step_label: "Paso"
+  step_1_title: "Elaboramos tu plan de sostenibilidad"
+  step_1_text: "Analizamos cada guion o evento en detalle para crear un plan de sostenibilidad personalizado, aplicando las mejores prácticas para minimizar el impacto ambiental y lograr una producción más sostenible."
+  step_1_text_li_1: "Buscamos las mejores soluciones y proveedores para que ahorres tiempo, coste y energía"
+  step_1_text_li_2: "Detectamos los puntos críticos y elaboramos estrategias para implantar soluciones sostenibles"
+  step_1_text_li_3: "Elaboramos un plan de reducción de emisiones sin comprometer plazos, calidad o presupuesto"
+
+  step_2_title: "Medimos la huella de carbono de tu rodaje o evento"
+  step_2_text: "Nuestro Ecomanager se encarga de recolectar datos, gestionar la separación de residuos y concienciar a cada departamento para cumplir todas las medidas del plan de sostenibilidad."
+  step_2_text_li_1: "Visualiza en tiempo real los cálculos de las emisiones por departamento, persona, categoría y alcance"
+  step_2_text_li_2: "Supervisamos el cumplimiento de las medidas aprobadas en el plan de sostenibilidad del proyecto"
+  step_2_text_li_3: "Elaboramos un informe final de sostenibilidad para evaluar el impacto y concienciar al equipo de cara al futuro"
+
+  step_3_title: "Y si no puedes reducir más, compensamos y certificamos"
+  step_3_text: "Cuando hayamos agotado la regla de las 7R: Rediseñar, Reducir, Reutilizar, Reparar, Renovar, Recuperar y Reciclar, ya solo nos queda compensar las emisiones de nuestro proyecto."
+  step_3_text_li_1: "Compensamos las emisiones, para ser carbono neutral, reforestando, comprando créditos de carbono o restaurando ecosistemas"
+  step_3_text_li_2: "Certificamos cualquier proyecto con los principales sellos del mercado"
+  step_3_text_li_3: "Gestionamos por ti una auditoría externa, si lo necesitas"
+
+  form:
+    title: "Tu compromiso con la sostenibilidad comienza aquí"
+
+# === EMAILS ===
+email:
+  text: "Correo electrónico"
+  confirmation:
+    title: "¡Hola! Por favor, confirma tu correo electrónico"
+    intro: "Por favor, confirma tu dirección de correo haciendo clic en el siguiente enlace:"
+    cta: "Confirmar mi correo"
+    expiry_notice: "Este enlace caducará en %expiry%."
+    closing: "¡Saludos!"
+    success: "Tu cuenta ha sido creada. Te hemos enviado un correo de verificación. Por favor, revisa tu bandeja de entrada y confirma tu dirección de correo electrónico para activar tu cuenta."
+
+registration:
+  email_verified_successfully: "Tu dirección de correo ha sido verificada. Ahora puedes iniciar sesión."
+  email:
+    subject: "Por favor, confirma tu dirección de correo electrónico"
+
+# === Backend ===
+
+backend:
+  security:
+    impersonating: "Impersonando a %user%"
+  common:
+    actions: "Acciones"
+    action: "Acción"
+    close: "Cerrar"
+    back: "Volver"
+    cancel: "Cancelar"
+    assign: "Asignar"
+    create: "Crear"
+    update: "Actualizar"
+    edit: "Editar"
+    delete: "Eliminar"
+    save: "Guardar"
+    new: "Nuevo"
+    select: "Seleccione…"
+    manage: "Gestionar"
+    confirm: "¿Estás seguro?"
+    yes: "Sí"
+    no: "No"
+    csrf_invalid: "Token CSRF inválido."
+    select_type: "Seleccione tipo…"
+    network_error: "Error de red"
+    prev: "Anterior"
+    next: "Siguiente"
+    clear_filters: "Limpiar filtros"
+    confirm_delete: "¿Estás seguro de eliminar este registro?"
+    standard: "Estándar"
+    renewable: "Renovable"
+    loading: "Cargando…"
+    no_category: "Sin categoría"
+    no_active_project: "No hay un proyecto activo."
+    no_phase: "Sin fase"
+    no_activity: "Sin actividad"
+    import: "Importar"
+    download: "Descargar"
+    unassigned: "No asignada"
+    ok: "Aceptar"
+    save_changes: "Guardar cambios"
+    impersonate: "Entrar como este usuario"
+    stop_impersonating: "Volver a mi usuario"
+    placeholder: "—"
+  roles:
+    ROLE_SUPER_ADMIN: "Super Administrador"
+    ROLE_ADMIN: "Administrador"
+    ROLE_MANAGER: "Gestor"
+    ROLE_USER: "Editor"
+    ROLE_ALLOWED_TO_SWITCH: "Impersonar usuarios"
+  breadcrumb:
+    home: "Inicio"
+  pagination:
+    previous: "Previo"
+    next: "Siguiente"
+  menu:
+    admin: "Administración"
+    users: "Usuarios"
+    measures: "Medidas"
+    factors: "Factores de emisión"
+    aux_tables: "Tablas auxiliares"
+    cms: "CMS"
+    communication: "Comunicaciones"
+    projects: "Proyectos"
+    sustainability_plan: "Plan de sostenibilidad"
+    emissions: "Emisiones de CO₂"
+    frontend: "Frontend"
+  measures:
+    flash:
+      created: "Medida creada correctamente."
+      updated: "Medida actualizada correctamente."
+      deleted: "Medida eliminada correctamente."
+      imported_ok: "Medidas importadas correctamente."
+      invalid_form: "Formulario no válido o falta el archivo."
+      import_error: "Error al procesar el archivo: %msg%"
+    template:
+      sheet_title: "Medidas"
+      lists_sheet: "Listas"
+      headers:
+        name: "Nombre"
+        description: "Descripción"
+        implementation: "Implementación"
+        protocol: "Protocolo"
+        ghg_category: "Categoría GHG"
+        category: "Categoría"
+        department: "Departamento"
+        verification_sources: "Fuentes de verificación"
+        ods: "ODS"
+        esg: "ESG"
+        scope: "Alcance"
+        score: "Puntuación"
+        mandatory: "Obligatoria"
+        name_en: "Nombre (EN, opcional)"
+        description_en: "Descripción (EN, opcional)"
+        implementation_en: "Implementación (EN, opcional)"
+        verification_sources_en: "Fuentes de verificación (EN, opcional)"
+        name_review: "Nombre (plan completo)"
+        name_review_en: "Name (plan complete)"
+      example:
+        name: "Medida ejemplo"
+        description: "Descripción de la medida"
+        implementation: "Cómo se implementará"
+        verification_sources: "Documentos justificativos"
+      score_error_title: "Valor inválido"
+      score_error_text: "La puntuación debe ser un número entre 0 y 100."
+      filename: "plantilla_medidas.xlsx"
+    list:
+      title: "Listado de medidas"
+      breadcrumb: "Medidas"
+      h2: "Medidas"
+      empty: "No hay medidas registradas."
+    actions:
+      new: "Nueva medida"
+      download_pdf: "Descargar PDF"
+      import_excel: "Cargar desde Excel"
+      download_template_hint: "Descargar plantilla para la carga masiva de medidas"
+    filters:
+      all_protocols: "Todos los protocolos"
+      all_ghg_categories: "Todas las categorías GHG"
+      all_categories: "Todas las categorías"
+      all_departments: "Todos los departamentos"
+      all_ods: "Todos los ODS"
+      all_esg: "Todos los ESG"
+      all_scopes: "Todos los alcances"
+      all_mandatory: "Todas (obligatoria)"
+      only_mandatory: "Solo obligatorias"
+      only_not_mandatory: "Solo no obligatorias"
+      score_min: "Puntuación mínima"
+      score_max: "Puntuación máxima"
+      reset: "Limpiar filtros"
+    table:
+      name: "Nombre"
+      protocol: "Protocolo"
+      ghg_category: "Categoría GHG"
+      category: "Categoría"
+      department: "Departamento"
+      description: "Descripción"
+      implementation: "Implementación"
+      verification_sources: "Fuentes de verificación"
+      ods: "ODS"
+      esg: "ESG"
+      scope: "Alcance"
+      score: "Puntuación"
+      mandatory: "Obligatoria"
+    import:
+      title: "Importar medidas"
+      cta: "Importar"
+      mime_invalid: "Por favor, sube un archivo Excel válido (.xlsx o .xls)."
+      summary: "Importadas: %imported%. Duplicados: %duplicates%. Errores: %errors%. Protocolos inválidos: %invalidProtocols%. GEI inválidas: %invalidGhgs%. Categorías inválidas: %invalidCategories%. Departamentos inválidos: %invalidDepartments%. ODS inválidos: %invalidOds%. ESG inválidos: %invalidEsg%. Alcances inválidos: %invalidScopes%."
+      lang_info_title: "Importación en español con traducciones opcionales al inglés."
+      lang_info_html: >
+        <ul class="mb-0 ps-3">
+          <li><strong>Plantilla y datos base en ES:</strong> Las columnas <em>A–M</em> deben rellenarse en español. Los nombres de <em>Protocolo</em>, <em>Categoría GHG</em>, <em>Categoría</em>, <em>Departamento</em>, <em>ODS</em>, <em>ESG</em> y <em>Alcance</em> deben existir en ES.</li>
+          <li><strong>Campos EN opcionales:</strong> Las columnas <em>N–Q</em> (<em>Nombre EN, Descripción EN, Implementación EN, Fuentes de verificación EN</em>) son opcionales y se guardan como traducciones (<code>en</code>).</li>
+          <li><strong>Puntuación (0–100):</strong> La columna <em>L</em> acepta enteros entre 0 y 100.</li>
+          <li><strong>Obligatoria:</strong> La columna <em>M</em> acepta <em>Sí</em>/<em>No</em> (también se admiten <code>yes/no</code>, <code>true/false</code>, <code>1/0</code>).</li>
+          <li><strong>Duplicados:</strong> Una fila con el mismo <em>Nombre (ES)</em> y <em>Categoría</em> se considera duplicada; se contará como <em>duplicado</em> y también dentro de <em>errores</em>.</li>
+          <li><strong>Descarga de plantilla:</strong> La plantilla siempre se genera en ES para garantizar coherencia.</li>
+        </ul>
+    pdf:
+      title: "Listado de medidas por protocolo"
+    form:
+      name: "Nombre de la medida"
+      description: "Descripción"
+      protocol: "Protocolo"
+      category: "Categoría"
+      department: "Departamento"
+      ods: "ODS"
+      esg: "ESG"
+      scope: "Alcance"
+      category_ghg: "Categoría GHG"
+      implementation: "Implementación"
+      verification_sources: "Fuentes de verificación"
+      verification_sources_ph: "Ej.: facturas, certificados, fotos, etc."
+      mandatory: "Obligatoria"
+      mandatory_help: "Si está marcada, esta medida será obligatoria en los planes."
+      score: "Puntuación"
+      score_help: "Opcional. Valor entre 0 y 100."
+      h2_new: "Nueva medida"
+      h2_edit: "Editar medida"
+      name_review: "Texto en pasado (plan completo)"
+      name_review_ph: "Ej.: Se implementó…, Se sustituyeron…, Se realizaron…"
+      title_edit: "Editar medida"
+      title_new: "Nueva medida"
+  projects:
+    select:
+      title: "Seleccione proyecto"
+      help: "El proyecto seleccionado se mantendrá activo durante la sesión."
+      placeholder: "Selecciona un proyecto"
+    active_project: "Proyecto activo"
+    flash:
+      created: "Proyecto creado correctamente."
+      updated: "Proyecto actualizado correctamente."
+      cloned: "Proyecto clonado correctamente."
+      crew_updated: "Equipo técnico actualizado correctamente."
+      crew_import_no_file: "No se ha seleccionado ningún archivo."
+      crew_import_ok: "Miembros importados correctamente."
+      delete_has_emissions: "No se puede eliminar el proyecto porque tiene emisiones registradas. Por favor, elimina los registros de emisiones antes de continuar."
+      delete_has_measures: "No se puede eliminar el proyecto porque tiene %count% medidas de sostenibilidad asociadas. Por favor, elimina las medidas antes de continuar."
+      deleted: "Proyecto eliminado correctamente."
+      delete_failed: "No se pudo eliminar el proyecto. Asegúrate de eliminar primero los elementos relacionados."
+      no_active: "No hay proyecto activo."
+    crew:
+      title: "Editar equipo técnico"
+      breadcrumb: "Equipo técnico"
+      h2: "Equipo técnico del proyecto «%project%»"
+      import_btn: "Cargar equipo desde Excel"
+      form:
+        name: "Nombre"
+        name_ph: "Nombre del miembro"
+        last_name: "Apellido"
+        last_name_ph: "Apellido del miembro"
+        email: "Email"
+        email_ph: "Correo electrónico"
+        phone: "Teléfono"
+        phone_ph: "Teléfono de contacto"
+        department: "Departamento"
+        position: "Cargo"
+        add_member: "Añadir miembro"
+        remove_member: "Eliminar miembro"
+      import_modal:
+        title: "Importar equipo técnico desde Excel"
+        file_label: "Selecciona el archivo .xlsx"
+        download_template: "Descargar plantilla"
+        submit: "Importar"
+      template:
+        sheet_title: "Equipo Técnico"
+        headers:
+          name: "Nombre"
+          last_name: "Apellido"
+          position: "Cargo"
+          department: "Departamento"
+          email: "Email"
+          phone: "Teléfono"
+        example:
+          name1: "Ana"
+          last_name1: "Pérez"
+          name2: "Luis"
+          last_name2: "García"
+          department: "Departamento"
+          position: "Cargo"
+        info_sheet: "Referencias"
+        info_headers:
+          departments: "Departamentos disponibles"
+          sample_position: "Cargo (según departamento)"
+        filename: "plantilla_equipo_tecnico.xlsx"
+      import:
+        errors:
+          no_file: "Archivo no recibido."
+          read_failed: "No se pudo leer el Excel."
+          bad_format: "El archivo Excel no tiene el formato correcto. Asegúrate de incluir las columnas: Nombre, Apellido, Cargo, Departamento, Email, Teléfono."
+          name_required: "Línea %line%: El nombre es obligatorio."
+          department_not_found: "Línea %line%: Departamento «%dept%» no encontrado para tipo «%type%» (o genérico)."
+          position_not_found: "Línea %line%: Cargo «%pos%» en «%dept%» no encontrado."
+        warnings:
+          position_dept_mismatch: "Línea %line%: El cargo «%pos%» pertenece a «%dept%». Se usará ese departamento."
+      placeholder:
+        position: "Selecciona un cargo"
+    list:
+      title: "Proyectos"
+      breadcrumb: "Proyectos"
+      h2: "Proyectos"
+      empty: "No hay proyectos que coincidan con los filtros."
+    actions:
+      new: "Nuevo proyecto"
+      search: "Buscar"
+      clone: "Clonar proyecto"
+      select: "Seleccionar proyecto"
+    filters:
+      name: "Nombre"
+      country: "País"
+      owner: "Usuario creador"
+      from: "Desde"
+      to: "Hasta"
+      all: "Todos"
+      reset: "Limpiar filtros"
+    table:
+      name: "Nombre"
+      type: "Tipo"
+      country: "País"
+      owner: "Usuario creador"
+      created_at: "Fecha de creación"
+      active: "Activo"
+      actions: "Acciones"
+    pagination: "Paginación"
+    form:
+      title_new: "Nuevo proyecto"
+      title_edit: "Editar proyecto"
+      h2_new: "Nuevo proyecto"
+      h2_edit: "Editar proyecto"
+
+      fs_project: "Datos del proyecto"
+      fs_phases: "Fechas por fase"
+      fs_members: "Miembros del proyecto"
+      fs_crew: "Equipo técnico"
+
+      name: "Nombre del proyecto"
+      name_ph: "Ingresa el nombre del proyecto"
+      type: "Tipo"
+      emission_source: "Fuente de factores de emisión"
+      emission_source_options:
+        miteco: "MITECO"
+        defra: "DEFRA"
+      country: "País"
+
+      phase: "Fase"
+      phase_postprod: "Postproducción / Desmontaje"
+      add_post_phase: "Añadir fase postproducción"
+      remove_phase: "Eliminar fase"
+
+      crew_btn: "Agregar equipo técnico"
+      crew:
+        name: "Nombre"
+        role: "Rol / Departamento"
+        contact: "Contacto"
+        no_crew: "No se ha añadido ningún miembro al equipo técnico."
+
+      error_missing_dates: "Por favor, completa todas las fechas de inicio y fin antes de guardar."
+      log_prototype_missing: "No se encontró el valor del prototipo."
+      log_cannot_insert: "No se pudo insertar la fase: el prototipo no contiene un elemento raíz válido."
+
+      start_date: "Fecha de inicio"
+      end_date: "Fecha de fin"
+
+      subsection_filming: "Campos del rodaje"
+      subsection_event: "Campos del evento"
+      subsection_common: "Campos comunes"
+
+      filming_type:
+        label: "Tipo de rodaje"
+        options:
+          feature: "Largometraje"
+          short: "Cortometraje"
+          tv_series: "TV series"
+          tv_program: "Programa de TV"
+
+      filming_genre:
+        label: "Género / Formato"
+        groups:
+          film_tv: "Género (cine/serie)"
+          tv_prog: "Formato (programa TV)"
+        options:
+          ficcion: "Ficción"
+          documental: "Documental"
+          animacion: "Animación"
+          experimental: "Experimental"
+          informativo: "Informativo"
+          entretenimiento: "Entretenimiento"
+          cultural: "Cultural"
+          educativo: "Educativo"
+          religioso: "Religioso"
+
+      live_tv: "Retransmisión en directo"
+      advert: "Anuncio"
+      corporate_video: "Video corporativo"
+      music_video: "Video clip"
+      online_content: "Contenido online"
+      shooting: "Shooting"
+
+      event_type_primary:
+        label: "Tipo de evento"
+        options:
+          cultural: "Cultural"
+          deportivo: "Deportivo"
+          corporativo: "Corporativo"
+          academico: "Académico"
+          politico: "Político"
+          religioso: "Religioso"
+          solidario: "Solidario"
+          social: "Social"
+
+      event_modality:
+        label: "Modalidad"
+        options:
+          presencial: "Presencial"
+          virtual: "Virtual"
+          hibrido: "Híbrido"
+
+      event_attendees:
+        options:
+          presencial: "Presencial"
+          virtual: "Virtual"
+
+      event_attendees_type:
+        label: "Asistentes"
+        options:
+          presencial: "Presencial"
+          virtual: "Virtual"
+
+      event_attendees_count:
+        label: "Número de asistentes"
+
+      common:
+        medio: "Medio"
+        presupuesto: "Presupuesto"
+        cine: "Cine"
+        fechas: "Fechas"
+        tv: "TV"
+        plataformas_streaming: "Plataformas de streaming"
+        agencia: "Agencia"
+        internet: "Internet"
+        redes_sociales: "Redes sociales"
+        fotografia: "Fotografía"
+        radio: "Radio"
+        episodios: "Episodios"
+        duracion_episodio: "Duración de cada episodio"
+        productora: "Productora"
+
+    phases:
+      activity: "Actividad"
+      pre: "Preproducción / Montaje"
+      post: "Postproducción / Desmontaje"
+      pre_event: "Montaje"
+      pre_filming: "Preproducción"
+      post_event: "Desmontaje"
+      post_filming: "Postproducción"
+    members:
+        user: "Usuario"
+        creator: "Creador"
+  project:
+    phase:
+      setup: "Montaje"
+      event: "Evento"
+      teardown: "Desmontaje"
+      preproduction: "Preproducción"
+      shoot: "Rodaje"
+      postproduction: "Postproducción"
+    type:
+      rodaje: Rodaje
+      evento: Evento
+  plan:
+    title: "Plan de sostenibilidad"
+    breadcrumb: "Plan de sostenibilidad"
+    h2: "Plan de sostenibilidad: <strong>%project%</strong>"
+    status:
+      completo: "completo"
+      incompleto: "incompleto"
+    delete:
+      confirm: "¿Eliminar el plan y volver al inicio?"
+      btn: "Eliminar plan"
+    badges:
+      protocol_popover: "Protocolo del plan: <strong>%protocol%</strong>"
+      type_popover: "Tipo de proyecto: <strong>%type%</strong>"
+      mandatory: "Medida obligatoria"
+      mandatory_popover: "Esta medida es obligatoria: debes marcar Aplica = Sí e Implementar = Sí para continuar."
+    score:
+      total_popover: "<strong>%gained%</strong> es la puntuación ganada del total posible (%max%) con las medidas seleccionadas"
+      current_popover: "<strong>%score%</strong> es la puntuación de la medida actual"
+      current_label: "Valor medida actual"
+    actions:
+      view: "Vista"
+      download: "Descargar"
+      send_to_crew: "Enviar al ET"
+      spinner_pdf: "Generando PDF…"
+    preview_modal:
+      title: "Vista del plan por departamento con filtros aplicados"
+      loading: "Cargando vista ..."
+    et_modal:
+      title: "Enviar plan por email al equipo técnico"
+      no_crew_warning: "No se ha cargado el equipo técnico para este proyecto."
+      add_crew_link: "Agregar equipo técnico"
+      helper: "Selecciona los destinatarios. Puedes marcar por departamento o individualmente."
+      select_department: "Seleccionar todo el departamento"
+      members_title: "Miembros"
+      selected_counter: "Seleccionados:"
+      send_btn: "Enviar emails"
+      warn_no_selection: "Debes seleccionar al menos un miembro del equipo técnico."
+      spinner: "Generando PDF y enviando…"
+    complete:
+      title: "¡Has completado el plan!"
+      help: "Puedes añadir medidas personalizadas que vayas a implementar en el plan."
+      textarea_ph: "Escribe aquí las medidas adicionales…"
+      finalize_btn: "Finalizar plan"
+    measures:
+      no_items: "No hay medidas disponibles."
+      mandatory_warning: "Esta medida es obligatoria. Debes marcar «Aplica» y «Se implementará» para continuar."
+    progress: "Medida %current% de %total%"
+    category:
+      done: "¡Ya has terminado todas las medidas de <strong>%prev%</strong>!"
+      next: "Vamos a continuar con la categoría <strong>%next%</strong>"
+    measure:
+      implementation: "Implementación"
+      description: "Descripción"
+      department: "Departamento"
+      category: "Categoría"
+    q:
+      apply: "¿Esta medida aplica a tu proyecto?"
+      critical: "¿Consideras que es una medida crítica en tu proyecto?"
+      critical_reason: "¿Por qué la consideras crítica?"
+      critical_reason_ph: "Escribe la razón…"
+      implement: "¿Vas a implementar esta medida en tu proyecto?"
+    answers:
+      not_applicable: "No aplica"
+      applicable: "Aplica"
+      not_implement: "No implementar"
+      implement: "Implementar"
+    charts:
+      title_measures: "Medidas"
+      measures: "Medidas"
+      total: "Totales"
+      applicable: "Aplicables"
+      non_applicable: "No aplicables"
+
+      reach_prefix: "Alcance:"
+      out_of_scope: "Fuera de alcance"
+      in_scope: "En alcance"
+      reach: "Alcance"
+      reach_title: "Alcance: %pct%%"
+
+      commitment_prefix: "Compromiso:"
+      not_to_implement: "No implementar"
+      to_implement: "Implementar"
+      commitment: "Compromiso"
+      commitment_title: "Compromiso: %pct%%"
+
+      performance_prefix: "Desempeño:"
+      not_implemented: "No implementadas"
+      implemented: "Implementadas"
+      performance: "Desempeño"
+      performance_title: "Desempeño: %pct%%"
+    labels:
+      no_department: "Sin departamento"
+    flash:
+      select_protocol_required: "Debes seleccionar un protocolo."
+      invalid_protocol: "Protocolo no válido."
+      select_protocol_to_continue: "Selecciona un protocolo para continuar."
+      completed: "Plan completado. ¡Puedes revisar y exportar!"
+      saved_incomplete: "Guardado. Aún quedan medidas por responder."
+      no_plan_for_project: "No hay plan para este proyecto."
+      deleted: "Plan eliminado."
+      delete_failed: "No se pudo eliminar el plan."
+    errors:
+      not_complete: "El plan aún no está completo. Termina de responder las medidas."
+      not_found: "El plan de sostenibilidad no existe"
+    email:
+      select_member: "Debes seleccionar al menos un miembro del equipo técnico."
+      members_not_found: "No se encontraron miembros seleccionados."
+      subject: "Plan de sostenibilidad – %project%"
+      plain: "Adjuntamos el plan de sostenibilidad con los filtros seleccionados."
+      sent_ok: "Emails enviados correctamente."
+      sent_fail: "No se pudieron enviar algunos emails."
+      greeting: "Hola %name%,"
+      intro: "Adjuntamos el plan de sostenibilidad del proyecto «%project%» con los filtros seleccionados."
+      closing: "Gracias y un saludo."
+      attachment_basename: "plan_sostenibilidad_%project_slug%_%date%"
+    filters:
+      protocol: "Protocolo"
+      category: "Categoría"
+      department: "Departamento"
+      ods: "ODS"
+      esg: "ESG"
+      only_applicable: "Solo aplicables"
+      only_to_implement: "Solo «Se implementará»"
+      only_pending: "Solo pendientes"
+      only_implemented: "Solo implementadas"
+      only_critical: "Solo críticas"
+      reset: "Limpiar filtros"
+      category_all: "Todas las categorías"
+      department_all: "Todos los departamentos"
+      ods_all: "Todos los ODS"
+    welcome:
+      title: "Plan de sostenibilidad"
+      breadcrumb: "Plan de sostenibilidad"
+      img_alt: "Bienvenida"
+      h1: "¡Te damos la bienvenida!"
+      h2: "Realiza ya tu plan de sostenibilidad"
+      intro: "Para empezar, selecciona el protocolo que aplicarás a tu proyecto."
+      start_btn: "Comenzar"
+      select_title: "Selecciona uno de los siguientes protocolos aplicables a tu proyecto:"
+      select_placeholder: "Selecciona protocolo"
+      helper_text: "Necesitamos algo más de información sobre tu proyecto, dinos qué medidas aplican o no y consigue ya tu plan."
+      continue: "Continuar"
+    done:
+      title: "Plan finalizado"
+      h1: "¡Enhorabuena! 🎉"
+      lead: "Ya tienes tu plan de sostenibilidad para el proyecto <strong>%project%</strong>."
+      view_btn: "Ver ahora"
+    review:
+      title: "Plan de sostenibilidad"
+      breadcrumb: "Plan de sostenibilidad"
+      open_project_title: "Abrir proyecto en una nueva pestaña"
+      badges:
+        status_popover: "Estado del plan: <strong>%status%</strong>"
+      plan_status: "Plan %status%"
+      # Botones de la barra de acciones
+      actions:
+        preview_title: "Vista del plan por departamento con filtros aplicados"
+        preview: "Vista"
+        download: "Descargar"
+        send_to_crew: "Enviar al ET"
+      # Título “Acciones” para bloques dentro del listado (evita colisión con el mapa anterior)
+      actions_title: "Acciones"
+      generating_pdf: "Generando PDF…"
+      preview_modal:
+        title: "Vista del plan por departamento con filtros aplicados"
+        loading: "Cargando vista ..."
+      et_modal:
+        title: "Enviar plan por email al equipo técnico"
+        no_crew: "No se ha cargado el equipo técnico para este proyecto."
+        add_crew: "Agregar equipo técnico"
+        helper: "Selecciona los destinatarios. Puedes marcar por departamento o individualmente."
+        select_department: "Seleccionar todo el departamento"
+        members: "Miembros"
+        no_name: "Sin nombre"
+        selected: "Seleccionados:"
+        send_emails: "Enviar emails"
+        processing_aria: "Procesando"
+        processing: "Generando PDF y enviando…"
+      evidence_modal:
+        title: "Error al cargar evidencias"
+      th:
+        measure: "Medida"
+      score_badge_title: "Puntaje de esta medida"
+      edit_in_admin: "Editar medida en administración"
+      verification_sources: "Fuente de verificación"
+      state_in_plan: "Estado en el plan"
+      state_edit_help: "Edita aquí el estado de la medida en el plan"
+      critical_short: "Crítica"
+      critical_q: "¿Crítica?"
+      critical_reason_label: "Motivo (crítica)"
+      # Bloques y campos dentro del acordeón
+      flags:
+        implemented: "Medida implementada"
+        implemented_hint: "Primero marca “Implementar”."
+        verified: "Verificación realizada"
+      action_taken: "Acción realizada"
+      action_taken_ph: "Describe la acción realizada…"
+      evidences: "Evidencias"
+      evidences_hint: "Puedes seleccionar varios archivos a la vez."
+      delete_file: "Eliminar archivo %file%"
+      no_evidences: "No hay evidencias adjuntas."
+      observation: "Observación"
+      observation_ph: "Añade observaciones…"
+      actions_hint: "Completa «Estado en el plan» con la opción «Implementar: Sí» para ver las acciones disponibles."
+      stimulus:
+        loading_preview: "Cargando vista previa..."
+        preview_error: "Error al cargar la vista previa"
+        pdf_error_http: "Error {code} generando el PDF"
+        pdf_error_generic: "No se pudo generar el PDF. Inténtalo de nuevo."
+        pdf_default_filename: "plan_sostenibilidad.pdf"
+        implemented_require_will_html: "Primero debes marcar <strong>“Implementar”</strong> para poder marcar como implementada."
+        implemented_yes: "Implementado: Sí"
+        implemented_no: "Implementado: No"
+        save_error_generic: "No se pudo guardar"
+        network_error: "Error de red"
+        modal:
+            error_title: "Error"
+            notice_title: "Aviso"
+            missing_title: "Faltan datos"
+            default_title: "Mensaje"
+        save_missing_fields_html: "Debes seleccionar <strong>“Crítica”</strong> e <strong>“Implementar”</strong> cuando la medida aplica."
+        upload_invalid_response: "Respuesta inválida del servidor al subir evidencias."
+        upload_failed_http: "Fallo subiendo evidencias (HTTP {code})"
+        evidence_upload_failed: "No se pudieron subir las evidencias"
+        evidence_delete_confirm: "¿Eliminar esta evidencia?"
+        evidence_delete_error: "Error eliminando evidencia"
+        evidence_delete_failed: "No se pudo eliminar la evidencia"
+        evidence_max_files: "Máximo permitido: {max} archivos."
+        evidence_selected_files: "Has seleccionado {n}."
+        evidence_max_size: "Cada archivo debe pesar como máximo {mb} MB."
+        evidence_oversized_list_intro: "Los siguientes exceden el límite:"
+      flag_implemented: "Implementado"
+      flag_verified: "Verificado"
+    preview:
+      title: "Plan de sostenibilidad: %project%"
+      status: "Estado del plan: <strong>%status%</strong>"
+      filters_applied: "Filtros aplicados:"
+      date: "Fecha:"
+      user: "Usuario:"
+      empty: "Aún no se han cargado medidas para este plan."
+      summary_by_department: "Resumen por departamento"
+      yes: "Sí"
+      no: "No"
+      th:
+        department: "Departamento"
+        total_measures: "Total de medidas"
+        applicable: "Aplicables"
+        to_implement: "Implementar"
+        critical_yes: "Críticas (Sí)"
+        implemented: "Implementadas"
+        measure: "Medida"
+        applicable_q: "¿Aplicable?"
+        implement_q: "¿Implementar?"
+        implemented_q: "¿Implementada?"
+        critical: "Crítica"
+        ods: "ODS"
+        esg: "ESG"
+        scope: "Alcance"
+    pdf:
+      title: "Plan de sostenibilidad - %project%"
+      h2: "Plan de sostenibilidad: %project%"
+      status: "Estado del plan: <strong>%status%</strong>"
+      date: "Fecha:"
+      user: "Usuario:"
+      filters_applied: "Filtros aplicados:"
+      summary_by_department: "Resumen por departamento"
+      empty: "Aún no se han cargado medidas para este plan."
+      charts:
+        title: "Gráficos del plan"
+      th:
+        department: "Departamento"
+        total_measures: "Total de medidas"
+        applicable: "Aplicables"
+        to_implement: "Implementar"
+        critical_yes: "Críticas (Sí)"
+        implemented: "Implementadas"
+        measure: "Medida"
+        applicable_q: "¿Aplicable?"
+        implement_q: "¿Implementar?"
+        implemented_q: "¿Implementada?"
+        critical_reason: "Crítica / Motivo"
+        ods: "ODS"
+        esg: "ESG"
+        scope: "Alcance"
+      score:
+        title: "Puntuación alcanzada:"
+        value: "%gained% de %max% (%pct%)"
+        na: "No disponible"
+    group:
+      completed:
+        category: "¡Ya has terminado todas las medidas de <strong>%prev%</strong>!"
+        department: "¡Ya has terminado todas las medidas del departamento <strong>%prev%</strong>!"
+      next:
+        category: "Vamos a continuar con la categoría <strong>%next%</strong>"
+        department: "Vamos a continuar con el departamento <strong>%next%</strong>"
+  emission:
+    phase:
+      preproduccion: "Preproducción"
+      rodaje: "Rodaje"
+      postproduccion: "Postproducción"
+      montaje: "Montaje"
+      evento: "Evento"
+      desmontaje: "Desmontaje"
+    chart:
+      title:
+        by_activity: "Emisiones por actividad — {category}"
+        by_phase: "Emisiones totales por fase"
+      legend:
+        by_activity: "Emisiones por actividad (kg CO₂e)"
+        by_phase: "Emisiones totales por fase (kg CO₂e)"
+      axis:
+        kgco2e: "kg CO₂e"
+      unit:
+        kgco2e: "kg CO₂e"
+    flash:
+      created: "Registro de emisión creado correctamente."
+      updated: "Registro de emisión actualizado correctamente."
+      deleted: "Registro de emisión eliminado correctamente."
+    errors:
+      no_active_project: "No hay un proyecto activo."
+      category_not_found: "Categoría no encontrada."
+      invalid_project_or_ownership: "No hay un proyecto activo válido o el registro no pertenece a este proyecto."
+      date_out_of_phase: "La fecha %date% no corresponde a ninguna fase del proyecto."
+      activity_required: "Debe seleccionar una actividad válida."
+      activity_not_found: "No se pudo encontrar la actividad correspondiente."
+      csrf_invalid: "Token CSRF inválido."
+      delete_failed: "No se pudo eliminar el registro: %error%"
+      invalid_coordinates: "Coordenadas no válidas."
+      no_route_found: "No se pudo calcular la distancia entre los puntos seleccionados."
+      no_route_hint: "No se ha encontrado una ruta entre los puntos seleccionados. Prueba a seleccionar ubicaciones cercanas a la carretera."
+    landing:
+      title: "Calculadora de emisiones"
+      breadcrumb: "Calculadora CO₂"
+      heading: "Emisiones de CO₂:"
+      reports_btn: "Reportes PDF"
+      select_phase: "Selecciona una fase:"
+      chart_title: "Comparativa de emisiones totales por fase"
+      modal:
+        title: "Reportes de emisiones PDF"
+        subtitle: "Selecciona el tipo de reporte que deseas descargar:"
+        report_overview: "Resumen general por fase y categoría"
+        report_detailed: "Detalle completo de registros"
+        report_by_activity: "Emisiones por actividad"
+    index:
+      title: "Emisiones de CO₂"
+      breadcrumb: "Emisiones de CO₂"
+      heading: "Emisiones de CO₂:"
+      reports_btn: "Reportes PDF"
+      no_categories: "Aún no hay categorías definidas."
+      new_record: "Nuevo registro"
+      no_records: "No hay registros para esta categoría."
+      th:
+        activity: "Actividad"
+        phase: "Fase"
+        unit: "Unidad"
+        amount: "Cantidad"
+        emission_title: "Emisión (kg CO₂e)"
+        emission: "kg CO₂e"
+        date: "Fecha"
+        actions: "Acciones"
+      total: "Total"
+      modal:
+        title: "Reportes de emisiones PDF"
+        subtitle: "Selecciona el tipo de reporte que deseas descargar:"
+        report_overview: "Resumen general por fase y categoría"
+        report_detailed: "Detalle completo de registros"
+        report_by_activity: "Emisiones por actividad"
+    form:
+      title_new: "Nuevo registro de emisión"
+      title_edit: "Editar registro de emisión"
+      breadcrumb:
+        list_title: "Emisiones de CO₂"
+        new: "Nueva emisión"
+        edit: "Editar emisión"
+      heading_new: "Nuevo registro de emisión"
+      heading_edit: "Editar registro de emisión"
+      project_label: "Proyecto"
+      phases_label: "Fases"
+      category_label: "Categoría"
+      date_placeholder: "—"
+      registered_at: "Fecha del registro"
+      activity: "Actividad"
+      activity_placeholder: "Selecciona una actividad"
+      amount: "Cantidad"
+    energy:
+      subcategory: "Subcategoría"
+      electricity_method: "Método de electricidad"
+      method:
+        generador: "Carga de generadores eléctricos"
+        vehiculo: "Carga de vehículos eléctricos"
+        gaffer: "Estimación del Gaffer"
+        estimacion_espacio: "Estimación por características del espacio"
+        factura: "Facturas de electricidad"
+        contador: "Lectura del contador"
+        medidor: "Medidores de enchufe"
+    transport:
+      subcategory: "Modo de transporte"
+    energy_form:
+      title_new: "Nueva emisión"
+      title_edit: "Editar emisión"
+      breadcrumb:
+        list_title: "Emisiones de CO₂"
+        new: "Nueva emisión"
+        edit: "Editar emisión"
+      heading_new: "Nueva emisión"
+      heading_edit: "Editar emisión"
+      project_label: "Proyecto"
+      phases_label: "Fases"
+      category_label: "Categoría"
+      category_energy: "Energía"
+      date_placeholder: "—"
+      amount_label: "Cantidad"
+    energy_tpl:
+      common:
+        space_name: "Nombre del espacio o localización"
+        reading_date: "Fecha de lectura"
+        supplier: "Comercializadora"
+        tariff: "Tarifa"
+        date: "Fecha"
+        tariff_cert_ren: "Con certificado renovable"
+      counter:
+        info: "Acceso a los contadores y lectura del mismo al principio y final de la jornada para contabilizar el consumo del uso de los aparatos eléctricos"
+        initial_kwh: "Lectura inicial (kWh)"
+        final_kwh: "Lectura final (kWh)"
+      meter:
+        meter_or_dept: "Número de medidor / departamento / espacio"
+        consumption_kwh: "Consumo (kWh)"
+      gaffer:
+        info: "En caso de no tener acceso al contador, solicita al jefe de eléctricos (gaffer) una estimación del uso de todos los aparatos eléctricos conectados a la red eléctrica (no al grupo electrógeno)."
+        estimated_kwh: "Consumo estimado (kWh)"
+      space:
+        info: "Utiliza este método si no se dispone de contador ni estimación directa. El consumo se estima según las características del espacio, su superficie y el tipo de uso."
+        space_type: "Tipo de espacio"
+        type:
+          bar_pub_club: "Bar / Pub / Club"
+          hotel_conference: "Hotel / Centro de conferencias"
+          museum_gallery: "Museo / Galería de arte"
+          school_community: "Escuela / Centro comunitario"
+          theatre_concert: "Teatro / Sala de conciertos"
+          university: "Campus universitario"
+          other: "Otros"
+        total_area: "Superficie total del espacio (m²)"
+        used_area: "Superficie utilizada (m²)"
+        hours: "Número de horas de uso"
+        description: "Descripción del espacio"
+        description_ph: "Ej: Iluminación LED, climatización, ordenadores, etc."
+        estimated_kwh: "Estimación de consumo (kWh)"
+      invoice:
+        number: "Número de factura"
+        period: "Periodo de facturación"
+        period_ph: "Ej. Enero 2025"
+        total_kwh: "Consumo total facturado (kWh)"
+        usage_time_pct: "Tiempo de uso (%)"
+        usage_time_pct_ph: "Ej. 50 para indicar 50%"
+        estimated_kwh: "Consumo eléctrico estimado (kWh)"
+      vehicle:
+        name: "Nombre del vehículo alquilado"
+        distance_km: "Distancia pagada (km)"
+        consumption_per_100: "Consumo eléctrico estimado (kWh/100km)"
+        consumption_per_100_ph: "Ej: 18"
+        total_kwh: "Consumo total estimado (kWh)"
+      generator:
+        charging_place: "Nombre del lugar de carga"
+        name: "Nombre del generador"
+        total_kwh: "Consumo eléctrico estimado (kWh)"
+      remote:
+        person_name: "Nombre de la persona"
+        days: "Número de días"
+        devices: "Tipo de dispositivos utilizados"
+        device:
+          pc: "PC"
+          laptop: "Portátil"
+          monitor: "Monitor adicional"
+          tablet: "Tablet"
+          phone: "Móvil"
+          camera: "Cámara"
+        hours: "Número de horas"
+      animation:
+        person_name: "Nombre de la persona"
+        workplace: "Lugar de trabajo"
+        role: "Puesto de trabajo"
+        days_running: "Número de días de funcionamiento"
+        cpu: "Procesador"
+        ram_gb: "Memoria RAM (GB)"
+        gpu: "Tarjeta gráfica"
+        monitors: "Número de monitores"
+        hours: "Número de horas"
+      edit:
+        type: "Tipo de estudio"
+        type_small: "Estudio pequeño"
+        type_medium: "Estudio mediano"
+        type_large: "Estudio grande"
+        hours: "Número de horas"
+      storage:
+        type: "Tipo de almacenamiento"
+        hdd: "Disco duro"
+        lto: "LTO"
+        cloud: "Nube"
+        cloud_provider: "Proveedor de almacenamiento en la nube"
+        other: "Otro"
+        region: "Región del centro de datos"
+        region_ph: "Ej. Europa occidental"
+        archived_gb: "Registro de datos archivados (A) en GB"
+        months: "Duración del almacenamiento (meses)"
+        replication: "Factor de replicación"
+      gas:
+        source: "Origen del dato"
+        source_invoice: "Factura"
+        source_gaffer: "Estimación del gaffer"
+        supply: "Abastecimiento"
+        supply_ph: "Ej. base camp, camera car..."
+        fuel_type: "Tipo de combustible"
+        fuel:
+          gasoline: "Gasolina"
+          diesel: "Diésel"
+          adblue: "AdBlue"
+          hvo: "Biocombustible HVO"
+          biodiesel: "Biodiésel"
+          gtl: "Combustible GTL"
+        total_liters: "Total consumido (litros)"
+      boiler:
+        used_area_lower: "Superficie inferior utilizada (m²)"
+        unit: "Unidad del consumo"
+        consumption: "Consumo"
+      propane:
+        loads_number: "Número de cargas"
+        kg_per_load: "Kg por carga"
+      cylinder:
+        use_period: "Periodo de uso por cada bombona"
+        use_period_ph: "Ej. 3 días / 2 jornadas"
+        kg_per: "Cantidad de gas por bombona (kg)"
+        units_used: "Número de bombonas utilizadas"
+    energy_js:
+      parse_error: "Error al parsear calculationDetails"
+      json_malformed: "JSON mal formado en calculationDetails"
+      no_form: "No hay formulario disponible para esta opción."
+    transport_form:
+      title_new: "Nueva emisión"
+      title_edit: "Editar emisión"
+      breadcrumb:
+        list_title: "Emisiones de CO₂"
+        new: "Nueva emisión"
+        edit: "Editar emisión"
+      heading_new: "Nueva emisión"
+      heading_edit: "Editar emisión"
+      project_label: "Proyecto"
+      phases_label: "Fases"
+      category_label: "Categoría"
+      date_placeholder: "—"
+      activity_label: "Actividad"
+      activity_required: "Debes seleccionar una actividad."
+      amount_label: "Cantidad"
+    transport_tpl:
+      trip_type: "Tipo de viaje"
+      one_way: "Solo ida"
+      round_trip: "Ida y vuelta"
+      calc_type: "Tipo de cálculo"
+      by_distance: "Por distancia"
+      by_locations: "Por ubicaciones"
+      from: "Desde"
+      from_ph: "Desde"
+      to: "Hasta"
+      to_ph: "Hasta"
+      calc_distance: "Calcular distancia"
+      recalc: "Recalcular"
+      distance: "Distancia"
+      distance_ph: "Ej. 45.6"
+      unit: "Unidad"
+      kilometers: "Kilómetros"
+      miles: "Millas"
+      vehicles_count: "Cantidad de vehículos"
+      people_count: "Cantidad de personas"
+      extra_info: "Información adicional"
+    transport_js:
+      activities_load_error: "No se pudieron cargar actividades"
+      must_calc_amount_first: "Debes calcular la cantidad antes de guardar."
+      parse_error: "Error al parsear calculationDetails"
+      json_malformed: "JSON mal formado en calculationDetails"
+      missing_required_fields: "Faltan campos obligatorios."
+      must_pick_from_suggestions: "Debes seleccionar ambas direcciones de la lista de sugerencias."
+      calculating: "Calculando..."
+      same_points_error: "El punto de origen y destino son iguales o demasiado cercanos. Selecciona ubicaciones diferentes."
+      distance_ok: "Distancia calculada:"
+      no_road_nearby: "No se ha encontrado una carretera cerca de la ubicación seleccionada. Elige una dirección próxima a la carretera o entrada principal."
+      generic_calc_error: "No se pudo calcular la distancia. Prueba seleccionando puntos en la carretera o una dirección más precisa."
+      calc_exception: "Error al calcular la distancia. Inténtalo de nuevo."
+    reports:
+      filenames:
+        overview: "resumen_emisiones.pdf"
+        detailed: "detalle_emisiones.pdf"
+        by_activity: "emisiones_por_actividad.pdf"
+      by_activity:
+        title: "Emisiones por actividad"
+        th:
+          activity: "Actividad"
+          category: "Categoría"
+        phase:
+          setup: "Montaje"
+          event: "Evento"
+          teardown: "Desmontaje"
+          preproduction: "Preproducción"
+          shoot: "Rodaje"
+          postproduction: "Postproducción"
+        units:
+          kg_co2e: "kg CO₂e"
+      overview:
+        title: "Resumen de emisiones por fase y categoría"
+        h1: "Resumen de emisiones"
+        phase_heading: "Fase: {phase}"
+        th:
+          category: "Categoría"
+          emissions: "Emisiones (kg CO₂e)"
+        total_phase: "Total fase {phase}"
+      detailed:
+        title: "Detalle completo de emisiones"
+        h1: "Detalle completo de emisiones"
+        project: "Proyecto"
+        type: "Tipo"
+        total_records: "Total de registros"
+        th:
+          phase: "Fase"
+          date: "Fecha"
+          category: "Categoría"
+          activity: "Actividad"
+          amount: "Cantidad"
+          unit: "Unidad"
+          emission: "Emisión (kg CO₂e)"
+          details: "Detalles cálculo"
+    subcat:
+      carretera: Carretera
+      ferroviario: Ferroviario
+      maritimo: Marítimo
+      aereo: Aéreo
+      otros: Otros
+      electricidad: Electricidad
+      remoto: Oficina en remoto
+      animacion: Animación
+      montaje_edicion: Montaje y edición
+      almacenamiento: Almacenamiento digital
+      gas_generador: Generador a gas
+      gas_caldera: Caldera de gas
+      gas_propano: Depósito de propano
+      gas_bombona: Bombona de gas
+  communication:
+    title: "Documentos disponibles"
+    breadcrumb: "Comunicaciones"
+    available_documents: "Documentos disponibles"
+    no_documents: "No hay documentos disponibles en este momento."
+    table:
+      name: "Nombre"
+      description: "Descripción"
+      actions: "Acciones"
+    action:
+      download: "Descargar"
+      preview: "Vista previa"
+    preview_modal:
+      title: "Vista previa del documento PDF"
+  cms:
+    index:
+      title: "CMS · Acciones"
+      breadcrumb: "CMS"
+      h2: "CMS · Acciones disponibles"
+      cards:
+        logos:
+          title: "Logos (carrusel clientes)"
+          desc: "Añade, edita y ordena los logos del carrusel del frontend."
+        logo_settings:
+          title: "Ajustes carrusel de logos"
+          desc: "Define el tamaño del carrusel y si se ordena aleatoriamente."
+        counters:
+          title: "Contadores de la Home"
+          desc: "Edita los valores de Eventos, Rodajes y Compensado."
+    counters:
+      title: "CMS · Contadores Home"
+      breadcrumb: "Contadores"
+      h1: "Contadores de la Home"
+      table:
+        type: "Tipo"
+        value: "Valor"
+      form:
+        type: "Tipo"
+        value: "Valor"
+      type:
+        eventos: "Eventos"
+        rodajes: "Rodajes"
+        compensado: "Compensado"
+      modal:
+        new:
+          title: "Crear/Editar contador"
+          note: "Si el tipo ya existe, se actualizará su valor."
+        edit:
+          title: "Editar contador · %type%"
+          note: "Guardar actualizará el valor del contador «%type%»."
+      flash:
+        invalid_type: "Tipo inválido."
+        saved: "Contador guardado."
+    logo:
+      title: "CMS · Ajustes carrusel de logos"
+      breadcrumb: "Ajustes carrusel"
+      h1: "Ajustes del carrusel de logos"
+      table:
+        param: "Parámetro"
+        value: "Valor"
+      param:
+        chunk: "Cantidad por carrusel"
+        shuffle: "Orden aleatorio"
+      modal:
+        title: "Editar ajustes"
+        note: "Se aplicará en la portada cuando se vuelva a cargar."
+      form:
+        chunk: "Cantidad por carrusel"
+        shuffle: "Orden aleatorio al refrescar"
+      flash:
+        saved: "Ajustes del carrusel guardados."
+  logo:
+    index:
+      title: "Logos"
+      breadcrumb: "Logos"
+      h1: "Gestión de logos"
+    table:
+      order: "Orden"
+      logo: "Logo"
+      name: "Nombre"
+      active: "Activo"
+    empty: "Sin logos aún."
+    form:
+      title_new: "Nuevo logo"
+      title_edit: "Editar logo"
+      h1_new: "Nuevo logo"
+      h1_edit: "Editar logo"
+      name: "Nombre (interno)"
+      url: "Enlace (opcional)"
+      url_help: "Ej.: https://tu-cliente.com"
+      image: "Imagen (PNG/JPG/SVG)"
+      image_help: "Se guardará en /uploads/logos. Tamaño recomendado: alto ≤ 70px."
+      order: "Orden"
+      active: "Activo"
+      preview: "Vista previa"
+      current_path: "Ruta actual:"
+    flash:
+      created: "Logo creado correctamente."
+      updated: "Logo actualizado."
+      deleted: "Logo eliminado."
+  protocol:
+    form:
+      grouping_by: "Agrupar medidas por"
+      grouping:
+        category: "Categoría"
+        department: "Departamento"
+  aux:
+    index:
+      title: "Tablas auxiliares"
+      breadcrumb: "Tablas auxiliares"
+      h2: "Tablas auxiliares"
+    entity:
+      category: "Categorías"
+      protocol: "Protocolos"
+      department: "Departamentos"
+      ods: "ODS"
+      esg: "ESG"
+      scope: "Alcance"
+      category_ghg: "Categoría GHG"
+      position: "Cargos / Puestos"
+    table:
+      name: "Nombre"
+      project_type: "Tipo de proyecto"
+      department: "Departamento"
+    project_type:
+      generic: "Genérico"
+      filming: "Rodaje"
+      event: "Evento"
+      both: "Ambos"
+    list:
+      empty: "No hay registros en esta tabla."
+    form:
+      name: "Nombre"
+      project_type: "Tipo de proyecto"
+      department: "Departamento"
+      no_department: "— Sin departamento —"
+      description: "Descripción"
+      code: "Código"
+    common:
+      back_to_aux: "Volver a Tablas auxiliares"
+    flash:
+      created: "Registro creado correctamente."
+      updated: "Registro actualizado correctamente."
+      deleted: "Registro eliminado correctamente."
+    errors:
+      invalid_type: "Tipo auxiliar no válido."
+      not_found: "Elemento no encontrado."
+      category_locked: "Las Categorías no se pueden eliminar ni modificar."
+      in_use: "No se puede eliminar este registro porque está en uso."
+      delete_failed: "Ocurrió un error al eliminar el registro."
+    common_labels:
+      type: "Tipo"
+  admin:
+    communication:
+      title: "Documentos de Comunicación"
+      breadcrumb: "Comunicación"
+      upload: "Subir nuevo archivo"
+      no_documents: "No hay documentos disponibles en este momento."
+      table:
+        file: "Archivo"
+        description: "Descripción"
+        uploaded_at: "Fecha subida"
+        actions: "Acciones"
+      action:
+        edit: "Editar archivo"
+        download: "Descargar"
+        delete: "Eliminar archivo"
+      confirm_delete: "¿Estás seguro de que quieres eliminar este archivo?"
+      form:
+        title_edit: "Editar archivo - Comunicación"
+        title_new: "Subir archivo - Comunicación"
+        breadcrumb:
+          section: "Comunicación"
+          edit: "Editar archivo"
+          new: "Subir archivo"
+        h2_edit: "Editar archivo de comunicación"
+        h2_new: "Subir archivo de comunicación"
+        current_file: "Archivo actual:"
+        back: "Volver"
+        save: "Guardar"
+        update: "Actualizar"
+        file_label: "Archivo (PDF, DOC, XLS...)"
+        description_label: "Descripción (opcional)"
+        mime_invalid: "Por favor suba un archivo válido (PDF, Word, Excel)."
+      flash:
+        upload_error: "Error al subir el archivo."
+        upload_success: "Archivo subido correctamente."
+        replace_error: "Error al subir el nuevo archivo."
+        update_success: "Archivo actualizado correctamente."
+        delete_success: "Archivo eliminado correctamente."
+        csrf_invalid: "Token CSRF inválido."
+    users:
+      title_new: "Nuevo usuario"
+      title_edit: "Editar usuario"
+      breadcrumb:
+        section: "Usuarios"
+        new: "Nuevo"
+      fieldset:
+        user_data: "Datos de usuario"
+        projects: "Proyectos"
+      form:
+        name: "Nombre"
+        surnames: "Apellidos"
+        email: "Correo electrónico"
+        phone: "Teléfono"
+        roles: "Roles"
+        roles_required: "Debe seleccionar al menos un rol."
+        verified: "Verificado"
+        password: "Contraseña"
+        password_required: "Por favor ingrese una contraseña"
+        password_min: "La contraseña debe tener al menos {{ limit }} caracteres"
+      projects:
+        save_first: "Guarda el usuario para poder asignarle proyectos."
+        none: "Este usuario no pertenece a ningún proyecto."
+        table:
+          project: "Proyecto"
+          creator: "Creador"
+          hint: "Sólo es posible eliminar usuarios no creadores"
+        creator: "Creador"
+        confirm_remove: "¿Quitar pertenencia de este proyecto?"
+        add: "Añadir proyecto"
+        modal:
+          title: "Asignar proyecto (se añadirá como miembro)"
+          project_label: "Proyecto"
+          none_selected: "Selecciona un proyecto"
+          no_available: "No hay proyectos disponibles para asignar."
+      list:
+        title: "Listado de usuarios"
+        h2: "Usuarios"
+        new_user: "Nuevo usuario"
+        empty: "No hay usuarios."
+      flash:
+        created: "Usuario creado correctamente."
+        updated: "Usuario actualizado correctamente."
+        deleted: "Usuario eliminado correctamente."
+        delete_error: "Error al eliminar el usuario."
+        delete_hint: "Elimine la actividad del usuario antes de eliminarlo."
+        project_not_found: "Proyecto no encontrado."
+        already_member: "El usuario ya pertenece a ese proyecto."
+        assigned_ok: "Proyecto asignado correctamente."
+        membership_not_found: "Pertenencia no encontrada."
+        cannot_remove_creator: "No puedes eliminar la pertenencia si el usuario es creador del proyecto."
+        membership_removed: "Pertenencia eliminada."
+        cannot_delete_creator: "No puedes eliminar a este usuario porque es creador de uno o más proyectos."
+    measure:
+        popover:
+            complete:
+                title: "Completa"
+                content: "Todos los campos requeridos están rellenados."
+                aria: "Medida completa"
+            incomplete:
+                title: "Incompleta"
+                content: "Faltan: %missing%"
+                aria: "Medida incompleta"
+    emission:
+      activity:
+        flash:
+          created: "Actividad de emisión creada correctamente."
+          updated: "Actividad de emisión actualizada correctamente."
+          deleted: "Actividad de emisión eliminada correctamente."
+          delete_blocked_has_records: "No se puede eliminar la actividad de emisión <strong>%name%</strong> porque tiene registros asociados."
+        import:
+          form_error: "Error al procesar el formulario de importación."
+          summary: "Importadas: %imported% · Duplicadas: %duplicates% · Errores: %errors% · Categorías inválidas: %invalidCategories% · Categorías GHG inválidas: %invalidGhgs% · Subcategorías inválidas: %invalidSubcats%"
+      template:
+        sheet_title: "Factores de Emisión"
+        filename: "plantilla_factores_emision.xlsx"
+        headers:
+          category: "Categoría"
+          ghg_category: "Categoría GHG"
+          subcategory: "Subcategoría"
+          name: "Nombre"
+          unit: "Unidad"
+          factor: "Factor"
+          source: "Fuente"
+          year: "Año"
+          name_en: "Nombre (EN) – opcional"
+          unit_en: "Unidad (EN) – opcional"
+        examples:
+          category: "Categoría"
+          ghg_category: "Categoría GHG"
+          sample_name: "Vehículo gasolina <1.4L"
+          sample_name_en: "Sample activity"
+      errors:
+        no_category: "No se proporcionó una categoría"
+      index:
+        title: "Factores de Emisión"
+        breadcrumb: "Factores de Emisión"
+        heading: "Factores de Emisión"
+        buttons:
+          new: "Nuevo factor de emisión"
+          download_pdf: "Descargar PDF"
+          import_excel: "Cargar desde Excel"
+        template_popover: "Descargar plantilla para la carga masiva de factores de emisión"
+        empty: "No hay factores de emisión registrados."
+        table:
+          source: "Fuente"
+          activity: "Actividad"
+          unit: "Unidad"
+          factor: "Factor (kg CO₂e)"
+          category: "Categoría"
+          subcategory: "Subcategoría"
+          actions: "Acciones"
+        import:
+          title: "Importar factores de emisión"
+          lang_info_title: "Importación en español con traducción opcional al inglés."
+          lang_info_html: >
+            <ul class="mb-0 ps-3">
+              <li><strong>Plantilla y datos base en ES:</strong> Las columnas <em>A–H</em> deben rellenarse en español. Los valores de <em>Categoría</em> y <em>Categoría GHG</em> deben existir en ES.</li>
+              <li><strong>Subcategoría (columna C):</strong> usa <em>códigos canónicos</em> (p. ej., <code>carretera</code>, <code>aereo</code>, <code>montaje_edicion</code>…).</li>
+              <li><strong>Nombre/Unidad EN opcionales:</strong> Las columnas <em>I</em> (Nombre EN) y <em>J</em> (Unidad EN) son opcionales y se guardan como traducciones.</li>
+              <li><strong>Fuente/Año:</strong> La fuente debe ser <code>MITECO</code> o <code>DEFRA</code>; el año, numérico.</li>
+            </ul>
+        pdf:
+          title: "Exportar PDF filtrado"
+          select_source: "Seleccionar fuente"
+      form:
+        title_new: "Nueva actividad de emisión"
+        title_edit: "Editar actividad de emisión"
+        breadcrumb:
+          list: "Factores de emisión"
+          new: "Nueva"
+          edit: "Editar"
+        heading_new: "Nueva actividad de emisión"
+        heading_edit: "Editar actividad de emisión"
+        subcategory_placeholder: "Seleccionar subcategoría"
+        source_name: "Fuente"
+        source_placeholder: "Seleccionar fuente"
+        source_year: "Año de la fuente"
+        name: "Nombre"
+        unit: "Unidad"
+        emission_factor: "Factor de emisión (kg CO₂e por unidad)"
+        category: "Categoría"
+        subcategory: "Subcategoría"
+        category_ghg: "Categoría GHG"
+        i18n_hint: "Completa los campos en inglés si necesitas mostrar esta actividad en EN."
+      pdf:
+        title: "Factores de Emisión"
+        subtitle: "Fuente: %source% | Año: %year%"
+        th:
+          category: "Categoría"
+          ghg_category: "Categoría GHG"
+          name: "Nombre"
+          unit: "Unidad"
+          factor: "Factor"
+        no_data: "No se encontraron factores de emisión para la fuente y año seleccionados."
+        filename: "factores_emision.pdf"
+      import:
+        file_label: "Archivo Excel"
+        invalid_mime: "Por favor, sube un archivo Excel válido (.xlsx)"
