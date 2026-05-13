@@ -297,13 +297,7 @@ final class BeGreenMyFilmV23Importer
     private function upsertImpactAreas(BeGreenMyFilmV23Report $report, array &$summary): array
     {
         $items = [];
-        foreach ($report->jsonSerialize()['impactAreas'] as $item) {
-            $code = (string) ($item['code'] ?? '');
-            $name = (string) ($item['name'] ?? '');
-            if ($code === '' || $name === '') {
-                continue;
-            }
-
+        foreach (self::IMPACT_AREA_NAME_BY_CODE as $code => $name) {
             $impactArea = $this->em->getRepository(ImpactArea::class)->findOneBy(['code' => $code]);
             $created = false;
             if (!$impactArea) {

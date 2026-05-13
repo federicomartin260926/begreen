@@ -2,6 +2,7 @@
 
 namespace App\Tests\Import;
 
+use App\Entity\ImpactArea;
 use App\Repository\CategoryRepository;
 use App\Repository\DepartmentRepository;
 use App\Repository\MeasureRepository;
@@ -48,6 +49,36 @@ final class BeGreenMyFilmV23ImporterTest extends TestCase
         self::assertSame('apply', $result->getImportSummary()['mode'] ?? null);
         self::assertSame('aborted', $result->getImportSummary()['status'] ?? null);
         self::assertSame('validation-errors', $result->getImportSummary()['reason'] ?? null);
+    }
+
+    public function testApplyCreatesAllHeaderImpactAreasEvenIfUnusedByMeasures(): void
+    {
+        $impactAreaRepository = $this->createMock(\Doctrine\ORM\EntityRepository::class);
+        $impactAreaRepository
+            ->expects(self::exactly(6))
+            ->method('findOneBy')
+            ->willReturn(null);
+
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('beginTransaction');
+        $connection->expects(self::once())->method('commit');
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::exactly(7))->method('persist');
+        $entityManager->expects(self::once())->method('flush');
+        $entityManager->expects(self::once())->method('getConnection')->willReturn($connection);
+        $entityManager->expects(self::exactly(6))
+            ->method('getRepository')
+            ->with(ImpactArea::class)
+            ->willReturn($impactAreaRepository);
+
+        $importer = $this->createImporter($entityManager);
+
+        $report = new BeGreenMyFilmV23Report();
+        $result = $importer->import($report, true);
+
+        self::assertSame(6, $result->getImportSummary()['impactAreas']['resolved'] ?? null);
+        self::assertSame(6, $result->getImportSummary()['impactAreas']['created'] ?? null);
     }
 
     private function createImporter(EntityManagerInterface $entityManager): BeGreenMyFilmV23Importer

@@ -31,6 +31,8 @@ La importación real resuelve:
 
 Además, calcula `importHash` por fila para dejar trazabilidad de cambios y sincronizar relaciones sin duplicados.
 
+Las áreas de impacto se crean desde el encabezado completo de la plantilla, así que `Cambio Uso Suelo` se mantiene como catálogo aunque no aparezca marcado en ninguna medida v23.
+
 ## Validaciones que realiza
 
 - Hoja esperada: `Plan de Sostenibilidad`.
