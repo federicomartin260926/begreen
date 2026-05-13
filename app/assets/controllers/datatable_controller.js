@@ -21,8 +21,6 @@ export default class extends Controller {
       en: enLanguage,
     };
     const languageConfig = Object.assign({}, languageMap[locale] || enLanguage);
-    languageConfig.url = '';
-    languageConfig.sUrl = '';
 
     // ===== 1) Columnas sin orden =====
     const noOrderIdx = [];

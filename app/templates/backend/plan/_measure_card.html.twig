@@ -1,5 +1,5 @@
 {# Se espera: measure y planMeasures #}
-<div class="measure-card mb-4 bg_green_1 shadow">
+<div class="measure-card mb-4 bg_green_1 shadow" id="measure-card">
     {# Aviso de cambio de grupo (categoría/departamento) #}
     {% if groupChanged == 'si' and prevGroupName and nextGroupName %}
     {% set isDept = (groupingBy == 'department') %}

@@ -233,3 +233,21 @@
     </div>
 </div>
 {% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% if app.request.query.has('i') and measure %}
+        <script>
+            window.addEventListener('load', () => {
+                const card = document.getElementById('measure-card');
+                if (!card) {
+                    return;
+                }
+
+                const offset = 88;
+                const top = card.getBoundingClientRect().top + window.scrollY - offset;
+                window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+            });
+        </script>
+    {% endif %}
+{% endblock %}

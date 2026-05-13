@@ -553,7 +553,7 @@ class PlanController extends AbstractController
             ->join('m.protocol', 'p');
         $this->catalogResolver->applyCatalogFilter($baseQb, 'm', 'p', $project);
         if (!$protocol) {
-            $baseQb->where('p.name IN (:protocols)')->setParameter('protocols', $protocols);
+            $baseQb->andWhere('p.name IN (:protocols)')->setParameter('protocols', $protocols);
         } else {
             $baseQb->andWhere('p.name = :protocol')->setParameter('protocol', $protocol);
         }
@@ -702,6 +702,9 @@ class PlanController extends AbstractController
                 'category'          => $category,
                 'department'        => $department,
                 'ods'               => $ods,
+                'impact_area'       => $impactArea,
+                'triple_balance_axis'=> $tripleBalance,
+                'scope'             => $scope,
                 'esg'               => $esg,
                 'is_applicable'     => $isApplicable,
                 'will_implement'    => $willImplement,
@@ -1692,7 +1695,7 @@ class PlanController extends AbstractController
         $qb = $measureRepository->createQueryBuilder('m')->join('m.protocol', 'p');
         $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
 
-        if (!$filters['protocol'])   $qb->where('p.name IN (:protocols)')->setParameter('protocols', $protocols);
+        if (!$filters['protocol'])   $qb->andWhere('p.name IN (:protocols)')->setParameter('protocols', $protocols);
         else                         $qb->andWhere('p.name = :protocol')->setParameter('protocol', $filters['protocol']);
         $measureRepository->applyPlanTaxonomyFilters($qb, $filters);
         if ($filters['is_applicable']) {
