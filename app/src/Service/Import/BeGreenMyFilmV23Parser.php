@@ -89,6 +89,7 @@ final class BeGreenMyFilmV23Parser
             if ($scoreText !== '' && is_numeric($scoreText) && $row <= 254) {
                 $measure = $this->parseMeasureRow($row, $cells, $report);
                 $measure['sortOrder'] = ++$sortOrder;
+                $measure['blockCode'] = $currentSectionCode;
                 $report->registerMeasure($measure, $currentSectionCode);
                 continue;
             }

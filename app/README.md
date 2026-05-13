@@ -174,7 +174,8 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 ## Importación de medidas
 
 - La fase técnica actual se apoya en `PLANTILLA_PS_v23.xlsx`.
-- El flujo de lectura y validación está documentado en [docs/be-green-my-film-v23-import.md](../docs/be-green-my-film-v23-import.md).
+- El flujo de lectura, validación y `--apply` está documentado en [docs/be-green-my-film-v23-import.md](../docs/be-green-my-film-v23-import.md).
+- La importación es idempotente por `protocol + importVersion + sourceRow`, con `importHash` como trazabilidad adicional.
 
 ## Seguridad
 

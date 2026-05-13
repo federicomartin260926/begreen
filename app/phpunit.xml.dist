@@ -21,5 +21,8 @@
         <testsuite name="Smoke">
             <directory>tests/Smoke</directory>
         </testsuite>
+        <testsuite name="Import">
+            <directory>tests/Import</directory>
+        </testsuite>
     </testsuites>
 </phpunit>

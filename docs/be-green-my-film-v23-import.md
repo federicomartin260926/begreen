@@ -7,6 +7,7 @@ Esta documentación describe la fase técnica de preparación para importar `PLA
 - Validar la estructura real de la plantilla v23.
 - Preparar la taxonomía del protocolo Be Green My Film.
 - Ejecutar un `dry-run` sin escribir medidas en base de datos.
+- Ejecutar `--apply` de forma controlada e idempotente cuando se quiera poblar catálogo y medidas.
 
 ## Comando
 
@@ -18,7 +19,17 @@ Opciones:
 
 - `--dry-run`: modo lectura y validación.
 - `--report=/ruta/reporte.json`: guarda el reporte en JSON.
-- `--apply`: reservado para la importación real, no implementada todavía.
+- `--apply`: escribe en base de datos solo si el reporte no contiene errores críticos.
+
+## Idempotencia
+
+La importación real resuelve:
+
+- `Protocol` por `code = be-green-my-film`
+- catálogos por `code`
+- `Measure` por `protocol + importVersion = v23 + sourceRow`
+
+Además, calcula `importHash` por fila para dejar trazabilidad de cambios y sincronizar relaciones sin duplicados.
 
 ## Validaciones que realiza
 
@@ -41,12 +52,19 @@ Opciones:
 ## Avisos conocidos
 
 - La fila 184 no marca departamento y se trata como warning.
-- `Cambio Uso Suelo` aparece en el encabezado pero no se usa en la plantilla v23 actual.
+- `Cambio Uso Suelo` aparece en el encabezado pero no se usa en la plantilla v23 actual; se conserva como catálogo por compatibilidad con la plantilla.
 - `HE` está presente como abreviatura de departamento y queda pendiente de confirmación funcional.
 
 ## Estado de la importación real
 
-La importación real sigue pendiente. En esta fase solo existe el parser de lectura y validación para evitar cargar datos incorrectos en la base.
+La importación real ya está disponible con `--apply`, pero debe usarse solo sobre una base sincronizada con el esquema de la Fase 1A.1.
+
+Compatibilidad legacy:
+
+- se mantienen los campos antiguos de `Measure` porque todavía los consume parte del backend;
+- `department` singular y `ods` singular se rellenan con el primer valor detectado;
+- `verificationSources` se sigue llenando como texto resumido para no romper vistas antiguas;
+- `EsG`, `Scope` y `CategoryGhg` no forman parte de esta fase.
 
 ## Nota histórica
 

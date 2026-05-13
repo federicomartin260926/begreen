@@ -42,6 +42,7 @@ final class BeGreenMyFilmV23Report implements JsonSerializable
     private ?string $sheetName = null;
     private ?string $dimension = null;
     private array $headers = [];
+    private array $importSummary = [];
 
     public function setSheetName(string $sheetName): void
     {
@@ -56,6 +57,11 @@ final class BeGreenMyFilmV23Report implements JsonSerializable
     public function setHeaders(array $headers): void
     {
         $this->headers = $headers;
+    }
+
+    public function setImportSummary(array $summary): void
+    {
+        $this->importSummary = $summary;
     }
 
     public function addWarning(string $code, string $message, array $context = []): void
@@ -91,6 +97,9 @@ final class BeGreenMyFilmV23Report implements JsonSerializable
 
     public function registerMeasure(array $measure, ?string $blockCode = null): void
     {
+        if ($blockCode !== null) {
+            $measure['blockCode'] = $blockCode;
+        }
         $this->measureRows[$measure['row']] = $measure;
         $this->measureCount++;
         $this->totalPoints += (int) $measure['score'];
@@ -234,6 +243,21 @@ final class BeGreenMyFilmV23Report implements JsonSerializable
         return $this->errors;
     }
 
+    public function getMeasureRows(): array
+    {
+        return array_values($this->measureRows);
+    }
+
+    public function getSectionRows(): array
+    {
+        return array_values($this->sectionRows);
+    }
+
+    public function getImportSummary(): array
+    {
+        return $this->importSummary;
+    }
+
     public function jsonSerialize(): array
     {
         return [
@@ -255,6 +279,7 @@ final class BeGreenMyFilmV23Report implements JsonSerializable
             'sectionRows' => array_values($this->sectionRows),
             'warnings' => $this->warnings,
             'errors' => $this->errors,
+            'importSummary' => $this->importSummary,
         ];
     }
 

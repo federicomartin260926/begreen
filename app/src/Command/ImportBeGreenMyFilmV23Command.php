@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Service\Import\BeGreenMyFilmV23Parser;
+use App\Service\Import\BeGreenMyFilmV23Importer;
 use App\Service\Import\BeGreenMyFilmV23Report;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -18,7 +19,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class ImportBeGreenMyFilmV23Command extends Command
 {
-    public function __construct(private readonly BeGreenMyFilmV23Parser $parser)
+    public function __construct(
+        private readonly BeGreenMyFilmV23Parser $parser,
+        private readonly BeGreenMyFilmV23Importer $importer
+    )
     {
         parent::__construct();
     }
@@ -42,12 +46,17 @@ final class ImportBeGreenMyFilmV23Command extends Command
             return Command::FAILURE;
         }
 
+        $report = $this->parser->parseFile($path);
+
         if ($input->getOption('apply')) {
-            $io->error('La importación real todavía no está implementada. Usa el modo dry-run.');
-            return Command::FAILURE;
+            if ($report->hasErrors()) {
+                $this->printReport($io, $report);
+                return Command::FAILURE;
+            }
+
+            $report = $this->importer->import($report, true);
         }
 
-        $report = $this->parser->parseFile($path);
         $this->printReport($io, $report);
 
         $reportPath = $input->getOption('report');
@@ -103,6 +112,29 @@ final class ImportBeGreenMyFilmV23Command extends Command
 
         $io->section('Triple balance');
         $io->writeln($this->renderNamedList($data['tripleBalanceAxes'] ?? []));
+
+        $summary = $data['importSummary'] ?? [];
+        if ($summary !== []) {
+            $io->section('Importación');
+            $io->writeln([
+                sprintf('Modo: %s', $summary['mode'] ?? ''),
+                sprintf('Estado: %s', $summary['status'] ?? ''),
+            ]);
+
+            foreach (['protocol', 'categories', 'blocks', 'departments', 'ods', 'impactAreas', 'tripleBalanceAxes', 'verificationSources', 'measures'] as $key) {
+                if (!isset($summary[$key])) {
+                    continue;
+                }
+
+                $io->writeln(sprintf(
+                    '%s: creados %d, actualizados %d, resueltos %d',
+                    $key,
+                    $summary[$key]['created'] ?? 0,
+                    $summary[$key]['updated'] ?? 0,
+                    $summary[$key]['resolved'] ?? 0
+                ));
+            }
+        }
 
         if ($report->getWarnings() !== []) {
             $io->warning('Warnings');
