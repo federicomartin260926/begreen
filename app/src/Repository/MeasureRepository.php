@@ -2,7 +2,7 @@
 
 namespace App\Repository;
 
-use App\Entity\{Measure, Project, Category, Department, Ods, EsG};
+use App\Entity\{Measure, Project, Category, Department, Ods, EsG, Scope, ImpactArea, TripleBalanceAxis};
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
@@ -141,9 +141,125 @@ class MeasureRepository extends ServiceEntityRepository
         return $q->getResult();
     }
 
+    /** @return Scope[] */
+    public function getScopes(Project $project, ?string $locale = null): array
+    {
+        $qb = $this->getEntityManager()->createQueryBuilder()
+            ->select('DISTINCT s')
+            ->from(Scope::class, 's')
+            ->innerJoin(Measure::class, 'm', 'WITH', 'm.scope = s')
+            ->innerJoin('m.protocol', 'p')
+            ->where('p.name IN (:protocols)')
+            ->setParameter('protocols', $this->getProtocols($project))
+            ->orderBy('s.name', 'ASC');
+        $this->applyCatalogFilter($qb, $project);
+
+        $q = $qb->getQuery();
+        if ($locale) {
+            $q->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
+        }
+        return $q->getResult();
+    }
+
+    /** @return ImpactArea[] */
+    public function getImpactAreas(Project $project, ?string $locale = null): array
+    {
+        $qb = $this->getEntityManager()->createQueryBuilder()
+            ->select('DISTINCT ia')
+            ->from(ImpactArea::class, 'ia')
+            ->innerJoin(Measure::class, 'm', 'WITH', 'ia MEMBER OF m.impactAreas')
+            ->innerJoin('m.protocol', 'p')
+            ->where('p.name IN (:protocols)')
+            ->setParameter('protocols', $this->getProtocols($project))
+            ->orderBy('ia.name', 'ASC');
+        $this->applyCatalogFilter($qb, $project);
+
+        $q = $qb->getQuery();
+        if ($locale) {
+            $q->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
+        }
+        return $q->getResult();
+    }
+
+    /** @return TripleBalanceAxis[] */
+    public function getTripleBalanceAxes(Project $project, ?string $locale = null): array
+    {
+        $qb = $this->getEntityManager()->createQueryBuilder()
+            ->select('DISTINCT tba')
+            ->from(TripleBalanceAxis::class, 'tba')
+            ->innerJoin(Measure::class, 'm', 'WITH', 'tba MEMBER OF m.tripleBalanceAxes')
+            ->innerJoin('m.protocol', 'p')
+            ->where('p.name IN (:protocols)')
+            ->setParameter('protocols', $this->getProtocols($project))
+            ->orderBy('tba.name', 'ASC');
+        $this->applyCatalogFilter($qb, $project);
+
+        $q = $qb->getQuery();
+        if ($locale) {
+            $q->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
+        }
+        return $q->getResult();
+    }
+
     private function applyCatalogFilter(QueryBuilder $qb, Project $project): void
     {
         $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     */
+    public function applyPlanTaxonomyFilters(QueryBuilder $qb, array $filters): void
+    {
+        if (!empty($filters['category'])) {
+            $qb->andWhere('m.category = :category')->setParameter('category', $filters['category']);
+        }
+
+        if (!empty($filters['department'])) {
+            $departmentEntity = $this->getEntityManager()->getRepository(Department::class)->find((int) $filters['department']);
+            if ($departmentEntity) {
+                $qb->andWhere('(m.department = :department OR :department MEMBER OF m.departments)')
+                    ->setParameter('department', $departmentEntity);
+            }
+        }
+
+        if (!empty($filters['ods'])) {
+            $odsEntity = $this->getEntityManager()->getRepository(Ods::class)->find((int) $filters['ods']);
+            if ($odsEntity) {
+                $qb->andWhere('(m.ods = :ods OR :ods MEMBER OF m.odsItems)')
+                    ->setParameter('ods', $odsEntity);
+            }
+        }
+
+        if (!empty($filters['impact_area'])) {
+            $impactAreaEntity = $this->getEntityManager()->getRepository(ImpactArea::class)->find((int) $filters['impact_area']);
+            if ($impactAreaEntity) {
+                $qb->andWhere(':impactArea MEMBER OF m.impactAreas')
+                    ->setParameter('impactArea', $impactAreaEntity);
+            }
+        }
+
+        if (!empty($filters['triple_balance_axis'])) {
+            $axisEntity = $this->getEntityManager()->getRepository(TripleBalanceAxis::class)->find((int) $filters['triple_balance_axis']);
+            if ($axisEntity) {
+                $qb->andWhere(':tripleBalanceAxis MEMBER OF m.tripleBalanceAxes')
+                    ->setParameter('tripleBalanceAxis', $axisEntity);
+            }
+        }
+
+        if (!empty($filters['scope'])) {
+            $scopeEntity = $this->getEntityManager()->getRepository(Scope::class)->find((int) $filters['scope']);
+            if ($scopeEntity) {
+                $qb->andWhere('m.scope = :scope')->setParameter('scope', $scopeEntity);
+            }
+        }
+
+        if (!empty($filters['esg'])) {
+            $esgEntity = $this->getEntityManager()->getRepository(EsG::class)->find((int) $filters['esg']);
+            if ($esgEntity) {
+                $qb->andWhere('m.esg = :esg')->setParameter('esg', $esgEntity);
+            }
+        }
     }
 
     /**

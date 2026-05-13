@@ -1,5 +1,4 @@
 {# ---- LISTADO PLEGABLE ---- #}
-{% import '_macros/logos.html.twig' as logos %}
 {% if measures is not empty %}
     <div class="table-responsive">
         <table class="table align-middle green_table_1 table-hover">
@@ -94,55 +93,16 @@
                                         <div>{{ measure.category.name }}</div>
                                     </div>
                                 {% endif %}
-                                {% set resolvedDepartments = measure.resolvedDepartments %}
-                                {% if resolvedDepartments is not empty %}
-                                    <div class="col-md-3">
-                                        <div class="small text-muted">{{ 'backend.plan.measure.department'|trans }}</div>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% for department in resolvedDepartments %}
-                                                <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
-                                            {% endfor %}
-                                        </div>
+                                <div class="col-12">
+                                    <div class="row g-3">
+                                        {% include 'backend/plan/_measure_taxonomy.html.twig' with {
+                                            measure: measure,
+                                            taxonomyPresenter: taxonomyPresenter,
+                                            dtClass: 'col-md-3 col-lg-2',
+                                            ddClass: 'col-md-9 col-lg-10'
+                                        } %}
                                     </div>
-                                {% endif %}
-                                {% set resolvedOdsItems = measure.resolvedOdsItems %}
-                                {% if resolvedOdsItems is not empty %}
-                                    <div class="col-md-3">
-                                        <div class="small text-muted">ODS</div>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% for ods in resolvedOdsItems %}
-                                                <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1">
-                                                    {% if ods.code is defined and ods.code %}
-                                                        {{ logos.odsLogoFromCode(ods.code, ods.name, 20) }}
-                                                    {% endif %}
-                                                    <span>{{ ods.code is defined and ods.code ? ods.code : ods.name }}</span>
-                                                </span>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                {% endif %}
-                                {% set resolvedImpactAreas = measure.resolvedImpactAreas %}
-                                {% if resolvedImpactAreas is not empty %}
-                                    <div class="col-md-3">
-                                        <div class="small text-muted">Áreas de impacto</div>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% for impactArea in resolvedImpactAreas %}
-                                                <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                {% endif %}
-                                {% set resolvedAxes = measure.resolvedTripleBalanceAxes %}
-                                {% if resolvedAxes is not empty %}
-                                    <div class="col-md-3">
-                                        <div class="small text-muted">Triple balance</div>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% for axis in resolvedAxes %}
-                                                <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                {% endif %}
+                                </div>
 
                                 {% if measure.implementation %}
                                     <div class="col-12">
@@ -511,5 +471,5 @@
         </table>
     </div>
 {% else %}
-    <div class="alert alert-info">{{ 'backend.plan.measures.no_items'|trans }}</div>
+    <div class="alert alert-info">{{ 'backend.plan.review.empty_filters'|trans }}</div>
 {% endif %}

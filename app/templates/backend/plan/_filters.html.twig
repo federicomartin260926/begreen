@@ -54,6 +54,60 @@
                 {% endfor %}
             </select>
         </div>
+        <div class="col-md-3">
+            <select
+                class="selectpicker"
+                name="impact_area"
+                id="filter-impact-area"
+                data-style="form-select border"
+                data-width="100%"
+                data-live-search="true"
+                data-none-selected-text="{{ 'backend.plan.filters.impact_area_all'|trans }}"
+                data-dt-filter="impact_area">
+                <option value="">{{ 'backend.plan.filters.impact_area_all'|trans }}</option>
+                {% for impactArea in impactAreas %}
+                    <option value="{{ impactArea.id }}" {{ filters.impact_area == impactArea.id ? 'selected' : '' }}>
+                        {{ impactArea.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select
+                class="selectpicker"
+                name="triple_balance_axis"
+                id="filter-triple-balance-axis"
+                data-style="form-select border"
+                data-width="100%"
+                data-live-search="true"
+                data-none-selected-text="{{ 'backend.plan.filters.triple_balance_all'|trans }}"
+                data-dt-filter="triple_balance_axis">
+                <option value="">{{ 'backend.plan.filters.triple_balance_all'|trans }}</option>
+                {% for axis in tripleBalanceAxes %}
+                    <option value="{{ axis.id }}" {{ filters.triple_balance_axis == axis.id ? 'selected' : '' }}>
+                        {{ axis.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select
+                class="selectpicker"
+                name="scope"
+                id="filter-scope"
+                data-style="form-select border"
+                data-width="100%"
+                data-live-search="true"
+                data-none-selected-text="{{ 'backend.plan.filters.scope_all'|trans }}"
+                data-dt-filter="scope">
+                <option value="">{{ 'backend.plan.filters.scope_all'|trans }}</option>
+                {% for scope in scopeList %}
+                    <option value="{{ scope.id }}" {{ filters.scope == scope.id ? 'selected' : '' }}>
+                        {{ scope.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
         <div class="col-md-2 text-end">
             <button type="button" id="reset-filters" class="btn btn-outline-secondary w-100">
                 <i class="bi bi-x-circle"></i> {{ 'backend.common.clear_filters'|trans }}

@@ -97,7 +97,7 @@
                 </span>
 
                 <span class="badge ms-1 {% if projectTier == 'pro' %}bg-success{% elseif projectTier == 'standard' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                    {{ 'backend.plan.tier.current'|trans }} {{ projectTier|upper }}
+                    {{ 'backend.plan.tier.current'|trans }} {{ projectTierLabel }}
                 </span>
 
 
@@ -114,11 +114,31 @@
                 {% endif %}
             </div>
 
+            <div class="alert alert-light border small mb-3">
+                <div class="d-flex flex-column gap-1">
+                    <div>{{ projectTierSummary }}</div>
+                    <div>
+                        {% if evidenceLimit is not null %}
+                            {{ 'backend.plan.tier.evidence_used'|trans({'%used%': evidenceCount, '%limit%': evidenceLimit}) }}
+                        {% else %}
+                            {{ 'backend.plan.tier.evidence_unlimited'|trans({'%used%': evidenceCount}) }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
             {% if commercialCards is not empty %}
                 <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
+                    <div class="d-flex flex-column gap-1">
                         <strong>{{ 'backend.plan.features_blocked'|trans }}</strong>
-                        <span class="ms-2">{{ 'backend.plan.features_blocked_help'|trans }}</span>
+                        <span>{{ 'backend.plan.features_blocked_help'|trans }}</span>
+                        <span>
+                            {% if evidenceLimit is not null %}
+                                {{ 'backend.plan.tier.evidence_used'|trans({'%used%': evidenceCount, '%limit%': evidenceLimit}) }}
+                            {% else %}
+                                {{ 'backend.plan.tier.evidence_unlimited'|trans({'%used%': evidenceCount}) }}
+                            {% endif %}
+                        </span>
                     </div>
                     <a href="#" class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">{{ 'backend.plan.upgrade_soon'|trans }}</a>
                 </div>

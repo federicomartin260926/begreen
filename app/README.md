@@ -177,12 +177,14 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 - El flujo de lectura, validación y `--apply` está documentado en [docs/be-green-my-film-v23-import.md](../docs/be-green-my-film-v23-import.md).
 - La importación es idempotente por `protocol + importVersion + sourceRow`, con `importHash` como trazabilidad adicional.
 - En el flujo del plan, `be-green-my-film` consume exclusivamente las 200 medidas v23; las 2 medidas legacy del mismo protocolo quedan excluidas del recorrido canónico.
+- El review/listado del plan ya expone filtros básicos por departamento, ODS, área de impacto, triple balance y alcance, usando taxonomías múltiples cuando existen.
 
 ## Tiers comerciales
 
 - Los tiers internos por proyecto son `basic`, `standard` y `pro`.
 - El detalle de reglas y bloqueo de funcionalidades está en [docs/commercial-tiers.md](../docs/commercial-tiers.md).
 - El pago real todavía no está implementado.
+- La suite PHPUnit ahora incluye `tests/Service` además de `Smoke` e `Import`.
 
 ## Seguridad
 

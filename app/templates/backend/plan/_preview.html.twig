@@ -122,7 +122,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% set departments = pm.measure ? pm.measure.resolvedDepartments : [] %}
+                                {% set departments = pm.measure ? taxonomyPresenter.departments(pm.measure) : [] %}
                                 {% if departments is not empty %}
                                     {% for department in departments %}
                                         <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
@@ -132,11 +132,11 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% set odsItems = pm.measure ? pm.measure.resolvedOdsItems : [] %}
+                                {% set odsItems = pm.measure ? taxonomyPresenter.odsItems(pm.measure) : [] %}
                                 {% if odsItems is not empty %}
                                     {% for ods in odsItems %}
                                         <span class="badge bg-light text-dark border">
-                                            {{ ods.code is defined and ods.code ? ods.code : ods.name }}
+                                            {{ ods.label }}
                                         </span>
                                     {% endfor %}
                                 {% else %}
@@ -144,12 +144,11 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% set sources = pm.measure ? pm.measure.resolvedVerificationSourceLinks : [] %}
+                                {% set sources = pm.measure ? taxonomyPresenter.verificationSourcesWithPriority(pm.measure) : [] %}
                                 {% if sources is not empty %}
                                     <ol class="mb-0 ps-3">
                                         {% for link in sources %}
-                                            {% set source = link.verificationSource %}
-                                            <li>{{ link.priority }}. {{ source ? source.name : '—' }}</li>
+                                            <li>{{ link.priority }}. {{ link.name }}</li>
                                         {% endfor %}
                                     </ol>
                                 {% else %}
@@ -157,7 +156,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% set impactAreas = pm.measure ? pm.measure.resolvedImpactAreas : [] %}
+                                {% set impactAreas = pm.measure ? taxonomyPresenter.impactAreas(pm.measure) : [] %}
                                 {% if impactAreas is not empty %}
                                     {% for impactArea in impactAreas %}
                                         <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
@@ -167,7 +166,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% set axes = pm.measure ? pm.measure.resolvedTripleBalanceAxes : [] %}
+                                {% set axes = pm.measure ? taxonomyPresenter.tripleBalanceAxes(pm.measure) : [] %}
                                 {% if axes is not empty %}
                                     {% for axis in axes %}
                                         <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>

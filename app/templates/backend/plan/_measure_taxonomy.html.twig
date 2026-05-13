@@ -1,0 +1,61 @@
+{% import '_macros/logos.html.twig' as logos %}
+
+{% set departments = taxonomyPresenter.departments(measure) %}
+{% if departments is not empty %}
+    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.measure.department'|trans }}</dt>
+    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
+        {% for department in departments %}
+            <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
+        {% endfor %}
+    </dd>
+{% endif %}
+
+{% set odsItems = taxonomyPresenter.odsItems(measure) %}
+{% if odsItems is not empty %}
+    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">ODS</dt>
+    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
+        {% for ods in odsItems %}
+            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1">
+                {% if ods.code %}
+                    {{ logos.odsLogoFromCode(ods.code, ods.name, 24) }}
+                {% endif %}
+                <span>{{ ods.label }}</span>
+            </span>
+        {% endfor %}
+    </dd>
+{% endif %}
+
+{% set impactAreas = taxonomyPresenter.impactAreas(measure) %}
+{% if impactAreas is not empty %}
+    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">Áreas de impacto</dt>
+    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
+        {% for impactArea in impactAreas %}
+            <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
+        {% endfor %}
+    </dd>
+{% endif %}
+
+{% set axes = taxonomyPresenter.tripleBalanceAxes(measure) %}
+{% if axes is not empty %}
+    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">Triple balance</dt>
+    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
+        {% for axis in axes %}
+            <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>
+        {% endfor %}
+    </dd>
+{% endif %}
+
+{% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
+{% if verificationLinks is not empty %}
+    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
+    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }}">
+        <ol class="mb-0 ps-3">
+            {% for link in verificationLinks %}
+                <li>{{ link.priority }}. {{ link.name }}</li>
+            {% endfor %}
+        </ol>
+    </dd>
+{% elseif measure.verificationSources %}
+    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
+    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }}">{{ measure.verificationSources }}</dd>
+{% endif %}

@@ -39,7 +39,8 @@ final class PlanMeasureCatalogResolverTest extends TestCase
 
         $v23Measure = (new Measure())
             ->setProtocol((new Protocol())->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE))
-            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION);
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
 
         $otherProtocol = (new Protocol())
             ->setCode(null);

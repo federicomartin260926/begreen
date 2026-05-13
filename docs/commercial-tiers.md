@@ -20,6 +20,8 @@ This project uses an internal tier model per `Project` for the sustainability pl
 - `standard`: scores `5`, `4`, `3`, unlimited evidences, watermark disabled.
 - `pro`: all scores `5` to `1`, unlimited evidences, watermark disabled.
 
+The plan review and PDF already consume the v23 catalog with basic support for multiple departments, ODS, impact areas, triple balance axes and prioritized verification sources. The advanced export flows are still placeholders.
+
 ## Blocked features
 
 The UI may show disabled placeholders for features that are not yet implemented:

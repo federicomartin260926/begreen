@@ -2,9 +2,10 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department};
+use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription};
 use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository};
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\MeasureTaxonomyPresenter;
 use App\Service\ProjectFeatureGate;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
@@ -32,7 +33,8 @@ class PlanController extends AbstractController
     public function __construct(
         private TranslatorInterface $t,
         private PlanMeasureCatalogResolver $catalogResolver,
-        private ProjectFeatureGate $featureGate
+        private ProjectFeatureGate $featureGate,
+        private MeasureTaxonomyPresenter $taxonomyPresenter
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -366,13 +368,22 @@ class PlanController extends AbstractController
             }
         }
 
+        $projectTier = $this->featureGate->getTier($project);
+        $evidenceLimit = $this->featureGate->getMaxEvidenceCount($project);
+        $evidenceCount = $this->countProjectEvidenceFiles($plan);
+
         // ===== Render =====
         return $this->render('backend/plan/measures.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
-            'projectTier'      => $this->featureGate->getTier($project),
+            'projectTier'      => $projectTier,
+            'projectTierLabel'  => $this->getProjectTierLabel($projectTier),
+            'projectTierSummary'=> $this->getProjectTierSummary($projectTier),
+            'evidenceCount'    => $evidenceCount,
+            'evidenceLimit'    => $evidenceLimit,
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
+            'taxonomyPresenter'=> $this->taxonomyPresenter,
 
             // navegación y medida actual
             'index'            => $index,
@@ -512,6 +523,9 @@ class PlanController extends AbstractController
         $category         = $request->query->get('category');
         $department       = $request->query->get('department');
         $ods              = $request->query->get('ods');
+        $impactArea       = $request->query->get('impact_area');
+        $tripleBalance    = $request->query->get('triple_balance_axis');
+        $scope            = $request->query->get('scope');
         $esg              = $request->query->get('esg');
         $isApplicable     = $request->query->get('is_applicable');
         $willImplement    = $request->query->get('will_implement');
@@ -570,6 +584,15 @@ class PlanController extends AbstractController
             END AS HIDDEN rank"
         );
         $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
+        $measureRepository->applyPlanTaxonomyFilters($qb, [
+            'category' => $category,
+            'department' => $department,
+            'ods' => $ods,
+            'impact_area' => $impactArea,
+            'triple_balance_axis' => $tripleBalance,
+            'scope' => $scope,
+            'esg' => $esg,
+        ]);
 
         // Orden por ranking y luego por nombre de la medida
         // Nombre para orden secundario: nameReview si existe, si no name
@@ -584,23 +607,6 @@ class PlanController extends AbstractController
         $qb->addOrderBy('rank', 'ASC')
         ->addOrderBy('sortName', 'ASC');
 
-        // Filtros
-        if ($category)        { $qb->andWhere('m.category = :category')->setParameter('category', $category); }
-        if ($department) {
-            $departmentEntity = $em->getRepository(Department::class)->find((int) $department);
-            if ($departmentEntity) {
-                $qb->andWhere('(m.department = :department OR :department MEMBER OF m.departments)')
-                    ->setParameter('department', $departmentEntity);
-            }
-        }
-        if ($ods) {
-            $odsEntity = $em->getRepository(Ods::class)->find((int) $ods);
-            if ($odsEntity) {
-                $qb->andWhere('(m.ods = :ods OR :ods MEMBER OF m.odsItems)')
-                    ->setParameter('ods', $odsEntity);
-            }
-        }
-        if ($esg)             { $qb->andWhere('m.esg = :esg')->setParameter('esg', $esg); }
         if ($isApplicable)    { $qb->andWhere('pm.isApplicable = true'); }
         if ($willImplement)   { $qb->andWhere('pm.willImplement = true'); }
         if ($pendingSelection){ $qb->andWhere('pm.isApplicable IS NULL'); }
@@ -622,6 +628,9 @@ class PlanController extends AbstractController
             'category'          => $category,
             'department'        => $department,
             'ods'               => $ods,
+            'impact_area'       => $impactArea,
+            'triple_balance_axis'=> $tripleBalance,
+            'scope'             => $scope,
             'esg'               => $esg,
             'is_applicable'     => $isApplicable,
             'will_implement'    => $willImplement,
@@ -674,8 +683,13 @@ class PlanController extends AbstractController
             'project'          => $project,
             'plan'             => $plan,
             'projectTier'      => $this->featureGate->getTier($project),
+            'projectTierLabel'  => $this->getProjectTierLabel($this->featureGate->getTier($project)),
+            'projectTierSummary'=> $this->getProjectTierSummary($this->featureGate->getTier($project)),
+            'evidenceCount'    => $this->countProjectEvidenceFiles($plan),
+            'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project),
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
+            'taxonomyPresenter'=> $this->taxonomyPresenter,
             'planMeasures'     => $plan->getPlanMeasures(),
             'measures'         => $measures,
             'currentPage'      => $page,
@@ -698,9 +712,11 @@ class PlanController extends AbstractController
             'protocols'        => $protocols,
             'categories'       => $measureRepository->getCategories($project, $uiLocale),
             'departments'      => $measureRepository->getDepartments($project, $uiLocale),
-            'odsList'          => $em->getRepository(Ods::class)->findAll(),
+            'odsList'          => $measureRepository->getOds($project, $uiLocale),
+            'impactAreas'      => $measureRepository->getImpactAreas($project, $uiLocale),
+            'tripleBalanceAxes'=> $measureRepository->getTripleBalanceAxes($project, $uiLocale),
+            'scopeList'        => $measureRepository->getScopes($project, $uiLocale),
             'esgList'          => $em->getRepository(EsG::class)->findAll(),
-            'scopeList'        => $em->getRepository(Scope::class)->findAll(),
             'planChartsConfig' => $planChartsConfig,
             'scoreMax'         => $scoreMax,
             'scoreGained'      => $scoreGained,
@@ -1388,6 +1404,9 @@ class PlanController extends AbstractController
         ?string $filterCategory,
         ?string $filterDepartment,
         ?string $filterOds,
+        ?string $filterImpactArea,
+        ?string $filterTripleBalanceAxis,
+        ?string $filterScope,
         ?string $filterEsg,
         ProtocolRepository $protocolRepository,
         EntityManagerInterface $em,
@@ -1427,10 +1446,31 @@ class PlanController extends AbstractController
             $esgLabel = method_exists($esg, 'getName') ? $esg?->getName() : ($esg?->getName());
         }
 
+        $impactAreaLabel = null;
+        if ($filterImpactArea && ctype_digit((string) $filterImpactArea)) {
+            $impactArea = $em->getRepository(\App\Entity\ImpactArea::class)->find((int) $filterImpactArea);
+            $impactAreaLabel = $impactArea?->getName();
+        }
+
+        $tripleBalanceAxisLabel = null;
+        if ($filterTripleBalanceAxis && ctype_digit((string) $filterTripleBalanceAxis)) {
+            $axis = $em->getRepository(\App\Entity\TripleBalanceAxis::class)->find((int) $filterTripleBalanceAxis);
+            $tripleBalanceAxisLabel = $axis?->getName();
+        }
+
+        $scopeLabel = null;
+        if ($filterScope && ctype_digit((string) $filterScope)) {
+            $scope = $em->getRepository(Scope::class)->find((int) $filterScope);
+            $scopeLabel = $scope?->getName();
+        }
+
         $labelProtocol   = $translator->trans('backend.plan.filters.protocol');
         $labelCategory   = $translator->trans('backend.plan.filters.category');
         $labelDepartment = $translator->trans('backend.plan.filters.department');
         $labelOds        = $translator->trans('backend.plan.filters.ods');
+        $labelImpactArea = $translator->trans('backend.plan.filters.impact_area');
+        $labelTriple     = $translator->trans('backend.plan.filters.triple_balance');
+        $labelScope      = $translator->trans('backend.plan.filters.scope');
         $labelEsg        = $translator->trans('backend.plan.filters.esg');
 
         return array_filter([
@@ -1438,6 +1478,9 @@ class PlanController extends AbstractController
             $labelCategory   => $categoryLabel,
             $labelDepartment => $departmentLabel,
             $labelOds        => $odsLabel,
+            $labelImpactArea => $impactAreaLabel,
+            $labelTriple     => $tripleBalanceAxisLabel,
+            $labelScope      => $scopeLabel,
             $labelEsg        => $esgLabel,
         ]);
     }
@@ -1461,6 +1504,9 @@ class PlanController extends AbstractController
         $filterCategory        = $filters['category']           ?? null;
         $filterProtocol        = $filters['protocol']           ?? null;
         $filterOds             = $filters['ods']                ?? null;
+        $filterImpactArea      = $filters['impact_area']       ?? null;
+        $filterTripleBalance   = $filters['triple_balance_axis'] ?? null;
+        $filterScope           = $filters['scope']             ?? null;
         $filterEsg             = $filters['esg']                ?? null;
         $filterApplicable      = $filters['is_applicable']      ?? null;
         $filterImplement       = $filters['will_implement']     ?? null;
@@ -1472,6 +1518,9 @@ class PlanController extends AbstractController
             'category'          => $filterCategory,
             'department'        => $filterDepartment,
             'ods'               => $filterOds,
+            'impact_area'       => $filterImpactArea,
+            'triple_balance_axis'=> $filterTripleBalance,
+            'scope'             => $filterScope,
             'esg'               => $filterEsg,
             'is_applicable'     => $filterApplicable,
             'will_implement'    => $filterImplement,
@@ -1530,6 +1579,9 @@ class PlanController extends AbstractController
             $filterCategory,
             $filterDepartment,
             $filterOds,
+            $filterImpactArea,
+            $filterTripleBalance,
+            $filterScope,
             $filterEsg,
             $protocolRepository,
             $em,
@@ -1556,7 +1608,10 @@ class PlanController extends AbstractController
             'project'        => $project,
             'plan'           => $plan,
             'projectTier'    => $this->featureGate->getTier($project),
+            'projectTierLabel'=> $this->getProjectTierLabel($this->featureGate->getTier($project)),
+            'projectTierSummary'=> $this->getProjectTierSummary($this->featureGate->getTier($project)),
             'hasWatermark'   => $this->featureGate->hasWatermark($project),
+            'taxonomyPresenter'=> $this->taxonomyPresenter,
             'activeFilters'  => $activeFilters,
             'measuresByDpto' => $measuresByDpto,
             'planChartsUrls' => $planChartsUrls,
@@ -1594,16 +1649,6 @@ class PlanController extends AbstractController
                 continue;
             }
 
-            if ($filters['department']) {
-                $departmentMatch = false;
-                foreach ($m->getResolvedDepartments() as $departmentItem) {
-                    if ($departmentItem->getId() == $filters['department']) {
-                        $departmentMatch = true;
-                        break;
-                    }
-                }
-                if (!$departmentMatch) continue;
-            }
             if ($filters['category'] && $m->getCategory()?->getId() != $filters['category']) continue;
 
             if ($filters['protocol']) {
@@ -1613,17 +1658,9 @@ class PlanController extends AbstractController
                 if (!$matchByName && !$matchById) continue;
             }
 
-            if ($filters['ods']) {
-                $odsMatch = false;
-                foreach ($m->getResolvedOdsItems() as $odsItem) {
-                    if ($odsItem->getId() == $filters['ods']) {
-                        $odsMatch = true;
-                        break;
-                    }
-                }
-                if (!$odsMatch) continue;
-            }
+            if ($filters['scope'] && $m->getScope()?->getId() != $filters['scope']) continue;
             if ($filters['esg'] && $m->getEsg()?->getId() != $filters['esg']) continue;
+            if (!$this->taxonomyPresenter->matchesFilters($m, $filters)) continue;
 
             if ($filters['is_applicable'] !== null && filter_var($filters['is_applicable'], FILTER_VALIDATE_BOOLEAN)) {
                 if (!$pm->isApplicable()) continue;
@@ -1657,22 +1694,7 @@ class PlanController extends AbstractController
 
         if (!$filters['protocol'])   $qb->where('p.name IN (:protocols)')->setParameter('protocols', $protocols);
         else                         $qb->andWhere('p.name = :protocol')->setParameter('protocol', $filters['protocol']);
-        if ($filters['category'])    $qb->andWhere('m.category = :category')->setParameter('category', $filters['category']);
-        if ($filters['department']) {
-            $departmentEntity = $em->getRepository(Department::class)->find((int) $filters['department']);
-            if ($departmentEntity) {
-                $qb->andWhere('(m.department = :department OR :department MEMBER OF m.departments)')
-                    ->setParameter('department', $departmentEntity);
-            }
-        }
-        if ($filters['ods']) {
-            $odsEntity = $em->getRepository(Ods::class)->find((int) $filters['ods']);
-            if ($odsEntity) {
-                $qb->andWhere('(m.ods = :ods OR :ods MEMBER OF m.odsItems)')
-                    ->setParameter('ods', $odsEntity);
-            }
-        }
-        if ($filters['esg'])         $qb->andWhere('m.esg = :esg')->setParameter('esg', $filters['esg']);
+        $measureRepository->applyPlanTaxonomyFilters($qb, $filters);
         if ($filters['is_applicable']) {
             $qb->join('m.planMeasures', 'pm')->andWhere('pm.isApplicable = true');
         }
@@ -1838,6 +1860,24 @@ class PlanController extends AbstractController
         }
 
         return $cards;
+    }
+
+    private function getProjectTierLabel(string $tier): string
+    {
+        return match ($tier) {
+            ProjectSubscription::TIER_STANDARD => 'Standard',
+            ProjectSubscription::TIER_PRO => 'Pro',
+            default => 'Basic',
+        };
+    }
+
+    private function getProjectTierSummary(string $tier): string
+    {
+        return match ($tier) {
+            ProjectSubscription::TIER_STANDARD => $this->t->trans('backend.plan.tier.standard_summary'),
+            ProjectSubscription::TIER_PRO => $this->t->trans('backend.plan.tier.pro_summary'),
+            default => $this->t->trans('backend.plan.tier.basic_summary'),
+        };
     }
 
     private function countProjectEvidenceFiles(Plan $plan): int

@@ -96,14 +96,19 @@
                 </div>
             </div>
 
-            <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                    <strong>{{ 'backend.plan.tier.current'|trans }}:</strong> {{ projectTier|upper }}
-                    {% if projectTier == 'basic' %}
-                        <span class="ms-2">{{ 'backend.plan.tier.basic_notice'|trans }}</span>
-                    {% elseif projectTier == 'standard' %}
-                        <span class="ms-2">{{ 'backend.plan.tier.standard_notice'|trans }}</span>
-                    {% endif %}
+            <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex flex-column gap-1">
+                    <div>
+                        <strong>{{ 'backend.plan.tier.current'|trans }}:</strong> {{ projectTierLabel }}
+                    </div>
+                    <div>{{ projectTierSummary }}</div>
+                    <div>
+                        {% if evidenceLimit is not null %}
+                            {{ 'backend.plan.tier.evidence_used'|trans({'%used%': evidenceCount, '%limit%': evidenceLimit}) }}
+                        {% else %}
+                            {{ 'backend.plan.tier.evidence_unlimited'|trans({'%used%': evidenceCount}) }}
+                        {% endif %}
+                    </div>
                 </div>
                 <a href="#" class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">{{ 'backend.plan.upgrade_soon'|trans }}</a>
             </div>
