@@ -127,11 +127,48 @@
                 </div>
             </div>
 
-            {% if commercialCards is not empty %}
-                <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+            {% if project.subscription %}
+                {% set subscription = project.subscription %}
+                <div class="alert alert-light border small mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="d-flex flex-column gap-1">
-                        <strong>{{ 'backend.plan.features_blocked'|trans }}</strong>
-                        <span>{{ 'backend.plan.features_blocked_help'|trans }}</span>
+                        <strong>{{ 'backend.subscription.card.title'|trans }}</strong>
+                        <span>
+                            {{ 'backend.subscription.status.' ~ subscription.status|trans }}
+                            {% if subscription.paidAmountCents is not null %}
+                                · {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
+                            {% endif %}
+                        </span>
+                        <span>
+                            {{ 'backend.subscription.card.paid_at'|trans }}
+                            {% if subscription.paidAt %}
+                                {{ subscription.paidAt|date('d/m/Y H:i') }}
+                            {% elseif subscription.lastPaymentStatus %}
+                                {{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if subscription.stripeHostedInvoiceUrl %}
+                            <a href="{{ subscription.stripeHostedInvoiceUrl }}" class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">
+                                {{ 'backend.subscription.actions.view_invoice'|trans }}
+                            </a>
+                        {% endif %}
+                        {% if subscription.stripeInvoicePdfUrl %}
+                            <a href="{{ subscription.stripeInvoicePdfUrl }}" class="btn btn-outline-success btn-sm" target="_blank" rel="noopener">
+                                {{ 'backend.subscription.actions.download_pdf'|trans }}
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if projectTier != 'pro' %}
+                <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div class="d-flex flex-column gap-1">
+                        <strong>{{ 'backend.plan.upgrade.title'|trans }}</strong>
+                        <span>{{ 'backend.plan.upgrade.help'|trans }}</span>
                         <span>
                             {% if evidenceLimit is not null %}
                                 {{ 'backend.plan.tier.evidence_used'|trans({'%used%': evidenceCount, '%limit%': evidenceLimit}) }}
@@ -140,7 +177,41 @@
                             {% endif %}
                         </span>
                     </div>
-                    <a href="#" class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">{{ 'backend.plan.upgrade_soon'|trans }}</a>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if projectTier == 'basic' %}
+                            <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: 'standard'}) }}" class="d-inline">
+                                <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_standard') }}">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    {{ 'backend.plan.upgrade.to_standard'|trans }}
+                                </button>
+                            </form>
+                            <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: 'pro'}) }}" class="d-inline">
+                                <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_pro') }}">
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    {{ 'backend.plan.upgrade.to_pro'|trans }}
+                                </button>
+                            </form>
+                        {% elseif projectTier == 'standard' %}
+                            <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: 'pro'}) }}" class="d-inline">
+                                <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_pro') }}">
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    {{ 'backend.plan.upgrade.to_pro_standard'|trans }}
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-success">
+                    <strong>{{ 'backend.plan.upgrade.active_title'|trans }}</strong>
+                    <span>{{ 'backend.plan.upgrade.active_help'|trans }}</span>
+                </div>
+            {% endif %}
+
+            {% if commercialCards is not empty %}
+                <div class="alert alert-info d-flex flex-column gap-1 mb-3">
+                    <strong>{{ 'backend.plan.features_blocked'|trans }}</strong>
+                    <span>{{ 'backend.plan.features_blocked_help'|trans }}</span>
                 </div>
                 <div class="row g-3 mb-3">
                     {% for card in commercialCards %}

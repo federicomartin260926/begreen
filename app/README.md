@@ -188,12 +188,13 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
   - cálculo por puntos oficiales v23, no por número de medidas;
   - las medidas personalizadas no entran en este nivel;
   - es un indicador motivacional, no una certificación formal.
+- Stripe Checkout ya activa `standard` y `pro` por proyecto con facturas emitidas por Stripe; la integración está documentada en [docs/stripe-payments.md](../docs/stripe-payments.md).
 
 ## Tiers comerciales
 
 - Los tiers internos por proyecto son `basic`, `standard` y `pro`.
 - El detalle de reglas y bloqueo de funcionalidades está en [docs/commercial-tiers.md](../docs/commercial-tiers.md).
-- El pago real todavía no está implementado.
+- Los upgrades de pago único por proyecto se gestionan con Stripe Checkout y generan referencias de factura almacenadas en `ProjectSubscription`.
 - La suite PHPUnit ahora incluye `tests/Service` además de `Smoke` e `Import`.
 
 ## Seguridad

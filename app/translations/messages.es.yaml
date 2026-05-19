@@ -417,6 +417,7 @@ backend:
       type: "Tipo"
       country: "País"
       owner: "Usuario creador"
+      billing: "Facturación"
       created_at: "Fecha de creación"
       active: "Activo"
       actions: "Acciones"
@@ -568,6 +569,34 @@ backend:
     type:
       rodaje: Rodaje
       evento: Evento
+  subscription:
+    status:
+      active: "Activo"
+      pending_payment: "Pago pendiente"
+      cancelled: "Cancelado"
+    last_payment_status:
+      checkout_created: "Checkout creado"
+      paid: "Pagado"
+      failed: "Fallido"
+      expired: "Expirado"
+      cancelled: "Cancelado"
+    actions:
+      view_invoice: "Ver factura"
+      download_pdf: "Descargar PDF"
+    card:
+      title: "Facturación"
+      subtitle: "Pagos y facturas gestionados por Stripe"
+      tier: "Tier contratado:"
+      amount: "Importe pagado:"
+      paid_at: "Fecha de pago:"
+    flash:
+      invalid_token: "No se pudo validar la solicitud de pago."
+      upgrade_not_allowed: "El upgrade solicitado no está disponible para este proyecto."
+      checkout_failed: "No se pudo iniciar el pago en Stripe."
+      success_confirmed: "Pago confirmado. El tier se ha actualizado correctamente."
+      success_pending: "Pago recibido. Estamos esperando la confirmación final de Stripe."
+      success_received: "Hemos recibido la vuelta de Stripe. Revisando el estado del pago."
+      cancelled: "El proceso de pago se ha cancelado."
   plan:
     title: "Plan de sostenibilidad"
     breadcrumb: "Plan de sostenibilidad"
@@ -627,6 +656,14 @@ backend:
     features_blocked: "Funciones bloqueadas"
     features_blocked_help: "El tier actual limita algunas opciones de exportación y gestión."
     upgrade_soon: "Mejorar plan · Próximamente"
+    upgrade:
+      title: "Mejora tu plan"
+      help: "El pago se gestiona con Stripe y la factura quedará disponible en tu proyecto."
+      to_standard: "Actualizar a Standard — 99€ + IVA"
+      to_pro: "Actualizar a Pro — 199€ + IVA"
+      to_pro_standard: "Actualizar a Pro — 100€ + IVA"
+      active_title: "Plan Pro activo"
+      active_help: "Tu proyecto ya tiene acceso a todas las funciones Pro."
     exports:
       title: "Exportaciones"
       subtitle: "Descargas disponibles según el tier del proyecto."

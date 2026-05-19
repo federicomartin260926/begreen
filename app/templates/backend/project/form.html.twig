@@ -77,6 +77,60 @@
                 </div>
             {% endif %}
 
+            {% if project is defined and project.subscription %}
+                {% set subscription = project.subscription %}
+                <div class="row">
+                    <div class="col-12 col-md-8 col-lg-6">
+                        <div class="border rounded p-3 mb-3 bg-light">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <div>
+                                    <div class="fw-semibold">{{ 'backend.subscription.card.title'|trans }}</div>
+                                    <div class="small text-muted">{{ 'backend.subscription.card.subtitle'|trans }}</div>
+                                </div>
+                                <span class="badge {% if subscription.status == 'active' %}bg-success{% elseif subscription.status == 'pending_payment' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                    {{ ('backend.subscription.status.' ~ subscription.status)|trans }}
+                                </span>
+                            </div>
+                            <div class="small text-muted mb-2">
+                                {{ 'backend.subscription.card.tier'|trans }} {{ subscription.tier|upper }}
+                            </div>
+                            <div class="small text-muted mb-2">
+                                {{ 'backend.subscription.card.amount'|trans }} 
+                                {% if subscription.paidAmountCents is not null %}
+                                    {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+                            <div class="small text-muted mb-2">
+                                {{ 'backend.subscription.card.paid_at'|trans }} 
+                                {% if subscription.paidAt %}
+                                    {{ subscription.paidAt|date('d/m/Y H:i') }}
+                                {% elseif subscription.lastPaymentStatus %}
+                                    {{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+                            {% if subscription.stripeHostedInvoiceUrl or subscription.stripeInvoicePdfUrl %}
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    {% if subscription.stripeHostedInvoiceUrl %}
+                                        <a href="{{ subscription.stripeHostedInvoiceUrl }}" class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">
+                                            {{ 'backend.subscription.actions.view_invoice'|trans }}
+                                        </a>
+                                    {% endif %}
+                                    {% if subscription.stripeInvoicePdfUrl %}
+                                        <a href="{{ subscription.stripeInvoicePdfUrl }}" class="btn btn-outline-success btn-sm" target="_blank" rel="noopener">
+                                            {{ 'backend.subscription.actions.download_pdf'|trans }}
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
             {# --------- SUBTÍTULO RODAJE (y campos) --------- #}
             <div class="border-top pt-3 mt-4" data-show-when="type:rodaje">
             <h6 class="text-muted mb-3">{{ 'backend.projects.form.subsection_filming'|trans }}</h6>

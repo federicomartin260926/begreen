@@ -416,6 +416,7 @@ backend:
       type: "Type"
       country: "Country"
       owner: "Owner"
+      billing: "Billing"
       created_at: "Created at"
       active: "Active"
       actions: "Actions"
@@ -567,6 +568,34 @@ backend:
     type:
       rodaje: Filming
       evento: Event
+  subscription:
+    status:
+      active: "Active"
+      pending_payment: "Pending payment"
+      cancelled: "Cancelled"
+    last_payment_status:
+      checkout_created: "Checkout created"
+      paid: "Paid"
+      failed: "Failed"
+      expired: "Expired"
+      cancelled: "Cancelled"
+    actions:
+      view_invoice: "View invoice"
+      download_pdf: "Download PDF"
+    card:
+      title: "Billing"
+      subtitle: "Payments and invoices managed by Stripe"
+      tier: "Subscribed tier:"
+      amount: "Paid amount:"
+      paid_at: "Paid at:"
+    flash:
+      invalid_token: "The payment request could not be validated."
+      upgrade_not_allowed: "The requested upgrade is not available for this project."
+      checkout_failed: "Stripe checkout could not be started."
+      success_confirmed: "Payment confirmed. The tier has been updated successfully."
+      success_pending: "Payment received. We are waiting for Stripe's final confirmation."
+      success_received: "We have received the return from Stripe. Checking the payment status."
+      cancelled: "The payment process has been cancelled."
   plan:
     title: "Sustainability plan"
     breadcrumb: "Sustainability plan"
@@ -626,6 +655,14 @@ backend:
     features_blocked: "Blocked features"
     features_blocked_help: "The current tier limits some export and management options."
     upgrade_soon: "Upgrade plan · Coming soon"
+    upgrade:
+      title: "Upgrade your plan"
+      help: "Payment is handled by Stripe and the invoice will be available in your project."
+      to_standard: "Upgrade to Standard — €99 + VAT"
+      to_pro: "Upgrade to Pro — €199 + VAT"
+      to_pro_standard: "Upgrade to Pro — €100 + VAT"
+      active_title: "Pro plan active"
+      active_help: "Your project already has access to all Pro features."
     exports:
       title: "Exports"
       subtitle: "Downloads available depending on the project tier."

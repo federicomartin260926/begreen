@@ -34,6 +34,19 @@ The plan review and PDF already consume the v23 catalog with support for multipl
   - custom measures are excluded from this level;
   - this is a motivational indicator, not formal certification.
 
+## Payments
+
+- Payment is handled by Stripe Checkout and is one-time per project.
+- `basic` stays free.
+- `standard` is activated with the Standard Stripe price.
+- `pro` is activated with the Pro Stripe price.
+- `standard -> pro` uses the dedicated Stripe price for the difference.
+- Begreen stores Stripe checkout, payment and invoice references in `ProjectSubscription`.
+- Invoice download and hosted invoice links come from Stripe; Begreen does not generate its own invoices in this phase.
+- Webhook processing activates the tier only after Stripe confirms the payment.
+- The success URL is informational only; it does not activate the tier by itself.
+- Implementation details live in [docs/stripe-payments.md](stripe-payments.md).
+
 ## Blocked features
 
 The UI may show disabled placeholders for features that are not yet implemented:
@@ -45,8 +58,3 @@ The UI may show disabled placeholders for features that are not yet implemented:
 - validation summary for non-Pro tiers
 - custom measures for non-Pro tiers
 - branding
-
-## Payment
-
-- Payment is not implemented yet.
-- PayPal, Stripe, invoicing and checkout remain for a later phase.

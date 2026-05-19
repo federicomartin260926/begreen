@@ -61,7 +61,8 @@ class ProjectController extends AbstractController
             ->leftJoin('p.projectMemberships', 'pm')
             ->leftJoin('pm.user', 'mu') // miembro
             ->leftJoin('p.user', 'cu')  // creador
-            ->addSelect('pm', 'mu', 'cu');
+            ->leftJoin('p.subscription', 'sub')
+            ->addSelect('pm', 'mu', 'cu', 'sub');
 
         // Alcance por rol
         if (!$isAdmin) {
@@ -363,7 +364,16 @@ class ProjectController extends AbstractController
             ->setSource(ProjectSubscription::SOURCE_SYSTEM)
             ->setCurrency('EUR')
             ->setPaidAmountCents(null)
-            ->setPaymentReference(null);
+            ->setPaymentReference(null)
+            ->setStripeCheckoutSessionId(null)
+            ->setStripePaymentIntentId(null)
+            ->setStripeInvoiceId(null)
+            ->setStripeCustomerId(null)
+            ->setStripeHostedInvoiceUrl(null)
+            ->setStripeInvoicePdfUrl(null)
+            ->setLastPaymentStatus(null)
+            ->setPaidAt(null)
+            ->setTargetTier(null);
 
         return $subscription;
     }
@@ -375,7 +385,18 @@ class ProjectController extends AbstractController
             ->setProject($project)
             ->setTier(in_array($tier, [ProjectSubscription::TIER_BASIC, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO], true) ? $tier : ProjectSubscription::TIER_BASIC)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-            ->setSource(ProjectSubscription::SOURCE_MANUAL);
+            ->setSource(ProjectSubscription::SOURCE_MANUAL)
+            ->setPaidAmountCents(null)
+            ->setPaymentReference(null)
+            ->setStripeCheckoutSessionId(null)
+            ->setStripePaymentIntentId(null)
+            ->setStripeInvoiceId(null)
+            ->setStripeCustomerId(null)
+            ->setStripeHostedInvoiceUrl(null)
+            ->setStripeInvoicePdfUrl(null)
+            ->setLastPaymentStatus(null)
+            ->setPaidAt(null)
+            ->setTargetTier(null);
 
         if (!$project->getSubscription()) {
             $project->setSubscription($subscription);

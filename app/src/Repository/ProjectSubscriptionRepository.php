@@ -21,4 +21,9 @@ class ProjectSubscriptionRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['project' => $project]);
     }
+
+    public function findOneByStripeCheckoutSessionId(string $sessionId): ?ProjectSubscription
+    {
+        return $this->findOneBy(['stripeCheckoutSessionId' => $sessionId]);
+    }
 }

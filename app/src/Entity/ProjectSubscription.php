@@ -25,6 +25,7 @@ class ProjectSubscription
     public const SOURCE_SYSTEM = 'system';
     public const SOURCE_MANUAL = 'manual';
     public const SOURCE_PAYPAL = 'paypal';
+    public const SOURCE_STRIPE = 'stripe';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -44,7 +45,7 @@ class ProjectSubscription
     private string $status = self::STATUS_ACTIVE;
 
     #[ORM\Column(length: 20)]
-    #[Assert\Choice(choices: [self::SOURCE_SYSTEM, self::SOURCE_MANUAL, self::SOURCE_PAYPAL])]
+    #[Assert\Choice(choices: [self::SOURCE_SYSTEM, self::SOURCE_MANUAL, self::SOURCE_PAYPAL, self::SOURCE_STRIPE])]
     private string $source = self::SOURCE_SYSTEM;
 
     #[ORM\Column(type: 'integer', nullable: true)]
@@ -55,6 +56,33 @@ class ProjectSubscription
 
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $paymentReference = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripeCheckoutSessionId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripePaymentIntentId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripeInvoiceId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripeCustomerId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripeHostedInvoiceUrl = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripeInvoicePdfUrl = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $lastPaymentStatus = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $paidAt = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $targetTier = null;
 
     public function getId(): ?int
     {
@@ -135,6 +163,105 @@ class ProjectSubscription
     public function setPaymentReference(?string $paymentReference): self
     {
         $this->paymentReference = $paymentReference;
+        return $this;
+    }
+
+    public function getStripeCheckoutSessionId(): ?string
+    {
+        return $this->stripeCheckoutSessionId;
+    }
+
+    public function setStripeCheckoutSessionId(?string $stripeCheckoutSessionId): self
+    {
+        $this->stripeCheckoutSessionId = $stripeCheckoutSessionId;
+        return $this;
+    }
+
+    public function getStripePaymentIntentId(): ?string
+    {
+        return $this->stripePaymentIntentId;
+    }
+
+    public function setStripePaymentIntentId(?string $stripePaymentIntentId): self
+    {
+        $this->stripePaymentIntentId = $stripePaymentIntentId;
+        return $this;
+    }
+
+    public function getStripeInvoiceId(): ?string
+    {
+        return $this->stripeInvoiceId;
+    }
+
+    public function setStripeInvoiceId(?string $stripeInvoiceId): self
+    {
+        $this->stripeInvoiceId = $stripeInvoiceId;
+        return $this;
+    }
+
+    public function getStripeCustomerId(): ?string
+    {
+        return $this->stripeCustomerId;
+    }
+
+    public function setStripeCustomerId(?string $stripeCustomerId): self
+    {
+        $this->stripeCustomerId = $stripeCustomerId;
+        return $this;
+    }
+
+    public function getStripeHostedInvoiceUrl(): ?string
+    {
+        return $this->stripeHostedInvoiceUrl;
+    }
+
+    public function setStripeHostedInvoiceUrl(?string $stripeHostedInvoiceUrl): self
+    {
+        $this->stripeHostedInvoiceUrl = $stripeHostedInvoiceUrl;
+        return $this;
+    }
+
+    public function getStripeInvoicePdfUrl(): ?string
+    {
+        return $this->stripeInvoicePdfUrl;
+    }
+
+    public function setStripeInvoicePdfUrl(?string $stripeInvoicePdfUrl): self
+    {
+        $this->stripeInvoicePdfUrl = $stripeInvoicePdfUrl;
+        return $this;
+    }
+
+    public function getLastPaymentStatus(): ?string
+    {
+        return $this->lastPaymentStatus;
+    }
+
+    public function setLastPaymentStatus(?string $lastPaymentStatus): self
+    {
+        $this->lastPaymentStatus = $lastPaymentStatus;
+        return $this;
+    }
+
+    public function getPaidAt(): ?\DateTimeImmutable
+    {
+        return $this->paidAt;
+    }
+
+    public function setPaidAt(?\DateTimeImmutable $paidAt): self
+    {
+        $this->paidAt = $paidAt;
+        return $this;
+    }
+
+    public function getTargetTier(): ?string
+    {
+        return $this->targetTier;
+    }
+
+    public function setTargetTier(?string $targetTier): self
+    {
+        $this->targetTier = $targetTier;
         return $this;
     }
 }

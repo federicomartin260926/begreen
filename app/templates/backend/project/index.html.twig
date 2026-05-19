@@ -98,6 +98,7 @@
                 <th class="text-center">{{ 'backend.projects.table.country'|trans }}</th>
                 <th class="text-center">Tier</th>
                 {% if is_admin %}
+                  <th class="text-center">{{ 'backend.projects.table.billing'|trans }}</th>
                   <th class="text-left">{{ 'backend.projects.table.owner'|trans }}</th>
                 {% endif %}
                 <th class="text-center">{{ 'backend.projects.table.created_at'|trans }}</th>
@@ -125,6 +126,46 @@
                 </td>
 
                 {% if is_admin %}
+                  <td class="text-center">
+                    {% set subscription = project.subscription %}
+                    {% if subscription %}
+                      <div class="d-flex flex-column gap-1">
+                        <span class="badge {% if subscription.status == 'active' %}bg-success{% elseif subscription.status == 'pending_payment' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                          {{ ('backend.subscription.status.' ~ subscription.status)|trans }}
+                        </span>
+                        <span class="small text-muted">
+                          {% if subscription.paidAmountCents is not null %}
+                            {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </span>
+                        <span class="small text-muted">
+                          {% if subscription.paidAt %}
+                            {{ subscription.paidAt|date('d/m/Y H:i') }}
+                          {% elseif subscription.lastPaymentStatus %}
+                            {{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </span>
+                        <div class="d-flex justify-content-center flex-wrap gap-1">
+                          {% if subscription.stripeHostedInvoiceUrl %}
+                            <a href="{{ subscription.stripeHostedInvoiceUrl }}" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
+                              {{ 'backend.subscription.actions.view_invoice'|trans }}
+                            </a>
+                          {% endif %}
+                          {% if subscription.stripeInvoicePdfUrl %}
+                            <a href="{{ subscription.stripeInvoicePdfUrl }}" class="btn btn-sm btn-outline-success" target="_blank" rel="noopener">
+                              {{ 'backend.subscription.actions.download_pdf'|trans }}
+                            </a>
+                          {% endif %}
+                        </div>
+                      </div>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
                   <td class="text-left">
                     {% if project.user %}
                         {{ (project.user.name|default('')) ~ (project.user.surnames ? ' ' ~ project.user.surnames : '') ~ (project.user.email ? ' (' ~ project.user.email ~ ')' : '') }}
