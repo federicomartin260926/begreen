@@ -181,6 +181,13 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 - El review/listado del plan ya expone filtros básicos por departamento, ODS, área de impacto, triple balance y alcance, usando taxonomías múltiples cuando existen.
 - Las exportaciones del plan ya siguen el modelo Basic / Standard / Pro: Basic solo descarga el PDF unificado, Standard añade PDF agrupado por departamentos y Pro añade PDF/Excel agrupados por categorías, departamentos, áreas de impacto, triple balance y ODS.
 - La capa Pro de colaboración añade comentarios visibles, notas internas, responsables por medida, resumen de validación y medidas personalizadas de proyecto.
+- El review del plan también muestra niveles de compromiso basados en puntos oficiales v23:
+  - compromiso previsto desde las medidas marcadas para implementar;
+  - compromiso real desde las medidas ya implementadas;
+  - niveles: Semilla, Planta, Árbol, Bosque y Selva;
+  - cálculo por puntos oficiales v23, no por número de medidas;
+  - las medidas personalizadas no entran en este nivel;
+  - es un indicador motivacional, no una certificación formal.
 
 ## Tiers comerciales
 

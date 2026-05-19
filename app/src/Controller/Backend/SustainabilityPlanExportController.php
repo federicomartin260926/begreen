@@ -10,6 +10,7 @@ use App\Service\ActiveProjectService;
 use App\Service\SustainabilityPlanExcelExporter;
 use App\Service\SustainabilityPlanGroupedPdfExporter;
 use App\Service\SustainabilityPlanGroupingService;
+use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
 use App\Entity\ProjectSubscription;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -30,6 +31,7 @@ final class SustainabilityPlanExportController extends AbstractController
     public function __construct(
         private readonly ProjectFeatureGate $featureGate,
         private readonly SustainabilityPlanGroupingService $groupingService,
+        private readonly SustainabilityCommitmentLevelService $commitmentLevelService,
         private readonly SustainabilityPlanGroupedPdfExporter $pdfExporter,
         private readonly SustainabilityPlanExcelExporter $excelExporter,
         private readonly TranslatorInterface $translator
@@ -77,6 +79,7 @@ final class SustainabilityPlanExportController extends AbstractController
             'projectTierLabel' => $this->getProjectTierLabel($this->featureGate->getTier($project)),
             'generatedAt' => new \DateTimeImmutable(),
             'hasWatermark' => $this->featureGate->hasWatermark($project),
+            'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
         ]);
 
         $filename = $this->buildFilename($project, $grouping, 'pdf');

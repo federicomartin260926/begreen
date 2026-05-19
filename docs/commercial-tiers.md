@@ -26,6 +26,13 @@ The plan review and PDF already consume the v23 catalog with support for multipl
 - Standard adds grouped PDF by departments.
 - Pro adds grouped PDF/Excel by categories, departments, impact areas, triple balance and ODS.
 - Pro also enables visible comments, internal notes, responsibles per measure, validation summary and custom measures.
+- The plan review also shows commitment levels based on official v23 points:
+  - planned commitment from measures marked to implement;
+  - real commitment from measures already implemented;
+  - levels are Seed, Plant, Tree, Forest and Jungle;
+  - the calculation is based on official v23 points, not number of measures;
+  - custom measures are excluded from this level;
+  - this is a motivational indicator, not formal certification.
 
 ## Blocked features
 

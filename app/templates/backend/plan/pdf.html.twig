@@ -97,6 +97,36 @@
     </div>
   {% endif %}
 
+  {% if commitmentSummary is defined %}
+    <div style="margin:0 0 16px;font-size:12px;background-color:#f8fafc;border:1px solid #d1d5db;padding:8px 12px;border-radius:4px;">
+      <strong>{{ 'backend.plan.commitment.title'|trans }}</strong>
+      <table style="width:100%;border-collapse:collapse;margin-top:6px;">
+        <tr>
+          <td style="width:50%;vertical-align:top;padding-right:8px;">
+            <strong>{{ 'backend.plan.commitment.planned'|trans }}:</strong>
+            {{ ('backend.plan.commitment.levels.' ~ commitmentSummary.planned.levelKey ~ '.label')|trans }}
+            ({{ commitmentSummary.planned.percentageRounded }}%)
+            <div style="color:#4b5563;margin-top:3px;">{{ ('backend.plan.commitment.levels.' ~ commitmentSummary.planned.levelKey ~ '.message')|trans }}</div>
+            <div style="margin-top:3px;">{{ 'backend.plan.commitment.points_of_total'|trans({'%points%': commitmentSummary.planned.points, '%total%': commitmentSummary.totalOfficialPoints}) }}</div>
+            {% if commitmentSummary.planned.pointsToNextLevel is not null and commitmentSummary.planned.levelKey != 'jungle' %}
+              <div style="margin-top:3px;">{{ 'backend.plan.commitment.next_level'|trans({'%points%': commitmentSummary.planned.pointsToNextLevel}) }}</div>
+            {% endif %}
+          </td>
+          <td style="width:50%;vertical-align:top;padding-left:8px;">
+            <strong>{{ 'backend.plan.commitment.real'|trans }}:</strong>
+            {{ ('backend.plan.commitment.levels.' ~ commitmentSummary.implemented.levelKey ~ '.label')|trans }}
+            ({{ commitmentSummary.implemented.percentageRounded }}%)
+            <div style="color:#4b5563;margin-top:3px;">{{ ('backend.plan.commitment.levels.' ~ commitmentSummary.implemented.levelKey ~ '.message')|trans }}</div>
+            <div style="margin-top:3px;">{{ 'backend.plan.commitment.points_of_total'|trans({'%points%': commitmentSummary.implemented.points, '%total%': commitmentSummary.totalOfficialPoints}) }}</div>
+            {% if commitmentSummary.implemented.pointsToNextLevel is not null and commitmentSummary.implemented.levelKey != 'jungle' %}
+              <div style="margin-top:3px;">{{ 'backend.plan.commitment.next_level'|trans({'%points%': commitmentSummary.implemented.pointsToNextLevel}) }}</div>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+    </div>
+  {% endif %}
+
   {% if measuresByDpto is not empty %}
     <h3>{{ 'backend.plan.pdf.summary_by_department'|trans }}</h3>
     <table class="summary-table">

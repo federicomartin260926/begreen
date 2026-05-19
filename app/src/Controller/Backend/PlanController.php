@@ -7,6 +7,7 @@ use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, Pr
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\SustainabilityPlanCollaborationService;
+use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
@@ -36,7 +37,8 @@ class PlanController extends AbstractController
         private PlanMeasureCatalogResolver $catalogResolver,
         private ProjectFeatureGate $featureGate,
         private MeasureTaxonomyPresenter $taxonomyPresenter,
-        private SustainabilityPlanCollaborationService $collaborationService
+        private SustainabilityPlanCollaborationService $collaborationService,
+        private SustainabilityCommitmentLevelService $commitmentLevelService
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -391,6 +393,7 @@ class PlanController extends AbstractController
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
+            'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
 
             // navegación y medida actual
@@ -699,6 +702,7 @@ class PlanController extends AbstractController
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
+            'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
             'crewMembersByMeasure' => $this->buildCrewMembersByMeasure($plan, $project),
             'planMeasures'     => $plan->getPlanMeasures(),
@@ -1421,6 +1425,7 @@ class PlanController extends AbstractController
             'scoreMax'       => $ctx['scoreMax'],
             'scoreGained'    => $ctx['scoreGained'],
             'scorePct'       => $ctx['scorePct'],
+            'commitmentSummary' => $ctx['commitmentSummary'],
             // 'planChartsUrls' => $ctx['planChartsUrls'],
             'preview'        => true,
         ]);
@@ -1662,6 +1667,7 @@ class PlanController extends AbstractController
             'hasWatermark'   => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
+            'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures' => $this->collaborationService->getCustomMeasures($plan),
             'crewMembersByMeasure' => $this->buildCrewMembersByMeasure($plan, $project),
             'activeFilters'  => $activeFilters,

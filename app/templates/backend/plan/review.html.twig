@@ -181,6 +181,54 @@
                 </div>
             </div>
 
+            {% if commitmentSummary is defined %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            <div>
+                                <h5 class="card-title mb-1">{{ 'backend.plan.commitment.title'|trans }}</h5>
+                                <div class="text-muted small">{{ 'backend.plan.commitment.note'|trans }}</div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            {% for key, item in {
+                                'planned': commitmentSummary.planned,
+                                'real': commitmentSummary.implemented
+                            } %}
+                                <div class="col-12 col-lg-6">
+                                    <div class="border rounded p-3 h-100 bg-light">
+                                        <div class="d-flex justify-content-between align-items-start gap-2">
+                                            <div class="fw-semibold">{{ ('backend.plan.commitment.' ~ key)|trans }}</div>
+                                            <span class="badge bg-success">{{ ('backend.plan.commitment.levels.' ~ item.levelKey ~ '.label')|trans }}</span>
+                                        </div>
+                                        <div class="small text-muted mt-1">{{ ('backend.plan.commitment.levels.' ~ item.levelKey ~ '.message')|trans }}</div>
+                                        <div class="d-flex justify-content-between small mt-3">
+                                            <span>{{ 'backend.plan.commitment.points_of_total'|trans({'%points%': item.points, '%total%': commitmentSummary.totalOfficialPoints}) }}</span>
+                                            <span>{{ item.percentageRounded }}%</span>
+                                        </div>
+                                        <div class="progress mt-2" style="height: 8px;">
+                                            <div
+                                                class="progress-bar bg-success"
+                                                role="progressbar"
+                                                style="width: {{ item.percentageRounded }}%;"
+                                                aria-valuenow="{{ item.percentageRounded }}"
+                                                aria-valuemin="0"
+                                                aria-valuemax="100"></div>
+                                        </div>
+                                        {% if item.pointsToNextLevel is not null and item.levelKey != 'jungle' %}
+                                            <div class="small text-muted mt-2">
+                                                {{ 'backend.plan.commitment.next_level'|trans({'%points%': item.pointsToNextLevel}) }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
             {% if projectTier == 'pro' and customMeasures is not empty %}
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body">

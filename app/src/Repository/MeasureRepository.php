@@ -8,6 +8,7 @@ use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Gedmo\Translatable\TranslatableListener;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Entity\Protocol;
 
 class MeasureRepository extends ServiceEntityRepository
 {
@@ -199,6 +200,22 @@ class MeasureRepository extends ServiceEntityRepository
             $q->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
         }
         return $q->getResult();
+    }
+
+    /**
+     * @return Measure[]
+     */
+    public function getCatalogMeasuresForProtocol(Project $project, Protocol $protocol): array
+    {
+        $qb = $this->createQueryBuilder('m')
+            ->innerJoin('m.protocol', 'p')
+            ->andWhere('p = :protocol')
+            ->setParameter('protocol', $protocol)
+            ->orderBy('m.id', 'ASC');
+
+        $this->applyCatalogFilter($qb, $project);
+
+        return $qb->getQuery()->getResult();
     }
 
     private function applyCatalogFilter(QueryBuilder $qb, Project $project): void

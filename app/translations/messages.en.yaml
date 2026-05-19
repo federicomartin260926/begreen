@@ -586,6 +586,29 @@ backend:
       total_popover: "<strong>%gained%</strong> is the score obtained out of the total possible (%max%) with the selected measures"
       current_popover: "<strong>%score%</strong> is the score of the current measure"
       current_label: "Current measure score"
+    commitment:
+      title: "Commitment level"
+      planned: "Planned commitment"
+      real: "Real commitment"
+      points_of_total: "%points% / %total% points"
+      next_level: "%points% points to reach the next level"
+      note: "These levels are calculated from the official v23 catalog and exclude custom measures. They are guidance only and do not constitute formal certification."
+      levels:
+        seed:
+          label: "Seed"
+          message: "You have taken the first step toward a more sustainable shoot."
+        plant:
+          label: "Plant"
+          message: "Your plan is starting to take shape."
+        tree:
+          label: "Tree"
+          message: "Sustainable commitment is now consistent."
+        forest:
+          label: "Forest"
+          message: "The project shows a high level of commitment."
+        jungle:
+          label: "Jungle"
+          message: "Excellent level of sustainable commitment."
     actions:
       view: "Preview"
       download: "Download"
