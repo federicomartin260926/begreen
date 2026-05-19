@@ -19,6 +19,8 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertTrue($gate->hasWatermark($project));
         self::assertSame(10, $gate->getMaxEvidenceCount($project));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.department_pdf'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
     }
 
     public function testStandardTierRules(): void
@@ -31,6 +33,9 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertNull($gate->getMaxEvidenceCount($project));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.advanced_exports'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.department_pdf'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.category'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
     }
 
     public function testProTierRules(): void
@@ -42,6 +47,9 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertFalse($gate->hasWatermark($project));
         self::assertNull($gate->getMaxEvidenceCount($project));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.branding'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.category'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.department'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
     }
 
     public function testMissingSubscriptionDefaultsToBasic(): void

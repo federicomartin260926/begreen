@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ 'backend.plan.exports.pdf.title'|trans({'%grouping%': groupingLabel, '%project%': project.name}) }}</title>
+    <style>
+        @page { margin: 24px 24px 28px 24px; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f2937; }
+        h1, h2, h3 { margin: 0 0 8px 0; }
+        .meta { margin-bottom: 18px; font-size: 10px; color: #4b5563; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e5e7eb; font-size: 10px; }
+        .group { margin-bottom: 18px; page-break-inside: avoid; }
+        .group-title { margin-bottom: 6px; }
+        .group-subtitle { font-size: 10px; color: #6b7280; margin-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { border: 1px solid #d1d5db; padding: 6px 7px; vertical-align: top; word-wrap: break-word; }
+        th { background: #f3f4f6; text-align: left; font-size: 10px; }
+        .score { text-align: center; font-weight: 700; }
+        .muted { color: #6b7280; }
+        .taxonomy-line { margin-bottom: 3px; }
+        .taxonomy-label { font-weight: 700; }
+        .description { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>{{ 'backend.plan.exports.pdf.h1'|trans }}</h1>
+    <div class="meta">
+        <div><strong>{{ 'backend.plan.exports.pdf.project'|trans }}:</strong> {{ project.name }}</div>
+        <div><strong>{{ 'backend.plan.exports.pdf.tier'|trans }}:</strong> {{ projectTierLabel }}</div>
+        <div><strong>{{ 'backend.plan.exports.pdf.grouping'|trans }}:</strong> {{ groupingLabel }}</div>
+        <div><strong>{{ 'backend.plan.exports.pdf.generated'|trans }}:</strong> {{ generatedAt|date('d/m/Y H:i') }}</div>
+    </div>
+
+    {% for group in groups %}
+        <section class="group">
+            <div class="group-title">
+                <h2>{{ group.label }}</h2>
+                <div class="group-subtitle">
+                    <span class="badge">{{ 'backend.plan.exports.pdf.measures_count'|trans({'%count%': group.rows|length}) }}</span>
+                </div>
+            </div>
+
+            {% if group.rows is empty %}
+                <p class="muted">{{ 'backend.plan.exports.pdf.no_measures'|trans }}</p>
+            {% else %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 18%;">{{ 'backend.plan.exports.pdf.th.measure'|trans }}</th>
+                            <th style="width: 6%;">{{ 'backend.plan.exports.pdf.th.score'|trans }}</th>
+                            <th style="width: 12%;">{{ 'backend.plan.exports.pdf.th.block'|trans }}</th>
+                            <th style="width: 32%;">{{ 'backend.plan.exports.pdf.th.taxonomies'|trans }}</th>
+                            <th style="width: 32%;">{{ 'backend.plan.exports.pdf.th.description'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in group.rows %}
+                            <tr>
+                                <td>{{ row.displayName }}</td>
+                                <td class="score">{{ row.score ?? '—' }}</td>
+                                <td>{{ row.block }}</td>
+                                <td>
+                                    <div class="taxonomy-line"><span class="taxonomy-label">{{ 'backend.measures.form.departments'|trans }}:</span> {{ row.departments }}</div>
+                                    <div class="taxonomy-line"><span class="taxonomy-label">{{ 'backend.measures.form.ods_items'|trans }}:</span> {{ row.ods }}</div>
+                                    <div class="taxonomy-line"><span class="taxonomy-label">{{ 'backend.measures.form.impact_areas'|trans }}:</span> {{ row.impactAreas }}</div>
+                                    <div class="taxonomy-line"><span class="taxonomy-label">{{ 'backend.measures.form.triple_balance_axes'|trans }}:</span> {{ row.tripleBalanceAxes }}</div>
+                                    <div class="taxonomy-line"><span class="taxonomy-label">{{ 'backend.plan.exports.pdf.verification_sources'|trans }}:</span> {{ row.verificationSources }}</div>
+                                </td>
+                                <td class="description">{{ row.description ?: '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </section>
+    {% endfor %}
+</body>
+</html>

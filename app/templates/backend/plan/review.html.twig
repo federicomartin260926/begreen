@@ -199,6 +199,88 @@
                 </div>
             </div>
 
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+                        <div>
+                            <h5 class="card-title mb-1">{{ 'backend.plan.exports.title'|trans }}</h5>
+                            <div class="text-muted small">{{ 'backend.plan.exports.subtitle'|trans }}</div>
+                        </div>
+                        <span class="badge ms-1 {% if projectTier == 'pro' %}bg-success{% elseif projectTier == 'standard' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                            {{ 'backend.plan.tier.current'|trans }} {{ projectTierLabel }}
+                        </span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="border rounded p-3 h-100 bg-light">
+                                <div class="fw-semibold mb-1">{{ 'backend.plan.exports.unified_pdf'|trans }}</div>
+                                <div class="small text-muted mb-3">{{ 'backend.plan.exports.unified_pdf_help'|trans }}</div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-action="plan-review#downloadPdf">
+                                    <i class="bi bi-download"></i> {{ 'backend.plan.exports.download_now'|trans }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="border rounded p-3 h-100 {% if projectTier == 'basic' %}bg-light{% endif %}">
+                                <div class="fw-semibold mb-1">{{ 'backend.plan.exports.by_department'|trans }}</div>
+                                <div class="small text-muted mb-3">{{ 'backend.plan.exports.by_department_help'|trans }}</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                        {% if projectTier in ['standard', 'pro'] %}
+                                        <a href="{{ path('backend_plan_export_pdf', {'id': plan.id, 'grouping': 'department'}) }}" class="btn btn-outline-primary btn-sm text-decoration-none">
+                                            <i class="bi bi-file-earmark-pdf"></i> {{ 'backend.plan.exports.download_pdf'|trans }}
+                                        </a>
+                                    {% else %}
+                                        <a href="#" class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">
+                                            {{ 'backend.plan.exports.available_in_standard'|trans }}
+                                        </a>
+                                    {% endif %}
+
+                                    {% if projectTier == 'pro' %}
+                                        <a href="{{ path('backend_plan_export_excel', {'id': plan.id, 'grouping': 'department'}) }}" class="btn btn-outline-success btn-sm text-decoration-none">
+                                            <i class="bi bi-file-earmark-excel"></i> {{ 'backend.plan.exports.download_excel'|trans }}
+                                        </a>
+                                    {% else %}
+                                        <a href="#" class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">
+                                            {{ 'backend.plan.exports.available_in_pro'|trans }}
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% for export in [
+                            {'key': 'category', 'label': 'backend.plan.exports.by_category', 'help': 'backend.plan.exports.by_category_help'},
+                            {'key': 'impact_area', 'label': 'backend.plan.exports.by_impact_area', 'help': 'backend.plan.exports.by_impact_area_help'},
+                            {'key': 'triple_balance', 'label': 'backend.plan.exports.by_triple_balance', 'help': 'backend.plan.exports.by_triple_balance_help'},
+                            {'key': 'ods', 'label': 'backend.plan.exports.by_ods', 'help': 'backend.plan.exports.by_ods_help'}
+                        ] %}
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="border rounded p-3 h-100 {% if projectTier == 'basic' %}bg-light{% endif %}">
+                                    <div class="fw-semibold mb-1">{{ export.label|trans }}</div>
+                                    <div class="small text-muted mb-3">{{ export.help|trans }}</div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {% if projectTier == 'pro' %}
+                                            <a href="{{ path('backend_plan_export_pdf', {'id': plan.id, 'grouping': export.key}) }}" class="btn btn-outline-primary btn-sm text-decoration-none">
+                                                <i class="bi bi-file-earmark-pdf"></i> {{ 'backend.plan.exports.download_pdf'|trans }}
+                                            </a>
+                                            <a href="{{ path('backend_plan_export_excel', {'id': plan.id, 'grouping': export.key}) }}" class="btn btn-outline-success btn-sm text-decoration-none">
+                                                <i class="bi bi-file-earmark-excel"></i> {{ 'backend.plan.exports.download_excel'|trans }}
+                                            </a>
+                                        {% else %}
+                                            <a href="#" class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">
+                                                {{ 'backend.plan.exports.available_in_pro'|trans }}
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
             {# FILTROS #}
             {% include 'backend/plan/_filters.html.twig' %}
 
