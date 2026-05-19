@@ -133,7 +133,7 @@
                     <div class="d-flex flex-column gap-1">
                         <strong>{{ 'backend.subscription.card.title'|trans }}</strong>
                         <span>
-                            {{ 'backend.subscription.status.' ~ subscription.status|trans }}
+                            {{ ('backend.subscription.status.' ~ subscription.status)|trans }}
                             {% if subscription.paidAmountCents is not null %}
                                 · {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
                             {% endif %}

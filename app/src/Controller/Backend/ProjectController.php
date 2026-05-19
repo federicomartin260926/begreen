@@ -267,7 +267,7 @@ class ProjectController extends AbstractController
         }
     }
 
-    #[Route('/backend/project/{id}/clone', name: 'clone', methods: ['GET'])]
+    #[Route('/{id}/clone', name: 'clone', methods: ['GET'])]
     public function clone(Project $project, EntityManagerInterface $em): RedirectResponse
     {
         /** @var User $creator */
