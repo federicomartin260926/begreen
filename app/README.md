@@ -180,6 +180,7 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 - En el flujo del plan, `be-green-my-film` consume exclusivamente las 200 medidas v23; las 2 medidas legacy del mismo protocolo quedan excluidas del recorrido canónico.
 - El review/listado del plan ya expone filtros básicos por departamento, ODS, área de impacto, triple balance y alcance, usando taxonomías múltiples cuando existen.
 - Las exportaciones del plan ya siguen el modelo Basic / Standard / Pro: Basic solo descarga el PDF unificado, Standard añade PDF agrupado por departamentos y Pro añade PDF/Excel agrupados por categorías, departamentos, áreas de impacto, triple balance y ODS.
+- La capa Pro de colaboración añade comentarios visibles, notas internas, responsables por medida, resumen de validación y medidas personalizadas de proyecto.
 
 ## Tiers comerciales
 

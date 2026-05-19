@@ -21,6 +21,10 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.public_comments'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.internal_notes'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.responsibles'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
     }
 
     public function testStandardTierRules(): void
@@ -36,6 +40,7 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.category'));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
+        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.public_comments'));
     }
 
     public function testProTierRules(): void
@@ -50,6 +55,11 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.category'));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.department'));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.public_comments'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.internal_notes'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.responsibles'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.validation_summary'));
     }
 
     public function testMissingSubscriptionDefaultsToBasic(): void

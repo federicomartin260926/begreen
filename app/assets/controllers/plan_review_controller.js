@@ -334,6 +334,8 @@ export default class extends Controller {
       const verificationEl  = document.getElementById(`verification-${measureId}`);
       const actionTakenEl   = document.getElementById(`action-taken-${measureId}`);
       const observationsEl  = document.getElementById(`observations-${measureId}`);
+      const internalNotesEl = document.getElementById(`internal-notes-${measureId}`);
+      const responsiblesEl  = document.getElementById(`responsibles-${measureId}`);
 
       if (implementedEl && !implementedEl.disabled) {
         updates.push({ field: 'implemented', value: implementedEl.checked ? 'true' : 'false' });
@@ -341,6 +343,11 @@ export default class extends Controller {
       if (canSend(verificationEl)) updates.push({ field: 'verification', value: verificationEl.checked ? 'true' : 'false' });
       if (canSend(actionTakenEl))  updates.push({ field: 'action_taken', value: (actionTakenEl.value || '').trim() });
       if (canSend(observationsEl)) updates.push({ field: 'observations', value: (observationsEl.value || '').trim() });
+      if (canSend(internalNotesEl)) updates.push({ field: 'internal_notes', value: (internalNotesEl.value || '').trim() });
+      if (responsiblesEl && !responsiblesEl.disabled) {
+        const selectedResponsibleIds = Array.from(responsiblesEl.selectedOptions || []).map(opt => opt.value).join(',');
+        updates.push({ field: 'responsibles', value: selectedResponsibleIds });
+      }
 
       // Evidencias
       const filesInput = document.getElementById(`evidence-files-${measureId}`);

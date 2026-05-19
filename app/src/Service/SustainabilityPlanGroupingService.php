@@ -21,7 +21,8 @@ final class SustainabilityPlanGroupingService
     public function __construct(
         private readonly PlanMeasureCatalogResolver $catalogResolver,
         private readonly MeasureTaxonomyPresenter $taxonomyPresenter,
-        private readonly TranslatorInterface $translator
+        private readonly TranslatorInterface $translator,
+        private readonly SustainabilityPlanCustomMeasureParser $customMeasureParser
     ) {
     }
 
@@ -56,6 +57,15 @@ final class SustainabilityPlanGroupingService
             foreach ($this->resolveGroupingLabels($measure, $grouping) as $label) {
                 $groups[$label]['label'] = $label;
                 $groups[$label]['rows'][$measure->getId() ?? spl_object_id($measure)] = $this->buildRow($planMeasure, $grouping);
+            }
+        }
+
+        $customMeasures = $this->customMeasureParser->parse($plan->getCustomMeasures());
+        if ($customMeasures !== []) {
+            $customLabel = $this->translator->trans('backend.plan.custom_measures.group_label');
+            foreach ($customMeasures as $index => $customMeasure) {
+                $groups[$customLabel]['label'] = $customLabel;
+                $groups[$customLabel]['rows']['custom_' . $index] = $this->buildCustomRow($customMeasure, $grouping);
             }
         }
 
@@ -177,6 +187,11 @@ final class SustainabilityPlanGroupingService
             $this->taxonomyPresenter->verificationSourcesWithPriority($measure)
         );
 
+        $responsibles = [];
+        foreach ($planMeasure->getResponsibleCrewMembers() as $crewMember) {
+            $responsibles[] = trim((string) $crewMember->getName() . ' ' . (string) $crewMember->getLastName());
+        }
+
         return [
             'grouping' => $grouping,
             'measureId' => $measure->getId(),
@@ -189,7 +204,40 @@ final class SustainabilityPlanGroupingService
             'impactAreas' => $impactAreas !== [] ? implode(', ', $impactAreas) : $this->translator->trans('backend.plan.exports.no_impact_area'),
             'tripleBalanceAxes' => $tripleBalanceAxes !== [] ? implode(', ', $tripleBalanceAxes) : $this->translator->trans('backend.plan.exports.no_triple_balance'),
             'verificationSources' => $verificationSources !== [] ? implode(' | ', $verificationSources) : ($measure->getVerificationSourcesSummary() ?? '—'),
+            'implemented' => $planMeasure->isImplemented(),
+            'verified' => $planMeasure->isVerification(),
+            'responsibles' => $responsibles !== [] ? implode(', ', array_filter($responsibles)) : '—',
+            'publicComment' => (string) ($planMeasure->getPublicComment() ?? ''),
+            'evidenceCount' => count(array_filter(array_map('trim', preg_split('/\R/u', (string) $planMeasure->getEvidence()) ?: []))),
             'description' => (string) ($measure->getDescription() ?? ''),
+        ];
+    }
+
+    /**
+     * @param array{title:string, description:string, score:int|null, state:string, raw:string} $customMeasure
+     * @return array<string, mixed>
+     */
+    private function buildCustomRow(array $customMeasure, string $grouping): array
+    {
+        return [
+            'grouping' => $grouping,
+            'measureId' => null,
+            'displayName' => $customMeasure['title'],
+            'score' => $customMeasure['score'],
+            'category' => $this->translator->trans('backend.plan.custom_measures.category'),
+            'block' => '—',
+            'departments' => '—',
+            'ods' => '—',
+            'impactAreas' => '—',
+            'tripleBalanceAxes' => '—',
+            'verificationSources' => '—',
+            'implemented' => in_array($customMeasure['state'], ['implemented', 'verified'], true),
+            'verified' => $customMeasure['state'] === 'verified',
+            'responsibles' => '—',
+            'publicComment' => '',
+            'evidenceCount' => 0,
+            'description' => $customMeasure['description'] !== '' ? $customMeasure['description'] : $this->translator->trans('backend.plan.custom_measures.no_description'),
+            'statusLabel' => $this->translator->trans('backend.plan.review.custom_measures.state.' . $customMeasure['state']),
         ];
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\PlanMeasureRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PlanMeasureRepository::class)]
@@ -33,6 +35,10 @@ class PlanMeasure
     #[ORM\JoinColumn(nullable: true)]
     private ?EsG $esg = null;
 
+    #[ORM\ManyToMany(targetEntity: CrewMember::class)]
+    #[ORM\JoinTable(name: 'plan_measure_responsibles')]
+    private Collection $responsibleCrewMembers;
+
     // AHORA nullable para permitir "sin responder"
     #[ORM\Column(type: 'boolean', nullable: true)]
     private ?bool $isApplicable = null;
@@ -57,10 +63,18 @@ class PlanMeasure
     private ?string $observations = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $internalNotes = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $evidence = null;
 
     #[ORM\Column(type: 'boolean')]
     private bool $verification = false;
+
+    public function __construct()
+    {
+        $this->responsibleCrewMembers = new ArrayCollection();
+    }
 
     public function getId(): ?int { return $this->id; }
 
@@ -102,9 +116,37 @@ class PlanMeasure
     public function getObservations(): ?string { return $this->observations; }
     public function setObservations(?string $observations): self { $this->observations = $observations; return $this; }
 
+    public function getPublicComment(): ?string { return $this->observations; }
+    public function setPublicComment(?string $comment): self { $this->observations = $comment; return $this; }
+
+    public function getInternalNotes(): ?string { return $this->internalNotes; }
+    public function setInternalNotes(?string $internalNotes): self { $this->internalNotes = $internalNotes; return $this; }
+
     public function getEvidence(): ?string { return $this->evidence; }
     public function setEvidence(?string $evidence): self { $this->evidence = $evidence; return $this; }
 
     public function isVerification(): bool { return $this->verification; }
     public function setVerification(bool $verification): self { $this->verification = $verification; return $this; }
+
+    /** @return Collection<int, CrewMember> */
+    public function getResponsibleCrewMembers(): Collection
+    {
+        return $this->responsibleCrewMembers;
+    }
+
+    public function addResponsibleCrewMember(CrewMember $crewMember): self
+    {
+        if (!$this->responsibleCrewMembers->contains($crewMember)) {
+            $this->responsibleCrewMembers->add($crewMember);
+        }
+
+        return $this;
+    }
+
+    public function removeResponsibleCrewMember(CrewMember $crewMember): self
+    {
+        $this->responsibleCrewMembers->removeElement($crewMember);
+
+        return $this;
+    }
 }

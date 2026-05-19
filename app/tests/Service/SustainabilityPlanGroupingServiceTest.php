@@ -18,6 +18,7 @@ use App\Repository\ProjectSubscriptionRepository;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\ProjectFeatureGate;
+use App\Service\SustainabilityPlanCustomMeasureParser;
 use App\Service\SustainabilityPlanGroupingService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -104,7 +105,8 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
         return new SustainabilityPlanGroupingService(
             $resolver,
             new MeasureTaxonomyPresenter(),
-            $translator
+            $translator,
+            new SustainabilityPlanCustomMeasureParser()
         );
     }
 

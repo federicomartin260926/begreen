@@ -29,10 +29,12 @@ final class ProjectFeatureGate
         'sustainability_plan.export.ods' => ProjectSubscription::TIER_PRO,
         'sustainability_plan.export.excel' => ProjectSubscription::TIER_PRO,
         'sustainability_plan.custom_comments' => ProjectSubscription::TIER_PRO,
+        'sustainability_plan.public_comments' => ProjectSubscription::TIER_PRO,
         'sustainability_plan.internal_notes' => ProjectSubscription::TIER_PRO,
         'sustainability_plan.responsibles' => ProjectSubscription::TIER_PRO,
         'sustainability_plan.checklist' => ProjectSubscription::TIER_PRO,
         'sustainability_plan.custom_measures' => ProjectSubscription::TIER_PRO,
+        'sustainability_plan.validation_summary' => ProjectSubscription::TIER_PRO,
         'sustainability_plan.branding' => ProjectSubscription::TIER_PRO,
     ];
 

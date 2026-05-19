@@ -49,14 +49,20 @@
                             <th style="width: 18%;">{{ 'backend.plan.exports.pdf.th.measure'|trans }}</th>
                             <th style="width: 6%;">{{ 'backend.plan.exports.pdf.th.score'|trans }}</th>
                             <th style="width: 12%;">{{ 'backend.plan.exports.pdf.th.block'|trans }}</th>
-                            <th style="width: 32%;">{{ 'backend.plan.exports.pdf.th.taxonomies'|trans }}</th>
-                            <th style="width: 32%;">{{ 'backend.plan.exports.pdf.th.description'|trans }}</th>
+                            <th style="width: 28%;">{{ 'backend.plan.exports.pdf.th.taxonomies'|trans }}</th>
+                            <th style="width: 14%;">{{ 'backend.plan.exports.pdf.follow_up'|trans }}</th>
+                            <th style="width: 22%;">{{ 'backend.plan.exports.pdf.notes'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in group.rows %}
                             <tr>
-                                <td>{{ row.displayName }}</td>
+                                <td>
+                                    <div>{{ row.displayName }}</div>
+                                    {% if row.statusLabel is defined and row.statusLabel %}
+                                        <div class="taxonomy-line muted">{{ row.statusLabel }}</div>
+                                    {% endif %}
+                                </td>
                                 <td class="score">{{ row.score ?? '—' }}</td>
                                 <td>{{ row.block }}</td>
                                 <td>
@@ -66,7 +72,34 @@
                                     <div class="taxonomy-line"><span class="taxonomy-label">{{ 'backend.measures.form.triple_balance_axes'|trans }}:</span> {{ row.tripleBalanceAxes }}</div>
                                     <div class="taxonomy-line"><span class="taxonomy-label">{{ 'backend.plan.exports.pdf.verification_sources'|trans }}:</span> {{ row.verificationSources }}</div>
                                 </td>
-                                <td class="description">{{ row.description ?: '—' }}</td>
+                                <td>
+                                    <div class="taxonomy-line">
+                                        <span class="taxonomy-label">{{ 'backend.plan.exports.pdf.implemented'|trans }}:</span>
+                                        {{ row.implemented ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}
+                                    </div>
+                                    <div class="taxonomy-line">
+                                        <span class="taxonomy-label">{{ 'backend.plan.exports.pdf.verified'|trans }}:</span>
+                                        {{ row.verified ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}
+                                    </div>
+                                    <div class="taxonomy-line">
+                                        <span class="taxonomy-label">{{ 'backend.plan.exports.pdf.evidences'|trans }}:</span>
+                                        {{ row.evidenceCount ?? 0 }}
+                                    </div>
+                                    <div class="taxonomy-line">
+                                        <span class="taxonomy-label">{{ 'backend.plan.exports.pdf.responsibles'|trans }}:</span>
+                                        {{ row.responsibles ?? '—' }}
+                                    </div>
+                                </td>
+                                <td class="description">
+                                    {% if row.publicComment %}
+                                        <div class="taxonomy-line">{{ row.publicComment }}</div>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                    {% if row.description %}
+                                        <div class="taxonomy-line muted">{{ row.description }}</div>
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>

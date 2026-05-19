@@ -6,6 +6,7 @@ use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, 
 use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository};
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
+use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\ProjectFeatureGate;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
@@ -34,7 +35,8 @@ class PlanController extends AbstractController
         private TranslatorInterface $t,
         private PlanMeasureCatalogResolver $catalogResolver,
         private ProjectFeatureGate $featureGate,
-        private MeasureTaxonomyPresenter $taxonomyPresenter
+        private MeasureTaxonomyPresenter $taxonomyPresenter,
+        private SustainabilityPlanCollaborationService $collaborationService
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -175,7 +177,11 @@ class PlanController extends AbstractController
         // POST: guardar texto y actualizar estado a completo/incompleto
         if ($request->isMethod('POST')) {
             $text = trim((string) $request->request->get('custom_measures', ''));
-            $plan->setCustomMeasures($text !== '' ? $text : null);
+            if ($this->featureGate->canUseFeature($project, 'sustainability_plan.custom_measures')) {
+                $plan->setCustomMeasures($text !== '' ? $text : null);
+            } elseif ($text !== '') {
+                $this->addFlash('info', 'backend.plan.complete.custom_measures_locked');
+            }
 
             $planComplete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepository);
             $plan->setStatus($planComplete ? 'completo' : 'incompleto');
@@ -384,6 +390,8 @@ class PlanController extends AbstractController
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
+            'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
+            'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
 
             // navegación y medida actual
             'index'            => $index,
@@ -690,6 +698,9 @@ class PlanController extends AbstractController
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
+            'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
+            'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
+            'crewMembersByMeasure' => $this->buildCrewMembersByMeasure($plan, $project),
             'planMeasures'     => $plan->getPlanMeasures(),
             'measures'         => $measures,
             'currentPage'      => $page,
@@ -787,6 +798,11 @@ class PlanController extends AbstractController
             // Deja el resto en NULL hasta respuesta explícita del usuario
         }
 
+        $proOnlyFields = ['observations', 'internalNotes', 'internal_notes', 'responsibles'];
+        if (in_array($field, $proOnlyFields, true) && !$this->featureGate->canUseFeature($project, 'sustainability_plan.public_comments')) {
+            return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
+        }
+
         // --- Mutaciones por campo ---
         switch ($field) {
             case 'isApplicable':
@@ -853,6 +869,36 @@ class PlanController extends AbstractController
             case 'observations':
                 $text = trim((string)$value);
                 $planMeasure->setObservations($text !== '' ? $text : null);
+                break;
+
+            case 'internalNotes':
+            case 'internal_notes':
+                $text = trim((string)$value);
+                $planMeasure->setInternalNotes($text !== '' ? $text : null);
+                break;
+
+            case 'responsibles':
+                $ids = [];
+                $decoded = json_decode((string) $value, true);
+                if (is_array($decoded)) {
+                    $ids = array_map('intval', $decoded);
+                } else {
+                    $ids = array_values(array_filter(array_map('intval', preg_split('/[,\s]+/', (string) $value) ?: [])));
+                }
+
+                $crewRepo = $em->getRepository(CrewMember::class);
+                $crewMembers = [];
+                if ($ids !== []) {
+                    $crewMembers = $crewRepo->createQueryBuilder('c')
+                        ->andWhere('c.project = :project')
+                        ->andWhere('c.id IN (:ids)')
+                        ->setParameter('project', $project)
+                        ->setParameter('ids', array_values(array_unique($ids)))
+                        ->getQuery()
+                        ->getResult();
+                }
+
+                $this->collaborationService->syncResponsibleCrewMembers($planMeasure, $crewMembers);
                 break;
 
             default:
@@ -1615,6 +1661,9 @@ class PlanController extends AbstractController
             'projectTierSummary'=> $this->getProjectTierSummary($this->featureGate->getTier($project)),
             'hasWatermark'   => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
+            'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
+            'customMeasures' => $this->collaborationService->getCustomMeasures($plan),
+            'crewMembersByMeasure' => $this->buildCrewMembersByMeasure($plan, $project),
             'activeFilters'  => $activeFilters,
             'measuresByDpto' => $measuresByDpto,
             'planChartsUrls' => $planChartsUrls,
@@ -1843,11 +1892,12 @@ class PlanController extends AbstractController
         $definitions = [
             'sustainability_plan.department_pdf' => 'PDF por departamentos',
             'sustainability_plan.advanced_exports' => 'Exportaciones avanzadas',
-            'sustainability_plan.custom_comments' => 'Comentarios personalizados',
+            'sustainability_plan.public_comments' => 'Comentarios personalizados',
             'sustainability_plan.internal_notes' => 'Notas internas',
             'sustainability_plan.responsibles' => 'Responsables',
             'sustainability_plan.checklist' => 'Checklist',
             'sustainability_plan.custom_measures' => 'Medidas custom',
+            'sustainability_plan.validation_summary' => 'Resumen de validación',
             'sustainability_plan.branding' => 'Branding',
         ];
 
@@ -1898,6 +1948,31 @@ class PlanController extends AbstractController
         }
 
         return count($paths);
+    }
+
+    /**
+     * @return array<int, CrewMember[]>
+     */
+    private function buildCrewMembersByMeasure(Plan $plan, Project $project): array
+    {
+        $crewMembers = $project->getCrewMembers();
+        $result = [];
+
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            $measure = $planMeasure->getMeasure();
+            if (!$measure) {
+                continue;
+            }
+
+            $measureId = $measure->getId();
+            if ($measureId === null) {
+                continue;
+            }
+
+            $result[$measureId] = $this->collaborationService->sortCrewMembersForMeasure($measure, $crewMembers);
+        }
+
+        return $result;
     }
 
 

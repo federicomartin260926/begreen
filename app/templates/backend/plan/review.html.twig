@@ -154,6 +154,66 @@
                 </div>
             {% endif %}
 
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="border rounded p-3 bg-light h-100">
+                        <div class="small text-muted">{{ 'backend.plan.review.summary.to_implement'|trans }}</div>
+                        <div class="fs-4 fw-semibold">{{ collaborationSummary.toImplement }}</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="border rounded p-3 bg-light h-100">
+                        <div class="small text-muted">{{ 'backend.plan.review.summary.implemented'|trans }}</div>
+                        <div class="fs-4 fw-semibold">{{ collaborationSummary.implemented }}</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="border rounded p-3 bg-light h-100">
+                        <div class="small text-muted">{{ 'backend.plan.review.summary.verified'|trans }}</div>
+                        <div class="fs-4 fw-semibold">{{ collaborationSummary.verified }}</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="border rounded p-3 bg-light h-100">
+                        <div class="small text-muted">{{ 'backend.plan.review.summary.evidences'|trans }}</div>
+                        <div class="fs-4 fw-semibold">{{ collaborationSummary.evidenceFiles }}</div>
+                    </div>
+                </div>
+            </div>
+
+            {% if projectTier == 'pro' and customMeasures is not empty %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            <div>
+                                <h5 class="card-title mb-1">{{ 'backend.plan.review.custom_measures.title'|trans }}</h5>
+                                <div class="text-muted small">{{ 'backend.plan.review.custom_measures.help'|trans }}</div>
+                            </div>
+                            <span class="badge bg-success">{{ customMeasures|length }}</span>
+                        </div>
+
+                        <div class="row g-3">
+                            {% for customMeasure in customMeasures %}
+                                <div class="col-12 col-md-6">
+                                    <div class="border rounded p-3 h-100 bg-light">
+                                        <div class="fw-semibold">{{ customMeasure.title }}</div>
+                                        <div class="small text-muted mb-2">
+                                            {% if customMeasure.score is not null %}
+                                                <span class="badge bg-warning text-dark me-2">{{ customMeasure.score }}</span>
+                                            {% endif %}
+                                            <span class="text-capitalize">{{ ('backend.plan.review.custom_measures.state.' ~ customMeasure.state)|trans }}</span>
+                                        </div>
+                                        {% if customMeasure.description %}
+                                            <div class="small">{{ customMeasure.description }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
             {# ACCIONES #}
             <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
                 <div class="d-flex gap-2">

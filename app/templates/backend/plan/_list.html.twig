@@ -311,8 +311,17 @@
 
                                         {% set canAll = is_granted('ROLE_SUPER_ADMIN') or is_granted('ROLE_ADMIN') %}
                                         {% set canVerify = canAll %}
-                                        {% set canObserve = canAll %}
                                         {% set canManageEvidence = canAll or is_granted('ROLE_MANAGER') %}
+                                        {% set canProFeatures = projectTier == 'pro' or is_granted('ROLE_SUPER_ADMIN') %}
+                                        {% set measureCrewMembers = crewMembersByMeasure[measure.id]|default([]) %}
+                                        {% set responsibleIds = [] %}
+                                        {% set responsibleLabels = [] %}
+                                        {% if pm %}
+                                            {% for responsible in pm.responsibleCrewMembers %}
+                                                {% set responsibleIds = responsibleIds|merge([responsible.id]) %}
+                                                {% set responsibleLabels = responsibleLabels|merge([((responsible.name ?? '') ~ ' ' ~ (responsible.lastName ?? ''))|trim]) %}
+                                            {% endfor %}
+                                        {% endif %}
 
                                         <div class="d-flex flex-wrap gap-2 bg-white p-4">
 
@@ -364,6 +373,81 @@
                                                     class="form-control"
                                                     rows="2"
                                                     placeholder="{{ 'backend.plan.review.action_taken_ph'|trans }}">{{ pm.actionTaken ?? '' }}</textarea>
+                                            </div>
+
+                                            {# — Comentario visible — #}
+                                            <div class="w-100 mt-3">
+                                                <label class="form-label small" for="observations-{{ measure.id }}">{{ 'backend.plan.review.public_comment'|trans }}</label>
+                                                {% if canProFeatures %}
+                                                    <textarea
+                                                        id="observations-{{ measure.id }}"
+                                                        class="form-control"
+                                                        rows="2"
+                                                        placeholder="{{ 'backend.plan.review.public_comment_ph'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
+                                                {% else %}
+                                                    <textarea
+                                                        id="observations-{{ measure.id }}"
+                                                        class="form-control"
+                                                        rows="2"
+                                                        disabled
+                                                        placeholder="{{ 'backend.plan.review.available_in_pro'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
+                                                {% endif %}
+                                            </div>
+
+                                            {# — Responsables — #}
+                                            <div class="w-100 mt-3">
+                                                <label class="form-label small d-flex justify-content-between align-items-center" for="responsibles-{{ measure.id }}">
+                                                    <span>{{ 'backend.plan.review.responsibles'|trans }}</span>
+                                                    {% if not canProFeatures %}
+                                                        <span class="text-muted">{{ 'backend.plan.exports.available_in_pro'|trans }}</span>
+                                                    {% endif %}
+                                                </label>
+                                                {% if canProFeatures %}
+                                                    <select
+                                                        id="responsibles-{{ measure.id }}"
+                                                        class="form-select"
+                                                        multiple
+                                                        size="4">
+                                                        {% for crewMember in measureCrewMembers %}
+                                                            {% set fullName = (crewMember.name ?? '') ~ ' ' ~ (crewMember.lastName ?? '') %}
+                                                            <option value="{{ crewMember.id }}"
+                                                                    {% if crewMember.id in responsibleIds %}selected{% endif %}>
+                                                                {{ fullName|trim }}{% if crewMember.department %} · {{ crewMember.department.displayName }}{% endif %}
+                                                            </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <div class="form-text">{{ 'backend.plan.review.responsibles_hint'|trans }}</div>
+                                                {% else %}
+                                                    <div class="form-control-plaintext">
+                                                        {% if responsibleLabels is not empty %}
+                                                            {{ responsibleLabels|join(', ') }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+
+                                            {# — Notas internas — #}
+                                            <div class="w-100 mt-3">
+                                                <label class="form-label small d-flex justify-content-between align-items-center" for="internal-notes-{{ measure.id }}">
+                                                    <span>{{ 'backend.plan.review.internal_notes'|trans }}</span>
+                                                    <span class="text-muted small">{{ 'backend.plan.review.internal_notes_hint'|trans }}</span>
+                                                </label>
+                                                {% if canProFeatures %}
+                                                    <textarea
+                                                        id="internal-notes-{{ measure.id }}"
+                                                        class="form-control"
+                                                        rows="2"
+                                                        placeholder="{{ 'backend.plan.review.internal_notes_ph'|trans }}">{{ pm.internalNotes ?? '' }}</textarea>
+                                                {% else %}
+                                                    <textarea
+                                                        id="internal-notes-{{ measure.id }}"
+                                                        class="form-control"
+                                                        rows="2"
+                                                        disabled
+                                                        placeholder="{{ 'backend.plan.review.available_in_pro'|trans }}">{{ pm.internalNotes ?? '' }}</textarea>
+                                                {% endif %}
                                             </div>
 
                                             {# — Evidencias — #}
@@ -424,22 +508,6 @@
                                                         <li class="list-group-item py-2 text-muted small">{{ 'backend.plan.review.no_evidences'|trans }}</li>
                                                     {% endif %}
                                                 </ul>
-                                            </div>
-
-                                            {# — Observación — #}
-                                            <div class="w-100 mt-3">
-                                                <label class="form-label small" for="observations-{{ measure.id }}">{{ 'backend.plan.review.observation'|trans }}</label>
-                                                {% if canObserve %}
-                                                    <textarea
-                                                        id="observations-{{ measure.id }}"
-                                                        class="form-control"
-                                                        rows="2"
-                                                        placeholder="{{ 'backend.plan.review.observation_ph'|trans }}">{{ pm.observations ?? '' }}</textarea>
-                                                {% else %}
-                                                    <div class="form-control-plaintext">
-                                                        {{ pm.observations ?? '—' }}
-                                                    </div>
-                                                {% endif %}
                                             </div>
 
                                             <div class="w-100 d-flex justify-content-end mt-2">

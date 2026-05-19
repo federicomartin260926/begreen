@@ -36,7 +36,12 @@ final class SustainabilityPlanExcelExporter
         $sheet->setCellValue('H1', $this->translator->trans('backend.plan.exports.excel.impact_areas'));
         $sheet->setCellValue('I1', $this->translator->trans('backend.plan.exports.excel.triple_balance'));
         $sheet->setCellValue('J1', $this->translator->trans('backend.plan.exports.excel.verification_sources'));
-        $sheet->setCellValue('K1', $this->translator->trans('backend.plan.exports.excel.description'));
+        $sheet->setCellValue('K1', $this->translator->trans('backend.plan.exports.excel.implemented'));
+        $sheet->setCellValue('L1', $this->translator->trans('backend.plan.exports.excel.verified'));
+        $sheet->setCellValue('M1', $this->translator->trans('backend.plan.exports.excel.responsibles'));
+        $sheet->setCellValue('N1', $this->translator->trans('backend.plan.exports.excel.public_comment'));
+        $sheet->setCellValue('O1', $this->translator->trans('backend.plan.exports.excel.description'));
+        $sheet->setCellValue('P1', $this->translator->trans('backend.plan.exports.excel.status'));
 
         $rowIndex = 2;
         foreach ($groups as $group) {
@@ -53,21 +58,26 @@ final class SustainabilityPlanExcelExporter
                     $row['impactAreas'] ?? '',
                     $row['tripleBalanceAxes'] ?? '',
                     $row['verificationSources'] ?? '',
+                    !empty($row['implemented']) ? $this->translator->trans('backend.common.yes') : $this->translator->trans('backend.common.no'),
+                    !empty($row['verified']) ? $this->translator->trans('backend.common.yes') : $this->translator->trans('backend.common.no'),
+                    $row['responsibles'] ?? '',
+                    $row['publicComment'] ?? '',
                     $row['description'] ?? '',
+                    $row['statusLabel'] ?? '',
                 ], null, 'A' . $rowIndex);
                 $rowIndex++;
             }
         }
 
         if ($rowIndex > 2) {
-            $sheet->setAutoFilter('A1:K' . ($rowIndex - 1));
+            $sheet->setAutoFilter('A1:P' . ($rowIndex - 1));
         }
 
-        foreach (range('A', 'K') as $column) {
+        foreach (range('A', 'P') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
-        $sheet->getStyle('A1:K1')->applyFromArray([
+        $sheet->getStyle('A1:P1')->applyFromArray([
             'font' => ['bold' => true],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,

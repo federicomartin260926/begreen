@@ -100,6 +100,8 @@
                         <th>{{ 'backend.plan.review.verification_sources'|trans }}</th>
                         <th>Áreas de impacto</th>
                         <th>Triple balance</th>
+                        <th>{{ 'backend.plan.preview.th.follow_up'|trans }}</th>
+                        <th>{{ 'backend.plan.preview.th.notes'|trans }}</th>
                         <th>{{ 'backend.plan.preview.th.esg'|trans }}</th>
                         <th>{{ 'backend.plan.preview.th.scope'|trans }}</th>
                     </tr>
@@ -171,6 +173,26 @@
                                     {% for axis in axes %}
                                         <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>
                                     {% endfor %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div><span class="fw-semibold">{{ 'backend.plan.preview.implemented'|trans }}:</span> {{ pm.isImplemented ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
+                                <div><span class="fw-semibold">{{ 'backend.plan.preview.verified'|trans }}:</span> {{ pm.verification ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
+                                <div><span class="fw-semibold">{{ 'backend.plan.preview.evidences'|trans }}:</span> {{ pm.evidence ? pm.evidence|split("\n")|filter(v => v)|length : 0 }}</div>
+                                <div>
+                                    <span class="fw-semibold">{{ 'backend.plan.preview.responsibles'|trans }}:</span>
+                                    {% set responsibles = [] %}
+                                    {% for member in pm.responsibleCrewMembers %}
+                                        {% set responsibles = responsibles|merge([((member.name ?? '') ~ ' ' ~ (member.lastName ?? ''))|trim]) %}
+                                    {% endfor %}
+                                    {{ responsibles is not empty ? responsibles|join(', ') : '—' }}
+                                </div>
+                            </td>
+                            <td>
+                                {% if pm.publicComment %}
+                                    <div class="small">{{ pm.publicComment }}</div>
                                 {% else %}
                                     —
                                 {% endif %}

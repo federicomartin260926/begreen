@@ -85,6 +85,18 @@
     </div>
   {% endif %}
 
+  {% if collaborationSummary is defined %}
+    <div style="margin:0 0 16px;font-size:12px;background-color:#f8fafc;border:1px solid #d1d5db;padding:8px 12px;border-radius:4px;">
+      <strong>{{ 'backend.plan.pdf.follow_up.title'|trans }}</strong>
+      <ul style="margin:6px 0 0 20px;padding:0;">
+        <li>{{ 'backend.plan.pdf.follow_up.to_implement'|trans }}: {{ collaborationSummary.toImplement }}</li>
+        <li>{{ 'backend.plan.pdf.follow_up.implemented'|trans }}: {{ collaborationSummary.implemented }}</li>
+        <li>{{ 'backend.plan.pdf.follow_up.verified'|trans }}: {{ collaborationSummary.verified }}</li>
+        <li>{{ 'backend.plan.pdf.follow_up.evidences'|trans }}: {{ collaborationSummary.evidenceFiles }}</li>
+      </ul>
+    </div>
+  {% endif %}
+
   {% if measuresByDpto is not empty %}
     <h3>{{ 'backend.plan.pdf.summary_by_department'|trans }}</h3>
     <table class="summary-table">
@@ -136,6 +148,8 @@
             <th>{{ 'backend.plan.review.verification_sources'|trans }}</th>
             <th>Áreas de impacto</th>
             <th>Triple balance</th>
+            <th>{{ 'backend.plan.pdf.th.follow_up'|trans }}</th>
+            <th>{{ 'backend.plan.pdf.th.notes'|trans }}</th>
             <th>{{ 'backend.plan.pdf.th.esg'|trans }}</th>
             <th>{{ 'backend.plan.pdf.th.scope'|trans }}</th>
           </tr>
@@ -209,6 +223,29 @@
                 —
               {% endif %}
             </td>
+            <td>
+              <div><strong>{{ 'backend.plan.pdf.follow_up.implemented'|trans }}:</strong> {{ pm.isImplemented ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
+              <div><strong>{{ 'backend.plan.pdf.follow_up.verified'|trans }}:</strong> {{ pm.isVerification() ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
+              <div><strong>{{ 'backend.plan.pdf.follow_up.evidences'|trans }}:</strong> {{ pm.evidence ? pm.evidence|split("\n")|filter(v => v)|length : 0 }}</div>
+              <div>
+                <strong>{{ 'backend.plan.pdf.follow_up.responsibles'|trans }}:</strong>
+                {% set responsibles = [] %}
+                {% for member in pm.responsibleCrewMembers %}
+                  {% set responsibles = responsibles|merge([((member.name ?? '') ~ ' ' ~ (member.lastName ?? ''))|trim]) %}
+                {% endfor %}
+                {{ responsibles is not empty ? responsibles|join(', ') : '—' }}
+              </div>
+            </td>
+            <td>
+              {% if pm.publicComment %}
+                <div style="white-space:pre-wrap;">{{ pm.publicComment }}</div>
+              {% else %}
+                —
+              {% endif %}
+              {% if pm.measure and pm.measure.description %}
+                <div style="font-size:10px;color:#666;margin-top:4px;">{{ pm.measure.description }}</div>
+              {% endif %}
+            </td>
             <td>{{ pm.measure.esg.name|default('—') }}</td>
             <td>{{ pm.measure.scope.name|default('—') }}</td>
           </tr>
@@ -252,6 +289,31 @@
           </div>
         </td>
       </tr>
+    </table>
+  {% endif %}
+
+  {% if customMeasures is defined and customMeasures is not empty %}
+    <div class="page-break"></div>
+    <h3>{{ 'backend.plan.pdf.custom_measures.title'|trans }}</h3>
+    <table class="detail-table">
+      <thead>
+        <tr>
+          <th>{{ 'backend.plan.pdf.custom_measures.th.title'|trans }}</th>
+          <th>{{ 'backend.plan.pdf.custom_measures.th.score'|trans }}</th>
+          <th>{{ 'backend.plan.pdf.custom_measures.th.state'|trans }}</th>
+          <th>{{ 'backend.plan.pdf.custom_measures.th.description'|trans }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for customMeasure in customMeasures %}
+          <tr>
+            <td>{{ customMeasure.title }}</td>
+            <td>{{ customMeasure.score ?? '—' }}</td>
+            <td>{{ ('backend.plan.review.custom_measures.state.' ~ customMeasure.state)|trans }}</td>
+            <td>{{ customMeasure.description ?: '—' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
     </table>
   {% endif %}
   </div>

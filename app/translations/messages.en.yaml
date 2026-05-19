@@ -642,6 +642,12 @@ backend:
         measures_count: "%count% measures"
         no_measures: "There are no measures in this group."
         verification_sources: "Sources"
+        follow_up: "Follow-up"
+        notes: "Visible notes"
+        implemented: "Implemented"
+        verified: "Verified"
+        evidences: "Evidence files"
+        responsibles: "Responsibles"
         th:
           measure: "Measure"
           score: "Score"
@@ -660,6 +666,11 @@ backend:
         triple_balance: "Triple balance"
         verification_sources: "Verification sources"
         description: "Description"
+        implemented: "Implemented"
+        verified: "Verified"
+        responsibles: "Responsibles"
+        public_comment: "Visible comment"
+        status: "Status"
     preview_modal:
       title: "Plan view by department with applied filters"
       loading: "Loading preview ..."
@@ -678,6 +689,8 @@ backend:
       title: "You’ve completed the plan!"
       help: "You can add custom measures you plan to implement in the plan."
       textarea_ph: "Write additional measures here…"
+      custom_measures_help: "Format per line: Title | Description | Score | State. Optional state: planned, to_implement, implemented, verified."
+      custom_measures_locked: "Custom measures are available only in Pro."
       finalize_btn: "Finish plan"
     measures:
       no_items: "No measures available."
@@ -728,6 +741,10 @@ backend:
       performance_title: "Performance: %pct%%"
     labels:
       no_department: "No department"
+    custom_measures:
+      group_label: "Custom measures"
+      category: "Custom measure"
+      no_description: "No description"
     flash:
       select_protocol_required: "You must select a protocol."
       invalid_protocol: "Invalid protocol."
@@ -832,6 +849,27 @@ backend:
       critical_short: "Critical"
       critical_q: "Critical?"
       critical_reason_label: "Reason (critical)"
+      public_comment: "Visible comment"
+      public_comment_ph: "Comment that will appear in documents…"
+      responsibles: "Responsibles"
+      responsibles_hint: "Members whose department matches the measure are shown first."
+      internal_notes: "Internal notes"
+      internal_notes_hint: "Won’t appear in downloaded documents."
+      internal_notes_ph: "Team internal notes…"
+      available_in_pro: "Available in Pro"
+      summary:
+        to_implement: "Measures to implement"
+        implemented: "Implemented measures"
+        verified: "Verified measures"
+        evidences: "Uploaded evidence files"
+      custom_measures:
+        title: "Pro custom measures"
+        help: "These are the measures defined in the custom measures block."
+        state:
+          planned: "Planned"
+          to_implement: "To implement"
+          implemented: "Implemented"
+          verified: "Verified"
       flags:
         implemented: "Measure implemented"
         implemented_hint: "First select “Will implement”."
@@ -897,8 +935,14 @@ backend:
         implemented_q: "Implemented?"
         critical: "Critical"
         ods: "SDG"
+        follow_up: "Follow-up"
+        notes: "Visible notes"
         esg: "ESG"
         scope: "Scope"
+      implemented: "Implemented"
+      verified: "Verified"
+      evidences: "Evidence files"
+      responsibles: "Responsibles"
     pdf:
       title: "Sustainability plan - %project%"
       h2: "Sustainability plan: %project%"
@@ -906,10 +950,24 @@ backend:
       date: "Date:"
       user: "User:"
       filters_applied: "Applied filters:"
+      follow_up:
+        title: "Follow-up"
+        to_implement: "Measures to implement"
+        implemented: "Implemented measures"
+        verified: "Verified measures"
+        evidences: "Uploaded evidence files"
+        responsibles: "Responsibles"
       summary_by_department: "Summary by department"
       empty: "No measures have been loaded for this plan yet."
       charts:
         title: "Plan charts"
+      custom_measures:
+        title: "Pro custom measures"
+        th:
+          title: "Title"
+          score: "Score"
+          state: "State"
+          description: "Description"
       th:
         department: "Department"
         total_measures: "Total measures"
@@ -923,6 +981,8 @@ backend:
         implemented_q: "Implemented?"
         critical_reason: "Critical / Reason"
         ods: "SDG"
+        follow_up: "Follow-up"
+        notes: "Visible notes"
         esg: "ESG"
         scope: "Scope"
       score:

@@ -643,6 +643,12 @@ backend:
         measures_count: "%count% medidas"
         no_measures: "No hay medidas para este grupo."
         verification_sources: "Fuentes"
+        follow_up: "Seguimiento"
+        notes: "Notas visibles"
+        implemented: "Implementada"
+        verified: "Verificada"
+        evidences: "Evidencias"
+        responsibles: "Responsables"
         th:
           measure: "Medida"
           score: "Puntuación"
@@ -661,6 +667,11 @@ backend:
         triple_balance: "Triple balance"
         verification_sources: "Fuentes de verificación"
         description: "Descripción"
+        implemented: "Implementada"
+        verified: "Verificada"
+        responsibles: "Responsables"
+        public_comment: "Comentario visible"
+        status: "Estado"
     preview_modal:
       title: "Vista del plan por departamento con filtros aplicados"
       loading: "Cargando vista ..."
@@ -679,6 +690,8 @@ backend:
       title: "¡Has completado el plan!"
       help: "Puedes añadir medidas personalizadas que vayas a implementar en el plan."
       textarea_ph: "Escribe aquí las medidas adicionales…"
+      custom_measures_help: "Formato por línea: Título | Descripción | Puntuación | Estado. Estado opcional: planned, to_implement, implemented, verified."
+      custom_measures_locked: "Las medidas personalizadas están disponibles solo en Pro."
       finalize_btn: "Finalizar plan"
     measures:
       no_items: "No hay medidas disponibles."
@@ -729,6 +742,10 @@ backend:
       performance_title: "Desempeño: %pct%%"
     labels:
       no_department: "Sin departamento"
+    custom_measures:
+      group_label: "Medidas personalizadas"
+      category: "Medida personalizada"
+      no_description: "Sin descripción"
     flash:
       select_protocol_required: "Debes seleccionar un protocolo."
       invalid_protocol: "Protocolo no válido."
@@ -834,6 +851,27 @@ backend:
       critical_short: "Crítica"
       critical_q: "¿Crítica?"
       critical_reason_label: "Motivo (crítica)"
+      public_comment: "Comentario visible"
+      public_comment_ph: "Comentario que sí aparecerá en los documentos…"
+      responsibles: "Responsables"
+      responsibles_hint: "Se ordenan primero los miembros cuyo departamento coincide con la medida."
+      internal_notes: "Notas internas"
+      internal_notes_hint: "No aparecerán en los documentos descargados."
+      internal_notes_ph: "Notas internas del equipo…"
+      available_in_pro: "Disponible en Pro"
+      summary:
+        to_implement: "Medidas a implementar"
+        implemented: "Medidas implementadas"
+        verified: "Medidas verificadas"
+        evidences: "Evidencias subidas"
+      custom_measures:
+        title: "Medidas personalizadas Pro"
+        help: "Se muestran las medidas definidas en el bloque de medidas personalizadas."
+        state:
+          planned: "Planificada"
+          to_implement: "A implementar"
+          implemented: "Implementada"
+          verified: "Verificada"
       # Bloques y campos dentro del acordeón
       flags:
         implemented: "Medida implementada"
@@ -900,8 +938,14 @@ backend:
         implemented_q: "¿Implementada?"
         critical: "Crítica"
         ods: "ODS"
+        follow_up: "Seguimiento"
+        notes: "Notas visibles"
         esg: "ESG"
         scope: "Alcance"
+      implemented: "Implementada"
+      verified: "Verificada"
+      evidences: "Evidencias"
+      responsibles: "Responsables"
     pdf:
       title: "Plan de sostenibilidad - %project%"
       h2: "Plan de sostenibilidad: %project%"
@@ -909,10 +953,24 @@ backend:
       date: "Fecha:"
       user: "Usuario:"
       filters_applied: "Filtros aplicados:"
+      follow_up:
+        title: "Seguimiento"
+        to_implement: "Medidas a implementar"
+        implemented: "Medidas implementadas"
+        verified: "Medidas verificadas"
+        evidences: "Evidencias subidas"
+        responsibles: "Responsables"
       summary_by_department: "Resumen por departamento"
       empty: "Aún no se han cargado medidas para este plan."
       charts:
         title: "Gráficos del plan"
+      custom_measures:
+        title: "Medidas personalizadas Pro"
+        th:
+          title: "Título"
+          score: "Puntuación"
+          state: "Estado"
+          description: "Descripción"
       th:
         department: "Departamento"
         total_measures: "Total de medidas"
@@ -926,6 +984,8 @@ backend:
         implemented_q: "¿Implementada?"
         critical_reason: "Crítica / Motivo"
         ods: "ODS"
+        follow_up: "Seguimiento"
+        notes: "Notas visibles"
         esg: "ESG"
         scope: "Alcance"
       score:
