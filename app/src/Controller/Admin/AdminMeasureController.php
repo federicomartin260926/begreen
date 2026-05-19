@@ -6,6 +6,9 @@ use App\Entity\{Measure, Category, Department, Protocol, Ods, EsG, Scope, Catego
 use App\Form\{MeasureType, MeasureImportType};
 use Dompdf\{Dompdf, Options};
 use App\Repository\{MeasureRepository, ProtocolRepository, CategoryGhgRepository, CategoryRepository, DepartmentRepository, OdsRepository, EsGRepository, ScopeRepository};
+use App\Service\MeasureCatalogAdminService;
+use App\Service\MeasureTaxonomyPresenter;
+use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureImporter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,13 +24,16 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Gedmo\Translatable\Entity\Translation;
 use Gedmo\Translatable\TranslatableListener;
+use Symfony\Component\Form\FormError;
 
 #[Route('/admin/measures', name: 'admin_measures_')]
 class AdminMeasureController extends AbstractController
 {
     public function __construct(
         private TranslatorInterface $translator,
-        private MeasureImporter $measureImporter
+        private MeasureImporter $measureImporter,
+        private MeasureCatalogAdminService $catalogAdminService,
+        private MeasureTaxonomyPresenter $taxonomyPresenter
     ) {}
 
     #[Route('/', name: 'index')]
@@ -35,11 +41,14 @@ class AdminMeasureController extends AbstractController
     {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
+        $measures = $measureRepository->findAll();
         $form = $this->createForm(MeasureImportType::class);
 
         return $this->render('admin/measure/index.html.twig', [
-            'measures'   => $measureRepository->findAll(),
-            'importForm' => $form->createView(),
+            'measures'          => $measures,
+            'catalogSummary'    => $this->catalogAdminService->summarizeCatalog($measures),
+            'taxonomyPresenter' => $this->taxonomyPresenter,
+            'importForm'        => $form->createView(),
         ]);
     }
 
@@ -59,7 +68,7 @@ class AdminMeasureController extends AbstractController
         $measure = new Measure();
 
         $locales = ['en']; // añade más si procede
-        $fields  = ['name','nameReview','description','implementation','verificationSources'];
+        $fields  = ['name','nameReview','description','implementation'];
 
         $form = $this->createForm(MeasureType::class, $measure, [
             'locales'             => array_merge(['es'], $locales),
@@ -70,29 +79,51 @@ class AdminMeasureController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $this->syncMeasureImportVersion($measure);
+            $selectedSources = $this->collectSelectedVerificationSources($form);
+            $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $selectedSources);
+            if ($validationErrors !== []) {
+                $this->addFormErrors($form, $validationErrors);
+            } else {
+                // 2) Guardar base en ES
+                $translatableListener->setTranslatableLocale('es');
+                $em->persist($measure);
+                $em->flush(); // necesitamos ID
 
-            // 2) Guardar base en ES
-            $translatableListener->setTranslatableLocale('es');
-            $em->persist($measure);
-            $em->flush(); // necesitamos ID
+                /** @var \Gedmo\Translatable\Entity\Repository\TranslationRepository $tr */
+                $tr = $em->getRepository(Translation::class);
 
-            /** @var \Gedmo\Translatable\Entity\Repository\TranslationRepository $tr */
-            $tr = $em->getRepository(Translation::class);
-
-            // 3) Guardar traducciones de locales no-ES
-            foreach ($locales as $loc) {
-                foreach ($fields as $f) {
-                    $val = (string) ($form->get($f . '_' . $loc)->getData() ?? '');
-                    if ($val !== '') {
-                        $tr->translate($measure, $f, $loc, $val);
+                // 3) Guardar traducciones de locales no-ES
+                foreach ($locales as $loc) {
+                    foreach ($fields as $f) {
+                        $val = (string) ($form->get($f . '_' . $loc)->getData() ?? '');
+                        if ($val !== '') {
+                            $tr->translate($measure, $f, $loc, $val);
+                        }
                     }
                 }
+
+                $syncOk = true;
+                try {
+                    $this->catalogAdminService->syncVerificationSources($measure, $selectedSources);
+                } catch (\InvalidArgumentException $e) {
+                    $this->addFormErrors($form, [[
+                        'field' => 'verificationSourcePriority1',
+                        'message' => $e->getMessage(),
+                    ]]);
+                    $syncOk = false;
+                }
+
+                if ($syncOk) {
+                    $measure->setDepartment($measure->getPrimaryDepartment());
+                    $measure->setOds($measure->getPrimaryOds());
+
+                    $em->flush();
+
+                    $this->addFlash('success', 'backend.measures.flash.created');
+                    return $this->redirectToRoute('admin_measures_index');
+                }
             }
-
-            $em->flush();
-
-            $this->addFlash('success', 'backend.measures.flash.created');
-            return $this->redirectToRoute('admin_measures_index');
         }
 
         return $this->render('admin/measure/form.html.twig', [
@@ -119,7 +150,7 @@ class AdminMeasureController extends AbstractController
         }
 
         $locales = ['en']; // añade más si procede
-        $fields  = ['name','nameReview','description','implementation','verificationSources'];
+        $fields  = ['name','nameReview','description','implementation'];
 
         /** @var \Gedmo\Translatable\Entity\Repository\TranslationRepository $tr */
         $tr = $em->getRepository(Translation::class);
@@ -143,37 +174,60 @@ class AdminMeasureController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // 3) Asegurar ES al guardar los campos base (muy importante)
-            $translatableListener->setTranslatableLocale('es');
+            $this->syncMeasureImportVersion($measure);
+            $selectedSources = $this->collectSelectedVerificationSources($form);
+            $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $selectedSources);
+            if ($validationErrors !== []) {
+                $this->addFormErrors($form, $validationErrors);
+            } else {
+                // 3) Asegurar ES al guardar los campos base (muy importante)
+                $translatableListener->setTranslatableLocale('es');
 
-            // 4) Upsert de traducciones NO-ES desde los campos unmapped
-            foreach ($locales as $loc) {
-                foreach ($fields as $f) {
-                    $fieldName = $f . '_' . $loc;
-                    $val = (string) ($form->get($fieldName)->getData() ?? '');
+                // 4) Upsert de traducciones NO-ES desde los campos unmapped
+                foreach ($locales as $loc) {
+                    foreach ($fields as $f) {
+                        $fieldName = $f . '_' . $loc;
+                        $val = (string) ($form->get($fieldName)->getData() ?? '');
 
-                    if ($val !== '') {
-                        $tr->translate($measure, $f, $loc, $val);
-                    } else {
-                        if (!empty($existingTranslations[$loc][$f])) {
-                            $em->createQuery('DELETE FROM Gedmo\\Translatable\\Entity\\Translation t
-                                            WHERE t.objectClass = :cls AND t.field = :field
-                                                AND t.foreignKey = :fk AND t.locale = :loc')
-                            ->setParameters([
-                                'cls'   => Measure::class,
-                                'field' => $f,
-                                'fk'    => $measure->getId(),
-                                'loc'   => $loc,
-                            ])->execute();
+                        if ($val !== '') {
+                            $tr->translate($measure, $f, $loc, $val);
+                        } else {
+                            if (!empty($existingTranslations[$loc][$f])) {
+                                $em->createQuery('DELETE FROM Gedmo\\Translatable\\Entity\\Translation t
+                                                WHERE t.objectClass = :cls AND t.field = :field
+                                                    AND t.foreignKey = :fk AND t.locale = :loc')
+                                ->setParameters([
+                                    'cls'   => Measure::class,
+                                    'field' => $f,
+                                    'fk'    => $measure->getId(),
+                                    'loc'   => $loc,
+                                ])->execute();
+                            }
                         }
                     }
                 }
+
+                $syncOk = true;
+                try {
+                    $this->catalogAdminService->syncVerificationSources($measure, $selectedSources);
+                } catch (\InvalidArgumentException $e) {
+                    $this->addFormErrors($form, [[
+                        'field' => 'verificationSourcePriority1',
+                        'message' => $e->getMessage(),
+                    ]]);
+                    $syncOk = false;
+                }
+
+                if ($syncOk) {
+                    $measure->setDepartment($measure->getPrimaryDepartment());
+                    $measure->setOds($measure->getPrimaryOds());
+
+                    $em->flush();
+
+                    $this->addFlash('success', 'backend.measures.flash.updated');
+                    return $this->redirectToRoute('admin_measures_index');
+                }
             }
-
-            $em->flush();
-
-            $this->addFlash('success', 'backend.measures.flash.updated');
-            return $this->redirectToRoute('admin_measures_index');
         }
 
         // 5) Tras construir la vista en GET, si quieres que los SELECTs se vean en el idioma de la UI:
@@ -184,6 +238,45 @@ class AdminMeasureController extends AbstractController
             'measure' => $measure,
             'edit'    => true,
         ]);
+    }
+
+    private function collectSelectedVerificationSources($form): array
+    {
+        return [
+            1 => $form->has('verificationSourcePriority1') ? $form->get('verificationSourcePriority1')->getData() : null,
+            2 => $form->has('verificationSourcePriority2') ? $form->get('verificationSourcePriority2')->getData() : null,
+            3 => $form->has('verificationSourcePriority3') ? $form->get('verificationSourcePriority3')->getData() : null,
+        ];
+    }
+
+    private function syncMeasureImportVersion(Measure $measure): void
+    {
+        $protocolCode = $measure->getProtocol()?->getCode();
+        if ($protocolCode === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE) {
+            $measure->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION);
+        }
+    }
+
+    /**
+     * @param array<int, array{field:string, message:string}> $errors
+     */
+    private function addFormErrors($form, array $errors): void
+    {
+        foreach ($errors as $error) {
+            $field = $error['field'] ?? null;
+            $message = $error['message'] ?? null;
+
+            if (!is_string($message) || $message === '') {
+                continue;
+            }
+
+            if (is_string($field) && $field !== '' && $form->has($field)) {
+                $form->get($field)->addError(new FormError($message));
+                continue;
+            }
+
+            $form->addError(new FormError($message));
+        }
     }
 
     #[Route('/{id}/delete', name: 'delete', methods: ['POST'])]

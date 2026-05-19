@@ -30,7 +30,7 @@
                Campos no traducibles
                ========================== #}
             <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     {{ form_label(form.protocol) }}
                     {{ form_widget(form.protocol, {
                         attr: {
@@ -42,29 +42,36 @@
                     {{ form_errors(form.protocol) }}
                 </div>
 
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     {{ form_label(form.category) }}
                     {{ form_widget(form.category, {'attr': {'class': 'form-select'}}) }}
                     {{ form_errors(form.category) }}
                 </div>
+
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.measureBlock) }}
+                    {{ form_widget(form.measureBlock, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.measureBlock) }}
+                </div>
             </div>
 
             <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     {{ form_label(form.categoryGhg) }}
                     {{ form_widget(form.categoryGhg, {'attr': {'class': 'form-select'}}) }}
                     {{ form_errors(form.categoryGhg) }}
                 </div>
 
-                <div class="col-md-6 mb-3">
-                    {{ form_label(form.department) }}
-                    {{ form_widget(form.department, {
-                        attr: {
-                            class: 'form-select',
-                            'data-measure-form-target': 'department'
-                        }
-                    }) }}
-                    {{ form_errors(form.department) }}
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.esg) }}
+                    {{ form_widget(form.esg, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.esg) }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.scope) }}
+                    {{ form_widget(form.scope, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.scope) }}
                 </div>
             </div>
 
@@ -104,11 +111,6 @@
                                 {{ form_widget(form.nameReview, {'attr': {'class': 'form-control'}}) }}
                                 {{ form_errors(form.nameReview) }}
                             </div>
-                            <div class="col-md-12 mb-3">
-                                {{ form_label(form.verificationSources) }}
-                                {{ form_widget(form.verificationSources, {'attr': {'class': 'form-control'}}) }}
-                                {{ form_errors(form.verificationSources) }}
-                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -137,11 +139,6 @@
                                 {{ form_widget(form.nameReview_en, {'attr': {'class': 'form-control'}}) }}
                                 {{ form_errors(form.nameReview_en) }}
                             </div>
-                            <div class="col-md-12 mb-3">
-                                {{ form_label(form.verificationSources_en) }}
-                                {{ form_widget(form.verificationSources_en, {'attr': {'class': 'form-control'}}) }}
-                                {{ form_errors(form.verificationSources_en) }}
-                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -161,20 +158,47 @@
 
 
             <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form_label(form.departments) }}
+                    {{ form_widget(form.departments, {'attr': {'class': 'form-select', 'size': '6'}}) }}
+                    {{ form_errors(form.departments) }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form_label(form.odsItems) }}
+                    {{ form_widget(form.odsItems, {'attr': {'class': 'form-select', 'size': '6'}}) }}
+                    {{ form_errors(form.odsItems) }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form_label(form.impactAreas) }}
+                    {{ form_widget(form.impactAreas, {'attr': {'class': 'form-select', 'size': '6'}}) }}
+                    {{ form_errors(form.impactAreas) }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form_label(form.tripleBalanceAxes) }}
+                    {{ form_widget(form.tripleBalanceAxes, {'attr': {'class': 'form-select', 'size': '6'}}) }}
+                    {{ form_errors(form.tripleBalanceAxes) }}
+                </div>
+            </div>
+
+            <hr>
+            <div class="row">
                 <div class="col-md-4 mb-3">
-                    {{ form_label(form.ods) }}
-                    {{ form_widget(form.ods, {'attr': {'class': 'form-select'}}) }}
-                    {{ form_errors(form.ods) }}
+                    {{ form_label(form.verificationSourcePriority1) }}
+                    {{ form_widget(form.verificationSourcePriority1, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.verificationSourcePriority1) }}
                 </div>
                 <div class="col-md-4 mb-3">
-                    {{ form_label(form.esg) }}
-                    {{ form_widget(form.esg, {'attr': {'class': 'form-select'}}) }}
-                    {{ form_errors(form.esg) }}
+                    {{ form_label(form.verificationSourcePriority2) }}
+                    {{ form_widget(form.verificationSourcePriority2, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.verificationSourcePriority2) }}
                 </div>
                 <div class="col-md-4 mb-3">
-                    {{ form_label(form.scope) }}
-                    {{ form_widget(form.scope, {'attr': {'class': 'form-select'}}) }}
-                    {{ form_errors(form.scope) }}
+                    {{ form_label(form.verificationSourcePriority3) }}
+                    {{ form_widget(form.verificationSourcePriority3, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.verificationSourcePriority3) }}
                 </div>
             </div>
 

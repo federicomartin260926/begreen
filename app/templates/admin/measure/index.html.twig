@@ -42,6 +42,86 @@
                 </div>
             </div>
 
+            {% if catalogSummary is defined %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+                            <div>
+                                <h5 class="card-title mb-1">Resumen catálogo v23</h5>
+                                <div class="text-muted small">Control rápido del catálogo canónico importado.</div>
+                            </div>
+                            {% if catalogSummary.isExpected %}
+                                <span class="badge bg-success align-self-start">Conteos correctos</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark align-self-start">Revisar catálogo</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-6 col-lg-2">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Medidas</div>
+                                    <div class="fs-4 fw-semibold">{{ catalogSummary.totalMeasures }}</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-2">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Puntos</div>
+                                    <div class="fs-4 fw-semibold">{{ catalogSummary.totalPoints }}</div>
+                                </div>
+                            </div>
+                            {% for score in [5, 4, 3, 2, 1] %}
+                                <div class="col-6 col-lg-1">
+                                    <div class="border rounded p-3 h-100 text-center">
+                                        <div class="small text-muted">{{ score }} pts</div>
+                                        <div class="fs-5 fw-semibold">{{ catalogSummary.scoreDistribution[score] ?? 0 }}</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6 col-xl-2">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Sin departamentos múltiples</div>
+                                    <div class="fw-semibold">{{ catalogSummary.missingDepartments }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-2">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Sin ODS múltiples</div>
+                                    <div class="fw-semibold">{{ catalogSummary.missingOds }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-2">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Sin fuentes de verificación</div>
+                                    <div class="fw-semibold">{{ catalogSummary.missingVerificationSources }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-3">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Sin áreas de impacto</div>
+                                    <div class="fw-semibold">{{ catalogSummary.missingImpactAreas }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-xl-3">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Sin triple balance</div>
+                                    <div class="fw-semibold">{{ catalogSummary.missingTripleBalanceAxes }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if not catalogSummary.isExpected %}
+                            <div class="alert alert-warning mt-3 mb-0">
+                                El catálogo v23 no cuadra con los conteos esperados. Revisa importación y relaciones múltiples.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
             <div class="d-flex gap-3 mb-4 align-items-end flex-wrap bg_green_3 p-3">
                 <select id="filter-protocol" class="form-select" style="max-width: 200px;" data-dt-filter="1">
                     <option value="">{{ 'backend.measures.filters.all_protocols'|trans }}</option>
@@ -175,6 +255,13 @@
                                 <th>{{ 'backend.measures.table.score'|trans }}</th>
                                 <th>{{ 'backend.measures.table.mandatory'|trans }}</th>
                                 <th class="text-end">{{ 'backend.common.actions'|trans }}</th>
+                                <th>V23</th>
+                                <th>{{ 'backend.measures.form.measure_block'|trans }}</th>
+                                <th>{{ 'backend.measures.form.departments'|trans }}</th>
+                                <th>{{ 'backend.measures.form.ods_items'|trans }}</th>
+                                <th>{{ 'backend.measures.form.verification_source_priority_1'|trans }}</th>
+                                <th>{{ 'backend.measures.form.impact_areas'|trans }}</th>
+                                <th>{{ 'backend.measures.form.triple_balance_axes'|trans }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -189,6 +276,12 @@
                                 {% if measure.esg is null %}{% set missing = missing|merge(['ESG']) %}{% endif %}
                                 {% if measure.scope is null %}{% set missing = missing|merge(['Alcance']) %}{% endif %}
                                 {% if measure.categoryGhg is null %}{% set missing = missing|merge(['Categoría GHG']) %}{% endif %}
+                                {% set isV23 = measure.protocol and measure.protocol.code == 'be-green-my-film' and measure.importVersion == 'v23' %}
+                                {% set departmentsMulti = taxonomyPresenter.departments(measure) %}
+                                {% set odsMulti = taxonomyPresenter.odsItems(measure) %}
+                                {% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
+                                {% set impactAreas = taxonomyPresenter.impactAreas(measure) %}
+                                {% set axes = taxonomyPresenter.tripleBalanceAxes(measure) %}
 
                                 {% set isComplete = missing is empty %}
                                 <tr>
@@ -217,6 +310,9 @@
                                             </i>
                                         {% endif %}
                                         {{ measure.name }}
+                                        {% if isV23 %}
+                                            <span class="badge bg-success ms-2">v23</span>
+                                        {% endif %}
                                     </td>
                                     <td>{{ measure.protocol ? measure.protocol.name : '' }}</td>
                                     <td>{{ measure.categoryGhg ? measure.categoryGhg.name : '' }}</td>
@@ -252,6 +348,69 @@
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
+                                    </td>
+                                    <td>
+                                        {% if isV23 %}
+                                            <span class="badge bg-success">Sí</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ measure.measureBlock ? measure.measureBlock.name : '—' }}</td>
+                                    <td>
+                                        {% if departmentsMulti is not empty %}
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for item in departmentsMulti %}
+                                                    <span class="badge bg-light text-dark border">{{ item.displayName }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if odsMulti is not empty %}
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for item in odsMulti %}
+                                                    <span class="badge bg-light text-dark border">{{ item.label }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if verificationLinks is not empty %}
+                                            <ol class="mb-0 ps-3">
+                                                {% for link in verificationLinks %}
+                                                    <li>{{ link.priority }}. {{ link.name }}</li>
+                                                {% endfor %}
+                                            </ol>
+                                        {% else %}
+                                            {{ measure.verificationSources ? measure.verificationSources|u.truncate(60, '…') : '—' }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if impactAreas is not empty %}
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for item in impactAreas %}
+                                                    <span class="badge bg-success-subtle text-success-emphasis border">{{ item.name }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if axes is not empty %}
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for item in axes %}
+                                                    <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ item.name }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            —
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}

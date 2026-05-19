@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Entity\Measure;
+use App\Entity\MeasureBlock;
 use App\Entity\Protocol;
 use App\Entity\Category;
 use App\Entity\Department;
@@ -11,6 +12,9 @@ use App\Entity\Ods;
 use App\Entity\EsG;
 use App\Entity\Scope;
 use App\Entity\CategoryGhg;
+use App\Entity\ImpactArea;
+use App\Entity\TripleBalanceAxis;
+use App\Entity\VerificationSource;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -29,6 +33,11 @@ class MeasureType extends AbstractType
         $defaultLocale        = $options['default_locale'] ?? 'es';
         $translatableFields   = $options['translatable_fields'] ?? ['name','description'];
         $existingTranslations = $options['translations'] ?? [];
+        $measure              = $builder->getData();
+        $verificationLinks    = $measure instanceof Measure ? $measure->getResolvedVerificationSourceLinks() : [];
+        $verificationLink1    = $verificationLinks[0] ?? null;
+        $verificationLink2    = $verificationLinks[1] ?? null;
+        $verificationLink3    = $verificationLinks[2] ?? null;
 
         // ===== Campos translatables base (locale por defecto, mapeados) =====
         $builder
@@ -99,20 +108,6 @@ class MeasureType extends AbstractType
                 ]);
             }
 
-            // verificationSources_{loc}
-            if (in_array('verificationSources', $translatableFields, true)) {
-                $builder->add('verificationSources_' . $loc, TextType::class, [
-                    'label'    => 'backend.measures.form.verification_sources',
-                    'mapped'   => false,
-                    'required' => false,
-                    'data'     => $existingTranslations[$loc]['verificationSources'] ?? null,
-                    'attr'     => [
-                        'class'       => 'form-control',
-                        'maxlength'   => 300,
-                        'placeholder' => 'backend.measures.form.verification_sources_ph',
-                    ],
-                ]);
-            }
         }
 
         // ===== Resto de campos =====
@@ -131,20 +126,29 @@ class MeasureType extends AbstractType
                 'label' => 'backend.measures.form.category',
                 'required' => false,
             ])
-            ->add('department', EntityType::class, [
-                'class' => Department::class,
+            ->add('measureBlock', EntityType::class, [
+                'class' => MeasureBlock::class,
                 'choice_label' => 'name',
-                'query_builder' => fn(DepartmentRepository $r) => $r->qbForProjectType($projectType),
-                'label' => 'backend.measures.form.department',
-                'required' => false,
                 'placeholder' => 'backend.common.select',
+                'label' => 'backend.measures.form.measure_block',
+                'required' => false,
             ])
-            ->add('ods', EntityType::class, [
+            ->add('departments', EntityType::class, [
+                'class' => Department::class,
+                'choice_label' => 'displayName',
+                'query_builder' => fn(DepartmentRepository $r) => $r->qbForProjectType($projectType),
+                'label' => 'backend.measures.form.departments',
+                'multiple' => true,
+                'required' => false,
+                'by_reference' => false,
+            ])
+            ->add('odsItems', EntityType::class, [
                 'class' => Ods::class,
                 'choice_label' => 'name',
-                'placeholder' => 'backend.common.select',
-                'label' => 'backend.measures.form.ods',
+                'label' => 'backend.measures.form.ods_items',
+                'multiple' => true,
                 'required' => false,
+                'by_reference' => false,
             ])
             ->add('esg', EntityType::class, [
                 'class' => EsG::class,
@@ -167,18 +171,56 @@ class MeasureType extends AbstractType
                 'label' => 'backend.measures.form.category_ghg',
                 'required' => false,
             ])
+            ->add('impactAreas', EntityType::class, [
+                'class' => ImpactArea::class,
+                'choice_label' => 'name',
+                'label' => 'backend.measures.form.impact_areas',
+                'multiple' => true,
+                'required' => false,
+                'by_reference' => false,
+            ])
+            ->add('tripleBalanceAxes', EntityType::class, [
+                'class' => TripleBalanceAxis::class,
+                'choice_label' => 'name',
+                'label' => 'backend.measures.form.triple_balance_axes',
+                'multiple' => true,
+                'required' => false,
+                'by_reference' => false,
+            ])
+            ->add('verificationSourcePriority1', EntityType::class, [
+                'class' => VerificationSource::class,
+                'choice_label' => 'name',
+                'query_builder' => fn($r) => $r->createQueryBuilder('v')->orderBy('v.sortOrder', 'ASC')->addOrderBy('v.code', 'ASC'),
+                'placeholder' => 'backend.common.select',
+                'label' => 'backend.measures.form.verification_source_priority_1',
+                'required' => false,
+                'mapped' => false,
+                'data' => $verificationLink1?->getVerificationSource(),
+            ])
+            ->add('verificationSourcePriority2', EntityType::class, [
+                'class' => VerificationSource::class,
+                'choice_label' => 'name',
+                'query_builder' => fn($r) => $r->createQueryBuilder('v')->orderBy('v.sortOrder', 'ASC')->addOrderBy('v.code', 'ASC'),
+                'placeholder' => 'backend.common.select',
+                'label' => 'backend.measures.form.verification_source_priority_2',
+                'required' => false,
+                'mapped' => false,
+                'data' => $verificationLink2?->getVerificationSource(),
+            ])
+            ->add('verificationSourcePriority3', EntityType::class, [
+                'class' => VerificationSource::class,
+                'choice_label' => 'name',
+                'query_builder' => fn($r) => $r->createQueryBuilder('v')->orderBy('v.sortOrder', 'ASC')->addOrderBy('v.code', 'ASC'),
+                'placeholder' => 'backend.common.select',
+                'label' => 'backend.measures.form.verification_source_priority_3',
+                'required' => false,
+                'mapped' => false,
+                'data' => $verificationLink3?->getVerificationSource(),
+            ])
             ->add('implementation', TextareaType::class, [
                 'label' => 'backend.measures.form.implementation',
                 'required' => false,
                 'attr' => ['rows' => 4],
-            ])
-            ->add('verificationSources', TextType::class, [
-                'label' => 'backend.measures.form.verification_sources',
-                'required' => false,
-                'attr' => [
-                    'maxlength' => 300,
-                    'placeholder' => 'backend.measures.form.verification_sources_ph'
-                ],
             ])
             ->add('mandatory', CheckboxType::class, [
                 'label'    => 'backend.measures.form.mandatory',
@@ -188,7 +230,7 @@ class MeasureType extends AbstractType
             ->add('score', IntegerType::class, [
                 'label'    => 'backend.measures.form.score',
                 'required' => false,
-                'attr'     => ['min' => 0, 'max' => 100, 'step' => 1, 'placeholder' => '0–100'],
+                'attr'     => ['min' => 1, 'max' => 5, 'step' => 1, 'placeholder' => '1–5'],
                 'help'     => 'backend.measures.form.score_help',
             ]);
 
@@ -206,7 +248,7 @@ class MeasureType extends AbstractType
             'locales'             => ['es','en'],
             'default_locale'      => 'es',
             // Añadimos nameReview y (si quieres) implementation + verificationSources para tabs i18n
-            'translatable_fields' => ['name','nameReview','description','implementation','verificationSources'],
+            'translatable_fields' => ['name','nameReview','description','implementation'],
             'translations'        => [],
         ]);
     }

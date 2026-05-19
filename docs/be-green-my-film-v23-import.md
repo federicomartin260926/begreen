@@ -61,6 +61,30 @@ Las áreas de impacto se crean desde el encabezado completo de la plantilla, as�
 
 La importación real ya está disponible con `--apply`, pero debe usarse solo sobre una base sincronizada con el esquema de la Fase 1A.1.
 
+## Edición manual del catálogo
+
+El catálogo v23 importado ya puede ajustarse desde el admin de medidas.
+
+Campos editables principales:
+
+- nombre y nombre de revisión;
+- descripción e implementación;
+- protocolo, categoría y bloque;
+- departamentos múltiples;
+- ODS múltiples;
+- áreas de impacto;
+- triple balance;
+- fuentes de verificación con prioridad 1, 2 y 3;
+- puntuación y obligatoriedad.
+
+Validaciones principales:
+
+- el catálogo canónico v23 espera 200 medidas y 565 puntos;
+- cada medida v23 debe tener bloque, al menos un departamento, al menos un ODS, al menos un área de impacto, al menos un eje de triple balance y fuentes de verificación;
+- la puntuación v23 debe estar entre 1 y 5.
+
+El importador sigue siendo la fuente inicial de datos, pero el admin ya permite ajustar el catálogo sin rehacer la importación. No hay versionado avanzado en esta fase.
+
 En el flujo del plan, `be-green-my-film` usa ahora exclusivamente el catálogo v23. Las dos medidas legacy del mismo protocolo quedan fuera del recorrido canónico y no deben aparecer en vistas, PDF ni contadores.
 
 Compatibilidad legacy:
