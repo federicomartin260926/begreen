@@ -164,8 +164,8 @@
                         <label for="crewFile" class="form-label">{{ 'backend.projects.crew.import_modal.file_label'|trans }}</label>
                         <input type="file" name="crewFile" id="crewFile" class="form-control" required accept=".xlsx,.xls">
                         <div class="form-text">
-                            <a href="{{ path('backend_project_template_download') }}" download>
-                                {{ 'backend.projects.crew.import_modal.download_template'|trans }}
+                            <a href="{{ path('backend_project_template_download') }}" class="btn btn-outline-primary btn-sm mt-2" download>
+                                <i class="bi bi-download"></i> {{ 'backend.projects.crew.import_modal.download_template'|trans }}
                             </a>
                         </div>
                     </div>

@@ -1706,6 +1706,7 @@ backend:
           new: "New emission factor"
           download_pdf: "Download PDF"
           import_excel: "Import from Excel"
+          download_template: "Download template"
         template_popover: "Download template for bulk import of emission factors"
         empty: "No emission factors found."
         table:

@@ -1711,6 +1711,7 @@ backend:
           new: "Nuevo factor de emisión"
           download_pdf: "Descargar PDF"
           import_excel: "Cargar desde Excel"
+          download_template: "Descargar plantilla"
         template_popover: "Descargar plantilla para la carga masiva de factores de emisión"
         empty: "No hay factores de emisión registrados."
         table:
