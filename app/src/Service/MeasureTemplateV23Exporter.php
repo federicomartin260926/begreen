@@ -102,20 +102,20 @@ final class MeasureTemplateV23Exporter
         $impactAreas = $this->sortByLabel($catalog['impactAreas'] ?? [], fn (ImpactArea $impactArea): string => $this->formatImpactAreaValue($impactArea));
         $departments = $this->sortByLabel($catalog['departments'] ?? [], fn (Department $department): string => $this->formatDepartmentValue($department));
         $verificationSources = $this->sortByLabel($catalog['verificationSources'] ?? [], fn (VerificationSource $source): string => $this->formatVerificationSourceValue($source));
-        $ods = $this->sortByLabel($catalog['ods'] ?? [], fn (Ods $odsItem): string => $this->formatOdsValue($odsItem));
+        $ods = $this->sortByNaturalLabel($catalog['ods'] ?? [], fn (Ods $odsItem): string => $this->formatOdsValue($odsItem));
         $tripleBalanceAxes = $this->sortByLabel($catalog['tripleBalanceAxes'] ?? [], fn (TripleBalanceAxis $axis): string => $this->formatTripleBalanceAxisValue($axis));
 
         return [
-            $this->scalarSection('protocol', MeasureTemplateV23Schema::headers()['protocol'], 'A', 22, $protocols, 'protocols'),
+            $this->scalarSection('protocol', MeasureTemplateV23Schema::headers()['protocol'], 'A', 22, $protocols),
             $this->scalarSection('project_type', MeasureTemplateV23Schema::headers()['project_type'], 'B', 18, null, null, true),
-            $this->scalarSection('measure_block', MeasureTemplateV23Schema::headers()['measure_block'], 'C', 24, $measureBlocks, 'measureBlocks'),
-            $this->scalarSection('category', MeasureTemplateV23Schema::headers()['category'], 'D', 18, $categories, 'categories'),
-            $this->scalarSection('category_ghg', MeasureTemplateV23Schema::headers()['category_ghg'], 'E', 24, $categoryGhgs, 'categoryGhgs'),
+            $this->scalarSection('measure_block', MeasureTemplateV23Schema::headers()['measure_block'], 'C', 24, $measureBlocks),
+            $this->scalarSection('category', MeasureTemplateV23Schema::headers()['category'], 'D', 18, $categories),
+            $this->scalarSection('category_ghg', MeasureTemplateV23Schema::headers()['category_ghg'], 'E', 24, $categoryGhgs),
             $this->scalarSection('name', MeasureTemplateV23Schema::headers()['name'], 'F', 42),
             $this->scalarSection('score', MeasureTemplateV23Schema::headers()['score'], 'G', 8, null, null, true),
             $this->scalarSection('mandatory', MeasureTemplateV23Schema::headers()['mandatory'], 'H', 12, null, null, true),
-            $this->scalarSection('esg', MeasureTemplateV23Schema::headers()['esg'], 'I', 14, $esg, 'esg'),
-            $this->scalarSection('scope', MeasureTemplateV23Schema::headers()['scope'], 'J', 14, $scopes, 'scopes'),
+            $this->scalarSection('esg', MeasureTemplateV23Schema::headers()['esg'], 'I', 14, $esg, 'F'),
+            $this->scalarSection('scope', MeasureTemplateV23Schema::headers()['scope'], 'J', 14, $scopes, 'G'),
             $this->scalarSection('name_review', MeasureTemplateV23Schema::headers()['name_review'], 'K', 24),
             $this->scalarSection('description', MeasureTemplateV23Schema::headers()['description'], 'L', 42),
             $this->scalarSection('implementation', MeasureTemplateV23Schema::headers()['implementation'], 'M', 42),
@@ -150,6 +150,27 @@ final class MeasureTemplateV23Exporter
     }
 
     /**
+     * @param array<int, object> $items
+     *
+     * @return array<int, object>
+     */
+    private function sortByNaturalLabel(array $items, callable $labelResolver): array
+    {
+        usort($items, static function (object $left, object $right) use ($labelResolver): int {
+            $leftLabel = trim((string) $labelResolver($left));
+            $rightLabel = trim((string) $labelResolver($right));
+
+            if (is_numeric($leftLabel) && is_numeric($rightLabel)) {
+                return (int) $leftLabel <=> (int) $rightLabel;
+            }
+
+            return strcmp(mb_strtolower($leftLabel), mb_strtolower($rightLabel));
+        });
+
+        return $items;
+    }
+
+    /**
      * @param array<int, object>|null $values
      * @param array<string, mixed>|null $listConfig
      *
@@ -158,10 +179,10 @@ final class MeasureTemplateV23Exporter
     private function scalarSection(
         string $key,
         string $label,
-        string $listColumn,
+        string $templateColumn,
         int $width,
         ?array $values = null,
-        ?string $listKey = null,
+        ?string $listSheetColumn = null,
         bool $inlineList = false,
     ): array {
         return [
@@ -170,8 +191,8 @@ final class MeasureTemplateV23Exporter
             'label' => $label,
             'width' => $width,
             'values' => $values,
-            'listColumn' => $listColumn,
-            'listKey' => $listKey,
+            'templateColumn' => $templateColumn,
+            'listSheetColumn' => $listSheetColumn ?? $templateColumn,
             'inlineList' => $inlineList,
         ];
     }
@@ -396,7 +417,7 @@ final class MeasureTemplateV23Exporter
             return;
         }
 
-        $listColumn = $section['listColumn'] ?? null;
+        $listColumn = $section['listSheetColumn'] ?? null;
         $values = $section['values'] ?? null;
         if (!$listColumn || !is_array($values) || $values === []) {
             return;
