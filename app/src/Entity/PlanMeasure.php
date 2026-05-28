@@ -19,7 +19,7 @@ class PlanMeasure
     #[ORM\JoinColumn(nullable: false)]
     private ?Plan $plan = null;
 
-    #[ORM\ManyToOne]
+    #[ORM\ManyToOne(inversedBy: 'planMeasures')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Measure $measure = null;
 
