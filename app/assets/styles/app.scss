@@ -265,6 +265,43 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
     }
 }
 
+.measure-table--compact {
+    th,
+    td {
+        vertical-align: middle;
+    }
+
+    td.measure-main-cell {
+        max-width: 320px;
+    }
+
+    td.measure-main-cell .measure-main-label {
+        display: inline-block;
+        vertical-align: middle;
+        max-width: calc(100% - 1.5rem);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    td.dtr-control {
+        white-space: nowrap;
+        width: 1%;
+    }
+}
+
+.measure-table--compact .dtr-details td,
+.measure-table--compact .dtr-details th,
+.measure-table--compact .dtr-data {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.measure-table--compact .dtr-details .badge {
+    white-space: normal;
+}
+
 
 /* Estilo principal para inputs con label superpuesto */
 .form-label-over {

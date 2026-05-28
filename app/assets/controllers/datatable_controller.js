@@ -15,6 +15,7 @@ export default class extends Controller {
     // ===== 0) Locale actual → archivo i18n =====
     const htmlLang = (document.documentElement.getAttribute('lang') || 'es').toLowerCase();
     const attrLang = ($table.data('dt-lang') || '').toLowerCase(); // override opcional por tabla
+    const dtMode = ($table.data('dt-mode') || '').toLowerCase();
     const locale   = attrLang || htmlLang;
     const languageMap = {
       es: esLanguage,
@@ -42,15 +43,53 @@ export default class extends Controller {
     }
     if (!initialOrder) initialOrder = [[0, 'asc']];
 
+    const compactDetailsMode = dtMode === 'compact-details';
+    const columnDefs = [];
+
+    if (compactDetailsMode) {
+      columnDefs.push(
+        {
+          targets: 0,
+          className: 'dtr-control',
+          orderable: false,
+          searchable: false,
+          width: '1%'
+        },
+        {
+          targets: [3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19],
+          className: 'none'
+        },
+        {
+          targets: 1,
+          className: 'measure-main-cell'
+        },
+        {
+          targets: [2, 12, 13, 20],
+          className: 'text-nowrap'
+        }
+      );
+    }
+
     const options = {
-      responsive: true,
+      responsive: compactDetailsMode
+        ? {
+            details: {
+              type: 'column',
+              target: 0,
+            },
+          }
+        : true,
       language: $.extend(true, {}, languageConfig),
       order: initialOrder,
       bgmBuildMarker: 'datatable-local-i18n'
     };
 
     if (noOrderIdx.length) {
-      options.columnDefs = [{ orderable: false, targets: noOrderIdx }];
+      columnDefs.push({ orderable: false, targets: noOrderIdx });
+    }
+
+    if (columnDefs.length) {
+      options.columnDefs = columnDefs;
     }
 
     const datatable = $table.DataTable(options);

@@ -123,7 +123,7 @@
             {% endif %}
 
             <div class="d-flex gap-3 mb-4 align-items-end flex-wrap bg_green_3 p-3">
-                <select id="filter-protocol" class="form-select" style="max-width: 200px;" data-dt-filter="1">
+                <select id="filter-protocol" class="form-select" style="max-width: 200px;" data-dt-filter="2">
                     <option value="">{{ 'backend.measures.filters.all_protocols'|trans }}</option>
                     {% set protocols = [] %}
                     {% for measure in measures %}
@@ -134,7 +134,7 @@
                     {% endfor %}
                 </select>
 
-                <select id="filter-emission-source" class="form-select" style="max-width: 200px;" data-dt-filter="2">
+                <select id="filter-emission-source" class="form-select" style="max-width: 200px;" data-dt-filter="3">
                     <option value="">{{ 'backend.measures.filters.all_ghg_categories'|trans }}</option>
                     {% set sources = [] %}
                     {% for measure in measures %}
@@ -145,7 +145,7 @@
                     {% endfor %}
                 </select>
 
-                <select id="filter-category" class="form-select" style="max-width: 200px;" data-dt-filter="3">
+                <select id="filter-category" class="form-select" style="max-width: 200px;" data-dt-filter="4">
                     <option value="">{{ 'backend.measures.filters.all_categories'|trans }}</option>
                     {% set categories = [] %}
                     {% for measure in measures %}
@@ -156,7 +156,7 @@
                     {% endfor %}
                 </select>
 
-                <select id="filter-department" class="form-select" style="max-width: 200px;" data-dt-filter="4">
+                <select id="filter-department" class="form-select" style="max-width: 200px;" data-dt-filter="5">
                     <option value="">{{ 'backend.measures.filters.all_departments'|trans }}</option>
                     {% set departments = [] %}
                     {% for measure in measures %}
@@ -167,7 +167,7 @@
                     {% endfor %}
                 </select>
 
-                <select id="filter-ods" class="form-select" style="max-width: 200px;" data-dt-filter="8">
+                <select id="filter-ods" class="form-select" style="max-width: 200px;" data-dt-filter="9">
                     <option value="">{{ 'backend.measures.filters.all_ods'|trans }}</option>
                     {% set odsList = [] %}
                     {% for measure in measures %}
@@ -178,7 +178,7 @@
                     {% endfor %}
                 </select>
 
-                <select id="filter-esg" class="form-select" style="max-width: 200px;" data-dt-filter="9">
+                <select id="filter-esg" class="form-select" style="max-width: 200px;" data-dt-filter="10">
                     <option value="">{{ 'backend.measures.filters.all_esg'|trans }}</option>
                     {% set esgList = [] %}
                     {% for measure in measures %}
@@ -189,7 +189,7 @@
                     {% endfor %}
                 </select>
 
-                <select id="filter-scope" class="form-select" style="max-width: 200px;" data-dt-filter="10">
+                <select id="filter-scope" class="form-select" style="max-width: 200px;" data-dt-filter="11">
                     <option value="">{{ 'backend.measures.filters.all_scopes'|trans }}</option>
                     {% set scopeList = [] %}
                     {% for measure in measures %}
@@ -200,7 +200,7 @@
                     {% endfor %}
                 </select>
 
-                <select id="filter-mandatory" class="form-select" style="max-width: 200px;" data-dt-filter="12">
+                <select id="filter-mandatory" class="form-select" style="max-width: 200px;" data-dt-filter="13">
                     <option value="">{{ 'backend.measures.filters.all_mandatory'|trans }}</option>
                     <option value="{{ 'backend.common.yes'|trans }}">{{ 'backend.measures.filters.only_mandatory'|trans }}</option>
                     <option value="{{ 'backend.common.no'|trans }}">{{ 'backend.measures.filters.only_not_mandatory'|trans }}</option>
@@ -213,7 +213,7 @@
                             style="min-width: 160px; max-width: 200px;"
                             placeholder="{{ 'backend.measures.filters.score_min'|trans }}"
                             min="0" max="100" step="1"
-                            data-dt-range-min="11"
+                            data-dt-range-min="12"
                             data-dt-for="#measures-table">
                     </div>
                     <div>
@@ -222,7 +222,7 @@
                             style="min-width: 160px; max-width: 200px;"
                             placeholder="{{ 'backend.measures.filters.score_max'|trans }}"
                             min="0" max="100" step="1"
-                            data-dt-range-max="11"
+                            data-dt-range-max="12"
                             data-dt-for="#measures-table">
                     </div>
                 </div>
@@ -237,10 +237,13 @@
             {% else %}
                 <div class="table-responsive">
                     <table id="measures-table"
-                        class="table table-hover green_table_1 table-bordered dt-responsive w-100 measure-table"
-                        data-controller="datatable">
+                        class="table table-hover green_table_1 table-bordered dt-responsive w-100 measure-table measure-table--compact"
+                        data-controller="datatable"
+                        data-dt-mode="compact-details"
+                        data-dt-order="1,asc">
                         <thead>
                             <tr>
+                                <th class="dt-nosort" aria-hidden="true"></th>
                                 <th>{{ 'backend.measures.table.name'|trans }}</th>
                                 <th>{{ 'backend.measures.table.protocol'|trans }}</th>
                                 <th>{{ 'backend.measures.table.ghg_category'|trans }}</th>
@@ -283,7 +286,8 @@
 
                                 {% set isComplete = missing is empty %}
                                 <tr>
-                                    <td>
+                                    <td></td>
+                                <td class="measure-main-cell">
                                         {% if isComplete %}
                                             <i class="bi bi-check-circle-fill text-success me-1"
                                                 tabindex="0" role="button"
@@ -307,7 +311,7 @@
                                                 aria-label="{{ 'backend.admin.measure.popover.incomplete.aria'|trans }}">
                                             </i>
                                         {% endif %}
-                                        {{ measure.name }}
+                                        <span class="measure-main-label">{{ measure.name }}</span>
                                     </td>
                                     <td class="measure-detail-cell">{{ measure.protocol ? measure.protocol.name : '' }}</td>
                                     <td class="measure-detail-cell">{{ measure.categoryGhg ? measure.categoryGhg.name : '' }}</td>
@@ -321,16 +325,16 @@
                                     <td class="measure-detail-cell">{{ measure.scope ? measure.scope.name : '' }}</td>
                                     <td>
                                         {% if measure.score is not null %}
-                                            <span class="badge bg-success ms-3">{{ measure.score }}</span>
+                                            <span class="badge bg-success">{{ measure.score }}</span>
                                         {% else %}
-                                            <span class="text-muted ms-3">—</span>
+                                            <span class="text-muted">—</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if measure.mandatory %}
-                                            <span class="badge bg-success ms-3">{{ 'backend.common.yes'|trans }}</span>
+                                            <span class="badge bg-success">{{ 'backend.common.yes'|trans }}</span>
                                         {% else %}
-                                            <span class="badge bg-secondary ms-3">{{ 'backend.common.no'|trans }}</span>
+                                            <span class="badge bg-secondary">{{ 'backend.common.no'|trans }}</span>
                                         {% endif %}
                                     </td>
                                     <td class="measure-detail-cell">{{ measure.measureBlock ? measure.measureBlock.name : '—' }}</td>
