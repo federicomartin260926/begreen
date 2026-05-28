@@ -52,6 +52,11 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
                 'Materiales'   => 'Materials',
                 'Agua'         => 'Water',
                 'Residuos'     => 'Waste',
+                'Biodiversidad' => 'Biodiversity',
+                'Comunicación' => 'Communication',
+                'Consumo eficiente de recursos naturales' => 'Efficient Consumption of Natural Resources',
+                'Contenido' => 'Content',
+                'Social' => 'Social',
 
                 // Category GHG
                 'Emisiones directas de GEI debido al consumo de combustibles fósiles' => 'Direct GHG emissions from fossil fuel consumption',
@@ -131,7 +136,21 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         // -------------------------
         // Categories
         // -------------------------
-        foreach (['Alojamientos','Transporte','Viajes','Energía','Catering','Materiales','Agua','Residuos'] as $name) {
+        foreach ([
+            'Alojamientos',
+            'Transporte',
+            'Viajes',
+            'Energía',
+            'Catering',
+            'Materiales',
+            'Agua',
+            'Residuos',
+            'Biodiversidad',
+            'Comunicación',
+            'Consumo eficiente de recursos naturales',
+            'Contenido',
+            'Social',
+        ] as $name) {
             $c = $upsert($manager, Category::class, ['name' => $name], function () use ($name) {
                 return (new Category())->setName($name);
             });
