@@ -127,6 +127,12 @@ Esta fase deja operativos estos bloques:
 - `php bin/console lint:yaml config translations`
 - `php -l` sobre los PHP tocados
 
+Nota de estado de Doctrine:
+
+- `doctrine:schema:validate` deja el `Mapping` en `OK`.
+- Sigue apareciendo un drift residual en `schema:update --dump-sql` / `Database schema is not in sync`, pero tras revisar la base tabla por tabla no se detectaron columnas críticas ausentes, incluido `project_subscription` y los campos de Stripe.
+- Este drift no bloquea la QA funcional de la fase y solo merece revisión si aparece una columna realmente ausente, un nuevo error de mapping, un fallo funcional o un bloqueo de staging/prod.
+
 ## Preparación de despliegue
 
 Antes de subir a producción:
@@ -168,4 +174,3 @@ Antes de subir a producción:
 - Branding por proyecto.
 - Gaming adicional.
 - Refactors grandes de controladores.
-
