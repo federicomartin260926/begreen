@@ -209,7 +209,7 @@ backend:
     summary:
       title: "Measures overview"
       description: "Quick control of the imported measure catalog. The standard template applies to any protocol."
-      alert: "The measure catalog does not match the expected counts. Review the import and multiple relations."
+      alert: "The measure catalog has incomplete relations or taxonomies. Review the import and multiple fields."
     template:
       sheet_title: "Standard measure template"
       lists_sheet: "Lists"

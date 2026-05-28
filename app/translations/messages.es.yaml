@@ -210,7 +210,7 @@ backend:
     summary:
       title: "Resumen de medidas"
       description: "Control rápido del catálogo de medidas importado. La plantilla estándar aplica a cualquier protocolo."
-      alert: "El catálogo de medidas no cuadra con los conteos esperados. Revisa importación y relaciones múltiples."
+      alert: "El catálogo de medidas tiene relaciones o taxonomías incompletas. Revisa importación y campos múltiples."
     template:
       sheet_title: "Plantilla estándar de medidas"
       lists_sheet: "Listas"

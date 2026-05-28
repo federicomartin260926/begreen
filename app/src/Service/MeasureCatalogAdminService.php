@@ -54,10 +54,6 @@ final class MeasureCatalogAdminService
         ];
 
         foreach ($measures as $measure) {
-            if (!$this->isCanonicalV23Measure($measure)) {
-                continue;
-            }
-
             $summary['totalMeasures']++;
 
             $score = (int) ($measure->getScore() ?? 0);
@@ -83,9 +79,7 @@ final class MeasureCatalogAdminService
 
         ksort($summary['scoreDistribution']);
 
-        $summary['isExpected'] = $summary['totalMeasures'] === self::EXPECTED_TOTAL_MEASURES
-            && $summary['totalPoints'] === self::EXPECTED_TOTAL_POINTS
-            && $this->matchesExpectedDistribution($summary['scoreDistribution'])
+        $summary['isExpected'] = $summary['totalMeasures'] > 0
             && $summary['missingDepartments'] === 0
             && $summary['missingOds'] === 0
             && $summary['missingVerificationSources'] === 0
@@ -227,26 +221,6 @@ final class MeasureCatalogAdminService
         return $normalized;
     }
 
-    private function isCanonicalV23Measure(Measure $measure): bool
-    {
-        return $measure->getProtocol()?->getCode() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE
-            && $measure->getImportVersion() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION;
-    }
-
-    /**
-     * @param array<int, int> $distribution
-     */
-    private function matchesExpectedDistribution(array $distribution): bool
-    {
-        foreach (self::EXPECTED_SCORE_DISTRIBUTION as $score => $expectedCount) {
-            if (($distribution[$score] ?? 0) !== $expectedCount) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     /**
      * @param array<int, array{priority:int, source:VerificationSource}> $normalized
      */
@@ -262,5 +236,11 @@ final class MeasureCatalogAdminService
         }
 
         return implode(' | ', $parts);
+    }
+
+    private function isCanonicalV23Measure(Measure $measure): bool
+    {
+        return $measure->getProtocol()?->getCode() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE
+            && $measure->getImportVersion() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION;
     }
 }

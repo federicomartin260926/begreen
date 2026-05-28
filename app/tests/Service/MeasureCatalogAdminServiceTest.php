@@ -53,6 +53,22 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         self::assertTrue($summary['isExpected']);
     }
 
+    public function testSummarizeCatalogCountsNonCanonicalMeasuresToo(): void
+    {
+        $service = new MeasureCatalogAdminService();
+
+        $measure = (new Measure())
+            ->setProtocol((new Protocol())->setCode('peach')->setName('Peach'))
+            ->setScore(3);
+
+        $summary = $service->summarizeCatalog([$measure]);
+
+        self::assertSame(1, $summary['totalMeasures']);
+        self::assertSame(3, $summary['totalPoints']);
+        self::assertSame(1, $summary['scoreDistribution'][3]);
+        self::assertFalse($summary['isExpected']);
+    }
+
     public function testSyncVerificationSourcesKeepsPriorityOrderAndLegacyString(): void
     {
         $service = new MeasureCatalogAdminService();
