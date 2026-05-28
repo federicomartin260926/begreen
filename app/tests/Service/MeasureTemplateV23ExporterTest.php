@@ -15,6 +15,7 @@ use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
 use App\Service\MeasureTemplateV23Exporter;
 use App\Service\MeasureTemplateV23Schema;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PHPUnit\Framework\TestCase;
 
 final class MeasureTemplateV23ExporterTest extends TestCase
@@ -129,5 +130,34 @@ final class MeasureTemplateV23ExporterTest extends TestCase
         self::assertSame('"X"', $sheet->getCell('S3')->getDataValidation()->getFormula1());
         self::assertSame('list', $sheet->getCell('X3')->getDataValidation()->getType());
         self::assertSame('"X"', $sheet->getCell('X3')->getDataValidation()->getFormula1());
+    }
+
+    public function testSpreadsheetCanBeWrittenToXlsxFile(): void
+    {
+        $spreadsheet = (new MeasureTemplateV23Exporter())->buildSpreadsheet([
+            'protocols' => [],
+            'categories' => [],
+            'categoryGhgs' => [],
+            'esg' => [],
+            'scopes' => [],
+            'impactAreas' => [],
+            'departments' => [],
+            'ods' => [],
+            'tripleBalanceAxes' => [],
+            'verificationSources' => [],
+            'measureBlocks' => [],
+        ]);
+
+        $path = tempnam(sys_get_temp_dir(), 'measure_template_');
+        self::assertNotFalse($path);
+        $xlsxPath = $path . '.xlsx';
+
+        (new Xlsx($spreadsheet))->save($xlsxPath);
+
+        self::assertFileExists($xlsxPath);
+        self::assertGreaterThan(0, filesize($xlsxPath));
+
+        @unlink($path);
+        @unlink($xlsxPath);
     }
 }

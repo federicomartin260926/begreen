@@ -24,7 +24,7 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 
 final class MeasureTemplateV23Exporter
 {
-    private const MAX_ROWS = 1000;
+    private const MAX_ROWS = 250;
     private const SIMPLE_HEADER_FILL = '4A4A4A';
     private const SIMPLE_HEADER_ALT_FILL = '5A5A5A';
     private const MATRIX_HEADER_STYLES = [
