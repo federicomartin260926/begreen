@@ -6,7 +6,7 @@ Documento de cierre técnico de la fase **Plan de Sostenibilidad Be Green My Fil
 
 Esta fase deja operativos estos bloques:
 
-- Catálogo Be Green My Film v23 editable desde admin.
+- Catálogo de medidas editable desde admin.
 - Planes comerciales por proyecto: `Basic`, `Standard`, `Pro`.
 - Filtros multi-taxonomía y catálogo oficial por tier.
 - PDF unificado del plan con watermark en `Basic`.
@@ -60,7 +60,7 @@ Esta fase deja operativos estos bloques:
 - El PDF unificado no lleva watermark.
 - Tiene PDF/Excel agrupados por categorías, departamentos, impacto, triple balance y ODS.
 - Tiene comentarios visibles, notas internas, responsables y medidas personalizadas MVP.
-- El nivel de compromiso se calcula sobre el catálogo oficial v23, sin mezclar las medidas custom en el total oficial.
+- El nivel de compromiso se calcula sobre el catálogo oficial de medidas, sin mezclar las medidas custom en el total oficial.
 
 ## Stripe
 

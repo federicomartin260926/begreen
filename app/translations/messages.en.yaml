@@ -206,8 +206,12 @@ backend:
       imported_ok: "Measures imported successfully."
       invalid_form: "Invalid form or missing file."
       import_error: "Error processing the file: %msg%"
+    summary:
+      title: "Measures overview"
+      description: "Quick control of the imported measure catalog. The standard template applies to any protocol."
+      alert: "The measure catalog does not match the expected counts. Review the import and multiple relations."
     template:
-      sheet_title: "v23 Template"
+      sheet_title: "Standard measure template"
       lists_sheet: "Lists"
       headers:
         protocol: "Protocol"
@@ -240,7 +244,7 @@ backend:
         verification_sources: "Supporting documents"
       score_error_title: "Invalid value"
       score_error_text: "Score must be a number between 1 and 5."
-      filename: "measures_template_v23.xlsx"
+      filename: "measures_template.xlsx"
     list:
       title: "Measures list"
       breadcrumb: "Measures"
@@ -250,7 +254,7 @@ backend:
       new: "New measure"
       download_pdf: "Download PDF"
       import_excel: "Import from Excel"
-      download_template_hint: "Download the standard v23 template for any protocol"
+      download_template_hint: "Download the standard measure template for any protocol"
     filters:
       all_protocols: "All protocols"
       all_ghg_categories: "All GHG categories"
@@ -284,10 +288,10 @@ backend:
       cta: "Import"
       mime_invalid: "Please upload a valid Excel file (.xlsx or .xls)."
       summary: "Imported: %imported%. Updated: %updated%. Duplicates: %duplicates%. Errors: %errors%."
-      lang_info_title: "Spanish import with the standard v23 template and optional English translations."
+      lang_info_title: "Spanish import with the standard measure template and optional English translations."
       lang_info_html: >
         <ul class="mb-0 ps-3">
-          <li><strong>Template and base data in ES:</strong> Columns <em>A–W</em> must be filled in Spanish. <em>Protocol</em> can be a code or a name. <em>GHG Category</em>, <em>Category</em>, <em>Block</em>, <em>Departments</em>, <em>SDGs</em>, <em>ESG</em>, <em>Scope</em>, <em>Impact areas</em>, <em>Triple balance</em> and <em>Verification sources</em> must exist in the catalog.</li>
+          <li><strong>Template and base data in ES:</strong> Columns <em>A–W</em> must be filled in Spanish. <em>Protocol</em> can be a code or a name. <em>GHG Category</em>, <em>Category</em>, <em>Block</em>, <em>Departments</em>, <em>SDGs</em>, <em>ESG</em>, <em>Scope</em>, <em>Impact areas</em>, <em>Triple balance</em> and <em>Verification sources</em> must exist in the corresponding measure catalog.</li>
           <li><strong>Multiple fields:</strong> <em>Departments</em>, <em>SDGs</em>, <em>Impact areas</em> and <em>Triple balance</em> accept values separated by <code>;</code>. <em>Verification sources</em> use the format <code>1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia</code>.</li>
           <li><strong>Optional EN fields:</strong> Columns <em>S–W</em> are optional and saved as translations (<code>en</code>).</li>
           <li><strong>Score (1–5):</strong> Column <em>J</em> accepts integers between 1 and 5.</li>
@@ -316,7 +320,7 @@ backend:
       mandatory: "Mandatory"
       mandatory_help: "If checked, this measure will be mandatory in plans."
       score: "Score"
-      score_help: "Value between 1 and 5 for the v23 catalog."
+      score_help: "Value between 1 and 5 for the measure catalog."
       h2_new: "New measure"
       h2_edit: "Edit measure"
       name_review: "Past tense text (plan complete)"
@@ -625,7 +629,7 @@ backend:
       real: "Real commitment"
       points_of_total: "%points% / %total% points"
       next_level: "%points% points to reach the next level"
-      note: "These levels are calculated from the official v23 catalog and exclude custom measures. They are guidance only and do not constitute formal certification."
+      note: "These levels are calculated from the official measure catalog and exclude custom measures. They are guidance only and do not constitute formal certification."
       levels:
         seed:
           label: "Seed"
@@ -674,7 +678,7 @@ backend:
       download_pdf: "PDF"
       download_excel: "Excel"
       unified_pdf: "Unified PDF"
-      unified_pdf_help: "Keeps the watermark in Basic and respects the v23 catalog filtered by tier."
+      unified_pdf_help: "Keeps the watermark in Basic and respects the measure catalog filtered by tier."
       by_department: "By departments"
       by_department_help: "Groups measures by department or multiple departments."
       by_category: "By categories"

@@ -15,7 +15,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:import:be-green-my-film-v23',
-    description: 'Valida en dry-run la plantilla PLANTILLA_PS_v23.xlsx de Be Green My Film'
+    description: 'Valida en dry-run la plantilla estándar de medidas'
 )]
 final class ImportBeGreenMyFilmV23Command extends Command
 {
@@ -75,7 +75,7 @@ final class ImportBeGreenMyFilmV23Command extends Command
     {
         $data = $report->jsonSerialize();
 
-        $io->title('Be Green My Film v23 dry-run');
+        $io->title('Plantilla estándar de medidas dry-run');
         $io->text(sprintf('Estado: <info>%s</info>', $report->getStatus()));
         $io->text(sprintf('Hoja: %s', $data['sheetName'] ?? ''));
         $io->text(sprintf('Dimensión: %s', $data['dimension'] ?? ''));

@@ -173,19 +173,19 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 
 ## Importación de medidas
 
-- La fase técnica actual se apoya en `PLANTILLA_PS_v23.xlsx`.
-- El flujo de lectura, validación y `--apply` está documentado en [docs/be-green-my-film-v23-import.md](../docs/be-green-my-film-v23-import.md).
-- La importación es idempotente por `protocol + importVersion + sourceRow`, con `importHash` como trazabilidad adicional.
-- El admin de medidas ya permite revisar y ajustar manualmente el catálogo v23 importado, incluyendo taxonomías múltiples y fuentes de verificación por prioridad.
-- En el flujo del plan, `be-green-my-film` consume exclusivamente las 200 medidas v23; las 2 medidas legacy del mismo protocolo quedan excluidas del recorrido canónico.
+- La fase técnica actual se apoya en la plantilla estándar de medidas.
+- El flujo de lectura, validación y `--apply` está documentado en [docs/measure-template-import.md](../docs/measure-template-import.md).
+- La importación es idempotente por `protocol + sourceRow`, con `importHash` como trazabilidad adicional.
+- El admin de medidas ya permite revisar y ajustar manualmente el catálogo importado, incluyendo taxonomías múltiples y fuentes de verificación por prioridad.
+- En el flujo del plan, el protocolo canónico de esta fase consume solo las medidas activas definidas para el plan; las medidas legacy del mismo protocolo quedan excluidas del recorrido canónico.
 - El review/listado del plan ya expone filtros básicos por departamento, ODS, área de impacto, triple balance y alcance, usando taxonomías múltiples cuando existen.
 - Las exportaciones del plan ya siguen el modelo Basic / Standard / Pro: Basic solo descarga el PDF unificado, Standard añade PDF agrupado por departamentos y Pro añade PDF/Excel agrupados por categorías, departamentos, áreas de impacto, triple balance y ODS.
 - La capa Pro de colaboración añade comentarios visibles, notas internas, responsables por medida, resumen de validación y medidas personalizadas de proyecto.
-- El review del plan también muestra niveles de compromiso basados en puntos oficiales v23:
+- El review del plan también muestra niveles de compromiso basados en puntos oficiales del catálogo de medidas:
   - compromiso previsto desde las medidas marcadas para implementar;
   - compromiso real desde las medidas ya implementadas;
   - niveles: Semilla, Planta, Árbol, Bosque y Selva;
-  - cálculo por puntos oficiales v23, no por número de medidas;
+  - cálculo por puntos oficiales, no por número de medidas;
   - las medidas personalizadas no entran en este nivel;
   - es un indicador motivacional, no una certificación formal.
 - Stripe Checkout ya activa `standard` y `pro` por proyecto con facturas emitidas por Stripe; la integración está documentada en [docs/stripe-payments.md](../docs/stripe-payments.md).

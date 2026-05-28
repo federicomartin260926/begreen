@@ -20,17 +20,17 @@ This project uses an internal tier model per `Project` for the sustainability pl
 - `standard`: scores `5`, `4`, `3`, unlimited evidences, watermark disabled, grouped PDF by departments.
 - `pro`: all scores `5` to `1`, unlimited evidences, watermark disabled, grouped PDF/Excel by categories, departments, impact areas, triple balance and ODS.
 
-The plan review and PDF already consume the v23 catalog with support for multiple departments, ODS, impact areas, triple balance axes and prioritized verification sources. The review flow also exposes Pro-only collaborative fields and a basic validation summary. The export flows now expose a practical MVP:
+The plan review and PDF already consume the measure catalog with support for multiple departments, ODS, impact areas, triple balance axes and prioritized verification sources. The review flow also exposes Pro-only collaborative fields and a basic validation summary. The export flows now expose a practical MVP:
 
 - Basic keeps only the unified PDF.
 - Standard adds grouped PDF by departments.
 - Pro adds grouped PDF/Excel by categories, departments, impact areas, triple balance and ODS.
 - Pro also enables visible comments, internal notes, responsibles per measure, validation summary and custom measures.
-- The plan review also shows commitment levels based on official v23 points:
+- The plan review also shows commitment levels based on official measure points:
   - planned commitment from measures marked to implement;
   - real commitment from measures already implemented;
   - levels are Seed, Plant, Tree, Forest and Jungle;
-  - the calculation is based on official v23 points, not number of measures;
+  - the calculation is based on official measure points, not number of measures;
   - custom measures are excluded from this level;
   - this is a motivational indicator, not formal certification.
 

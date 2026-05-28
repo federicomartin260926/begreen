@@ -207,8 +207,12 @@ backend:
       imported_ok: "Medidas importadas correctamente."
       invalid_form: "Formulario no válido o falta el archivo."
       import_error: "Error al procesar el archivo: %msg%"
+    summary:
+      title: "Resumen de medidas"
+      description: "Control rápido del catálogo de medidas importado. La plantilla estándar aplica a cualquier protocolo."
+      alert: "El catálogo de medidas no cuadra con los conteos esperados. Revisa importación y relaciones múltiples."
     template:
-      sheet_title: "Plantilla v23"
+      sheet_title: "Plantilla estándar de medidas"
       lists_sheet: "Listas"
       headers:
         protocol: "Protocolo"
@@ -241,7 +245,7 @@ backend:
         verification_sources: "Documentos justificativos"
       score_error_title: "Valor inválido"
       score_error_text: "La puntuación debe ser un número entre 1 y 5."
-      filename: "plantilla_medidas_v23.xlsx"
+      filename: "plantilla_medidas.xlsx"
     list:
       title: "Listado de medidas"
       breadcrumb: "Medidas"
@@ -251,7 +255,7 @@ backend:
       new: "Nueva medida"
       download_pdf: "Descargar PDF"
       import_excel: "Cargar desde Excel"
-      download_template_hint: "Descargar plantilla v23 estándar para cualquier protocolo"
+      download_template_hint: "Descargar plantilla estándar de medidas para cualquier protocolo"
     filters:
       all_protocols: "Todos los protocolos"
       all_ghg_categories: "Todas las categorías GHG"
@@ -285,10 +289,10 @@ backend:
       cta: "Importar"
       mime_invalid: "Por favor, sube un archivo Excel válido (.xlsx o .xls)."
       summary: "Importadas: %imported%. Actualizadas: %updated%. Duplicados: %duplicates%. Errores: %errors%."
-      lang_info_title: "Importación en español con plantilla v23 estándar y traducciones opcionales al inglés."
+      lang_info_title: "Importación en español con plantilla estándar de medidas y traducciones opcionales al inglés."
       lang_info_html: >
         <ul class="mb-0 ps-3">
-          <li><strong>Plantilla y datos base en ES:</strong> Las columnas <em>A–W</em> deben rellenarse en español. <em>Protocolo</em> puede ser código o nombre. <em>Categoría GHG</em>, <em>Categoría</em>, <em>Bloque</em>, <em>Departamentos</em>, <em>ODS</em>, <em>ESG</em>, <em>Alcance</em>, <em>Áreas de impacto</em>, <em>Triple balance</em> y <em>Fuentes de verificación</em> deben existir en el catálogo.</li>
+          <li><strong>Plantilla y datos base en ES:</strong> Las columnas <em>A–W</em> deben rellenarse en español. <em>Protocolo</em> puede ser código o nombre. <em>Categoría GHG</em>, <em>Categoría</em>, <em>Bloque</em>, <em>Departamentos</em>, <em>ODS</em>, <em>ESG</em>, <em>Alcance</em>, <em>Áreas de impacto</em>, <em>Triple balance</em> y <em>Fuentes de verificación</em> deben existir en el catálogo de medidas correspondiente.</li>
           <li><strong>Campos múltiples:</strong> <em>Departamentos</em>, <em>ODS</em>, <em>Áreas de impacto</em> y <em>Triple balance</em> aceptan valores separados por <code>;</code>. <em>Fuentes de verificación</em> usa el formato <code>1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia</code>.</li>
           <li><strong>Campos EN opcionales:</strong> Las columnas <em>S–W</em> son opcionales y se guardan como traducciones (<code>en</code>).</li>
           <li><strong>Puntuación (1–5):</strong> La columna <em>J</em> acepta enteros entre 1 y 5.</li>
@@ -317,7 +321,7 @@ backend:
       mandatory: "Obligatoria"
       mandatory_help: "Si está marcada, esta medida será obligatoria en los planes."
       score: "Puntuación"
-      score_help: "Valor entre 1 y 5 para el catálogo v23."
+      score_help: "Valor entre 1 y 5 para el catálogo de medidas."
       h2_new: "Nueva medida"
       h2_edit: "Editar medida"
       name_review: "Texto en pasado (plan completo)"
@@ -626,7 +630,7 @@ backend:
       real: "Compromiso real"
       points_of_total: "%points% / %total% puntos"
       next_level: "Faltan %points% puntos para subir de nivel"
-      note: "Los niveles se calculan sobre el catálogo oficial v23 y no incluyen medidas personalizadas. Son orientativos y no constituyen una certificación formal."
+      note: "Los niveles se calculan sobre el catálogo oficial de medidas y no incluyen medidas personalizadas. Son orientativos y no constituyen una certificación formal."
       levels:
         seed:
           label: "Semilla"
@@ -675,7 +679,7 @@ backend:
       download_pdf: "PDF"
       download_excel: "Excel"
       unified_pdf: "PDF unificado"
-      unified_pdf_help: "Mantiene el watermark en Basic y respeta el catálogo v23 filtrado por tier."
+      unified_pdf_help: "Mantiene el watermark en Basic y respeta el catálogo de medidas filtrado por tier."
       by_department: "Por departamentos"
       by_department_help: "Agrupa las medidas por departamento o departamentos múltiples."
       by_category: "Por categorías"

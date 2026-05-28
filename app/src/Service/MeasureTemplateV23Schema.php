@@ -4,7 +4,7 @@ namespace App\Service;
 
 final class MeasureTemplateV23Schema
 {
-    public const SHEET_TITLE = 'Plantilla v23';
+    public const SHEET_TITLE = 'Plantilla estándar de medidas';
     public const LISTS_SHEET = 'Listas';
 
     /**

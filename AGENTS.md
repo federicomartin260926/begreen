@@ -63,5 +63,5 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 ## Sustainability domain boundary
 
 - Keep the plan sustainability measures domain separate from the emission-factor / CO2 calculation domain.
-- Treat the `v23` Excel template as the standard measure import/export format for any protocol, not as a historical edition of Be Green My Film.
+- Treat the standard measure Excel template as the import/export format for any protocol. If a legacy internal label appears in class names or command names, treat it as technical baggage only, not as a functional edition of the catalog.
 - Do not introduce protocol editions, catalog editions, plan snapshots, or measure historical versioning unless the task explicitly asks for them later.
