@@ -32,12 +32,12 @@
                     </a>
                     <a
                         href="{{ path('admin_measures_template_download') }}"
+                        class="btn btn-outline-primary text-decoration-none"
                         data-bs-toggle="popover"
                         data-bs-trigger="hover"
                         data-bs-content="{{ 'backend.measures.actions.download_template_hint'|trans }}"
-                        class="text-decoration-none"
                         download>
-                        <i class="bi bi-file-earmark-excel fs-5"></i>
+                        <i class="bi bi-download"></i> {{ 'backend.measures.actions.download_template'|trans }}
                     </a>
                 </div>
             </div>

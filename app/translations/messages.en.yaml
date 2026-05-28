@@ -254,6 +254,7 @@ backend:
       new: "New measure"
       download_pdf: "Download PDF"
       import_excel: "Import from Excel"
+      download_template: "Download template"
       download_template_hint: "Download the standard measure template for any protocol"
     filters:
       all_protocols: "All protocols"
