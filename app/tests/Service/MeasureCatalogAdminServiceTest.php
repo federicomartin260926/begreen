@@ -91,6 +91,23 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certificado', $measure->getVerificationSourcesSummary());
     }
 
+    public function testSyncVerificationSourcesStripsNumericPrefixesFromLegacyNames(): void
+    {
+        $service = new MeasureCatalogAdminService();
+        $measure = $this->createCanonicalMeasure(5);
+
+        $source1 = $this->createVerificationSource(11, 'foto', '1. Foto');
+        $source2 = $this->createVerificationSource(12, 'factura', '2. Factura / Albarán');
+
+        $service->syncVerificationSources($measure, [
+            1 => $source1,
+            2 => $source2,
+        ]);
+
+        self::assertSame('1. Foto | 2. Factura / Albarán', $measure->getVerificationSources());
+        self::assertSame('1. Foto | 2. Factura / Albarán', $measure->getVerificationSourcesSummary());
+    }
+
     public function testSyncVerificationSourcesRejectsDuplicateSourceInDifferentPriorities(): void
     {
         $service = new MeasureCatalogAdminService();

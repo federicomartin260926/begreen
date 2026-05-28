@@ -54,8 +54,8 @@ final class MeasureTaxonomyPresenterTest extends TestCase
         $odsB = (new Ods())->setCode('13')->setName('Acción por el clima');
         $impactArea = (new ImpactArea())->setCode('clima')->setName('Cambio Climático');
         $axis = (new TripleBalanceAxis())->setCode('ambiental')->setName('Ambiental');
-        $sourceA = (new VerificationSource())->setCode('foto')->setName('Foto');
-        $sourceB = (new VerificationSource())->setCode('factura')->setName('Factura / Albarán');
+        $sourceA = (new VerificationSource())->setCode('foto')->setName('1. Foto');
+        $sourceB = (new VerificationSource())->setCode('factura')->setName('2. Factura / Albarán');
 
         $this->setEntityId($departmentA, 21);
         $this->setEntityId($departmentB, 22);
@@ -96,8 +96,8 @@ final class MeasureTaxonomyPresenterTest extends TestCase
         self::assertSame('12', $odsItems[0]['label']);
         self::assertSame('13', $odsItems[1]['label']);
         self::assertSame([1, 2], array_map(static fn (array $link): int => $link['priority'], $sources));
-        self::assertSame('Factura / Albarán', $sources[0]['name']);
-        self::assertSame('Foto', $sources[1]['name']);
+        self::assertSame('Factura / Albarán', $sources[0]['displayName']);
+        self::assertSame('Foto', $sources[1]['displayName']);
         self::assertSame('Cambio Climático', $impactAreas[0]['name']);
         self::assertSame('Ambiental', $axes[0]['name']);
         self::assertTrue($presenter->matchesDepartment($measure, 21));

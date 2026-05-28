@@ -58,8 +58,23 @@ final class MeasureTaxonomyPresenter
                 'priority' => $link->getPriority(),
                 'code' => $source?->getCode(),
                 'name' => (string) ($source?->getName() ?? ''),
+                'displayName' => self::normalizeVerificationSourceName((string) ($source?->getName() ?? '')),
             ];
         }, $links);
+    }
+
+    private static function normalizeVerificationSourceName(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return '';
+        }
+
+        if (preg_match('/^\s*\d+\s*[\.\)\-:]\s*(.+)$/u', $name, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return $name;
     }
 
     /**

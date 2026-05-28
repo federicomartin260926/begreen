@@ -334,10 +334,24 @@ class Measure
                 continue;
             }
 
-            $parts[] = sprintf('%d. %s', $link->getPriority(), $source->getName());
+            $parts[] = sprintf('%d. %s', $link->getPriority(), $this->normalizeVerificationSourceName((string) $source->getName()));
         }
 
         return $parts !== [] ? implode(' | ', $parts) : ($this->verificationSources ?? null);
+    }
+
+    private function normalizeVerificationSourceName(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return '';
+        }
+
+        if (preg_match('/^\s*\d+\s*[\.\)\-:]\s*(.+)$/u', $name, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return $name;
     }
 
     /** @return Collection<int, MeasureVerificationSource> */

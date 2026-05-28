@@ -237,7 +237,7 @@
             {% else %}
                 <div class="table-responsive">
                     <table id="measures-table"
-                        class="table table-hover green_table_1 table-bordered dt-responsive nowrap w-100"
+                        class="table table-hover green_table_1 table-bordered dt-responsive w-100 measure-table"
                         data-controller="datatable">
                         <thead>
                             <tr>
@@ -254,14 +254,13 @@
                                 <th>{{ 'backend.measures.table.scope'|trans }}</th>
                                 <th>{{ 'backend.measures.table.score'|trans }}</th>
                                 <th>{{ 'backend.measures.table.mandatory'|trans }}</th>
-                                <th class="text-end">{{ 'backend.common.actions'|trans }}</th>
-                                <th>V23</th>
                                 <th>{{ 'backend.measures.form.measure_block'|trans }}</th>
                                 <th>{{ 'backend.measures.form.departments'|trans }}</th>
                                 <th>{{ 'backend.measures.form.ods_items'|trans }}</th>
                                 <th>{{ 'backend.measures.form.verification_source_priority_1'|trans }}</th>
                                 <th>{{ 'backend.measures.form.impact_areas'|trans }}</th>
                                 <th>{{ 'backend.measures.form.triple_balance_axes'|trans }}</th>
+                                <th class="text-end">{{ 'backend.common.actions'|trans }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -276,7 +275,6 @@
                                 {% if measure.esg is null %}{% set missing = missing|merge(['ESG']) %}{% endif %}
                                 {% if measure.scope is null %}{% set missing = missing|merge(['Alcance']) %}{% endif %}
                                 {% if measure.categoryGhg is null %}{% set missing = missing|merge(['Categoría GHG']) %}{% endif %}
-                                {% set isV23 = measure.protocol and measure.protocol.code == 'be-green-my-film' and measure.importVersion == 'v23' %}
                                 {% set departmentsMulti = taxonomyPresenter.departments(measure) %}
                                 {% set odsMulti = taxonomyPresenter.odsItems(measure) %}
                                 {% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
@@ -310,20 +308,17 @@
                                             </i>
                                         {% endif %}
                                         {{ measure.name }}
-                                        {% if isV23 %}
-                                            <span class="badge bg-success ms-2">Oficial</span>
-                                        {% endif %}
                                     </td>
-                                    <td>{{ measure.protocol ? measure.protocol.name : '' }}</td>
-                                    <td>{{ measure.categoryGhg ? measure.categoryGhg.name : '' }}</td>
-                                    <td>{{ measure.category ? measure.category.name : '' }}</td>
-                                    <td>{{ measure.department ? measure.department.name : '' }}</td>
-                                    <td>{{ measure.description ? measure.description : '' }}</td>
-                                    <td>{{ measure.implementation ? measure.implementation|u.truncate(60, '…') : '' }}</td>
-                                    <td>{{ measure.verificationSources ? measure.verificationSources|u.truncate(60, '…') : '' }}</td>
-                                    <td>{{ measure.ods ? measure.ods.name : '' }}</td>
-                                    <td>{{ measure.esg ? measure.esg.name : '' }}</td>
-                                    <td>{{ measure.scope ? measure.scope.name : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.protocol ? measure.protocol.name : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.categoryGhg ? measure.categoryGhg.name : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.category ? measure.category.name : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.department ? measure.department.name : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.description ? measure.description : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.implementation ? measure.implementation : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.verificationSources ? measure.verificationSources : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.ods ? measure.ods.name : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.esg ? measure.esg.name : '' }}</td>
+                                    <td class="measure-detail-cell">{{ measure.scope ? measure.scope.name : '' }}</td>
                                     <td>
                                         {% if measure.score is not null %}
                                             <span class="badge bg-success ms-3">{{ measure.score }}</span>
@@ -338,26 +333,8 @@
                                             <span class="badge bg-secondary ms-3">{{ 'backend.common.no'|trans }}</span>
                                         {% endif %}
                                     </td>
-                                    <td class="text-end">
-                                        <a href="{{ path('admin_measures_edit', {'id': measure.id}) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <form method="post" action="{{ path('admin_measures_delete', {'id': measure.id}) }}" class="d-inline" onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
-                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_measure_' ~ measure.id) }}">
-                                            <button class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                    </td>
-                                    <td>
-                                        {% if isV23 %}
-                                            <span class="badge bg-success">Sí</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">No</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ measure.measureBlock ? measure.measureBlock.name : '—' }}</td>
-                                    <td>
+                                    <td class="measure-detail-cell">{{ measure.measureBlock ? measure.measureBlock.name : '—' }}</td>
+                                    <td class="measure-detail-cell">
                                         {% if departmentsMulti is not empty %}
                                             <div class="d-flex flex-wrap gap-1">
                                                 {% for item in departmentsMulti %}
@@ -368,7 +345,7 @@
                                             —
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="measure-detail-cell">
                                         {% if odsMulti is not empty %}
                                             <div class="d-flex flex-wrap gap-1">
                                                 {% for item in odsMulti %}
@@ -379,18 +356,18 @@
                                             —
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="measure-detail-cell">
                                         {% if verificationLinks is not empty %}
                                             <ol class="mb-0 ps-3">
                                                 {% for link in verificationLinks %}
-                                                    <li>{{ link.priority }}. {{ link.name }}</li>
+                                                    <li>{{ link.priority }}. {{ link.displayName }}</li>
                                                 {% endfor %}
                                             </ol>
                                         {% else %}
-                                            {{ measure.verificationSources ? measure.verificationSources|u.truncate(60, '…') : '—' }}
+                                            {{ measure.verificationSources ? measure.verificationSources : '—' }}
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="measure-detail-cell">
                                         {% if impactAreas is not empty %}
                                             <div class="d-flex flex-wrap gap-1">
                                                 {% for item in impactAreas %}
@@ -401,7 +378,7 @@
                                             —
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="measure-detail-cell">
                                         {% if axes is not empty %}
                                             <div class="d-flex flex-wrap gap-1">
                                                 {% for item in axes %}
@@ -411,6 +388,17 @@
                                         {% else %}
                                             —
                                         {% endif %}
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <a href="{{ path('admin_measures_edit', {'id': measure.id}) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" action="{{ path('admin_measures_delete', {'id': measure.id}) }}" class="d-inline" onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_measure_' ~ measure.id) }}">
+                                            <button class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             {% endfor %}

@@ -247,6 +247,24 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
     box-shadow: inset 0 0 0 9999px rgba(63, 195, 138, 0.05);
 }
 
+.measure-table {
+    th,
+    td {
+        vertical-align: top;
+    }
+
+    .measure-detail-cell {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        max-width: 320px;
+    }
+
+    .measure-detail-cell .badge {
+        white-space: normal;
+    }
+}
+
 
 /* Estilo principal para inputs con label superpuesto */
 .form-label-over {
@@ -461,4 +479,3 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         min-width: 120px;
     }
 }
-

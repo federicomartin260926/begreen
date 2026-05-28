@@ -232,10 +232,24 @@ final class MeasureCatalogAdminService
 
         $parts = [];
         foreach ($normalized as $item) {
-            $parts[] = sprintf('%d. %s', $item['priority'], $item['source']->getName());
+            $parts[] = sprintf('%d. %s', $item['priority'], $this->normalizeVerificationSourceName((string) $item['source']->getName()));
         }
 
         return implode(' | ', $parts);
+    }
+
+    private function normalizeVerificationSourceName(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return '';
+        }
+
+        if (preg_match('/^\s*\d+\s*[\.\)\-:]\s*(.+)$/u', $name, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return $name;
     }
 
     private function isCanonicalV23Measure(Measure $measure): bool
