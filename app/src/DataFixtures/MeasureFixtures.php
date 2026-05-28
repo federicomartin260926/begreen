@@ -2,7 +2,6 @@
 // src/DataFixtures/MeasureFixtures.php
 namespace App\DataFixtures;
 
-use App\Service\MeasureImporter;
 use App\Service\MeasureTemplateV23Importer;
 use App\Service\MeasureTemplateV23Parser;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -15,7 +14,6 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
 {
     public function __construct(
         private readonly TranslatableListener $translatableListener,
-        private readonly MeasureImporter $measureImporter,
         private readonly MeasureTemplateV23Parser $measureTemplateParser,
         private readonly MeasureTemplateV23Importer $measureTemplateImporter,
         private readonly ParameterBagInterface $params,
@@ -43,46 +41,24 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
 
         $baseDir = rtrim($this->params->get('kernel.project_dir'), '/').'/public/fixtures';
 
-        // Lista de ficheros a importar
-        $files = [
-            $baseDir.'/peach_measures.xlsx',               // tu fichero existente de Peach
-            $baseDir.'/green_film_measures.xlsx',
-            $baseDir.'/albert_measures.xlsx',
-            $baseDir.'/be_green_my_film_measures.xlsx',
-            $baseDir.'/be_green_my_event_measures.xlsx',
-        ];
-
-        foreach ($files as $path) {
-            if (!is_file($path)) {
-                // Si falta alguno, lanzamos aviso en consola y seguimos
-                echo sprintf("⚠️  Measures file not found: %s\n", $path);
-                continue;
-            }
-
-            if (basename($path) === 'be_green_my_film_measures.xlsx') {
-                $report = $this->measureTemplateParser->parseFile($path);
-                $report = $this->measureTemplateImporter->import($report, true, false);
-                $summary = $report->getImportSummary();
-
-                echo sprintf(
-                    "✅ Imported %s | imported=%d, updated=%d, errors=%d\n",
-                    basename($path),
-                    $summary['imported'] ?? 0,
-                    $summary['updated'] ?? 0,
-                    $summary['errors'] ?? 0
-                );
-                continue;
-            }
-
-            $summary = $this->measureImporter->importFile($path);
-            echo sprintf(
-                "✅ Imported %s | imported=%d, duplicates=%d, errors=%d\n",
-                basename($path),
-                $summary['imported'] ?? 0,
-                $summary['duplicates'] ?? 0,
-                $summary['errors'] ?? 0
-            );
+        $path = $baseDir.'/be_green_my_film_measures.xlsx';
+        if (!is_file($path)) {
+            echo sprintf("⚠️  Measures file not found: %s\n", $path);
+            $this->translatableListener->setTranslationFallback(true);
+            return;
         }
+
+        $report = $this->measureTemplateParser->parseFile($path);
+        $report = $this->measureTemplateImporter->import($report, true, false);
+        $summary = $report->getImportSummary();
+
+        echo sprintf(
+            "✅ Imported %s | imported=%d, updated=%d, errors=%d\n",
+            basename($path),
+            $summary['imported'] ?? 0,
+            $summary['updated'] ?? 0,
+            $summary['errors'] ?? 0
+        );
 
         // Devuelve fallback si quieres
         $this->translatableListener->setTranslationFallback(true);
