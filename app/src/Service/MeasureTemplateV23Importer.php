@@ -23,6 +23,12 @@ final class MeasureTemplateV23Importer
 {
     private const TEMPLATE_VERSION = 'v23';
 
+    /**
+     * @var array<string, array<string, MeasureBlock>>
+     */
+    private array $measureBlockCache = [];
+    private bool $validateCanonicalMeasures = true;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly TranslatableListener $translatableListener,
@@ -30,8 +36,11 @@ final class MeasureTemplateV23Importer
     ) {
     }
 
-    public function import(MeasureTemplateV23Report $report, bool $apply): MeasureTemplateV23Report
+    public function import(MeasureTemplateV23Report $report, bool $apply, bool $validateCanonical = true): MeasureTemplateV23Report
     {
+        $this->measureBlockCache = [];
+        $this->validateCanonicalMeasures = $validateCanonical;
+
         if (!$apply) {
             $report->setImportSummary([
                 'mode' => 'dry-run',
@@ -91,6 +100,7 @@ final class MeasureTemplateV23Importer
             throw $exception;
         } finally {
             $this->translatableListener->setTranslationFallback(true);
+            $this->validateCanonicalMeasures = true;
         }
 
         $report->setImportSummary($summary);
@@ -253,7 +263,11 @@ final class MeasureTemplateV23Importer
         $measure->setOds($odsItems[0] ?? null);
         $measure->setVerificationSources($measure->getVerificationSourcesSummary());
 
-        if ($protocol->getCode() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE && $measure->getImportVersion() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION) {
+        if (
+            $this->validateCanonicalMeasures
+            && $protocol->getCode() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE
+            && $measure->getImportVersion() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION
+        ) {
             $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $this->mapVerificationSources($verificationSources));
             if ($validationErrors !== []) {
                 foreach ($validationErrors as $error) {
@@ -356,11 +370,16 @@ final class MeasureTemplateV23Importer
         }
 
         foreach (MeasureTemplateV23Schema::lookupCandidates($value) as $candidate) {
+            if ($cached = $this->getCachedMeasureBlock($protocol, $candidate)) {
+                return $cached;
+            }
+
             $block = $this->em->getRepository(MeasureBlock::class)->findOneBy([
                 'protocol' => $protocol,
                 'name' => $candidate,
             ]);
             if ($block instanceof MeasureBlock) {
+                $this->cacheMeasureBlock($protocol, $block, $value, $candidate, (string) $block->getCode(), (string) $block->getName());
                 return $block;
             }
 
@@ -369,6 +388,7 @@ final class MeasureTemplateV23Importer
                 'code' => $candidate,
             ]);
             if ($block instanceof MeasureBlock) {
+                $this->cacheMeasureBlock($protocol, $block, $value, $candidate, (string) $block->getCode(), (string) $block->getName());
                 return $block;
             }
         }
@@ -387,6 +407,7 @@ final class MeasureTemplateV23Importer
             ->setSourceRow($rowNumber);
 
         $this->em->persist($block);
+        $this->cacheMeasureBlock($protocol, $block, $value, $code, $blockName);
 
         return $block;
     }
@@ -637,5 +658,37 @@ final class MeasureTemplateV23Importer
 
             $translationRepository->translate($measure, $field, 'en', $value);
         }
+    }
+
+    private function getCachedMeasureBlock(Protocol $protocol, string $value): ?MeasureBlock
+    {
+        $protocolKey = (string) ($protocol->getCode() ?? $protocol->getName() ?? spl_object_id($protocol));
+        $cacheKey = $this->normalizeCacheKey($value);
+
+        return $this->measureBlockCache[$protocolKey][$cacheKey] ?? null;
+    }
+
+    /**
+     * @param array<int, string> $aliases
+     */
+    private function cacheMeasureBlock(Protocol $protocol, MeasureBlock $block, string ...$aliases): void
+    {
+        $protocolKey = (string) ($protocol->getCode() ?? $protocol->getName() ?? spl_object_id($protocol));
+
+        foreach ($aliases as $alias) {
+            $cacheKey = $this->normalizeCacheKey($alias);
+            if ($cacheKey === '') {
+                continue;
+            }
+
+            $this->measureBlockCache[$protocolKey][$cacheKey] = $block;
+        }
+    }
+
+    private function normalizeCacheKey(string $value): string
+    {
+        $value = trim(preg_replace('/\s+/u', ' ', $value) ?? '');
+
+        return mb_strtolower($value);
     }
 }

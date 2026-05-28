@@ -9,6 +9,7 @@ use App\Entity\ImpactArea;
 use App\Entity\Protocol;
 use App\Entity\Ods;
 use App\Entity\EsG;
+use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
@@ -272,6 +273,27 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
                     ->setSortOrder($data['sortOrder']);
             });
             $source
+                ->setCode($data['code'])
+                ->setName($data['name'])
+                ->setSortOrder($data['sortOrder']);
+        }
+
+        // -------------------------
+        // Triple balance axes
+        // -------------------------
+        $tripleBalanceAxes = [
+            ['code' => 'ambiental', 'name' => 'Ambiental', 'sortOrder' => 1],
+            ['code' => 'social', 'name' => 'Social', 'sortOrder' => 2],
+            ['code' => 'economico', 'name' => 'Económico', 'sortOrder' => 3],
+        ];
+        foreach ($tripleBalanceAxes as $data) {
+            $axis = $upsert($manager, TripleBalanceAxis::class, ['code' => $data['code']], function () use ($data) {
+                return (new TripleBalanceAxis())
+                    ->setCode($data['code'])
+                    ->setName($data['name'])
+                    ->setSortOrder($data['sortOrder']);
+            });
+            $axis
                 ->setCode($data['code'])
                 ->setName($data['name'])
                 ->setSortOrder($data['sortOrder']);

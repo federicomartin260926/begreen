@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
@@ -30,7 +31,50 @@ final class MeasureTemplateV23Parser
         $headerRow = $rows[1] ?? [];
         $report->setHeaders($headerRow);
 
-        $columnMap = $this->buildColumnMap($headerRow, $report);
+        $secondRow = $rows[2] ?? [];
+        if ($this->looksLikeMatrixTemplate($headerRow, $secondRow)) {
+            return $this->parseMatrixSheet($sheet, $rows, $report);
+        }
+
+        return $this->parseLegacySheet($sheet, $rows, $report);
+    }
+
+    /**
+     * @param array<string, string|null> $headerRow
+     * @param array<string, string|null> $secondRow
+     */
+    private function looksLikeMatrixTemplate(array $headerRow, array $secondRow): bool
+    {
+        $scalarLookup = MeasureTemplateV23Schema::scalarHeaderLookup();
+        $groupLookup = MeasureTemplateV23Schema::matrixGroupLookup();
+        $hasMatrixGroup = false;
+        $hasMatrixOptions = false;
+        $hasScalarDataInSecondRow = false;
+
+        foreach ($headerRow as $column => $header) {
+            $normalized = MeasureTemplateV23Schema::normalizeHeader((string) $header);
+            if (isset($groupLookup[$normalized])) {
+                $hasMatrixGroup = true;
+                if (trim((string) ($secondRow[$column] ?? '')) !== '') {
+                    $hasMatrixOptions = true;
+                }
+                continue;
+            }
+
+            if (isset($scalarLookup[$normalized]) && trim((string) ($secondRow[$column] ?? '')) !== '') {
+                $hasScalarDataInSecondRow = true;
+            }
+        }
+
+        return $hasMatrixGroup && $hasMatrixOptions && !$hasScalarDataInSecondRow;
+    }
+
+    /**
+     * @param array<int, array<string, string|null>> $rows
+     */
+    private function parseLegacySheet(Worksheet $sheet, array $rows, MeasureTemplateV23Report $report): MeasureTemplateV23Report
+    {
+        $columnMap = $this->buildLegacyColumnMap($rows[1] ?? [], $report);
         if ($columnMap === []) {
             $report->finalize();
             return $report;
@@ -43,54 +87,34 @@ final class MeasureTemplateV23Parser
                 continue;
             }
 
-            $rowData = [
-                'row' => $rowNumber,
-                'protocol' => $this->cell($row, $columnMap['protocol'] ?? null),
-                'projectType' => $this->cell($row, $columnMap['project_type'] ?? null),
-                'measureBlock' => $this->cell($row, $columnMap['measure_block'] ?? null),
-                'category' => $this->cell($row, $columnMap['category'] ?? null),
-                'categoryGhg' => $this->cell($row, $columnMap['category_ghg'] ?? null),
-                'name' => $this->cell($row, $columnMap['name'] ?? null),
-                'nameReview' => $this->cell($row, $columnMap['name_review'] ?? null),
-                'description' => $this->cell($row, $columnMap['description'] ?? null),
-                'implementation' => $this->cell($row, $columnMap['implementation'] ?? null),
-                'score' => $this->parseScore($this->cell($row, $columnMap['score'] ?? null), $rowNumber, $report),
-                'mandatory' => $this->cell($row, $columnMap['mandatory'] ?? null),
-                'departments' => $this->cell($row, $columnMap['departments'] ?? null),
-                'odsItems' => $this->cell($row, $columnMap['ods_items'] ?? null),
-                'esg' => $this->cell($row, $columnMap['esg'] ?? null),
-                'scope' => $this->cell($row, $columnMap['scope'] ?? null),
-                'impactAreas' => $this->cell($row, $columnMap['impact_areas'] ?? null),
-                'tripleBalanceAxes' => $this->cell($row, $columnMap['triple_balance_axes'] ?? null),
-                'verificationSources' => $this->cell($row, $columnMap['verification_sources'] ?? null),
-                'nameEn' => $this->cell($row, $columnMap['name_en'] ?? null),
-                'nameReviewEn' => $this->cell($row, $columnMap['name_review_en'] ?? null),
-                'descriptionEn' => $this->cell($row, $columnMap['description_en'] ?? null),
-                'implementationEn' => $this->cell($row, $columnMap['implementation_en'] ?? null),
-                'verificationSourcesEn' => $this->cell($row, $columnMap['verification_sources_en'] ?? null),
-            ];
+            $rowData = $this->buildLegacyRowData($row, $columnMap, $rowNumber, $report);
+            $report->addRow($rowData);
+        }
 
-            if ($rowData['protocol'] === '') {
-                $report->addError('missing_protocol', sprintf('Fila %d sin protocolo.', $rowNumber), ['row' => $rowNumber]);
-            }
-            if ($rowData['name'] === '') {
-                $report->addError('missing_name', sprintf('Fila %d sin nombre de medida.', $rowNumber), ['row' => $rowNumber]);
+        $report->finalize();
+
+        return $report;
+    }
+
+    /**
+     * @param array<int, array<string, string|null>> $rows
+     */
+    private function parseMatrixSheet(Worksheet $sheet, array $rows, MeasureTemplateV23Report $report): MeasureTemplateV23Report
+    {
+        $layout = $this->buildMatrixLayout($rows[1] ?? [], $rows[2] ?? [], $report);
+        if ($layout === []) {
+            $report->finalize();
+            return $report;
+        }
+
+        $highestRow = $sheet->getHighestRow();
+        for ($rowNumber = 3; $rowNumber <= $highestRow; $rowNumber++) {
+            $row = $rows[$rowNumber] ?? [];
+            if ($this->isEmptyRow($row)) {
+                continue;
             }
 
-            $mandatory = mb_strtolower(trim($rowData['mandatory']));
-            if ($mandatory !== '' && !in_array($mandatory, ['sí', 'si', 'yes', 'y', 'true', '1', 'no', 'n', 'false', '0'], true)) {
-                $report->addError('invalid_mandatory', sprintf('Fila %d con valor de obligatoria inválido: "%s".', $rowNumber, $rowData['mandatory']), ['row' => $rowNumber]);
-            }
-
-            $verificationSources = [];
-            try {
-                $verificationSources = MeasureTemplateV23Schema::splitVerificationSourcesCell($rowData['verificationSources']);
-            } catch (\InvalidArgumentException $e) {
-                $report->addError('invalid_verification_sources', sprintf('Fila %d: %s', $rowNumber, $e->getMessage()), ['row' => $rowNumber]);
-            }
-
-            $rowData['verificationSources'] = $verificationSources;
-
+            $rowData = $this->buildMatrixRowData($row, $layout, $rowNumber, $report);
             $report->addRow($rowData);
         }
 
@@ -104,7 +128,7 @@ final class MeasureTemplateV23Parser
      *
      * @return array<string, string>
      */
-    private function buildColumnMap(array $headerRow, MeasureTemplateV23Report $report): array
+    private function buildLegacyColumnMap(array $headerRow, MeasureTemplateV23Report $report): array
     {
         $normalized = [];
         foreach ($headerRow as $column => $header) {
@@ -125,6 +149,277 @@ final class MeasureTemplateV23Parser
         }
 
         return $columnMap;
+    }
+
+    /**
+     * @param array<string, string|null> $row
+     * @param array<string, string> $columnMap
+     *
+     * @return array<string, mixed>
+     */
+    private function buildLegacyRowData(array $row, array $columnMap, int $rowNumber, MeasureTemplateV23Report $report): array
+    {
+        $rowData = [
+            'row' => $rowNumber,
+            'protocol' => $this->cell($row, $columnMap['protocol'] ?? null),
+            'projectType' => $this->cell($row, $columnMap['project_type'] ?? null),
+            'measureBlock' => $this->cell($row, $columnMap['measure_block'] ?? null),
+            'category' => $this->cell($row, $columnMap['category'] ?? null),
+            'categoryGhg' => $this->cell($row, $columnMap['category_ghg'] ?? null),
+            'name' => $this->cell($row, $columnMap['name'] ?? null),
+            'nameReview' => $this->cell($row, $columnMap['name_review'] ?? null),
+            'description' => $this->cell($row, $columnMap['description'] ?? null),
+            'implementation' => $this->cell($row, $columnMap['implementation'] ?? null),
+            'score' => $this->parseScore($this->cell($row, $columnMap['score'] ?? null), $rowNumber, $report),
+            'mandatory' => $this->cell($row, $columnMap['mandatory'] ?? null),
+            'departments' => $this->cell($row, $columnMap['departments'] ?? null),
+            'odsItems' => $this->cell($row, $columnMap['ods_items'] ?? null),
+            'esg' => $this->cell($row, $columnMap['esg'] ?? null),
+            'scope' => $this->cell($row, $columnMap['scope'] ?? null),
+            'impactAreas' => $this->cell($row, $columnMap['impact_areas'] ?? null),
+            'tripleBalanceAxes' => $this->cell($row, $columnMap['triple_balance_axes'] ?? null),
+            'verificationSources' => $this->cell($row, $columnMap['verification_sources'] ?? null),
+            'nameEn' => $this->cell($row, $columnMap['name_en'] ?? null),
+            'nameReviewEn' => $this->cell($row, $columnMap['name_review_en'] ?? null),
+            'descriptionEn' => $this->cell($row, $columnMap['description_en'] ?? null),
+            'implementationEn' => $this->cell($row, $columnMap['implementation_en'] ?? null),
+            'verificationSourcesEn' => $this->cell($row, $columnMap['verification_sources_en'] ?? null),
+        ];
+
+        if ($rowData['protocol'] === '') {
+            $report->addError('missing_protocol', sprintf('Fila %d sin protocolo.', $rowNumber), ['row' => $rowNumber]);
+        }
+        if ($rowData['name'] === '') {
+            $report->addError('missing_name', sprintf('Fila %d sin nombre de medida.', $rowNumber), ['row' => $rowNumber]);
+        }
+
+        $mandatory = mb_strtolower(trim($rowData['mandatory']));
+        if ($mandatory !== '' && !in_array($mandatory, ['sí', 'si', 'yes', 'y', 'true', '1', 'no', 'n', 'false', '0'], true)) {
+            $report->addError('invalid_mandatory', sprintf('Fila %d con valor de obligatoria inválido: "%s".', $rowNumber, $rowData['mandatory']), ['row' => $rowNumber]);
+        }
+
+        $verificationSources = [];
+        try {
+            $verificationSources = MeasureTemplateV23Schema::splitVerificationSourcesCell($rowData['verificationSources']);
+        } catch (\InvalidArgumentException $e) {
+            $report->addError('invalid_verification_sources', sprintf('Fila %d: %s', $rowNumber, $e->getMessage()), ['row' => $rowNumber]);
+        }
+
+        $rowData['verificationSources'] = $verificationSources;
+
+        return $rowData;
+    }
+
+    /**
+     * @param array<string, string|null> $row1
+     * @param array<string, string|null> $row2
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildMatrixLayout(array $row1, array $row2, MeasureTemplateV23Report $report): array
+    {
+        $scalarLookup = MeasureTemplateV23Schema::scalarHeaderLookup();
+        $groupLookup = MeasureTemplateV23Schema::matrixGroupLookup();
+        $highestColumn = max(array_map(
+            static fn (string $column): int => Coordinate::columnIndexFromString($column),
+            array_keys($row1) ?: ['A']
+        ));
+
+        $layout = [];
+        $currentGroupKey = null;
+        $foundGroupKeys = [];
+        $foundScalarKeys = [];
+
+        for ($columnIndex = 1; $columnIndex <= $highestColumn; $columnIndex++) {
+            $column = Coordinate::stringFromColumnIndex($columnIndex);
+            $top = trim((string) ($row1[$column] ?? ''));
+            $second = trim((string) ($row2[$column] ?? ''));
+
+            if ($top !== '') {
+                $normalized = MeasureTemplateV23Schema::normalizeHeader($top);
+                if (isset($groupLookup[$normalized]) && $second !== '') {
+                    $currentGroupKey = $groupLookup[$normalized];
+                    $foundGroupKeys[$currentGroupKey] = true;
+                    $layout[] = [
+                        'type' => 'group',
+                        'groupKey' => $currentGroupKey,
+                        'column' => $column,
+                        'label' => $second,
+                    ];
+                    continue;
+                }
+
+                if (isset($scalarLookup[$normalized]) && $second === '') {
+                    $currentGroupKey = null;
+                    $foundScalarKeys[$scalarLookup[$normalized]] = true;
+                    $layout[] = [
+                        'type' => 'scalar',
+                        'key' => $scalarLookup[$normalized],
+                        'column' => $column,
+                    ];
+                    continue;
+                }
+
+                if (isset($groupLookup[$normalized])) {
+                    $currentGroupKey = $groupLookup[$normalized];
+                    $foundGroupKeys[$currentGroupKey] = true;
+                    if ($second !== '') {
+                        $layout[] = [
+                            'type' => 'group',
+                            'groupKey' => $currentGroupKey,
+                            'column' => $column,
+                            'label' => $second,
+                        ];
+                    }
+                    continue;
+                }
+
+                if (isset($scalarLookup[$normalized])) {
+                    $currentGroupKey = null;
+                    $foundScalarKeys[$scalarLookup[$normalized]] = true;
+                    $layout[] = [
+                        'type' => 'scalar',
+                        'key' => $scalarLookup[$normalized],
+                        'column' => $column,
+                    ];
+                    continue;
+                }
+
+                $currentGroupKey = null;
+                continue;
+            }
+
+            if ($second !== '' && $currentGroupKey !== null) {
+                $foundGroupKeys[$currentGroupKey] = true;
+                $layout[] = [
+                    'type' => 'group',
+                    'groupKey' => $currentGroupKey,
+                    'column' => $column,
+                    'label' => $second,
+                ];
+            }
+        }
+
+        foreach (MeasureTemplateV23Schema::requiredHeaders() as $requiredKey) {
+            $label = MeasureTemplateV23Schema::headers()[$requiredKey] ?? $requiredKey;
+            if (isset(MeasureTemplateV23Schema::matrixGroupLabels()[$requiredKey])) {
+                $groupLabel = MeasureTemplateV23Schema::matrixGroupLabels()[$requiredKey];
+                if (!isset($foundGroupKeys[$requiredKey])) {
+                    $report->addError('missing_header', sprintf('Falta la columna requerida "%s".', $groupLabel), ['header' => $groupLabel]);
+                }
+
+                continue;
+            }
+
+            if (isset($scalarLookup[MeasureTemplateV23Schema::normalizeHeader($label)])) {
+                if (!isset($foundScalarKeys[$requiredKey])) {
+                    $report->addError('missing_header', sprintf('Falta la columna requerida "%s".', $label), ['header' => $label]);
+                }
+
+                continue;
+            }
+        }
+
+        return $layout;
+    }
+
+    /**
+     * @param array<string, string|null> $row
+     * @param array<int, array<string, mixed>> $layout
+     *
+     * @return array<string, mixed>
+     */
+    private function buildMatrixRowData(array $row, array $layout, int $rowNumber, MeasureTemplateV23Report $report): array
+    {
+        $rowData = ['row' => $rowNumber];
+        $matrixSelections = [
+            'impactAreas' => [],
+            'departments' => [],
+            'verificationSources' => [],
+            'odsItems' => [],
+            'tripleBalanceAxes' => [],
+        ];
+
+        foreach ($layout as $columnDescriptor) {
+            $column = (string) ($columnDescriptor['column'] ?? '');
+            $value = trim((string) ($row[$column] ?? ''));
+
+            if (($columnDescriptor['type'] ?? null) === 'scalar') {
+                $key = (string) ($columnDescriptor['key'] ?? '');
+                $rowData[$key] = $value;
+                continue;
+            }
+
+            if (($columnDescriptor['type'] ?? null) !== 'group') {
+                continue;
+            }
+
+            $groupKey = (string) ($columnDescriptor['groupKey'] ?? '');
+            if ($value === '') {
+                continue;
+            }
+
+            if (!MeasureTemplateV23Schema::isSelectionMarker($value)) {
+                $report->addError(
+                    'invalid_matrix_value',
+                    sprintf('Fila %d, columna %s: solo se permite "X" en la plantilla de selección múltiple.', $rowNumber, $column),
+                    ['row' => $rowNumber, 'column' => $column, 'value' => $value]
+                );
+                continue;
+            }
+
+            $label = (string) ($columnDescriptor['label'] ?? '');
+            match ($groupKey) {
+                'impact_areas' => $matrixSelections['impactAreas'][] = $label,
+                'departments' => $matrixSelections['departments'][] = $label,
+                'verification_sources' => $matrixSelections['verificationSources'][] = [
+                    'priority' => count($matrixSelections['verificationSources']) + 1,
+                    'value' => $label,
+                ],
+                'ods_items' => $matrixSelections['odsItems'][] = $label,
+                'triple_balance_axes' => $matrixSelections['tripleBalanceAxes'][] = $label,
+                default => null,
+            };
+        }
+
+        $rowData['protocol'] = (string) ($rowData['protocol'] ?? '');
+        $rowData['projectType'] = (string) ($rowData['project_type'] ?? $rowData['projectType'] ?? '');
+        $rowData['measureBlock'] = (string) ($rowData['measure_block'] ?? $rowData['measureBlock'] ?? '');
+        $rowData['category'] = (string) ($rowData['category'] ?? '');
+        $rowData['categoryGhg'] = (string) ($rowData['category_ghg'] ?? $rowData['categoryGhg'] ?? '');
+        $rowData['name'] = (string) ($rowData['name'] ?? '');
+        $rowData['nameReview'] = (string) ($rowData['name_review'] ?? $rowData['nameReview'] ?? '');
+        $rowData['description'] = (string) ($rowData['description'] ?? '');
+        $rowData['implementation'] = (string) ($rowData['implementation'] ?? '');
+        $rowData['score'] = $this->parseScore((string) ($rowData['score'] ?? ''), $rowNumber, $report);
+        $rowData['mandatory'] = (string) ($rowData['mandatory'] ?? '');
+        $rowData['esg'] = (string) ($rowData['esg'] ?? '');
+        $rowData['scope'] = (string) ($rowData['scope'] ?? '');
+        $rowData['nameEn'] = (string) ($rowData['name_en'] ?? $rowData['nameEn'] ?? '');
+        $rowData['nameReviewEn'] = (string) ($rowData['name_review_en'] ?? $rowData['nameReviewEn'] ?? '');
+        $rowData['descriptionEn'] = (string) ($rowData['description_en'] ?? $rowData['descriptionEn'] ?? '');
+        $rowData['implementationEn'] = (string) ($rowData['implementation_en'] ?? $rowData['implementationEn'] ?? '');
+        $rowData['verificationSourcesEn'] = (string) ($rowData['verification_sources_en'] ?? $rowData['verificationSourcesEn'] ?? '');
+
+        $rowData['departments'] = implode('; ', array_values($matrixSelections['departments']));
+        $rowData['odsItems'] = implode('; ', array_values($matrixSelections['odsItems']));
+        $rowData['impactAreas'] = implode('; ', array_values($matrixSelections['impactAreas']));
+        $rowData['tripleBalanceAxes'] = implode('; ', array_values($matrixSelections['tripleBalanceAxes']));
+        $rowData['verificationSources'] = array_values($matrixSelections['verificationSources']);
+
+        if ($rowData['protocol'] === '') {
+            $report->addError('missing_protocol', sprintf('Fila %d sin protocolo.', $rowNumber), ['row' => $rowNumber]);
+        }
+        if ($rowData['name'] === '') {
+            $report->addError('missing_name', sprintf('Fila %d sin nombre de medida.', $rowNumber), ['row' => $rowNumber]);
+        }
+
+        $mandatory = mb_strtolower(trim($rowData['mandatory']));
+        if ($mandatory !== '' && !in_array($mandatory, ['sí', 'si', 'yes', 'y', 'true', '1', 'no', 'n', 'false', '0'], true)) {
+            $report->addError('invalid_mandatory', sprintf('Fila %d con valor de obligatoria inválido: "%s".', $rowNumber, $rowData['mandatory']), ['row' => $rowNumber]);
+        }
+
+        return $rowData;
     }
 
     private function isEmptyRow(array $row): bool

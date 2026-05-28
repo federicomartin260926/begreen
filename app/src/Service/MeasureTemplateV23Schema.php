@@ -6,6 +6,15 @@ final class MeasureTemplateV23Schema
 {
     public const SHEET_TITLE = 'Plantilla estándar de medidas';
     public const LISTS_SHEET = 'Listas';
+    public const MATRIX_SELECTION_MARKER = 'X';
+
+    private const MATRIX_GROUP_LABELS = [
+        'impact_areas' => 'Impacto ambiental',
+        'departments' => 'Departamento',
+        'verification_sources' => 'Fuente de verificación',
+        'ods_items' => 'ODS',
+        'triple_balance_axes' => 'Triple balance',
+    ];
 
     /**
      * @return array<string, string>
@@ -75,6 +84,57 @@ final class MeasureTemplateV23Schema
             'implementation_en',
             'verification_sources_en',
         ], true);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function matrixGroupLabels(): array
+    {
+        return self::MATRIX_GROUP_LABELS;
+    }
+
+    public static function isMatrixGroupLabel(string $label): bool
+    {
+        return in_array(self::normalizeHeader($label), array_map(
+            static fn (string $groupLabel): string => self::normalizeHeader($groupLabel),
+            self::MATRIX_GROUP_LABELS
+        ), true);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function scalarHeaderLookup(): array
+    {
+        $lookup = [];
+        foreach (self::headers() as $key => $label) {
+            if (isset(self::MATRIX_GROUP_LABELS[$key])) {
+                continue;
+            }
+
+            $lookup[self::normalizeHeader($label)] = $key;
+        }
+
+        return $lookup;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function matrixGroupLookup(): array
+    {
+        $lookup = [];
+        foreach (self::MATRIX_GROUP_LABELS as $key => $label) {
+            $lookup[self::normalizeHeader($label)] = $key;
+        }
+
+        return $lookup;
+    }
+
+    public static function isSelectionMarker(?string $value): bool
+    {
+        return mb_strtoupper(trim((string) $value)) === self::MATRIX_SELECTION_MARKER;
     }
 
     public static function normalizeHeader(string $header): string

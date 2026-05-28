@@ -285,6 +285,125 @@ final class MeasureTemplateV23ImporterTest extends TestCase
         self::assertSame(3, $persistedMeasures[1]->getSourceRow());
     }
 
+    public function testImportReusesMeasureBlockWithinSameBatch(): void
+    {
+        $protocolPeach = (new Protocol())->setCode('peach')->setName('Peach')->setType(Protocol::TYPE_RODAJE);
+        $blockPeach = (new MeasureBlock())
+            ->setProtocol($protocolPeach)
+            ->setCode('peach__movilidad')
+            ->setName('Movilidad')
+            ->setSortOrder(1);
+
+        $persistedMeasures = [];
+        $persistedBlocks = [];
+
+        $repositories = [
+            Protocol::class => $this->createRepository(static function (array $criteria) use ($protocolPeach): ?Protocol {
+                $code = $criteria['code'] ?? null;
+                $name = $criteria['name'] ?? null;
+
+                return $code === 'peach' || $name === 'Peach' ? $protocolPeach : null;
+            }),
+            MeasureBlock::class => $this->createRepository(static fn (): ?MeasureBlock => null),
+            Measure::class => $this->createRepository(static fn (): ?Measure => null),
+            \Gedmo\Translatable\Entity\Translation::class => $this->createRepository(static fn (): ?object => null),
+        ];
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager
+            ->method('getRepository')
+            ->willReturnCallback(static function (string $class) use ($repositories) {
+                if (!isset($repositories[$class])) {
+                    throw new \RuntimeException(sprintf('Unexpected repository request for %s', $class));
+                }
+
+                return $repositories[$class];
+            });
+
+        $entityManager->method('persist')->willReturnCallback(static function ($entity) use (&$persistedMeasures, &$persistedBlocks): void {
+            if ($entity instanceof Measure) {
+                $persistedMeasures[] = $entity;
+            }
+
+            if ($entity instanceof MeasureBlock) {
+                $persistedBlocks[] = $entity;
+            }
+        });
+        $entityManager->expects(self::once())->method('flush');
+
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('beginTransaction');
+        $connection->expects(self::once())->method('commit');
+        $entityManager->method('getConnection')->willReturn($connection);
+
+        $importer = new MeasureTemplateV23Importer(
+            $entityManager,
+            $this->createMock(TranslatableListener::class),
+            new MeasureCatalogAdminService(),
+        );
+
+        $report = new MeasureTemplateV23Report();
+        $report->addRow([
+            'row' => 2,
+            'protocol' => 'peach - Peach',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => 'peach__movilidad - Movilidad',
+            'category' => '',
+            'categoryGhg' => '',
+            'name' => 'Medida 1',
+            'nameReview' => '',
+            'description' => '',
+            'implementation' => '',
+            'score' => 5,
+            'mandatory' => 'No',
+            'departments' => '',
+            'odsItems' => '',
+            'esg' => '',
+            'scope' => '',
+            'impactAreas' => '',
+            'tripleBalanceAxes' => '',
+            'verificationSources' => [],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+        ]);
+        $report->addRow([
+            'row' => 3,
+            'protocol' => 'peach - Peach',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => 'peach__movilidad - Movilidad',
+            'category' => '',
+            'categoryGhg' => '',
+            'name' => 'Medida 2',
+            'nameReview' => '',
+            'description' => '',
+            'implementation' => '',
+            'score' => 4,
+            'mandatory' => 'No',
+            'departments' => '',
+            'odsItems' => '',
+            'esg' => '',
+            'scope' => '',
+            'impactAreas' => '',
+            'tripleBalanceAxes' => '',
+            'verificationSources' => [],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+        ]);
+
+        $result = $importer->import($report, true);
+
+        self::assertSame('applied', $result->getImportSummary()['status'] ?? null);
+        self::assertCount(1, $persistedBlocks);
+        self::assertCount(2, $persistedMeasures);
+        self::assertSame('peach__movilidad', $persistedBlocks[0]->getCode());
+    }
+
     private function createRepository(callable $resolver): EntityRepository
     {
         $repository = $this->createMock(EntityRepository::class);

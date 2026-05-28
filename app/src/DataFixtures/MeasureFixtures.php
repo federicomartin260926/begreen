@@ -3,6 +3,8 @@
 namespace App\DataFixtures;
 
 use App\Service\MeasureImporter;
+use App\Service\MeasureTemplateV23Importer;
+use App\Service\MeasureTemplateV23Parser;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
@@ -14,6 +16,8 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
     public function __construct(
         private readonly TranslatableListener $translatableListener,
         private readonly MeasureImporter $measureImporter,
+        private readonly MeasureTemplateV23Parser $measureTemplateParser,
+        private readonly MeasureTemplateV23Importer $measureTemplateImporter,
         private readonly ParameterBagInterface $params,
     ) {}
 
@@ -52,6 +56,21 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
             if (!is_file($path)) {
                 // Si falta alguno, lanzamos aviso en consola y seguimos
                 echo sprintf("⚠️  Measures file not found: %s\n", $path);
+                continue;
+            }
+
+            if (basename($path) === 'be_green_my_film_measures.xlsx') {
+                $report = $this->measureTemplateParser->parseFile($path);
+                $report = $this->measureTemplateImporter->import($report, true, false);
+                $summary = $report->getImportSummary();
+
+                echo sprintf(
+                    "✅ Imported %s | imported=%d, updated=%d, errors=%d\n",
+                    basename($path),
+                    $summary['imported'] ?? 0,
+                    $summary['updated'] ?? 0,
+                    $summary['errors'] ?? 0
+                );
                 continue;
             }
 

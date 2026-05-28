@@ -9,7 +9,102 @@ use PHPUnit\Framework\TestCase;
 
 final class MeasureTemplateV23ParserTest extends TestCase
 {
-    public function testParserReadsStandardV23WorkbookWithMultiValueCells(): void
+    public function testParserReadsMatrixWorkbookWithSelectionColumns(): void
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle(MeasureTemplateV23Schema::SHEET_TITLE);
+
+        $sheet->setCellValue('A1', 'Protocolo');
+        $sheet->setCellValue('B1', 'Tipo de proyecto');
+        $sheet->setCellValue('C1', 'Bloque');
+        $sheet->setCellValue('D1', 'Categoría');
+        $sheet->setCellValue('E1', 'Categoría GHG');
+        $sheet->setCellValue('F1', 'Medida');
+        $sheet->setCellValue('G1', 'Puntuación');
+        $sheet->setCellValue('H1', 'Obligatoria');
+        $sheet->setCellValue('I1', 'ESG');
+        $sheet->setCellValue('J1', 'Alcance');
+        $sheet->setCellValue('K1', 'Nombre revisión');
+        $sheet->setCellValue('L1', 'Descripción');
+        $sheet->setCellValue('M1', 'Implementación');
+        $sheet->setCellValue('N1', 'Impacto ambiental');
+        $sheet->setCellValue('P1', 'Departamento');
+        $sheet->setCellValue('S1', 'Fuente de verificación');
+        $sheet->setCellValue('V1', 'ODS');
+        $sheet->setCellValue('X1', 'Triple balance');
+        $sheet->setCellValue('AA1', 'Nombre EN (opcional)');
+        $sheet->setCellValue('AB1', 'Nombre revisión EN (opcional)');
+        $sheet->setCellValue('AC1', 'Descripción EN (opcional)');
+        $sheet->setCellValue('AD1', 'Implementación EN (opcional)');
+        $sheet->setCellValue('AE1', 'Fuentes de verificación EN (opcional)');
+
+        $sheet->setCellValue('N2', 'Cambio Climático');
+        $sheet->setCellValue('O2', 'Recursos');
+        $sheet->setCellValue('P2', 'prod - Producción');
+        $sheet->setCellValue('Q2', 'art - Arte');
+        $sheet->setCellValue('R2', 'cam - Cámara');
+        $sheet->setCellValue('S2', 'Foto');
+        $sheet->setCellValue('T2', 'Factura / Albarán');
+        $sheet->setCellValue('U2', 'Certif. / Licencia');
+        $sheet->setCellValue('V2', '12');
+        $sheet->setCellValue('W2', '13');
+        $sheet->setCellValue('X2', 'Ambiental (E)');
+        $sheet->setCellValue('Y2', 'Social (S)');
+        $sheet->setCellValue('Z2', 'Económico (M)');
+
+        $sheet->setCellValue('A3', 'peach - Peach');
+        $sheet->setCellValue('B3', 'rodaje');
+        $sheet->setCellValue('C3', 'peach__movilidad - Movilidad');
+        $sheet->setCellValue('D3', 'Movilidad');
+        $sheet->setCellValue('E3', 'Emisiones indirectas de GEI debido al transporte');
+        $sheet->setCellValue('F3', 'Reducir consumo de combustible');
+        $sheet->setCellValue('G3', 4);
+        $sheet->setCellValue('H3', 'Sí');
+        $sheet->setCellValue('I3', 'Ambiental');
+        $sheet->setCellValue('J3', 'Alcance 1');
+        $sheet->setCellValue('K3', 'Se redujo el consumo');
+        $sheet->setCellValue('L3', 'Descripción de prueba');
+        $sheet->setCellValue('M3', 'Implementación de prueba');
+        $sheet->setCellValue('N3', 'X');
+        $sheet->setCellValue('O3', 'X');
+        $sheet->setCellValue('P3', 'X');
+        $sheet->setCellValue('Q3', 'X');
+        $sheet->setCellValue('R3', 'X');
+        $sheet->setCellValue('S3', 'X');
+        $sheet->setCellValue('T3', 'X');
+        $sheet->setCellValue('U3', 'X');
+        $sheet->setCellValue('V3', 'X');
+        $sheet->setCellValue('W3', 'X');
+        $sheet->setCellValue('X3', 'X');
+        $sheet->setCellValue('Y3', 'X');
+        $sheet->setCellValue('Z3', 'X');
+
+        $report = (new MeasureTemplateV23Parser())->parseSpreadsheet($spreadsheet);
+
+        self::assertSame('OK', $report->getStatus());
+        self::assertCount(1, $report->getRows());
+
+        $row = $report->getRows()[0];
+        self::assertSame('peach - Peach', $row['protocol']);
+        self::assertSame('rodaje', $row['projectType']);
+        self::assertSame('peach__movilidad - Movilidad', $row['measureBlock']);
+        self::assertSame('Reducir consumo de combustible', $row['name']);
+        self::assertSame(4, $row['score']);
+        self::assertSame('Cambio Climático; Recursos', $row['impactAreas']);
+        self::assertSame('prod - Producción; art - Arte; cam - Cámara', $row['departments']);
+        self::assertSame('12; 13', $row['odsItems']);
+        self::assertSame('Ambiental (E); Social (S); Económico (M)', $row['tripleBalanceAxes']);
+        self::assertCount(3, $row['verificationSources']);
+        self::assertSame(1, $row['verificationSources'][0]['priority']);
+        self::assertSame('Foto', $row['verificationSources'][0]['value']);
+        self::assertSame(2, $row['verificationSources'][1]['priority']);
+        self::assertSame('Factura / Albarán', $row['verificationSources'][1]['value']);
+        self::assertSame(3, $row['verificationSources'][2]['priority']);
+        self::assertSame('Certif. / Licencia', $row['verificationSources'][2]['value']);
+    }
+
+    public function testParserReadsLegacyWorkbookWithMultiValueCells(): void
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
