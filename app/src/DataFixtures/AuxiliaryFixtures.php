@@ -41,11 +41,7 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         $t = function (string $es) {
             static $map = [
                 // Protocols
-                'Green Film' => 'Green Film',
-                'Albert' => 'Albert',
-                'Peach' => 'Peach',
                 'Be Green My Film' => 'Be Green My Film',
-                'Be Green My Event' => 'Be Green My Event',
 
                 // Categories
                 'Alojamientos' => 'Accommodation',
@@ -122,11 +118,7 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         // Protocols
         // -------------------------
         $protocols = [
-            ['code' => 'green-film',        'name' => 'Green Film',        'type' => 'rodaje'],
-            ['code' => 'albert',            'name' => 'Albert',            'type' => 'rodaje'],
-            ['code' => 'peach',             'name' => 'Peach',             'type' => 'rodaje'],
             ['code' => 'be-green-my-film',  'name' => 'Be Green My Film',  'type' => 'rodaje'],
-            ['code' => 'be-green-my-event', 'name' => 'Be Green My Event', 'type' => 'evento'],
         ];
         foreach ($protocols as $data) {
             $p = $upsert($manager, Protocol::class, ['name' => $data['name']], function () use ($data) {
