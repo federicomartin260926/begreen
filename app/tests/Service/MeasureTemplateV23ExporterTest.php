@@ -85,5 +85,8 @@ final class MeasureTemplateV23ExporterTest extends TestCase
         self::assertSame('between', $sheet->getCell('J2')->getDataValidation()->getOperator());
         self::assertSame('1', $sheet->getCell('J2')->getDataValidation()->getFormula1());
         self::assertSame('5', $sheet->getCell('J2')->getDataValidation()->getFormula2());
+        self::assertSame('list', $sheet->getCell('P2')->getDataValidation()->getType());
+        self::assertSame('list', $sheet->getCell('Q2')->getDataValidation()->getType());
+        self::assertSame('list', $sheet->getCell('R2')->getDataValidation()->getType());
     }
 }

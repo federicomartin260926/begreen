@@ -5,9 +5,11 @@ namespace App\DataFixtures;
 use App\Entity\Scope;
 use App\Entity\Category;
 use App\Entity\CategoryGhg;
+use App\Entity\ImpactArea;
 use App\Entity\Protocol;
 use App\Entity\Ods;
 use App\Entity\EsG;
+use App\Entity\VerificationSource;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
@@ -218,6 +220,61 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
             });
             $translateName($e, $name);
             $translateDesc($e, $desc);
+        }
+
+        // -------------------------
+        // Impact areas (v23 canonical)
+        // -------------------------
+        $impactAreas = [
+            ['code' => 'a', 'name' => 'Cambio Climático', 'sortOrder' => 1],
+            ['code' => 'b', 'name' => 'Agotamiento Recursos Nat.', 'sortOrder' => 2],
+            ['code' => 'c', 'name' => 'Biodiversidad', 'sortOrder' => 3],
+            ['code' => 'd', 'name' => 'Contaminación', 'sortOrder' => 4],
+            ['code' => 'e', 'name' => 'Cambio Uso Suelo', 'sortOrder' => 5],
+            ['code' => 'f', 'name' => 'Comunicación y Sensib.', 'sortOrder' => 6],
+        ];
+        foreach ($impactAreas as $data) {
+            $impactArea = $upsert($manager, ImpactArea::class, ['code' => $data['code']], function () use ($data) {
+                return (new ImpactArea())
+                    ->setCode($data['code'])
+                    ->setName($data['name'])
+                    ->setSortOrder($data['sortOrder']);
+            });
+            $impactArea
+                ->setCode($data['code'])
+                ->setName($data['name'])
+                ->setSortOrder($data['sortOrder']);
+        }
+
+        // -------------------------
+        // Verification sources (v23 canonical)
+        // -------------------------
+        $verificationSources = [
+            ['code' => 'af', 'name' => 'Factura / Albarán', 'sortOrder' => 1],
+            ['code' => 'ag', 'name' => 'Foto', 'sortOrder' => 2],
+            ['code' => 'ah', 'name' => 'Captura / Email', 'sortOrder' => 3],
+            ['code' => 'ai', 'name' => 'Declaración Resp.', 'sortOrder' => 4],
+            ['code' => 'aj', 'name' => 'Informe Técnico', 'sortOrder' => 5],
+            ['code' => 'ak', 'name' => 'Certif. / Licencia', 'sortOrder' => 6],
+            ['code' => 'al', 'name' => 'Listado / Invent.', 'sortOrder' => 7],
+            ['code' => 'am', 'name' => 'Ficha Técnica', 'sortOrder' => 8],
+            ['code' => 'an', 'name' => 'Contrato / Acuerdo', 'sortOrder' => 9],
+            ['code' => 'ao', 'name' => 'Doc. Producción', 'sortOrder' => 10],
+            ['code' => 'ap', 'name' => 'Plan / Protocolo', 'sortOrder' => 11],
+            ['code' => 'aq', 'name' => 'Acta / Registro', 'sortOrder' => 12],
+            ['code' => 'ar', 'name' => 'Permiso Admin.', 'sortOrder' => 13],
+        ];
+        foreach ($verificationSources as $data) {
+            $source = $upsert($manager, VerificationSource::class, ['code' => $data['code']], function () use ($data) {
+                return (new VerificationSource())
+                    ->setCode($data['code'])
+                    ->setName($data['name'])
+                    ->setSortOrder($data['sortOrder']);
+            });
+            $source
+                ->setCode($data['code'])
+                ->setName($data['name'])
+                ->setSortOrder($data['sortOrder']);
         }
 
         // Flush final

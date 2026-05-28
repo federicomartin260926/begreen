@@ -3,12 +3,14 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Category;
+use App\Entity\ImpactArea;
 use App\Entity\Protocol;
 use App\Entity\Department;
 use App\Entity\Ods;
 use App\Entity\EsG;
 use App\Entity\Scope;
 use App\Entity\CategoryGhg;
+use App\Entity\VerificationSource;
 use App\Entity\Position;
 use App\Form\AuxiliaryType;
 use Doctrine\ORM\EntityManagerInterface;
@@ -36,6 +38,8 @@ class AuxiliaryController extends AbstractController
         'esg'          => EsG::class,
         'scope'        => Scope::class,
         'category_ghg' => CategoryGhg::class,
+        'impact_area'  => ImpactArea::class,
+        'verification_source' => VerificationSource::class,
         'position'     => Position::class,
     ];
 
@@ -48,6 +52,8 @@ class AuxiliaryController extends AbstractController
         'esg'          => 'backend.aux.entity.esg',
         'scope'        => 'backend.aux.entity.scope',
         'category_ghg' => 'backend.aux.entity.category_ghg',
+        'impact_area'  => 'backend.aux.entity.impact_area',
+        'verification_source' => 'backend.aux.entity.verification_source',
         'position'     => 'backend.aux.entity.position',
     ];
 
@@ -56,6 +62,8 @@ class AuxiliaryController extends AbstractController
         'ods'          => ['name','description'],
         'esg'          => ['name','description'],
         'category_ghg' => ['name','description'],
+        'impact_area'  => ['name'],
+        'verification_source' => ['name'],
         'department'   => ['name'],
         'position'     => ['name'],
         'scope'        => ['name'],
@@ -87,6 +95,12 @@ class AuxiliaryController extends AbstractController
                 ->leftJoin('p.department', 'd')
                 ->addSelect('d')
                 ->orderBy('p.name', 'ASC')
+                ->getQuery()
+                ->getResult();
+        } elseif (in_array($type, ['impact_area', 'verification_source'], true)) {
+            $items = $repo->createQueryBuilder('i')
+                ->orderBy('i.sortOrder', 'ASC')
+                ->addOrderBy('i.name', 'ASC')
                 ->getQuery()
                 ->getResult();
         } else {

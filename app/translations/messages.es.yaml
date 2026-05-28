@@ -1530,6 +1530,8 @@ backend:
       esg: "ESG"
       scope: "Alcance"
       category_ghg: "Categoría GHG"
+      impact_area: "Áreas de impacto"
+      verification_source: "Fuentes de verificación"
       position: "Cargos / Puestos"
     table:
       name: "Nombre"

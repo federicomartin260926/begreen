@@ -86,6 +86,9 @@ final class MeasureTemplateV23Exporter
         $this->applyValidationList($sheet, 'E', 'E', count($categoryGhgs));
         $this->applyValidationList($sheet, 'N', 'H', count($esg));
         $this->applyValidationList($sheet, 'O', 'I', count($scopes));
+        $this->applyValidationList($sheet, 'P', 'J', count($impactAreas));
+        $this->applyValidationList($sheet, 'Q', 'K', count($tripleBalanceAxes));
+        $this->applyValidationList($sheet, 'R', 'L', count($verificationSources));
 
         for ($row = 2; $row <= 1000; $row++) {
             $dvMandatory = (new DataValidation())

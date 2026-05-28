@@ -1527,6 +1527,8 @@ backend:
       esg: "ESG"
       scope: "Scope"
       category_ghg: "GHG Category"
+      impact_area: "Impact areas"
+      verification_source: "Verification sources"
       position: "Roles / Positions"
     table:
       name: "Name"
