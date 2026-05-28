@@ -11,7 +11,6 @@ use App\Entity\MeasureBlock;
 use App\Entity\Ods;
 use App\Entity\Protocol;
 use App\Entity\Scope;
-use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
 use App\Service\MeasureTemplateV23Exporter;
 use App\Service\MeasureTemplateV23Schema;
@@ -33,7 +32,6 @@ final class MeasureTemplateV23ExporterTest extends TestCase
         $esg = (new EsG())->setName('Ambiental');
         $scope = (new Scope())->setName('Alcance 1');
         $impactArea = (new ImpactArea())->setCode('a')->setName('Cambio Climático');
-        $axis = (new TripleBalanceAxis())->setCode('ambiental')->setName('Ambiental');
         $source1 = (new VerificationSource())->setCode('foto')->setName('Foto');
         $source2 = (new VerificationSource())->setCode('factura')->setName('Factura / Albarán');
         $source3 = (new VerificationSource())->setCode('certificado')->setName('Certif. / Licencia');
@@ -53,7 +51,6 @@ final class MeasureTemplateV23ExporterTest extends TestCase
             'esg' => [$esg],
             'scopes' => [$scope],
             'impactAreas' => [$impactArea],
-            'tripleBalanceAxes' => [$axis],
             'verificationSources' => [$source1, $source2, $source3],
             'measureBlocks' => [$block],
         ]);
@@ -78,8 +75,11 @@ final class MeasureTemplateV23ExporterTest extends TestCase
         self::assertSame('Ambiental', (string) $sheet->getCell('N2')->getValue());
         self::assertSame('Alcance 1', (string) $sheet->getCell('O2')->getValue());
         self::assertSame('a - Cambio Climático', (string) $sheet->getCell('P2')->getValue());
-        self::assertSame('ambiental - Ambiental', (string) $sheet->getCell('Q2')->getValue());
+        self::assertSame('Ambiental (E)', (string) $sheet->getCell('Q2')->getValue());
         self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia', (string) $sheet->getCell('R2')->getValue());
+        self::assertSame('Ambiental (E)', (string) $spreadsheet->getSheetByName(MeasureTemplateV23Schema::LISTS_SHEET)->getCell('K1')->getValue());
+        self::assertSame('Social (S)', (string) $spreadsheet->getSheetByName(MeasureTemplateV23Schema::LISTS_SHEET)->getCell('K2')->getValue());
+        self::assertSame('Económico (M)', (string) $spreadsheet->getSheetByName(MeasureTemplateV23Schema::LISTS_SHEET)->getCell('K3')->getValue());
 
         self::assertNotNull($spreadsheet->getSheetByName(MeasureTemplateV23Schema::LISTS_SHEET));
         self::assertSame('between', $sheet->getCell('J2')->getDataValidation()->getOperator());

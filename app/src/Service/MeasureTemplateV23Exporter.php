@@ -11,7 +11,6 @@ use App\Entity\MeasureBlock;
 use App\Entity\Ods;
 use App\Entity\Protocol;
 use App\Entity\Scope;
-use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -20,6 +19,12 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 
 final class MeasureTemplateV23Exporter
 {
+    private const TRIPLE_BALANCE_OPTIONS = [
+        'Ambiental (E)',
+        'Social (S)',
+        'Económico (M)',
+    ];
+
     /**
      * @param array{
      *     protocols?: Protocol[],
@@ -31,7 +36,6 @@ final class MeasureTemplateV23Exporter
      *     esg?: EsG[],
      *     scopes?: Scope[],
      *     impactAreas?: ImpactArea[],
-     *     tripleBalanceAxes?: TripleBalanceAxis[],
      *     verificationSources?: VerificationSource[]
      * } $catalog
      */
@@ -54,7 +58,6 @@ final class MeasureTemplateV23Exporter
         $esg = $catalog['esg'] ?? [];
         $scopes = $catalog['scopes'] ?? [];
         $impactAreas = $catalog['impactAreas'] ?? [];
-        $tripleBalanceAxes = $catalog['tripleBalanceAxes'] ?? [];
         $verificationSources = $catalog['verificationSources'] ?? [];
 
         $listSheet = new Worksheet($spreadsheet, MeasureTemplateV23Schema::LISTS_SHEET);
@@ -71,12 +74,12 @@ final class MeasureTemplateV23Exporter
             'H' => $this->formatEntityList($esg),
             'I' => $this->formatEntityList($scopes),
             'J' => $this->formatEntityList($impactAreas),
-            'K' => $this->formatEntityList($tripleBalanceAxes),
+            'K' => self::TRIPLE_BALANCE_OPTIONS,
             'L' => $this->formatEntityList($verificationSources),
         ]);
         $listSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
 
-        $example = $this->buildExampleRow($protocols, $categoryGhgs, $categories, $departments, $ods, $esg, $scopes, $impactAreas, $tripleBalanceAxes, $verificationSources, $measureBlocks);
+        $example = $this->buildExampleRow($protocols, $categoryGhgs, $categories, $departments, $ods, $esg, $scopes, $impactAreas, $verificationSources, $measureBlocks);
         $sheet->fromArray($example, null, 'A2');
 
         $this->applyValidationList($sheet, 'A', 'A', count($protocols));
@@ -87,7 +90,7 @@ final class MeasureTemplateV23Exporter
         $this->applyValidationList($sheet, 'N', 'H', count($esg));
         $this->applyValidationList($sheet, 'O', 'I', count($scopes));
         $this->applyValidationList($sheet, 'P', 'J', count($impactAreas));
-        $this->applyValidationList($sheet, 'Q', 'K', count($tripleBalanceAxes));
+        $this->applyValidationList($sheet, 'Q', 'K', count(self::TRIPLE_BALANCE_OPTIONS));
         $this->applyValidationList($sheet, 'R', 'L', count($verificationSources));
 
         for ($row = 2; $row <= 1000; $row++) {
@@ -125,7 +128,6 @@ final class MeasureTemplateV23Exporter
      * @param array<int, EsG> $esg
      * @param array<int, Scope> $scopes
      * @param array<int, ImpactArea> $impactAreas
-     * @param array<int, TripleBalanceAxis> $tripleBalanceAxes
      * @param array<int, VerificationSource> $verificationSources
      * @param array<int, MeasureBlock> $measureBlocks
      *
@@ -140,7 +142,6 @@ final class MeasureTemplateV23Exporter
         array $esg,
         array $scopes,
         array $impactAreas,
-        array $tripleBalanceAxes,
         array $verificationSources,
         array $measureBlocks,
     ): array {
@@ -152,7 +153,7 @@ final class MeasureTemplateV23Exporter
         $esgItem = $esg[0] ?? null;
         $scope = $scopes[0] ?? null;
         $impactArea = $impactAreas[0] ?? null;
-        $axis = $tripleBalanceAxes[0] ?? null;
+        $axis = self::TRIPLE_BALANCE_OPTIONS[0];
         $source1 = $verificationSources[0] ?? null;
         $source2 = $verificationSources[1] ?? null;
         $source3 = $verificationSources[2] ?? null;
@@ -175,7 +176,7 @@ final class MeasureTemplateV23Exporter
             $esgItem ? $this->formatEntityValue($esgItem) : '',
             $scope ? $this->formatEntityValue($scope) : '',
             $impactArea ? $this->formatEntityValue($impactArea) : '',
-            $axis ? $this->formatEntityValue($axis) : '',
+            $axis,
             $this->formatVerificationSourcesValue($source1, $source2, $source3),
             '',
             '',
