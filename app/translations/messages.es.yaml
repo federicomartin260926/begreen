@@ -208,36 +208,40 @@ backend:
       invalid_form: "Formulario no válido o falta el archivo."
       import_error: "Error al procesar el archivo: %msg%"
     template:
-      sheet_title: "Medidas"
+      sheet_title: "Plantilla v23"
       lists_sheet: "Listas"
       headers:
-        name: "Nombre"
+        protocol: "Protocolo"
+        project_type: "Tipo de proyecto"
+        measure_block: "Bloque"
+        category: "Categoría"
+        ghg_category: "Categoría GHG"
+        name: "Medida"
+        name_review: "Nombre revisión"
         description: "Descripción"
         implementation: "Implementación"
-        protocol: "Protocolo"
-        ghg_category: "Categoría GHG"
-        category: "Categoría"
-        department: "Departamento"
-        verification_sources: "Fuentes de verificación"
-        ods: "ODS"
-        esg: "ESG"
-        scope: "Alcance"
         score: "Puntuación"
         mandatory: "Obligatoria"
+        departments: "Departamentos"
+        ods_items: "ODS"
+        esg: "ESG"
+        scope: "Alcance"
         name_en: "Nombre (EN, opcional)"
+        name_review_en: "Nombre revisión (EN, opcional)"
         description_en: "Descripción (EN, opcional)"
         implementation_en: "Implementación (EN, opcional)"
         verification_sources_en: "Fuentes de verificación (EN, opcional)"
-        name_review: "Nombre (plan completo)"
-        name_review_en: "Name (plan complete)"
+        impact_areas: "Áreas de impacto"
+        triple_balance_axes: "Triple balance"
+        verification_sources: "Fuentes de verificación"
       example:
         name: "Medida ejemplo"
         description: "Descripción de la medida"
         implementation: "Cómo se implementará"
         verification_sources: "Documentos justificativos"
       score_error_title: "Valor inválido"
-      score_error_text: "La puntuación debe ser un número entre 0 y 100."
-      filename: "plantilla_medidas.xlsx"
+      score_error_text: "La puntuación debe ser un número entre 1 y 5."
+      filename: "plantilla_medidas_v23.xlsx"
     list:
       title: "Listado de medidas"
       breadcrumb: "Medidas"
@@ -247,7 +251,7 @@ backend:
       new: "Nueva medida"
       download_pdf: "Descargar PDF"
       import_excel: "Cargar desde Excel"
-      download_template_hint: "Descargar plantilla para la carga masiva de medidas"
+      download_template_hint: "Descargar plantilla v23 estándar para cualquier protocolo"
     filters:
       all_protocols: "Todos los protocolos"
       all_ghg_categories: "Todas las categorías GHG"
@@ -280,15 +284,15 @@ backend:
       title: "Importar medidas"
       cta: "Importar"
       mime_invalid: "Por favor, sube un archivo Excel válido (.xlsx o .xls)."
-      summary: "Importadas: %imported%. Duplicados: %duplicates%. Errores: %errors%. Protocolos inválidos: %invalidProtocols%. GEI inválidas: %invalidGhgs%. Categorías inválidas: %invalidCategories%. Departamentos inválidos: %invalidDepartments%. ODS inválidos: %invalidOds%. ESG inválidos: %invalidEsg%. Alcances inválidos: %invalidScopes%."
-      lang_info_title: "Importación en español con traducciones opcionales al inglés."
+      summary: "Importadas: %imported%. Actualizadas: %updated%. Duplicados: %duplicates%. Errores: %errors%."
+      lang_info_title: "Importación en español con plantilla v23 estándar y traducciones opcionales al inglés."
       lang_info_html: >
         <ul class="mb-0 ps-3">
-          <li><strong>Plantilla y datos base en ES:</strong> Las columnas <em>A–M</em> deben rellenarse en español. Los nombres de <em>Protocolo</em>, <em>Categoría GHG</em>, <em>Categoría</em>, <em>Departamento</em>, <em>ODS</em>, <em>ESG</em> y <em>Alcance</em> deben existir en ES.</li>
-          <li><strong>Campos EN opcionales:</strong> Las columnas <em>N–Q</em> (<em>Nombre EN, Descripción EN, Implementación EN, Fuentes de verificación EN</em>) son opcionales y se guardan como traducciones (<code>en</code>).</li>
-          <li><strong>Puntuación (0–100):</strong> La columna <em>L</em> acepta enteros entre 0 y 100.</li>
-          <li><strong>Obligatoria:</strong> La columna <em>M</em> acepta <em>Sí</em>/<em>No</em> (también se admiten <code>yes/no</code>, <code>true/false</code>, <code>1/0</code>).</li>
-          <li><strong>Duplicados:</strong> Una fila con el mismo <em>Nombre (ES)</em> y <em>Categoría</em> se considera duplicada; se contará como <em>duplicado</em> y también dentro de <em>errores</em>.</li>
+          <li><strong>Plantilla y datos base en ES:</strong> Las columnas <em>A–W</em> deben rellenarse en español. <em>Protocolo</em> puede ser código o nombre. <em>Categoría GHG</em>, <em>Categoría</em>, <em>Bloque</em>, <em>Departamentos</em>, <em>ODS</em>, <em>ESG</em>, <em>Alcance</em>, <em>Áreas de impacto</em>, <em>Triple balance</em> y <em>Fuentes de verificación</em> deben existir en el catálogo.</li>
+          <li><strong>Campos múltiples:</strong> <em>Departamentos</em>, <em>ODS</em>, <em>Áreas de impacto</em> y <em>Triple balance</em> aceptan valores separados por <code>;</code>. <em>Fuentes de verificación</em> usa el formato <code>1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia</code>.</li>
+          <li><strong>Campos EN opcionales:</strong> Las columnas <em>S–W</em> son opcionales y se guardan como traducciones (<code>en</code>).</li>
+          <li><strong>Puntuación (1–5):</strong> La columna <em>J</em> acepta enteros entre 1 y 5.</li>
+          <li><strong>Obligatoria:</strong> La columna <em>K</em> acepta <em>Sí</em>/<em>No</em> (también se admiten <code>yes/no</code>, <code>true/false</code>, <code>1/0</code>).</li>
           <li><strong>Descarga de plantilla:</strong> La plantilla siempre se genera en ES para garantizar coherencia.</li>
         </ul>
     pdf:

@@ -207,36 +207,40 @@ backend:
       invalid_form: "Invalid form or missing file."
       import_error: "Error processing the file: %msg%"
     template:
-      sheet_title: "Measures"
+      sheet_title: "v23 Template"
       lists_sheet: "Lists"
       headers:
-        name: "Name"
+        protocol: "Protocol"
+        project_type: "Project type"
+        measure_block: "Block"
+        category: "Category"
+        ghg_category: "GHG Category"
+        name: "Measure"
+        name_review: "Review name"
         description: "Description"
         implementation: "Implementation"
-        protocol: "Protocol"
-        ghg_category: "GHG Category"
-        category: "Category"
-        department: "Department"
-        verification_sources: "Verification sources"
-        ods: "SDG"
-        esg: "ESG"
-        scope: "Scope"
         score: "Score"
         mandatory: "Mandatory"
+        departments: "Departments"
+        ods_items: "SDGs"
+        esg: "ESG"
+        scope: "Scope"
         name_en: "Name (EN, optional)"
+        name_review_en: "Review name (EN, optional)"
         description_en: "Description (EN, optional)"
         implementation_en: "Implementation (EN, optional)"
         verification_sources_en: "Verification sources (EN, optional)"
-        name_review: "Nombre (plan completo)"
-        name_review_en: "Name (plan complete)"
+        impact_areas: "Impact areas"
+        triple_balance_axes: "Triple balance"
+        verification_sources: "Verification sources"
       example:
         name: "Sample measure"
         description: "Measure description"
         implementation: "How it will be implemented"
         verification_sources: "Supporting documents"
       score_error_title: "Invalid value"
-      score_error_text: "Score must be a number between 0 and 100."
-      filename: "measures_template.xlsx"
+      score_error_text: "Score must be a number between 1 and 5."
+      filename: "measures_template_v23.xlsx"
     list:
       title: "Measures list"
       breadcrumb: "Measures"
@@ -246,7 +250,7 @@ backend:
       new: "New measure"
       download_pdf: "Download PDF"
       import_excel: "Import from Excel"
-      download_template_hint: "Download template to bulk import measures"
+      download_template_hint: "Download the standard v23 template for any protocol"
     filters:
       all_protocols: "All protocols"
       all_ghg_categories: "All GHG categories"
@@ -279,15 +283,15 @@ backend:
       title: "Import measures"
       cta: "Import"
       mime_invalid: "Please upload a valid Excel file (.xlsx or .xls)."
-      summary: "Imported: %imported%. Duplicates: %duplicates%. Errors: %errors%. Invalid protocols: %invalidProtocols%. Invalid GHG: %invalidGhgs%. Invalid categories: %invalidCategories%. Invalid departments: %invalidDepartments%. Invalid SDGs: %invalidOds%. Invalid ESG: %invalidEsg%. Invalid scopes: %invalidScopes%."
-      lang_info_title: "Import in Spanish with optional English translations."
+      summary: "Imported: %imported%. Updated: %updated%. Duplicates: %duplicates%. Errors: %errors%."
+      lang_info_title: "Spanish import with the standard v23 template and optional English translations."
       lang_info_html: >
         <ul class="mb-0 ps-3">
-          <li><strong>Template and base data in ES:</strong> Columns <em>A–M</em> must be filled in Spanish. The names for <em>Protocol</em>, <em>GHG Category</em>, <em>Category</em>, <em>Department</em>, <em>SDG</em>, <em>ESG</em> and <em>Scope</em> must exist in ES.</li>
-          <li><strong>Optional EN fields:</strong> Columns <em>N–Q</em> (<em>Name EN, Description EN, Implementation EN, Verification sources EN</em>) are optional and will be stored as translations (<code>en</code>).</li>
-          <li><strong>Score (0–100):</strong> Column <em>L</em> accepts integers between 0 and 100.</li>
-          <li><strong>Mandatory:</strong> Column <em>M</em> accepts <em>Yes</em>/<em>No</em> (also <code>sí/no</code>, <code>true/false</code>, <code>1/0</code> accepted).</li>
-          <li><strong>Duplicates:</strong> A row with the same <em>Name (ES)</em> and <em>Category</em> is considered a duplicate; it will be counted both as a <em>duplicate</em> and within <em>errors</em>.</li>
+          <li><strong>Template and base data in ES:</strong> Columns <em>A–W</em> must be filled in Spanish. <em>Protocol</em> can be a code or a name. <em>GHG Category</em>, <em>Category</em>, <em>Block</em>, <em>Departments</em>, <em>SDGs</em>, <em>ESG</em>, <em>Scope</em>, <em>Impact areas</em>, <em>Triple balance</em> and <em>Verification sources</em> must exist in the catalog.</li>
+          <li><strong>Multiple fields:</strong> <em>Departments</em>, <em>SDGs</em>, <em>Impact areas</em> and <em>Triple balance</em> accept values separated by <code>;</code>. <em>Verification sources</em> use the format <code>1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia</code>.</li>
+          <li><strong>Optional EN fields:</strong> Columns <em>S–W</em> are optional and saved as translations (<code>en</code>).</li>
+          <li><strong>Score (1–5):</strong> Column <em>J</em> accepts integers between 1 and 5.</li>
+          <li><strong>Mandatory:</strong> Column <em>K</em> accepts <em>Yes</em>/<em>No</em> (also <code>sí/no</code>, <code>true/false</code>, <code>1/0</code> accepted).</li>
           <li><strong>Template download:</strong> The template is always generated in ES to keep consistency.</li>
         </ul>
     pdf:

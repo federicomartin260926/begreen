@@ -2,24 +2,20 @@
 
 namespace App\Controller\Admin;
 
-use App\Entity\{Measure, Category, Department, Protocol, Ods, EsG, Scope, CategoryGhg};
+use App\Entity\{Measure, Category, Department, Protocol, Ods, EsG, Scope, CategoryGhg, ImpactArea, TripleBalanceAxis, VerificationSource, MeasureBlock};
 use App\Form\{MeasureType, MeasureImportType};
 use Dompdf\{Dompdf, Options};
 use App\Repository\{MeasureRepository, ProtocolRepository, CategoryGhgRepository, CategoryRepository, DepartmentRepository, OdsRepository, EsGRepository, ScopeRepository};
 use App\Service\MeasureCatalogAdminService;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanMeasureCatalogResolver;
-use App\Service\MeasureImporter;
+use App\Service\MeasureTemplateV23Exporter;
+use App\Service\MeasureTemplateV23Importer;
+use App\Service\MeasureTemplateV23Parser;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{Request, Response, StreamedResponse, ResponseHeaderBag, File\Exception\FileException};
 use Symfony\Component\Routing\Annotation\Route;
-
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Gedmo\Translatable\Entity\Translation;
@@ -31,7 +27,9 @@ class AdminMeasureController extends AbstractController
 {
     public function __construct(
         private TranslatorInterface $translator,
-        private MeasureImporter $measureImporter,
+        private MeasureTemplateV23Parser $measureTemplateParser,
+        private MeasureTemplateV23Importer $measureTemplateImporter,
+        private MeasureTemplateV23Exporter $measureTemplateExporter,
         private MeasureCatalogAdminService $catalogAdminService,
         private MeasureTaxonomyPresenter $taxonomyPresenter
     ) {}
@@ -299,9 +297,7 @@ class AdminMeasureController extends AbstractController
     #[Route('/import', name: 'import', methods: ['POST'])]
     public function import(
         Request $request,
-        EntityManagerInterface $em,
         TranslatorInterface $t,
-        TranslatableListener $translatableListener
     ): Response {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
@@ -319,21 +315,21 @@ class AdminMeasureController extends AbstractController
         }
 
         try {
-            /** @var MeasureImporter $importer */
-            $summary = $this->measureImporter->importFile($file->getPathname());
+            $report = $this->measureTemplateParser->parseFile($file->getPathname());
+            $report = $this->measureTemplateImporter->import($report, true);
 
-            $this->addFlash('success', $t->trans('backend.measures.import.summary', [
-                '%imported%'           => $summary['imported'],
-                '%duplicates%'         => $summary['duplicates'],
-                '%errors%'             => $summary['errors'],
-                '%invalidProtocols%'   => $summary['invalidProtocols'],
-                '%invalidGhgs%'        => $summary['invalidGhgs'],
-                '%invalidCategories%'  => $summary['invalidCategories'],
-                '%invalidDepartments%' => $summary['invalidDepartments'],
-                '%invalidOds%'         => $summary['invalidOds'],
-                '%invalidEsg%'         => $summary['invalidEsg'],
-                '%invalidScopes%'      => $summary['invalidScopes'],
-            ]));
+            $summary = $report->getImportSummary();
+            if (($summary['status'] ?? '') !== 'applied') {
+                $firstError = $report->getErrors()[0]['message'] ?? $t->trans('backend.measures.flash.import_error', ['%msg%' => 'Validation errors']);
+                $this->addFlash('danger', (string) $firstError);
+            } else {
+                $this->addFlash('success', $t->trans('backend.measures.import.summary', [
+                    '%imported%' => $summary['imported'] ?? 0,
+                    '%updated%' => $summary['updated'] ?? 0,
+                    '%duplicates%' => $summary['duplicates'] ?? 0,
+                    '%errors%' => $summary['errors'] ?? 0,
+                ]));
+            }
         } catch (\Throwable $e) {
             $this->addFlash('danger', $t->trans('backend.measures.flash.import_error', [
                 '%msg%' => $e->getMessage()
@@ -343,158 +339,41 @@ class AdminMeasureController extends AbstractController
         return $this->redirectToRoute('admin_measures_index');
     }
 
-   #[Route('/template/download', name: 'template_download')]
+   #[Route('/template/download', name: 'template_download', methods: ['GET'])]
     public function downloadTemplate(
-        ProtocolRepository     $protocolRepo,
-        CategoryGhgRepository  $ghgRepo,
-        CategoryRepository     $categoryRepo,
-        DepartmentRepository   $departmentRepo,
-        OdsRepository          $odsRepo,
-        EsGRepository          $esgRepo,
-        ScopeRepository        $scopeRepo,
-        TranslatorInterface    $translator,
-        TranslatableListener   $translatableListener,
+        EntityManagerInterface $em,
+        ProtocolRepository $protocolRepo,
+        CategoryGhgRepository $ghgRepo,
+        CategoryRepository $categoryRepo,
+        DepartmentRepository $departmentRepo,
+        OdsRepository $odsRepo,
+        EsGRepository $esgRepo,
+        ScopeRepository $scopeRepo,
+        TranslatorInterface $translator,
     ): Response {
-        // 1) Forzar SIEMPRE ES
-        $translatableListener->setTranslatableLocale('es');
-        $tEs = fn(string $k, array $p = []) => $translator->trans($k, $p, 'messages', 'es');
-
-        // 2) Spreadsheet base
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle($tEs('backend.measures.template.sheet_title'));
-
-        // 3) Encabezados (A–N ES, O–S EN opcional)
-        $headers = [
-            $tEs('backend.measures.template.headers.name'),                  // A
-            $tEs('backend.measures.template.headers.name_review'),           // B  (NUEVO)
-            $tEs('backend.measures.template.headers.description'),           // C
-            $tEs('backend.measures.template.headers.implementation'),        // D
-            $tEs('backend.measures.template.headers.protocol'),              // E
-            $tEs('backend.measures.template.headers.ghg_category'),          // F
-            $tEs('backend.measures.template.headers.category'),              // G
-            $tEs('backend.measures.template.headers.department'),            // H
-            $tEs('backend.measures.template.headers.verification_sources'),  // I
-            $tEs('backend.measures.template.headers.ods'),                   // J
-            $tEs('backend.measures.template.headers.esg'),                   // K
-            $tEs('backend.measures.template.headers.scope'),                 // L
-            $tEs('backend.measures.template.headers.score'),                 // M
-            $tEs('backend.measures.template.headers.mandatory'),             // N
-            $tEs('backend.measures.template.headers.name_en'),               // O (opcional)
-            $tEs('backend.measures.template.headers.name_review_en'),        // P (opcional) NUEVO
-            $tEs('backend.measures.template.headers.description_en'),        // Q (opcional)
-            $tEs('backend.measures.template.headers.implementation_en'),     // R (opcional)
-            $tEs('backend.measures.template.headers.verification_sources_en')// S (opcional)
+        $catalog = [
+            'protocols' => $protocolRepo->findAll(),
+            'categories' => $categoryRepo->findAll(),
+            'categoryGhgs' => $ghgRepo->findAll(),
+            'departments' => $departmentRepo->findAll(),
+            'ods' => $odsRepo->findAll(),
+            'esg' => $esgRepo->findAll(),
+            'scopes' => $scopeRepo->findAll(),
+            'impactAreas' => $em->getRepository(ImpactArea::class)->findAll(),
+            'tripleBalanceAxes' => $em->getRepository(TripleBalanceAxis::class)->findAll(),
+            'verificationSources' => $em->getRepository(VerificationSource::class)->findAll(),
+            'measureBlocks' => $em->getRepository(MeasureBlock::class)->findBy([], ['protocol' => 'ASC', 'sortOrder' => 'ASC', 'name' => 'ASC']),
         ];
-        $sheet->fromArray($headers, null, 'A1');
-        $sheet->getStyle('A1:S1')->getFont()->setBold(true);
 
-        // 4) Listas SIEMPRE en ES
-        $protocols   = $protocolRepo->findAll();
-        $ghgs        = $ghgRepo->findAll();
-        $categories  = $categoryRepo->findAll();
-        $departments = $departmentRepo->findAll();
-        $odsList     = $odsRepo->findAll();
-        $esgs        = $esgRepo->findAll();
-        $scopes      = $scopeRepo->findAll();
+        $spreadsheet = $this->measureTemplateExporter->buildSpreadsheet($catalog);
 
-        // Hoja oculta de listas
-        $listSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $tEs('backend.measures.template.lists_sheet'));
-        $spreadsheet->addSheet($listSheet);
-
-        $lists = [
-            'A' => array_map(fn($e) => $e->getName(), $protocols),
-            'B' => array_map(fn($e) => $e->getName(), $ghgs),
-            'C' => array_map(fn($e) => $e->getName(), $categories),
-            'D' => array_map(fn($e) => $e->getName(), $departments),
-            'E' => array_map(fn($e) => $e->getName(), $odsList),
-            'F' => array_map(fn($e) => $e->getName(), $esgs),
-            'G' => array_map(fn($e) => $e->getName(), $scopes),
-        ];
-        foreach ($lists as $col => $values) {
-            foreach ($values as $i => $val) {
-                $listSheet->setCellValue("{$col}" . ($i + 1), $val);
-            }
-        }
-        $listSheet->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
-
-        // 5) Fila de ejemplo
-        $sheet->fromArray([
-            $tEs('backend.measures.template.example.name'),                 // A
-            '',                                                            // B  name_review (pasado)
-            $tEs('backend.measures.template.example.description'),          // C
-            $tEs('backend.measures.template.example.implementation'),       // D
-            $lists['A'][0] ?? '',                                          // E Protocolo
-            $lists['B'][0] ?? '',                                          // F GHG
-            $lists['C'][0] ?? '',                                          // G Categoría
-            $lists['D'][0] ?? '',                                          // H Depto
-            $tEs('backend.measures.template.example.verification_sources'), // I
-            $lists['E'][0] ?? '',                                          // J ODS
-            $lists['F'][0] ?? '',                                          // K ESG
-            $lists['G'][0] ?? '',                                          // L Alcance
-            50,                                                            // M Puntuación
-            $tEs('backend.common.no'),                                     // N Obligatoria
-            '', '', '', '', ''                                             // O–S EN opcionales
-        ], null, 'A2');
-
-        // 6) Validaciones de listas (en ES) -> columnas nuevas
-        $map = [
-            'E' => ['A', count($lists['A'])], // Protocolo
-            'F' => ['B', count($lists['B'])], // GHG
-            'G' => ['C', count($lists['C'])], // Categoría
-            'H' => ['D', count($lists['D'])], // Departamento
-            'J' => ['E', count($lists['E'])], // ODS
-            'K' => ['F', count($lists['F'])], // ESG
-            'L' => ['G', count($lists['G'])], // Alcance
-        ];
-        foreach ($map as $column => [$listCol, $count]) {
-            for ($row = 2; $row <= 1000; $row++) {
-                $sheet->getCell("{$column}{$row}")
-                    ->setDataValidation(
-                        (new \PhpOffice\PhpSpreadsheet\Cell\DataValidation())
-                            ->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST)
-                            ->setFormula1("'" . $listSheet->getTitle() . "'!\${$listCol}\$1:\${$listCol}\$$count")
-                            ->setAllowBlank(true)
-                            ->setShowDropDown(true)
-                    );
-            }
-        }
-
-        // 7) Validación numérica para Puntuación (M)
-        for ($row = 2; $row <= 1000; $row++) {
-            $dvScore = (new \PhpOffice\PhpSpreadsheet\Cell\DataValidation())
-                ->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_WHOLE)
-                ->setOperator(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::OPERATOR_BETWEEN)
-                ->setFormula1('0')
-                ->setFormula2('100')
-                ->setAllowBlank(true)
-                ->setShowErrorMessage(true)
-                ->setErrorTitle($tEs('backend.measures.template.score_error_title'))
-                ->setError($tEs('backend.measures.template.score_error_text'));
-            $sheet->getCell("M{$row}")->setDataValidation($dvScore);
-        }
-
-        // 8) Validación para Obligatoria (N) -> Sí/No ES
-        $yes = $tEs('backend.common.yes');
-        $no  = $tEs('backend.common.no');
-        $listYN = '"' . $yes . ',' . $no . '"';
-        for ($row = 2; $row <= 1000; $row++) {
-            $dvMandatory = (new \PhpOffice\PhpSpreadsheet\Cell\DataValidation())
-                ->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST)
-                ->setFormula1($listYN)
-                ->setAllowBlank(true)
-                ->setShowDropDown(true);
-            $sheet->getCell("N{$row}")->setDataValidation($dvMandatory);
-        }
-
-        // 9) Descargar XLSX
-        $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($spreadsheet) {
-            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
+        $response = new StreamedResponse(function () use ($spreadsheet) {
+            (new Xlsx($spreadsheet))->save('php://output');
         });
 
-        $filename = $tEs('backend.measures.template.filename');
+        $filename = $translator->trans('backend.measures.template.filename', [], 'messages', 'es');
         $disposition = $response->headers->makeDisposition(
-            \Symfony\Component\HttpFoundation\ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
             $filename
         );
 

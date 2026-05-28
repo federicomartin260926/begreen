@@ -59,3 +59,9 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 
 - Update the closest README or docs file when workflows, assets, or deployment behavior change.
 - Keep docs aligned with the actual Docker and build flow used by the repo.
+
+## Sustainability domain boundary
+
+- Keep the plan sustainability measures domain separate from the emission-factor / CO2 calculation domain.
+- Treat the `v23` Excel template as the standard measure import/export format for any protocol, not as a historical edition of Be Green My Film.
+- Do not introduce protocol editions, catalog editions, plan snapshots, or measure historical versioning unless the task explicitly asks for them later.

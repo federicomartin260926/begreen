@@ -47,8 +47,8 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
                             <div>
-                                <h5 class="card-title mb-1">Resumen catálogo v23</h5>
-                                <div class="text-muted small">Control rápido del catálogo canónico importado.</div>
+                                <h5 class="card-title mb-1">Resumen catálogo canónico BGFM v23</h5>
+                                <div class="text-muted small">Control rápido del catálogo canónico importado. La plantilla v23 estándar aplica a cualquier protocolo.</div>
                             </div>
                             {% if catalogSummary.isExpected %}
                                 <span class="badge bg-success align-self-start">Conteos correctos</span>
@@ -115,7 +115,7 @@
 
                         {% if not catalogSummary.isExpected %}
                             <div class="alert alert-warning mt-3 mb-0">
-                                El catálogo v23 no cuadra con los conteos esperados. Revisa importación y relaciones múltiples.
+                                El catálogo canónico BGFM v23 no cuadra con los conteos esperados. Revisa importación y relaciones múltiples.
                             </div>
                         {% endif %}
                     </div>
