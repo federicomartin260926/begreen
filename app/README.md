@@ -44,6 +44,8 @@ Servicios:
 
 No existe dependencia operativa de `proxy`, Nginx Proxy Manager ni de servicios compartidos con otros repositorios. Si se coloca un reverse proxy externo, se hace fuera de este compose y sin ser requisito del proyecto.
 
+Para un despliegue de producción en VPS, el compose `docker-compose.prod.yml` conecta `begreen-nginx` a una red Docker externa `proxy` y monta `app/.env.local` en el contenedor PHP en modo lectura. Eso permite usar Nginx Proxy Manager o un proxy equivalente sin publicar puertos del backend al host.
+
 ## Cómo levantar el entorno
 
 Desde la raíz de `app/`:
@@ -57,6 +59,8 @@ Para producción local:
 ```bash
 make up-prod
 ```
+
+En VPS, si usas Nginx Proxy Manager como en otros proyectos, crea primero la red Docker externa `proxy` y apunta el host a `begreen-nginx:80` dentro de esa red. El fichero `.env.local` debe existir en `app/` con los valores de producción reales.
 
 Parar servicios:
 
