@@ -3,135 +3,65 @@
 namespace App\Service;
 
 use App\Entity\Project;
-use App\Entity\ProjectSubscription;
-use App\Repository\ProjectSubscriptionRepository;
 
 final class ProjectFeatureGate
 {
-    private const TIER_RANK = [
-        ProjectSubscription::TIER_BASIC => 1,
-        ProjectSubscription::TIER_STANDARD => 2,
-        ProjectSubscription::TIER_PRO => 3,
-    ];
-
-    private const FEATURE_REQUIREMENTS = [
-        'sustainability_plan.unified_pdf' => ProjectSubscription::TIER_BASIC,
-        'sustainability_plan.evidence_upload' => ProjectSubscription::TIER_BASIC,
-        'sustainability_plan.watermark_free_pdf' => ProjectSubscription::TIER_STANDARD,
-        'sustainability_plan.department_pdf' => ProjectSubscription::TIER_STANDARD,
-        'sustainability_plan.export.department_pdf' => ProjectSubscription::TIER_STANDARD,
-        'sustainability_plan.history' => ProjectSubscription::TIER_STANDARD,
-        'sustainability_plan.advanced_exports' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.export.category' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.export.department' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.export.impact_area' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.export.triple_balance' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.export.ods' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.export.excel' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.custom_comments' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.public_comments' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.internal_notes' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.responsibles' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.checklist' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.custom_measures' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.validation_summary' => ProjectSubscription::TIER_PRO,
-        'sustainability_plan.branding' => ProjectSubscription::TIER_PRO,
-    ];
-
-    public function __construct(private readonly ProjectSubscriptionRepository $subscriptionRepository)
+    public function __construct(private readonly CommercialPlanResolver $commercialPlanResolver)
     {
     }
 
-    public function getSubscription(Project $project): ?ProjectSubscription
+    public function getSubscription(Project $project): ?\App\Entity\ProjectSubscription
     {
-        return $project->getSubscription() ?? $this->subscriptionRepository->findOneByProject($project);
+        return $this->commercialPlanResolver->getSubscription($project);
     }
 
     public function getTier(Project $project): string
     {
-        return $this->getSubscription($project)?->getTier() ?? ProjectSubscription::TIER_BASIC;
+        return $this->commercialPlanResolver->getTierCode($project);
     }
 
     public function isBasic(Project $project): bool
     {
-        return $this->getTier($project) === ProjectSubscription::TIER_BASIC;
+        return $this->getTier($project) === 'basic';
     }
 
     public function isStandard(Project $project): bool
     {
-        return $this->getTier($project) === ProjectSubscription::TIER_STANDARD;
+        return $this->getTier($project) === 'standard';
     }
 
     public function isPro(Project $project): bool
     {
-        return $this->getTier($project) === ProjectSubscription::TIER_PRO;
+        return $this->getTier($project) === 'pro';
     }
 
     public function getAllowedScores(Project $project): array
     {
-        return match ($this->getTier($project)) {
-            ProjectSubscription::TIER_PRO => [5, 4, 3, 2, 1],
-            ProjectSubscription::TIER_STANDARD => [5, 4, 3],
-            default => [5, 4],
-        };
+        return $this->commercialPlanResolver->getAllowedScores($project);
     }
 
     public function getMaxEvidenceCount(Project $project): ?int
     {
-        return $this->isBasic($project) ? 10 : null;
+        return $this->commercialPlanResolver->getMaxEvidenceCount($project);
     }
 
     public function hasWatermark(Project $project): bool
     {
-        return $this->isBasic($project);
+        return $this->commercialPlanResolver->hasWatermark($project);
     }
 
     public function canUseFeature(Project $project, string $feature): bool
     {
-        $requiredTier = self::FEATURE_REQUIREMENTS[$feature] ?? null;
-        if ($requiredTier === null) {
-            return false;
-        }
-
-        return $this->tierRank($this->getTier($project)) >= $this->tierRank($requiredTier);
+        return $this->commercialPlanResolver->canUseFeature($project, $feature);
     }
 
     public function getUpgradeTarget(Project $project, string $feature): ?string
     {
-        $requiredTier = self::FEATURE_REQUIREMENTS[$feature] ?? null;
-        if ($requiredTier === null) {
-            return null;
-        }
-
-        return $this->canUseFeature($project, $feature) ? null : $requiredTier;
+        return $this->commercialPlanResolver->getUpgradeTarget($project, $feature);
     }
 
     public function getFeatureState(Project $project, string $feature): array
     {
-        $requiredTier = self::FEATURE_REQUIREMENTS[$feature] ?? null;
-        $enabled = $requiredTier !== null && $this->canUseFeature($project, $feature);
-
-        return [
-            'visible' => $requiredTier !== null,
-            'enabled' => $enabled,
-            'requiredTier' => $requiredTier,
-            'reason' => $enabled || $requiredTier === null
-                ? null
-                : sprintf('Disponible en %s', $this->tierLabel($requiredTier)),
-        ];
-    }
-
-    private function tierRank(string $tier): int
-    {
-        return self::TIER_RANK[$tier] ?? 1;
-    }
-
-    private function tierLabel(string $tier): string
-    {
-        return match ($tier) {
-            ProjectSubscription::TIER_STANDARD => 'Standard',
-            ProjectSubscription::TIER_PRO => 'Pro',
-            default => 'Basic',
-        };
+        return $this->commercialPlanResolver->getFeatureState($project, $feature);
     }
 }

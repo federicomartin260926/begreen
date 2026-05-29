@@ -14,17 +14,18 @@ use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
 use App\Entity\TripleBalanceAxis;
-use App\Repository\ProjectSubscriptionRepository;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanMeasureCatalogResolver;
-use App\Service\ProjectFeatureGate;
 use App\Service\SustainabilityPlanCustomMeasureParser;
 use App\Service\SustainabilityPlanGroupingService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use App\Tests\Support\CommercialPlanTestHelpers;
 
 final class SustainabilityPlanGroupingServiceTest extends TestCase
 {
+    use CommercialPlanTestHelpers;
+
     public function testGroupsByDepartmentAndDeduplicatesMeasuresWithinTheSameGroup(): void
     {
         $service = $this->createService();
@@ -93,10 +94,7 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
 
     private function createService(): SustainabilityPlanGroupingService
     {
-        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(null);
-
-        $gate = new ProjectFeatureGate($subscriptionRepository);
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $resolver = new PlanMeasureCatalogResolver($gate);
 
         $translator = $this->createMock(TranslatorInterface::class);

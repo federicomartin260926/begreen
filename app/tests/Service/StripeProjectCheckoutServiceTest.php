@@ -4,9 +4,8 @@ namespace App\Tests\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
-use App\Repository\ProjectSubscriptionRepository;
-use App\Service\ProjectFeatureGate;
 use App\Service\StripeProjectCheckoutService;
+use App\Tests\Support\CommercialPlanTestHelpers;
 use App\Tests\Support\Stripe\FakeStripeClient;
 use App\Tests\Support\Stripe\FakeStripeCheckoutFacade;
 use App\Tests\Support\Stripe\FakeStripeCheckoutSessions;
@@ -17,6 +16,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class StripeProjectCheckoutServiceTest extends TestCase
 {
+    use CommercialPlanTestHelpers;
+
     public function testBasicProjectCheckoutCreatesPendingSubscriptionAndUsesStandardPrice(): void
     {
         $sessionId = 'cs_test_basic_standard';
@@ -99,10 +100,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
 
     private function createService(FakeStripeClient $stripeClient, bool $expectFlush = false): StripeProjectCheckoutService
     {
-        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(null);
-
-        $gate = new ProjectFeatureGate($subscriptionRepository);
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
 
         $em = $this->createMock(EntityManagerInterface::class);
         if ($expectFlush) {

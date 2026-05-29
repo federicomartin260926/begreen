@@ -13,15 +13,16 @@ use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
 use App\Service\PlanMeasureCatalogResolver;
-use App\Service\ProjectFeatureGate;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanCustomMeasureParser;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
-use App\Repository\ProjectSubscriptionRepository;
+use App\Tests\Support\CommercialPlanTestHelpers;
 
 final class SustainabilityPlanCollaborationServiceTest extends TestCase
 {
+    use CommercialPlanTestHelpers;
+
     public function testBuildProgressSummaryCountsEvidenceResponsiblesAndCustomMeasures(): void
     {
         $service = $this->createService();
@@ -159,10 +160,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
 
     private function createService(): SustainabilityPlanCollaborationService
     {
-        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(null);
-
-        $gate = new ProjectFeatureGate($subscriptionRepository);
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $resolver = new PlanMeasureCatalogResolver($gate);
         $parser = new SustainabilityPlanCustomMeasureParser();
 

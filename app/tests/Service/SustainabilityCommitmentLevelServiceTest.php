@@ -11,15 +11,16 @@ use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
 use App\Repository\MeasureRepository;
-use App\Repository\ProjectSubscriptionRepository;
 use App\Service\PlanMeasureCatalogResolver;
-use App\Service\ProjectFeatureGate;
 use App\Service\SustainabilityCommitmentLevelService;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use App\Tests\Support\CommercialPlanTestHelpers;
 
 final class SustainabilityCommitmentLevelServiceTest extends TestCase
 {
+    use CommercialPlanTestHelpers;
+
     #[DataProvider('boundaryCases')]
     public function testBoundaryLevelsByPercentage(int $plannedPoints, string $expectedLevel): void
     {
@@ -161,10 +162,7 @@ final class SustainabilityCommitmentLevelServiceTest extends TestCase
      */
     private function createServiceWithCatalog(int $measureCount, array $scores): array
     {
-        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(null);
-
-        $gate = new ProjectFeatureGate($subscriptionRepository);
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $resolver = new PlanMeasureCatalogResolver($gate);
 
         $measureRepository = $this->createMock(MeasureRepository::class);
