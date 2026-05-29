@@ -258,6 +258,9 @@ backend:
       download_template_hint: "Download the standard measure template for any protocol"
     filters:
       all_protocols: "All protocols"
+      select_protocol_first: "Select a protocol first"
+      all_blocks: "All blocks"
+      no_blocks: "No blocks"
       all_ghg_categories: "All GHG categories"
       all_categories: "All categories"
       all_departments: "All departments"
@@ -773,6 +776,7 @@ backend:
       description: "Description"
       department: "Department"
       category: "Category"
+      subgroup: "Subgroup: %name%"
     q:
       apply: "Does this measure apply to your project?"
       critical: "Do you consider it a critical measure in your project?"
@@ -1535,10 +1539,16 @@ backend:
       impact_area: "Impact areas"
       verification_source: "Verification sources"
       position: "Roles / Positions"
+      measure_block: "Measure blocks"
     table:
       name: "Name"
       project_type: "Project type"
       department: "Department"
+      protocol: "Protocol"
+      code: "Code"
+      sort_order: "Order"
+      active: "Active"
+      has_screening_question: "Screening question"
     project_type:
       generic: "Generic"
       filming: "Filming"
@@ -1553,6 +1563,10 @@ backend:
       no_department: "— No department —"
       description: "Description"
       code: "Code"
+      sort_order: "Order"
+      active: "Active"
+      has_screening_question: "Has screening question"
+      screening_question: "Screening question"
     common:
       back_to_aux: "Back to Auxiliary tables"
     flash:
@@ -1563,6 +1577,7 @@ backend:
       invalid_type: "Invalid auxiliary type."
       not_found: "Item not found."
       category_locked: "Categories cannot be modified or deleted."
+      measure_block_code_exists: "A block with that code already exists for this protocol."
       in_use: "This record cannot be deleted because it is in use."
       delete_failed: "An error occurred while deleting the record."
   admin:

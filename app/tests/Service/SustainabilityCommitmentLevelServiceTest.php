@@ -3,8 +3,10 @@
 namespace App\Tests\Service;
 
 use App\Entity\Measure;
+use App\Entity\MeasureBlock;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
+use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
@@ -89,6 +91,52 @@ final class SustainabilityCommitmentLevelServiceTest extends TestCase
         self::assertSame(5, $summary['implemented']['points']);
         self::assertSame('tree', $summary['planned']['levelKey']);
         self::assertSame('tree', $summary['implemented']['levelKey']);
+    }
+
+    public function testSkippedBlockMeasuresDoNotCountTowardsPlannedPoints(): void
+    {
+        [$service, $plan, $project, $protocol, $catalogMeasures] = $this->createServiceWithCatalog(2, [5, 5]);
+
+        $block = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('block-2')
+            ->setName('Bloque 2')
+            ->setSortOrder(2);
+        $this->setEntityId($block, 9101);
+        $catalogMeasures[1]->setMeasureBlock($block);
+
+        $blockAnswer = (new SustainabilityPlanBlockAnswer())
+            ->setSustainabilityPlan($plan)
+            ->setMeasureBlock($block)
+            ->setApplies(false);
+        $this->setEntityId($blockAnswer, 9201);
+        $plan->addBlockAnswer($blockAnswer);
+
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($catalogMeasures[0])
+                ->setIsApplicable(true)
+                ->setWillImplement(true)
+                ->setImplemented(true)
+        );
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($catalogMeasures[1])
+                ->setIsApplicable(false)
+                ->setApplicabilitySource('block_skip')
+                ->setBlockSkipAnswer($blockAnswer)
+                ->setWillImplement(null)
+                ->setImplemented(null)
+        );
+
+        $summary = $service->buildSummary($plan, $project);
+
+        self::assertSame(5, $summary['totalOfficialPoints']);
+        self::assertSame(1, $summary['officialMeasures']);
+        self::assertSame(5, $summary['planned']['points']);
+        self::assertSame(5, $summary['implemented']['points']);
+        self::assertSame(100, $summary['planned']['percentageRounded']);
+        self::assertSame(100, $summary['implemented']['percentageRounded']);
     }
 
     public static function boundaryCases(): array

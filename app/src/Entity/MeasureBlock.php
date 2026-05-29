@@ -2,14 +2,20 @@
 
 namespace App\Entity;
 
+use App\Repository\MeasureBlockRepository;
 use App\Entity\Traits\TimestampableTrait;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: MeasureBlockRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ORM\Table(name: 'measure_block')]
+#[ORM\Table(
+    name: 'measure_block',
+    uniqueConstraints: [
+        new ORM\UniqueConstraint(name: 'uniq_measure_block_protocol_code', columns: ['protocol_id', 'code']),
+    ]
+)]
 class MeasureBlock
 {
     use TimestampableTrait;
@@ -23,17 +29,10 @@ class MeasureBlock
     #[ORM\JoinColumn(nullable: false)]
     private ?Protocol $protocol = null;
 
-    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'children')]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    private ?self $parent = null;
-
-    #[ORM\OneToMany(mappedBy: 'parent', targetEntity: self::class)]
-    private Collection $children;
-
     #[ORM\OneToMany(mappedBy: 'measureBlock', targetEntity: Measure::class)]
     private Collection $measures;
 
-    #[ORM\Column(length: 120, unique: true)]
+    #[ORM\Column(length: 120)]
     private string $code;
 
     #[ORM\Column(length: 255)]
@@ -42,12 +41,17 @@ class MeasureBlock
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     private int $sortOrder = 0;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private ?int $sourceRow = null;
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $hasScreeningQuestion = false;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $screeningQuestion = null;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private bool $active = true;
 
     public function __construct()
     {
-        $this->children = new ArrayCollection();
         $this->measures = new ArrayCollection();
     }
 
@@ -65,23 +69,6 @@ class MeasureBlock
     {
         $this->protocol = $protocol;
         return $this;
-    }
-
-    public function getParent(): ?self
-    {
-        return $this->parent;
-    }
-
-    public function setParent(?self $parent): self
-    {
-        $this->parent = $parent;
-        return $this;
-    }
-
-    /** @return Collection<int, self> */
-    public function getChildren(): Collection
-    {
-        return $this->children;
     }
 
     /** @return Collection<int, Measure> */
@@ -117,20 +104,42 @@ class MeasureBlock
         return $this->sortOrder;
     }
 
-    public function setSortOrder(int $sortOrder): self
+    public function setSortOrder(?int $sortOrder): self
     {
-        $this->sortOrder = $sortOrder;
+        $this->sortOrder = $sortOrder ?? 0;
         return $this;
     }
 
-    public function getSourceRow(): ?int
+    public function hasScreeningQuestion(): bool
     {
-        return $this->sourceRow;
+        return $this->hasScreeningQuestion;
     }
 
-    public function setSourceRow(?int $sourceRow): self
+    public function setHasScreeningQuestion(bool $hasScreeningQuestion): self
     {
-        $this->sourceRow = $sourceRow;
+        $this->hasScreeningQuestion = $hasScreeningQuestion;
+        return $this;
+    }
+
+    public function getScreeningQuestion(): ?string
+    {
+        return $this->screeningQuestion;
+    }
+
+    public function setScreeningQuestion(?string $screeningQuestion): self
+    {
+        $this->screeningQuestion = $screeningQuestion;
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->active;
+    }
+
+    public function setActive(bool $active): self
+    {
+        $this->active = $active;
         return $this;
     }
 

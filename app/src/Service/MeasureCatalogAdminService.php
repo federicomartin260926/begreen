@@ -109,13 +109,6 @@ final class MeasureCatalogAdminService
             ];
         }
 
-        if ($measure->getMeasureBlock() === null) {
-            $errors[] = [
-                'field' => 'measureBlock',
-                'message' => 'La medida v23 debe tener un bloque asignado.',
-            ];
-        }
-
         if ($measure->getDepartments()->isEmpty()) {
             $errors[] = [
                 'field' => 'departments',

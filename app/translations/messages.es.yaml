@@ -259,6 +259,9 @@ backend:
       download_template_hint: "Descargar plantilla estándar de medidas para cualquier protocolo"
     filters:
       all_protocols: "Todos los protocolos"
+      select_protocol_first: "Seleccione un protocolo primero"
+      all_blocks: "Todos los bloques"
+      no_blocks: "Sin bloques"
       all_ghg_categories: "Todas las categorías GHG"
       all_categories: "Todas las categorías"
       all_departments: "Todos los departamentos"
@@ -774,6 +777,7 @@ backend:
       description: "Descripción"
       department: "Departamento"
       category: "Categoría"
+      subgroup: "Subgrupo: %name%"
     q:
       apply: "¿Esta medida aplica a tu proyecto?"
       critical: "¿Consideras que es una medida crítica en tu proyecto?"
@@ -1538,10 +1542,16 @@ backend:
       impact_area: "Áreas de impacto"
       verification_source: "Fuentes de verificación"
       position: "Cargos / Puestos"
+      measure_block: "Bloques de medidas"
     table:
       name: "Nombre"
       project_type: "Tipo de proyecto"
       department: "Departamento"
+      protocol: "Protocolo"
+      code: "Código"
+      sort_order: "Orden"
+      active: "Activo"
+      has_screening_question: "Pregunta previa"
     project_type:
       generic: "Genérico"
       filming: "Rodaje"
@@ -1556,6 +1566,10 @@ backend:
       no_department: "— Sin departamento —"
       description: "Descripción"
       code: "Código"
+      sort_order: "Orden"
+      active: "Activo"
+      has_screening_question: "Tiene pregunta previa"
+      screening_question: "Pregunta previa"
     common:
       back_to_aux: "Volver a Tablas auxiliares"
     flash:
@@ -1566,6 +1580,7 @@ backend:
       invalid_type: "Tipo auxiliar no válido."
       not_found: "Elemento no encontrado."
       category_locked: "Las Categorías no se pueden eliminar ni modificar."
+      measure_block_code_exists: "Ya existe un bloque con ese código para este protocolo."
       in_use: "No se puede eliminar este registro porque está en uso."
       delete_failed: "Ocurrió un error al eliminar el registro."
     common_labels:

@@ -85,9 +85,33 @@ Validaciones principales:
 - cada medida debe tener bloque, al menos un departamento, al menos un ODS, al menos un área de impacto, al menos un eje de triple balance y fuentes de verificación;
 - la puntuación debe estar entre 1 y 5.
 
+Formato de la columna `Bloque`:
+
+- la plantilla acepta `code - name`, por ejemplo `inventario-y-planificacion - Inventario y planificación`;
+- si solo se informa el texto visible, el importador genera un `code` determinista a partir del nombre;
+- el bloque siempre se resuelve dentro del `protocol` de la fila;
+- si la celda `Bloque` está vacía, `measureBlock` queda en `null`;
+- la plantilla de medidas no define preguntas previas ni jerarquía de bloques;
+- las preguntas previas se administran desde la tabla auxiliar de bloques o mediante fixtures/seed;
+- los bloques se reutilizan por `protocol + code` y no se mezclan entre protocolos.
+
 El importador sigue siendo la fuente inicial de datos, pero el admin ya permite ajustar el catálogo sin rehacer la importación. No hay versionado avanzado en esta fase.
 
 En el flujo del plan, el protocolo canónico usado en esta fase mantiene solo sus medidas activas definidas para el plan; las medidas legacy del mismo protocolo quedan fuera del recorrido canónico y no deben aparecer en vistas, PDF ni contadores.
+
+## Bloques de medidas
+
+Un bloque de medidas es una subclasificación opcional dentro de un protocolo. Sirve para agrupar visualmente medidas dentro de una categoría principal y, en casos concretos, plantear una pregunta previa que permite omitir un conjunto de medidas no aplicables al proyecto.
+
+Puntos clave:
+
+- el bloque pertenece a un protocolo;
+- no hay jerarquía de subbloques;
+- la pregunta previa es opcional;
+- si el usuario responde "No", el plan guarda la respuesta del bloque, marca automáticamente las medidas visibles del bloque como `No aplica` y excluye esas medidas de la puntuación máxima aplicable;
+- si el usuario responde "Sí", las medidas marcadas automáticamente por el salto de bloque vuelven a estado pendiente para poder responderse de forma normal;
+- el estado de origen se conserva para poder auditar o revertir el salto sin confundirlo con un `No aplica` manual;
+- si un protocolo no tiene bloques, el flujo sigue funcionando y `measureBlock` puede quedar `null`.
 
 Compatibilidad legacy:
 

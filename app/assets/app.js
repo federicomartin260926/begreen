@@ -40,6 +40,7 @@ import OrsAutocompleteController from './controllers/ors_autocomplete_controller
 import PlanChartsController from './controllers/plan_charts_controller';
 import BackendController from './controllers/backend_controller.js';
 import MeasureFormController from './controllers/measure_form_controller.js';
+import MeasureBlockFilterController from './controllers/measure_block_filter_controller.js';
 
 const application = Application.start();
 application.register('project', ProjectController);
@@ -56,6 +57,7 @@ application.register('ors-autocomplete', OrsAutocompleteController);
 application.register('plan-charts', PlanChartsController);
 application.register('backend', BackendController);
 application.register('measure-form', MeasureFormController);
+application.register('measure-block-filter', MeasureBlockFilterController);
 
 // 7) bootstrap-select (CSS estático + JS dinámico para asegurar window.bootstrap listo)
 import 'bootstrap-select/dist/css/bootstrap-select.min.css';

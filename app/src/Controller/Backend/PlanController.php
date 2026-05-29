@@ -2,10 +2,12 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription};
-use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository};
+use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User};
+use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
+use App\Service\PlanBlockQuestionService;
+use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
@@ -37,6 +39,8 @@ class PlanController extends AbstractController
         private PlanMeasureCatalogResolver $catalogResolver,
         private ProjectFeatureGate $featureGate,
         private MeasureTaxonomyPresenter $taxonomyPresenter,
+        private PlanMeasureResumeService $resumeService,
+        private PlanBlockQuestionService $blockQuestionService,
         private SustainabilityPlanCollaborationService $collaborationService,
         private SustainabilityCommitmentLevelService $commitmentLevelService
     ) {}
@@ -154,6 +158,7 @@ class PlanController extends AbstractController
         PlanRepository $planRepository,
         MeasureRepository $measureRepository,
         PlanMeasureRepository $planMeasureRepository,
+        SustainabilityPlanBlockAnswerRepository $blockAnswerRepository,
         EntityManagerInterface $em
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -239,10 +244,12 @@ class PlanController extends AbstractController
             ->addOrderBy('m.name', 'ASC');
         }
 
-        $measures = $qb->getQuery()->getResult();
+        $measures = $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
 
         $total = count($measures);
-        $index = max(0, min($total - 1, $request->query->getInt('i', 0)));
+        $index = $request->query->has('i')
+            ? max(0, min($total - 1, $request->query->getInt('i', 0)))
+            : $this->resumeService->resolveIndex($measures, $plan->getPlanMeasures());
         $currentMeasure = $measures[$index] ?? null;
 
         // ¿Plan completo?
@@ -305,6 +312,9 @@ class PlanController extends AbstractController
         $currentPm = $currentMeasure
             ? $planMeasureRepository->findOneBy(['plan' => $plan, 'measure' => $currentMeasure])
             : null;
+        $currentBlockAnswer = ($currentMeasure && $currentMeasure->getMeasureBlock())
+            ? $blockAnswerRepository->findOneByPlanAndBlock($plan, (int) $currentMeasure->getMeasureBlock()->getId())
+            : null;
 
         $canGoNext = false;
         if ($currentPm) {
@@ -335,9 +345,10 @@ class PlanController extends AbstractController
         }
 
         // ===== Gráficos =====
+        $visiblePlanMeasures = $this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan);
         $measuresTotal = $total;
         $effective = $nonApplicable = $agreed = $implemented = 0;
-        foreach ($plan->getPlanMeasures() as $pm) {
+        foreach ($visiblePlanMeasures as $pm) {
             if ($pm->getMeasure()?->getProtocol()?->getId() === $protocol->getId()) {
                 if ($pm->isApplicable() === true)  $effective++;
                 if ($pm->isApplicable() === false) $nonApplicable++;
@@ -356,7 +367,7 @@ class PlanController extends AbstractController
 
         // ===== Puntuación (no persistente) =====
         $pmIndex = [];
-        foreach ($plan->getPlanMeasures() as $pm) {
+        foreach ($visiblePlanMeasures as $pm) {
             if ($pm->getMeasure()?->getProtocol()?->getId() === $protocol->getId()) {
                 $pmIndex[$pm->getMeasure()->getId()] = $pm;
             }
@@ -400,9 +411,10 @@ class PlanController extends AbstractController
             'index'            => $index,
             'total'            => $total,
             'measure'          => $planComplete ? null : $currentMeasure,
-            'planMeasures'     => $plan->getPlanMeasures(),
+            'planMeasures'     => $visiblePlanMeasures,
             'canGoNext'        => !$planComplete && $canGoNext,
             'planComplete'     => $planComplete,
+            'currentBlockAnswer' => $currentBlockAnswer,
 
             // sesión/categorías para twig (ahora representan el grupo activo)
             'groupChanged'   => $groupChanged ? 'si' : 'no',
@@ -748,6 +760,7 @@ class PlanController extends AbstractController
         MeasureRepository $measureRepo,
         PlanMeasureRepository $planMeasureRepo,
         PlanRepository $planRepo,
+        SustainabilityPlanBlockAnswerRepository $blockAnswerRepository,
         ActiveProjectService $activeProjectService,
         EntityManagerInterface $em
     ): JsonResponse {
@@ -797,7 +810,7 @@ class PlanController extends AbstractController
         $planMeasure = $planMeasureRepo->findOneBy(['plan' => $plan, 'measure' => $measure]);
         if (!$planMeasure) {
             $planMeasure = new PlanMeasure();
-            $planMeasure->setPlan($plan);
+            $plan->addPlanMeasure($planMeasure);
             $planMeasure->setMeasure($measure);
             // Deja el resto en NULL hasta respuesta explícita del usuario
         }
@@ -809,9 +822,28 @@ class PlanController extends AbstractController
 
         // --- Mutaciones por campo ---
         switch ($field) {
+            case 'blockQuestion':
+                $block = $measure->getMeasureBlock();
+                if (!$block || !$block->hasScreeningQuestion()) {
+                    return new JsonResponse(['success' => false, 'error' => 'Unknown field'], 400);
+                }
+
+                $applies = filter_var((string) $value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                if ($applies === null) {
+                    return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
+                }
+
+                $blockMeasures = array_values(array_filter(
+                    $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepo),
+                    static fn (Measure $candidate) => $candidate->getMeasureBlock()?->getId() === $block->getId()
+                ));
+                $this->blockQuestionService->applyAnswer($plan, $block, $applies, $user instanceof User ? $user : null, $blockMeasures);
+                break;
+
             case 'isApplicable':
                 $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
                 $planMeasure->setIsApplicable($bool);
+                $planMeasure->markAsManual();
                 if ($bool === false) {
                     $planMeasure->setIsCritical(null);
                     $planMeasure->setCriticalReason(null);
@@ -824,6 +856,7 @@ class PlanController extends AbstractController
             case 'critical':
                 $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
                 $planMeasure->setIsCritical($bool);
+                $planMeasure->markAsManual();
                 if ($bool === false) {
                     $planMeasure->setCriticalReason(null);
                 }
@@ -833,6 +866,7 @@ class PlanController extends AbstractController
             case 'critical_reason':
                 $text = trim((string)($value ?? ''));
                 $planMeasure->setCriticalReason($text !== '' ? $text : null);
+                $planMeasure->markAsManual();
                 break;
 
             case 'willImplement':
@@ -840,6 +874,7 @@ class PlanController extends AbstractController
                 if ($planMeasure->isApplicable() === true && $planMeasure->isCritical() !== null) {
                     $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
                     $planMeasure->setWillImplement($bool);
+                    $planMeasure->markAsManual();
                 }
                 break;
 
@@ -853,32 +888,38 @@ class PlanController extends AbstractController
                 }
                 $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
                 $planMeasure->setImplemented($bool);
+                $planMeasure->markAsManual();
                 break;
 
             case 'verification':
                 $bool = ($value === 'true');
                 $planMeasure->setVerification($bool);
+                $planMeasure->markAsManual();
                 break;
 
             case 'action_taken':
                 $text = trim((string)$value);
                 $planMeasure->setActionTaken($text !== '' ? $text : null);
+                $planMeasure->markAsManual();
                 break;
 
             case 'evidence':
                 $text = trim((string)$value);
                 $planMeasure->setEvidence($text !== '' ? $text : null);
+                $planMeasure->markAsManual();
                 break;
 
             case 'observations':
                 $text = trim((string)$value);
                 $planMeasure->setObservations($text !== '' ? $text : null);
+                $planMeasure->markAsManual();
                 break;
 
             case 'internalNotes':
             case 'internal_notes':
                 $text = trim((string)$value);
                 $planMeasure->setInternalNotes($text !== '' ? $text : null);
+                $planMeasure->markAsManual();
                 break;
 
             case 'responsibles':
@@ -903,6 +944,7 @@ class PlanController extends AbstractController
                 }
 
                 $this->collaborationService->syncResponsibleCrewMembers($planMeasure, $crewMembers);
+                $planMeasure->markAsManual();
                 break;
 
             default:
@@ -1061,15 +1103,10 @@ class PlanController extends AbstractController
         $protocol = $plan->getProtocol();
         if (!$protocol) return false;
 
-        $measures = $measureRepository->createQueryBuilder('m')
-            ->join('m.protocol', 'p')
-            ->andWhere('p = :protocol')
-            ->setParameter('protocol', $protocol)
-            ->addOrderBy('m.id', 'ASC')
-            ->getQuery()->getResult();
+        $measures = $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepository);
 
         $pmByMeasureId = [];
-        foreach ($plan->getPlanMeasures() as $pm) {
+        foreach ($this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan) as $pm) {
             $measure = $pm->getMeasure();
             if (!$measure || !$this->catalogResolver->isCatalogMeasure($measure, $project)) {
                 continue;
@@ -1596,7 +1633,7 @@ class PlanController extends AbstractController
             $measuresByDpto[$dpto][] = $pm;
         }
 
-        $measuresTotal = $this->countFilteredMeasures($measureRepository, $protocolRepository, $project, $filtersArr, $em);
+        $measuresTotal = $this->countFilteredMeasures($plan, $measureRepository, $protocolRepository, $project, $filtersArr, $em);
 
         // --- PUNTUACIÓN ALCANZADA (con filtros aplicados) ---
         $scoreMax = 0;
@@ -1701,7 +1738,8 @@ class PlanController extends AbstractController
     private function getFilteredPlanMeasures(Plan $plan, Project $project, array $filters): array
     {
         $result = [];
-        foreach ($plan->getPlanMeasures() as $pm) {
+
+        foreach ($this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan) as $pm) {
             $m = $pm->getMeasure();
             if (!$m || !$this->catalogResolver->isCatalogMeasure($m, $project)) {
                 continue;
@@ -1735,10 +1773,12 @@ class PlanController extends AbstractController
 
             $result[] = $pm;
         }
+
         return $result;
     }
 
     private function countFilteredMeasures(
+        Plan $plan,
         MeasureRepository $measureRepository,
         ProtocolRepository $protocolRepository,
         Project $project,
@@ -1766,7 +1806,118 @@ class PlanController extends AbstractController
             $qb->join('m.planMeasures', 'pm_impl')->andWhere('pm_impl.implemented = true');
         }
 
-        return count($qb->getQuery()->getResult());
+        return count($this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function getSkippedMeasureBlockIds(Plan $plan): array
+    {
+        $ids = [];
+
+        foreach ($plan->getBlockAnswers() as $answer) {
+            if ($answer->applies() === false && $answer->getMeasureBlock()?->getId() !== null) {
+                $ids[(int) $answer->getMeasureBlock()->getId()] = (int) $answer->getMeasureBlock()->getId();
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param array<int, Measure> $measures
+     * @return array<int, Measure>
+     */
+    private function filterMeasuresBySkippedBlocks(array $measures, Plan $plan): array
+    {
+        $skippedBlockIds = $this->getSkippedMeasureBlockIds($plan);
+        if ($skippedBlockIds === []) {
+            return $measures;
+        }
+
+        return array_values(array_filter($measures, static function (Measure $measure) use ($skippedBlockIds): bool {
+            $blockId = $measure->getMeasureBlock()?->getId();
+            return $blockId === null || !isset($skippedBlockIds[(int) $blockId]);
+        }));
+    }
+
+    /**
+     * @param iterable<int, PlanMeasure> $planMeasures
+     * @return array<int, PlanMeasure>
+     */
+    private function filterPlanMeasuresBySkippedBlocks(iterable $planMeasures, Plan $plan): array
+    {
+        $skippedBlockIds = $this->getSkippedMeasureBlockIds($plan);
+        if ($skippedBlockIds === []) {
+            return is_array($planMeasures) ? $planMeasures : iterator_to_array($planMeasures, false);
+        }
+
+        $result = [];
+        foreach ($planMeasures as $planMeasure) {
+            $measure = $planMeasure->getMeasure();
+            $blockId = $measure?->getMeasureBlock()?->getId();
+            if ($blockId !== null && isset($skippedBlockIds[(int) $blockId])) {
+                continue;
+            }
+
+            $result[] = $planMeasure;
+        }
+
+        return $result;
+    }
+
+    private function findBlockAnswer(Plan $plan, ?MeasureBlock $block): ?SustainabilityPlanBlockAnswer
+    {
+        if (!$block || $block->getId() === null) {
+            return null;
+        }
+
+        foreach ($plan->getBlockAnswers() as $answer) {
+            if ($answer->getMeasureBlock()?->getId() === $block->getId()) {
+                return $answer;
+            }
+        }
+
+        return null;
+    }
+
+    private function findPlanMeasureForMeasure(Plan $plan, Measure $measure): ?PlanMeasure
+    {
+        $measureId = $measure->getId();
+        if ($measureId === null) {
+            return null;
+        }
+
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            if ($planMeasure->getMeasure()?->getId() === $measureId) {
+                return $planMeasure;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return Measure[]
+     */
+    private function getVisibleMeasuresForProtocol(Plan $plan, Project $project, MeasureRepository $measureRepository): array
+    {
+        $protocol = $plan->getProtocol();
+        if (!$protocol) {
+            return [];
+        }
+
+        $qb = $measureRepository->createQueryBuilder('m')
+            ->join('m.protocol', 'p')
+            ->leftJoin('m.category', 'c')
+            ->leftJoin('m.department', 'd')
+            ->andWhere('p = :protocol')
+            ->setParameter('protocol', $protocol);
+        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
+        $qb->addOrderBy('m.id', 'ASC');
+
+        return $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
     }
 
     /**

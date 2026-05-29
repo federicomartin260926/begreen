@@ -33,6 +33,28 @@ Esta fase deja operativos estos bloques:
   - `Standard -> Pro`
   - facturas y enlaces generados por Stripe
 
+## Orden de medidas en las vistas
+
+- En la vista operativa de creación del plan, las medidas se ordenan por `categoría` o `departamento` según el `groupingBy` del protocolo, y después por nombre de medida.
+- En la vista tabular/review del plan ya creado, las medidas se ordenan por `rank` de estado del plan y después por `nameReview` si existe, o por `name`.
+- En las exportaciones agrupadas, el grupo se ordena por la taxonomía elegida y las filas se ordenan por nombre visible (`displayName`).
+
+## Bloques de medidas
+
+- El campo `Orden` del bloque es interno y no gobierna el recorrido del plan.
+- El recorrido operativo siempre lo determinan las medidas y su ordenación en el flujo del plan.
+- Los bloques solo subclasifican medidas dentro de un protocolo y pueden activar una pregunta previa opcional.
+
+## Plan comercial y puntos
+
+- La relación entre plan comercial y medidas oficiales es por puntuación, no por IDs fijos.
+- Regla actual:
+  - `Basic`: medidas de 4 y 5 puntos.
+  - `Standard`: medidas de 3, 4 y 5 puntos.
+  - `Pro`: medidas de 1, 2, 3, 4 y 5 puntos.
+- Esta inclusión se calcula sobre el catálogo oficial del protocolo activo y se aplica después de excluir medidas no visibles del tier o saltadas por bloque.
+- No existe una tabla ni una lista manual de “medidas permitidas por plan” en esta fase: la fuente de verdad es el catálogo importado y la lógica de negocio del plan.
+
 ## Checklist funcional por plan
 
 ### Basic

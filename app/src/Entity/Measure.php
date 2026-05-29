@@ -7,6 +7,7 @@ use App\Entity\Traits\TimestampableTrait;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation as Gedmo;
 
@@ -444,6 +445,21 @@ class Measure
     {
         $this->importVersion = $importVersion;
         return $this;
+    }
+
+    #[Assert\Callback]
+    public function validateMeasureBlockProtocol(ExecutionContextInterface $context): void
+    {
+        if ($this->measureBlock === null || $this->protocol === null) {
+            return;
+        }
+
+        if ($this->measureBlock->getProtocol()?->getId() !== $this->protocol->getId()) {
+            $context
+                ->buildViolation('El bloque de la medida debe pertenecer al mismo protocolo.')
+                ->atPath('measureBlock')
+                ->addViolation();
+        }
     }
 
 }

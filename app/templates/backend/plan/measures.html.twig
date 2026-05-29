@@ -210,7 +210,8 @@
                 {% if measure %}
                     {% include 'backend/plan/_measure_card.html.twig' with {
                         measure: measure,
-                        planMeasures: planMeasures
+                        planMeasures: planMeasures,
+                        currentBlockAnswer: currentBlockAnswer
                     } %}
                 {% else %}
                     <div class="alert alert-info">{{ 'backend.plan.measures.no_items'|trans }}</div>

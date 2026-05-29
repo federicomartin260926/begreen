@@ -369,12 +369,21 @@ final class MeasureTemplateV23Importer
             return null;
         }
 
-        foreach (MeasureTemplateV23Schema::lookupCandidates($value) as $candidate) {
+        $repository = $this->em->getRepository(MeasureBlock::class);
+        [$explicitCode, $explicitName] = $this->splitMeasureBlockValue($value);
+
+        $candidates = array_values(array_unique(array_filter([
+            $explicitCode,
+            $explicitName,
+            ...MeasureTemplateV23Schema::lookupCandidates($value),
+        ])));
+
+        foreach ($candidates as $candidate) {
             if ($cached = $this->getCachedMeasureBlock($protocol, $candidate)) {
                 return $cached;
             }
 
-            $block = $this->em->getRepository(MeasureBlock::class)->findOneBy([
+            $block = $repository->findOneBy([
                 'protocol' => $protocol,
                 'name' => $candidate,
             ]);
@@ -383,7 +392,7 @@ final class MeasureTemplateV23Importer
                 return $block;
             }
 
-            $block = $this->em->getRepository(MeasureBlock::class)->findOneBy([
+            $block = $repository->findOneBy([
                 'protocol' => $protocol,
                 'code' => $candidate,
             ]);
@@ -391,25 +400,66 @@ final class MeasureTemplateV23Importer
                 $this->cacheMeasureBlock($protocol, $block, $value, $candidate, (string) $block->getCode(), (string) $block->getName());
                 return $block;
             }
+
+            if (method_exists($repository, 'findEquivalentByProtocol')) {
+                $block = $repository->findEquivalentByProtocol($protocol, $candidate);
+                if ($block instanceof MeasureBlock) {
+                    $this->cacheMeasureBlock($protocol, $block, $value, $candidate, (string) $block->getCode(), (string) $block->getName());
+                    return $block;
+                }
+            }
         }
 
-        $blockName = trim(explode(' - ', $value, 2)[1] ?? $value);
-        $blockName = $blockName !== '' ? $blockName : $value;
-        $slugger = new AsciiSlugger();
-        $code = sprintf('%s__%s', $protocol->getCode() ?? 'protocol', $slugger->slug($blockName)->lower()->toString());
-        $code = substr($code, 0, 120);
+        $blockName = $explicitName !== '' ? $explicitName : ($explicitCode !== '' ? $explicitCode : $value);
+        $code = $this->buildMeasureBlockCode($explicitCode !== '' ? $explicitCode : $blockName);
 
         $block = (new MeasureBlock())
             ->setProtocol($protocol)
             ->setCode($code)
             ->setName($blockName)
             ->setSortOrder($rowNumber)
-            ->setSourceRow($rowNumber);
+            ->setHasScreeningQuestion(false)
+            ->setScreeningQuestion(null)
+            ->setActive(true);
 
         $this->em->persist($block);
-        $this->cacheMeasureBlock($protocol, $block, $value, $code, $blockName);
+        $this->cacheMeasureBlock($protocol, $block, $value, $code, $blockName, $explicitCode, $explicitName);
 
         return $block;
+    }
+
+    /**
+     * @return array{0:string,1:string}
+     */
+    private function splitMeasureBlockValue(string $value): array
+    {
+        $value = trim(preg_replace('/\s+/u', ' ', $value) ?? '');
+        if ($value === '') {
+            return ['', ''];
+        }
+
+        if (!str_contains($value, ' - ')) {
+            return ['', $value];
+        }
+
+        [$left, $right] = array_pad(explode(' - ', $value, 2), 2, '');
+
+        return [trim($left), trim($right)];
+    }
+
+    private function buildMeasureBlockCode(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return 'block';
+        }
+
+        if (preg_match('/\s/u', $value) || preg_match('/[^\pL\pN._-]/u', $value)) {
+            $slugger = new AsciiSlugger();
+            $value = (string) $slugger->slug($value)->lower()->toString();
+        }
+
+        return substr($value !== '' ? $value : 'block', 0, 120);
     }
 
     /**

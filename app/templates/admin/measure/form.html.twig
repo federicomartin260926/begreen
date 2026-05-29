@@ -22,7 +22,9 @@
             attr: {
                 'data-controller': 'measure-form',
                 'data-measure-form-departments-base-value': path('admin_departments_by_protocol'),
-                'data-measure-form-current-department-value': edit and measure.department ? measure.department.id : ''
+                'data-measure-form-measure-blocks-base-value': path('admin_measure_blocks_by_protocol'),
+                'data-measure-form-current-department-value': edit and measure.department ? measure.department.id : '',
+                'data-measure-form-current-measure-block-value': edit and measure.measureBlock ? measure.measureBlock.id : ''
             }
         }) }}
             {{ form_errors(form) }}
@@ -50,7 +52,12 @@
 
                 <div class="col-md-4 mb-3">
                     {{ form_label(form.measureBlock) }}
-                    {{ form_widget(form.measureBlock, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_widget(form.measureBlock, {
+                        'attr': {
+                            'class': 'form-select',
+                            'data-measure-form-target': 'measureBlock'
+                        }
+                    }) }}
                     {{ form_errors(form.measureBlock) }}
                 </div>
             </div>
@@ -160,7 +167,13 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     {{ form_label(form.departments) }}
-                    {{ form_widget(form.departments, {'attr': {'class': 'form-select', 'size': '6'}}) }}
+                    {{ form_widget(form.departments, {
+                        'attr': {
+                            'class': 'form-select',
+                            'size': '6',
+                            'data-measure-form-target': 'department'
+                        }
+                    }) }}
                     {{ form_errors(form.departments) }}
                 </div>
                 <div class="col-md-6 mb-3">

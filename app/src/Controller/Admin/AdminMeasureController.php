@@ -2,10 +2,11 @@
 
 namespace App\Controller\Admin;
 
-use App\Entity\{Measure, Category, Department, Protocol, Ods, EsG, Scope, CategoryGhg, ImpactArea, TripleBalanceAxis, VerificationSource, MeasureBlock};
+use App\Entity\{Measure, Category, Department, Protocol, Ods, EsG, Scope, CategoryGhg, ImpactArea, TripleBalanceAxis, VerificationSource};
 use App\Form\{MeasureType, MeasureImportType};
 use Dompdf\{Dompdf, Options};
 use App\Repository\{MeasureRepository, ProtocolRepository, CategoryGhgRepository, CategoryRepository, DepartmentRepository, OdsRepository, EsGRepository, ScopeRepository};
+use App\Repository\MeasureBlockRepository;
 use App\Service\MeasureCatalogAdminService;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanMeasureCatalogResolver;
@@ -350,6 +351,7 @@ class AdminMeasureController extends AbstractController
         OdsRepository $odsRepo,
         EsGRepository $esgRepo,
         ScopeRepository $scopeRepo,
+        MeasureBlockRepository $measureBlockRepository,
         TranslatorInterface $translator,
     ): Response {
         $catalog = [
@@ -363,7 +365,15 @@ class AdminMeasureController extends AbstractController
             'impactAreas' => $em->getRepository(ImpactArea::class)->findAll(),
             'tripleBalanceAxes' => $em->getRepository(TripleBalanceAxis::class)->findAll(),
             'verificationSources' => $em->getRepository(VerificationSource::class)->findAll(),
-            'measureBlocks' => $em->getRepository(MeasureBlock::class)->findBy([], ['protocol' => 'ASC', 'sortOrder' => 'ASC', 'name' => 'ASC']),
+            'measureBlocks' => $measureBlockRepository->createQueryBuilder('b')
+                ->leftJoin('b.protocol', 'p')
+                ->addSelect('p')
+                ->andWhere('b.active = true')
+                ->orderBy('p.name', 'ASC')
+                ->addOrderBy('b.sortOrder', 'ASC')
+                ->addOrderBy('b.name', 'ASC')
+                ->getQuery()
+                ->getResult(),
         ];
 
         $spreadsheet = $this->measureTemplateExporter->buildSpreadsheet($catalog);

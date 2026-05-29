@@ -255,7 +255,11 @@ final class BeGreenMyFilmV23Importer
                 continue;
             }
 
-            $block = $this->em->getRepository(MeasureBlock::class)->findOneBy(['code' => $code]);
+            $repository = $this->em->getRepository(MeasureBlock::class);
+            $block = $repository->findOneBy(['protocol' => $protocol, 'code' => $code]);
+            if (!$block && method_exists($repository, 'findEquivalentByProtocol')) {
+                $block = $repository->findEquivalentByProtocol($protocol, $code);
+            }
             $created = false;
             if (!$block) {
                 $block = new MeasureBlock();
@@ -269,23 +273,13 @@ final class BeGreenMyFilmV23Importer
                 ->setCode($code)
                 ->setName($name)
                 ->setSortOrder((int) ($section['row'] ?? 0))
-                ->setSourceRow(isset($section['row']) ? (int) $section['row'] : null);
+                ->setHasScreeningQuestion(false)
+                ->setScreeningQuestion(null)
+                ->setActive(true);
 
             $blocks[$code] = $block;
             $summary['blocks'][$created ? 'created' : 'updated']++;
             $summary['blocks']['resolved']++;
-        }
-
-        foreach ($sections as $section) {
-            $code = (string) ($section['code'] ?? '');
-            $parentCode = $section['parentCode'] ?? null;
-            if ($code === '' || $parentCode === null || $parentCode === '') {
-                continue;
-            }
-
-            if (isset($blocks[$code], $blocks[$parentCode])) {
-                $blocks[$code]->setParent($blocks[$parentCode]);
-            }
         }
 
         return $blocks;

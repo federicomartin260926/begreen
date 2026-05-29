@@ -122,16 +122,32 @@
                 </div>
             {% endif %}
 
-            <div class="d-flex gap-3 mb-4 align-items-end flex-wrap bg_green_3 p-3">
-                <select id="filter-protocol" class="form-select" style="max-width: 200px;" data-dt-filter="2">
+            <div
+                class="d-flex gap-3 mb-4 align-items-end flex-wrap bg_green_3 p-3"
+                data-controller="measure-block-filter"
+                data-measure-block-filter-measure-blocks-base-value="{{ path('admin_measure_blocks_by_protocol') }}"
+                data-measure-block-filter-select-protocol-first-value="{{ 'backend.measures.filters.select_protocol_first'|trans }}"
+                data-measure-block-filter-all-blocks-value="{{ 'backend.measures.filters.all_blocks'|trans }}"
+                data-measure-block-filter-no-blocks-value="{{ 'backend.measures.filters.no_blocks'|trans }}">
+                <select id="filter-protocol" class="form-select" style="max-width: 200px;" data-dt-filter="2" data-action="change->measure-block-filter#onProtocolChange">
                     <option value="">{{ 'backend.measures.filters.all_protocols'|trans }}</option>
                     {% set protocols = [] %}
                     {% for measure in measures %}
                         {% if measure.protocol and measure.protocol.name not in protocols %}
                             {% set protocols = protocols|merge([measure.protocol.name]) %}
-                            <option value="{{ measure.protocol.name }}">{{ measure.protocol.name }}</option>
+                            <option value="{{ measure.protocol.name }}" data-protocol-id="{{ measure.protocol.id }}">{{ measure.protocol.name }}</option>
                         {% endif %}
                     {% endfor %}
+                </select>
+
+                <select
+                    id="filter-block"
+                    class="form-select"
+                    style="max-width: 240px;"
+                    data-measure-block-filter-target="block"
+                    data-action="change->measure-block-filter#onBlockChange"
+                    disabled>
+                    <option value="">{{ 'backend.measures.filters.select_protocol_first'|trans }}</option>
                 </select>
 
                 <select id="filter-emission-source" class="form-select" style="max-width: 200px;" data-dt-filter="3">
@@ -227,7 +243,7 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn btn-outline-secondary" id="reset-dt-filters">
+                <button type="button" class="btn btn-outline-secondary" id="reset-dt-filters" data-action="click->measure-block-filter#reset">
                     <i class="bi bi-x-circle"></i> {{ 'backend.measures.filters.reset'|trans }}
                 </button>
             </div>

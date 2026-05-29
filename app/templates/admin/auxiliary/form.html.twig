@@ -29,7 +29,7 @@
 
       {# ========= 1) Campos NO traducibles (siempre fuera de tabs) ========= #}
       {# Filtramos fuera todo lo que sea traducción: name, description y sus sufijos _en #}
-      {% set translatable = ['name','description'] %}
+      {% set translatable = translatableFields ?? ['name','description'] %}
       <div class="mb-3">
         {% for field in form %}
           {% set fname = field.vars.name %}
@@ -45,74 +45,73 @@
         {% endfor %}
       </div>
 
-      {# ========= 2) Tabs de idiomas (incluye ES y EN) ========= #}
       {% set locales = locales ?? ['es','en'] %}
       {% set default_locale = default_locale ?? 'es' %}
+      {% if translatable %}
+        {# ========= 2) Tabs de idiomas (incluye ES y EN) ========= #}
+        <ul class="nav nav-tabs mt-3" id="i18nTabs" role="tablist">
+          {% for loc in locales %}
+            <li class="nav-item" role="presentation">
+              <button class="nav-link bg_tabs_lang {{ loop.first ? 'active' : '' }}"
+                      id="tab-{{ loc }}"
+                      data-bs-toggle="tab"
+                      data-bs-target="#pane-{{ loc }}"
+                      type="button" role="tab" aria-controls="pane-{{ loc }}"
+                      aria-selected="{{ loop.first ? 'true' : 'false' }}">
+                {{ loc|upper }}
+              </button>
+            </li>
+          {% endfor %}
+        </ul>
 
+        <div class="tab-content bg_tabs_lang border border-top-0 p-3 rounded-bottom" id="i18nTabsContent">
+          {% for loc in locales %}
+            <div class="tab-pane fade {{ loop.first ? 'show active' : '' }}"
+                 id="pane-{{ loc }}" role="tabpanel" aria-labelledby="tab-{{ loc }}">
+              {# ES (locale por defecto): usar campos MAPEADOS del entity #}
+              {% if loc == default_locale %}
+                {# name #}
+                {% if form.name is defined %}
+                  <div class="mb-3">
+                    {{ form_label(form.name, 'backend.aux.form.name'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
+                    {{ form_widget(form.name) }}
+                    {{ form_errors(form.name) }}
+                  </div>
+                {% endif %}
 
+                {# description si existe en el form para esta entidad #}
+                {% if form.description is defined %}
+                  <div class="mb-3">
+                    {{ form_label(form.description, 'backend.aux.form.description'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
+                    {{ form_widget(form.description) }}
+                    {{ form_errors(form.description) }}
+                  </div>
+                {% endif %}
 
-      <ul class="nav nav-tabs mt-3" id="i18nTabs" role="tablist">
-        {% for loc in locales %}
-          <li class="nav-item" role="presentation">
-            <button class="nav-link bg_tabs_lang {{ loop.first ? 'active' : '' }}"
-                    id="tab-{{ loc }}"
-                    data-bs-toggle="tab"
-                    data-bs-target="#pane-{{ loc }}"
-                    type="button" role="tab" aria-controls="pane-{{ loc }}"
-                    aria-selected="{{ loop.first ? 'true' : 'false' }}">
-              {{ loc|upper }}
-            </button>
-          </li>
-        {% endfor %}
-      </ul>
+              {% else %}
+                {# Otros locales (EN): usar campos *_en (unmapped) #}
+                {% set name_field = attribute(form, 'name_' ~ loc) is defined ? attribute(form, 'name_' ~ loc) : null %}
+                {% if name_field %}
+                  <div class="mb-3">
+                    {{ form_label(name_field, 'backend.aux.form.name'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
+                    {{ form_widget(name_field) }}
+                    {{ form_errors(name_field) }}
+                  </div>
+                {% endif %}
 
-      <div class="tab-content bg_tabs_lang border border-top-0 p-3 rounded-bottom" id="i18nTabsContent">
-        {% for loc in locales %}
-          <div class="tab-pane fade {{ loop.first ? 'show active' : '' }}"
-               id="pane-{{ loc }}" role="tabpanel" aria-labelledby="tab-{{ loc }}">
-            {# ES (locale por defecto): usar campos MAPEADOS del entity #}
-            {% if loc == default_locale %}
-              {# name #}
-              {% if form.name is defined %}
-                <div class="mb-3">
-                  {{ form_label(form.name, 'backend.aux.form.name'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
-                  {{ form_widget(form.name) }}
-                  {{ form_errors(form.name) }}
-                </div>
+                {% set desc_field = attribute(form, 'description_' ~ loc) is defined ? attribute(form, 'description_' ~ loc) : null %}
+                {% if desc_field %}
+                  <div class="mb-3">
+                    {{ form_label(desc_field, 'backend.aux.form.description'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
+                    {{ form_widget(desc_field) }}
+                    {{ form_errors(desc_field) }}
+                  </div>
+                {% endif %}
               {% endif %}
-
-              {# description si existe en el form para esta entidad #}
-              {% if form.description is defined %}
-                <div class="mb-3">
-                  {{ form_label(form.description, 'backend.aux.form.description'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
-                  {{ form_widget(form.description) }}
-                  {{ form_errors(form.description) }}
-                </div>
-              {% endif %}
-
-            {% else %}
-              {# Otros locales (EN): usar campos *_en (unmapped) #}
-              {% set name_field = attribute(form, 'name_' ~ loc) is defined ? attribute(form, 'name_' ~ loc) : null %}
-              {% if name_field %}
-                <div class="mb-3">
-                  {{ form_label(name_field, 'backend.aux.form.name'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
-                  {{ form_widget(name_field) }}
-                  {{ form_errors(name_field) }}
-                </div>
-              {% endif %}
-
-              {% set desc_field = attribute(form, 'description_' ~ loc) is defined ? attribute(form, 'description_' ~ loc) : null %}
-              {% if desc_field %}
-                <div class="mb-3">
-                  {{ form_label(desc_field, 'backend.aux.form.description'|trans ~ ' ('~ loc|upper ~')', { label_attr: { class: 'form-label' } }) }}
-                  {{ form_widget(desc_field) }}
-                  {{ form_errors(desc_field) }}
-                </div>
-              {% endif %}
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
       {{ form_row(form._token) }}
 

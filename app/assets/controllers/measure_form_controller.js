@@ -1,10 +1,12 @@
 import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
-  static targets = ['protocol', 'department'];
+  static targets = ['protocol', 'department', 'measureBlock'];
   static values  = {
     departmentsBase: String,
-    currentDepartment: String
+    measureBlocksBase: String,
+    currentDepartment: String,
+    currentMeasureBlock: String
   };
 
   connect() {
@@ -12,6 +14,7 @@ export default class extends Controller {
     const protoId = this.protocolTarget?.value;
     if (protoId) {
       this.loadDepartments(protoId, this.currentDepartmentValue || null);
+      this.loadMeasureBlocks(protoId, this.currentMeasureBlockValue || null);
     }
   }
 
@@ -19,8 +22,10 @@ export default class extends Controller {
     const protoId = event.currentTarget.value;
     // reset dept mientras carga
     this.populateDepartment([]);
+    this.populateMeasureBlock([]);
     if (protoId) {
       this.loadDepartments(protoId, null);
+      this.loadMeasureBlocks(protoId, null);
     }
   }
 
@@ -75,6 +80,60 @@ export default class extends Controller {
     select.disabled = !!loading;
     if (loading) {
       // Mostrar placeholder "Cargando…"
+      while (select.firstChild) select.removeChild(select.firstChild);
+      const ph = document.createElement('option');
+      ph.value = '';
+      ph.textContent = 'Cargando…';
+      select.appendChild(ph);
+    }
+  }
+
+  async loadMeasureBlocks(protocolId, preselectId = null) {
+    const url = `${this.measureBlocksBaseValue}?id=${encodeURIComponent(protocolId)}`;
+
+    this.setMeasureBlockLoading(true);
+
+    try {
+      const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+      const data = await resp.json();
+
+      this.populateMeasureBlock(data, preselectId);
+    } catch (e) {
+      console.error('Error cargando bloques:', e);
+      this.populateMeasureBlock([]);
+    } finally {
+      this.setMeasureBlockLoading(false);
+    }
+  }
+
+  populateMeasureBlock(items, preselectId = null) {
+    const select = this.measureBlockTarget;
+    if (!select) return;
+
+    while (select.firstChild) select.removeChild(select.firstChild);
+
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = items && items.length ? 'Seleccione un bloque' : '— Sin bloques —';
+    select.appendChild(ph);
+
+    (items || []).forEach(({id, name}) => {
+      const opt = document.createElement('option');
+      opt.value = String(id);
+      opt.textContent = name;
+      if (preselectId && String(preselectId) === String(id)) {
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+  }
+
+  setMeasureBlockLoading(loading) {
+    const select = this.measureBlockTarget;
+    if (!select) return;
+
+    select.disabled = !!loading;
+    if (loading) {
       while (select.firstChild) select.removeChild(select.firstChild);
       const ph = document.createElement('option');
       ph.value = '';

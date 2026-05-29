@@ -43,7 +43,7 @@ final class SustainabilityPlanCollaborationService
         ];
 
         $uniqueEvidence = [];
-        foreach ($plan->getPlanMeasures() as $planMeasure) {
+        foreach ($this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan) as $planMeasure) {
             if (!$planMeasure instanceof PlanMeasure) {
                 continue;
             }
@@ -202,5 +202,45 @@ final class SustainabilityPlanCollaborationService
     {
         $paths = array_filter(array_map('trim', preg_split('/\R/u', (string) $evidence) ?: []));
         return array_values(array_unique($paths));
+    }
+
+    /**
+     * @param iterable<int, PlanMeasure> $planMeasures
+     * @return array<int, PlanMeasure>
+     */
+    private function filterPlanMeasuresBySkippedBlocks(iterable $planMeasures, Plan $plan): array
+    {
+        $skippedBlockIds = $this->getSkippedBlockIds($plan);
+        if ($skippedBlockIds === []) {
+            return is_array($planMeasures) ? $planMeasures : iterator_to_array($planMeasures, false);
+        }
+
+        $result = [];
+        foreach ($planMeasures as $planMeasure) {
+            $blockId = $planMeasure->getMeasure()?->getMeasureBlock()?->getId();
+            if ($blockId !== null && isset($skippedBlockIds[(int) $blockId])) {
+                continue;
+            }
+
+            $result[] = $planMeasure;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function getSkippedBlockIds(Plan $plan): array
+    {
+        $ids = [];
+
+        foreach ($plan->getBlockAnswers() as $answer) {
+            if ($answer->applies() === false && $answer->getMeasureBlock()?->getId() !== null) {
+                $ids[(int) $answer->getMeasureBlock()->getId()] = (int) $answer->getMeasureBlock()->getId();
+            }
+        }
+
+        return $ids;
     }
 }

@@ -15,6 +15,8 @@ use App\Entity\CategoryGhg;
 use App\Entity\ImpactArea;
 use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
+use App\Repository\MeasureBlockRepository;
+use App\Repository\ProtocolRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -22,10 +24,19 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class MeasureType extends AbstractType
 {
+    public function __construct(
+        private readonly ProtocolRepository $protocolRepository,
+        private readonly MeasureBlockRepository $measureBlockRepository,
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $projectType          = $options['projectType'] ?? null;
@@ -38,6 +49,33 @@ class MeasureType extends AbstractType
         $verificationLink1    = $verificationLinks[0] ?? null;
         $verificationLink2    = $verificationLinks[1] ?? null;
         $verificationLink3    = $verificationLinks[2] ?? null;
+        $measureBlock = $measure instanceof Measure ? $measure->getMeasureBlock() : null;
+
+        $addMeasureBlockField = function (FormInterface $form, ?Protocol $protocol) use ($measureBlock): void {
+            $form->add('measureBlock', EntityType::class, [
+                'class' => MeasureBlock::class,
+                'choice_label' => 'name',
+                'placeholder' => 'backend.common.select',
+                'label' => 'backend.measures.form.measure_block',
+                'required' => false,
+                'query_builder' => function (MeasureBlockRepository $repo) use ($protocol) {
+                    $qb = $repo->createQueryBuilder('b')
+                        ->andWhere('b.active = true')
+                        ->orderBy('b.sortOrder', 'ASC')
+                        ->addOrderBy('b.name', 'ASC');
+
+                    if ($protocol instanceof Protocol) {
+                        $qb->andWhere('b.protocol = :protocol')
+                            ->setParameter('protocol', $protocol);
+                    } else {
+                        $qb->andWhere('1 = 0');
+                    }
+
+                    return $qb;
+                },
+                'data' => ($measureBlock instanceof MeasureBlock && $protocol && $measureBlock->getProtocol()?->getId() === $protocol->getId()) ? $measureBlock : null,
+            ]);
+        };
 
         // ===== Campos translatables base (locale por defecto, mapeados) =====
         $builder
@@ -124,13 +162,6 @@ class MeasureType extends AbstractType
                 'choice_label' => 'name',
                 'placeholder' => 'backend.common.select',
                 'label' => 'backend.measures.form.category',
-                'required' => false,
-            ])
-            ->add('measureBlock', EntityType::class, [
-                'class' => MeasureBlock::class,
-                'choice_label' => 'name',
-                'placeholder' => 'backend.common.select',
-                'label' => 'backend.measures.form.measure_block',
                 'required' => false,
             ])
             ->add('departments', EntityType::class, [
@@ -233,6 +264,21 @@ class MeasureType extends AbstractType
                 'attr'     => ['min' => 1, 'max' => 5, 'step' => 1, 'placeholder' => '1–5'],
                 'help'     => 'backend.measures.form.score_help',
             ]);
+
+        $builder->addEventListener(FormEvents::PRE_SET_DATA, static function (FormEvent $event) use ($addMeasureBlockField): void {
+            $measure = $event->getData();
+            $protocol = $measure instanceof Measure ? $measure->getProtocol() : null;
+
+            $addMeasureBlockField($event->getForm(), $protocol);
+        });
+
+        $builder->addEventListener(FormEvents::PRE_SUBMIT, function (FormEvent $event) use ($addMeasureBlockField): void {
+            $data = $event->getData();
+            $protocolId = isset($data['protocol']) ? (int) $data['protocol'] : 0;
+            $protocol = $protocolId > 0 ? $this->protocolRepository->find($protocolId) : null;
+
+            $addMeasureBlockField($event->getForm(), $protocol instanceof Protocol ? $protocol : null);
+        });
 
         // Para tabs en la vista
         $builder->setAttribute('locales', $locales);

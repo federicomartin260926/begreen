@@ -5,8 +5,10 @@ namespace App\Tests\Service;
 use App\Entity\CrewMember;
 use App\Entity\Department;
 use App\Entity\Measure;
+use App\Entity\MeasureBlock;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
+use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
@@ -59,6 +61,66 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         self::assertSame(1, $summary['publicComments']);
         self::assertSame(1, $summary['internalNotes']);
         self::assertSame(2, $summary['customMeasures']);
+    }
+
+    public function testSkippedBlockMeasuresAreExcludedFromProgressSummary(): void
+    {
+        $service = $this->createService();
+        [$plan, $project, $protocol] = $this->createPlanContext();
+
+        $block = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('block-1')
+            ->setName('Bloque 1')
+            ->setSortOrder(1);
+        $this->setEntityId($block, 7001);
+
+        $blockAnswer = (new SustainabilityPlanBlockAnswer())
+            ->setSustainabilityPlan($plan)
+            ->setMeasureBlock($block)
+            ->setApplies(false);
+        $this->setEntityId($blockAnswer, 7002);
+        $plan->addBlockAnswer($blockAnswer);
+
+        $measureVisible = $this->createMeasure(701, $protocol);
+        $measureSkipped = $this->createMeasure(702, $protocol);
+        $measureSkipped->setMeasureBlock($block);
+
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($measureVisible)
+                ->setIsApplicable(true)
+                ->setWillImplement(true)
+                ->setImplemented(true)
+                ->setVerification(true)
+                ->setEvidence("/uploads/evidences/1/a.pdf")
+                ->setPublicComment('Visible comment')
+                ->setInternalNotes('Internal comment')
+        );
+
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($measureSkipped)
+                ->setIsApplicable(false)
+                ->setApplicabilitySource('block_skip')
+                ->setBlockSkipAnswer($blockAnswer)
+                ->setWillImplement(null)
+                ->setImplemented(null)
+                ->setVerification(true)
+                ->setEvidence("/uploads/evidences/1/b.pdf")
+                ->setPublicComment('Skipped comment')
+                ->setInternalNotes('Skipped internal')
+        );
+
+        $summary = $service->buildProgressSummary($plan, $project);
+
+        self::assertSame(1, $summary['toImplement']);
+        self::assertSame(1, $summary['implemented']);
+        self::assertSame(1, $summary['verified']);
+        self::assertSame(1, $summary['evidenceFiles']);
+        self::assertSame(0, $summary['responsibles']);
+        self::assertSame(1, $summary['publicComments']);
+        self::assertSame(1, $summary['internalNotes']);
     }
 
     public function testSortCrewMembersForMeasurePrioritizesMatchingDepartments(): void

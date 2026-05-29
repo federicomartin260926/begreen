@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Entity\Department;
+use App\Entity\MeasureBlock;
 use App\Entity\Protocol;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
@@ -55,6 +56,47 @@ class AuxiliaryType extends AbstractType
                 'choice_translation_domain' => 'messages',
                 'attr' => ['class' => 'form-select'],
             ]);
+        }
+
+        if ($type === 'measure_block') {
+            $builder
+                ->add('protocol', EntityType::class, [
+                    'label' => 'backend.aux.form.protocol',
+                    'class' => Protocol::class,
+                    'choice_label' => 'name',
+                    'required' => true,
+                    'placeholder' => 'backend.common.select',
+                    'attr' => ['class' => 'form-select'],
+                ])
+                ->add('code', TextType::class, [
+                    'label' => 'backend.aux.form.code',
+                    'attr'  => ['class' => 'form-control'],
+                ])
+                ->add('active', ChoiceType::class, [
+                    'label' => 'backend.aux.form.active',
+                    'choices' => [
+                        'backend.common.yes' => true,
+                        'backend.common.no' => false,
+                    ],
+                    'placeholder' => false,
+                    'choice_translation_domain' => 'messages',
+                    'attr' => ['class' => 'form-select'],
+                ])
+                ->add('hasScreeningQuestion', ChoiceType::class, [
+                    'label' => 'backend.aux.form.has_screening_question',
+                    'choices' => [
+                        'backend.common.yes' => true,
+                        'backend.common.no' => false,
+                    ],
+                    'placeholder' => false,
+                    'choice_translation_domain' => 'messages',
+                    'attr' => ['class' => 'form-select'],
+                ])
+                ->add('screeningQuestion', TextareaType::class, [
+                    'label' => 'backend.aux.form.screening_question',
+                    'required' => false,
+                    'attr' => ['class' => 'form-control', 'rows' => 3],
+                ]);
         }
 
         if ($type === 'department') {

@@ -12,7 +12,9 @@ use App\Entity\Scope;
 use App\Entity\CategoryGhg;
 use App\Entity\VerificationSource;
 use App\Entity\Position;
+use App\Entity\MeasureBlock;
 use App\Form\AuxiliaryType;
+use App\Repository\MeasureBlockRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,6 +43,7 @@ class AuxiliaryController extends AbstractController
         'impact_area'  => ImpactArea::class,
         'verification_source' => VerificationSource::class,
         'position'     => Position::class,
+        'measure_block' => MeasureBlock::class,
     ];
 
     // Claves de traducción (no textos crudos)
@@ -55,6 +58,7 @@ class AuxiliaryController extends AbstractController
         'impact_area'  => 'backend.aux.entity.impact_area',
         'verification_source' => 'backend.aux.entity.verification_source',
         'position'     => 'backend.aux.entity.position',
+        'measure_block' => 'backend.aux.entity.measure_block',
     ];
 
     private const TRANSLATABLE_FIELDS = [
@@ -69,6 +73,7 @@ class AuxiliaryController extends AbstractController
         'scope'        => ['name'],
         'protocol'     => ['name'],
         'category'     => ['name'], // si la dejas bloqueada en edit, no aplicará
+        'measure_block' => [],
     ];
 
     private const LOCALES = ['es','en']; // ajusta a lo que uses
@@ -97,6 +102,15 @@ class AuxiliaryController extends AbstractController
                 ->orderBy('p.name', 'ASC')
                 ->getQuery()
                 ->getResult();
+        } elseif ($type === 'measure_block') {
+            $items = $repo->createQueryBuilder('b')
+                ->leftJoin('b.protocol', 'p')
+                ->addSelect('p')
+                ->orderBy('p.name', 'ASC')
+                ->addOrderBy('b.name', 'ASC')
+                ->addOrderBy('b.code', 'ASC')
+                ->getQuery()
+                ->getResult();
         } elseif (in_array($type, ['impact_area', 'verification_source'], true)) {
             $items = $repo->createQueryBuilder('i')
                 ->orderBy('i.sortOrder', 'ASC')
@@ -115,7 +129,7 @@ class AuxiliaryController extends AbstractController
     }
 
     #[Route('/{type}/new', name: 'new')]
-    public function new(string $type, Request $request, EntityManagerInterface $em): Response
+    public function new(string $type, Request $request, EntityManagerInterface $em, MeasureBlockRepository $measureBlockRepository): Response
     {
         if (!array_key_exists($type, self::ENTITY_MAP)) {
             throw $this->createNotFoundException($this->trans('backend.aux.errors.invalid_type'));
@@ -137,6 +151,28 @@ class AuxiliaryController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            if ($type === 'measure_block' && $item instanceof MeasureBlock && !$item->hasScreeningQuestion()) {
+                $item->setScreeningQuestion(null);
+            }
+
+            if ($type === 'measure_block' && $item instanceof MeasureBlock) {
+                $existing = $measureBlockRepository->findOneByProtocolAndCode($item->getProtocol(), $item->getCode())
+                    ?? $measureBlockRepository->findEquivalentByProtocol($item->getProtocol(), $item->getCode());
+                if ($existing instanceof MeasureBlock) {
+                    $form->get('code')->addError(new \Symfony\Component\Form\FormError($this->translator->trans('backend.aux.errors.measure_block_code_exists')));
+
+                    return $this->render('admin/auxiliary/form.html.twig', [
+                        'form' => $form->createView(),
+                        'type' => $type,
+                        'edit' => false,
+                        'name' => self::ENTITY_NAME[$type] ?? ucfirst($type),
+                        'locales' => self::LOCALES,
+                        'default_locale' => self::DEFAULT_LOCALE,
+                        'translatableFields' => $translatableFields,
+                    ]);
+                }
+            }
+
             $em->persist($item);
             $em->flush(); // necesitamos ID para traducir
 
@@ -170,6 +206,7 @@ class AuxiliaryController extends AbstractController
             'name' => self::ENTITY_NAME[$type] ?? ucfirst($type),
             'locales' => self::LOCALES,
             'default_locale' => self::DEFAULT_LOCALE,
+            'translatableFields' => $translatableFields,
         ]);
     }
 
@@ -179,6 +216,7 @@ class AuxiliaryController extends AbstractController
         int $id,
         Request $request,
         EntityManagerInterface $em,
+        MeasureBlockRepository $measureBlockRepository,
         TranslatableListener $translatableListener
     ): Response {
         if (!array_key_exists($type, self::ENTITY_MAP)) {
@@ -215,7 +253,7 @@ class AuxiliaryController extends AbstractController
             'auxiliary_type'      => $type,
             'locales'             => ['es','en'],
             'default_locale'      => 'es',
-            'translatable_fields' => in_array($type, ['ods','esg','category_ghg'], true) ? ['name','description'] : ['name'],
+            'translatable_fields' => in_array($type, ['ods','esg','category_ghg'], true) ? ['name','description'] : ($type === 'measure_block' ? [] : ['name']),
             'translations'        => $existing,
         ];
 
@@ -226,6 +264,28 @@ class AuxiliaryController extends AbstractController
         // La restauraremos DESPUÉS de guardar para que ES se persista en columnas base.
 
         if ($form->isSubmitted() && $form->isValid()) {
+            if ($type === 'measure_block' && $item instanceof MeasureBlock && !$item->hasScreeningQuestion()) {
+                $item->setScreeningQuestion(null);
+            }
+
+            if ($type === 'measure_block' && $item instanceof MeasureBlock) {
+                $existing = $measureBlockRepository->findOneByProtocolAndCode($item->getProtocol(), $item->getCode())
+                    ?? $measureBlockRepository->findEquivalentByProtocol($item->getProtocol(), $item->getCode());
+                if ($existing instanceof MeasureBlock && $existing->getId() !== $item->getId()) {
+                    $form->get('code')->addError(new \Symfony\Component\Form\FormError($this->translator->trans('backend.aux.errors.measure_block_code_exists')));
+
+                    return $this->render('admin/auxiliary/form.html.twig', [
+                        'form' => $form->createView(),
+                        'type' => $type,
+                        'edit' => true,
+                        'name' => self::ENTITY_NAME[$type] ?? ucfirst($type),
+                        'locales' => $formOptions['locales'],
+                        'default_locale' => $formOptions['default_locale'],
+                        'translatableFields' => $formOptions['translatable_fields'],
+                    ]);
+                }
+            }
+
             // 2) Guardar campos ES (mapeados) → forzar ES antes de persistir/flush
             $translatableListener->setTranslatableLocale('es');
             $translatableListener->setTranslationFallback(false);
@@ -271,6 +331,7 @@ class AuxiliaryController extends AbstractController
             'name' => self::ENTITY_NAME[$type] ?? ucfirst($type),
             'locales' => $formOptions['locales'],
             'default_locale' => $formOptions['default_locale'],
+            'translatableFields' => $formOptions['translatable_fields'],
         ]);
     }
 

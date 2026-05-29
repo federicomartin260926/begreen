@@ -20,6 +20,16 @@ This project uses an internal tier model per `Project` for the sustainability pl
 - `standard`: scores `5`, `4`, `3`, unlimited evidences, watermark disabled, grouped PDF by departments.
 - `pro`: all scores `5` to `1`, unlimited evidences, watermark disabled, grouped PDF/Excel by categories, departments, impact areas, triple balance and ODS.
 
+## Which measures belong to each plan
+
+- The inclusion rule is score-based, not based on fixed measure IDs.
+- The current commercial scope is:
+  - `basic`: only measures with score `4` or `5`
+  - `standard`: measures with score `3`, `4` or `5`
+  - `pro`: measures with score `1`, `2`, `3`, `4` or `5`
+- This is applied on top of the official catalog of the active protocol and after excluding measures that are not visible for the current project/tier or are skipped by block questions.
+- If a protocol needs a different commercial inclusion, that exception must be encoded in the measure/catalog resolver or in the protocol-specific catalog logic. There is no static measure-by-measure plan map in the documentation or UI.
+
 The plan review and PDF already consume the measure catalog with support for multiple departments, ODS, impact areas, triple balance axes and prioritized verification sources. The review flow also exposes Pro-only collaborative fields and a basic validation summary. The export flows now expose a practical MVP:
 
 - Basic keeps only the unified PDF.

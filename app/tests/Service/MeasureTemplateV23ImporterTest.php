@@ -404,6 +404,283 @@ final class MeasureTemplateV23ImporterTest extends TestCase
         self::assertSame('peach__movilidad', $persistedBlocks[0]->getCode());
     }
 
+    public function testImportParsesExplicitMeasureBlockCodeAndLeavesBlankBlockNull(): void
+    {
+        $protocol = (new Protocol())->setCode('be-green-my-film')->setName('Be Green My Film')->setType(Protocol::TYPE_RODAJE);
+        $category = (new Category())->setName('Energía');
+        $categoryGhg = (new CategoryGhg())->setName('Emisiones indirectas de GEI debido al consumo de energía importada');
+        $department = (new Department())->setCode('prod')->setName('Producción');
+        $ods = (new Ods())->setCode('ODS7')->setName('Energía asequible y no contaminante');
+        $impactArea = (new ImpactArea())->setCode('a')->setName('Cambio Climático');
+        $axis = (new TripleBalanceAxis())->setCode('ambiental')->setName('Ambiental');
+        $source = (new VerificationSource())->setCode('foto')->setName('Foto');
+
+        $persistedMeasures = [];
+        $persistedBlocks = [];
+
+        $repositories = [
+            Protocol::class => $this->createRepository(static fn (array $criteria): ?Protocol => (($criteria['code'] ?? null) === 'be-green-my-film' || ($criteria['name'] ?? null) === 'Be Green My Film') ? $protocol : null),
+            Category::class => $this->createRepository(static fn (array $criteria): ?Category => ($criteria['name'] ?? null) === 'Energía' ? $category : null),
+            CategoryGhg::class => $this->createRepository(static fn (array $criteria): ?CategoryGhg => ($criteria['name'] ?? null) === 'Emisiones indirectas de GEI debido al consumo de energía importada' ? $categoryGhg : null),
+            Department::class => $this->createRepository(static fn (array $criteria): ?Department => (($criteria['code'] ?? null) === 'prod' || ($criteria['name'] ?? null) === 'Producción') ? $department : null),
+            Ods::class => $this->createRepository(static fn (array $criteria): ?Ods => (($criteria['code'] ?? null) === 'ODS7' || ($criteria['code'] ?? null) === '7' || ($criteria['name'] ?? null) === 'Energía asequible y no contaminante') ? $ods : null),
+            EsG::class => $this->createRepository(static fn (array $criteria): ?EsG => ($criteria['name'] ?? null) === 'Ambiental' ? (new EsG())->setName('Ambiental') : null),
+            Scope::class => $this->createRepository(static fn (array $criteria): ?Scope => ($criteria['name'] ?? null) === 'Alcance 1' ? (new Scope())->setName('Alcance 1') : null),
+            ImpactArea::class => $this->createRepository(static fn (array $criteria): ?ImpactArea => (($criteria['code'] ?? null) === 'a' || ($criteria['name'] ?? null) === 'Cambio Climático') ? $impactArea : null),
+            TripleBalanceAxis::class => $this->createRepository(static fn (array $criteria): ?TripleBalanceAxis => (($criteria['code'] ?? null) === 'ambiental' || ($criteria['name'] ?? null) === 'Ambiental') ? $axis : null),
+            VerificationSource::class => $this->createRepository(static fn (array $criteria): ?VerificationSource => (($criteria['code'] ?? null) === 'foto' || ($criteria['name'] ?? null) === 'Foto') ? $source : null),
+            MeasureBlock::class => $this->createRepository(static fn (): ?MeasureBlock => null),
+            Measure::class => $this->createRepository(static fn (): ?Measure => null),
+            \Gedmo\Translatable\Entity\Translation::class => $this->createRepository(static fn (): ?object => null),
+        ];
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager
+            ->method('getRepository')
+            ->willReturnCallback(static function (string $class) use ($repositories) {
+                if (!isset($repositories[$class])) {
+                    throw new \RuntimeException(sprintf('Unexpected repository request for %s', $class));
+                }
+
+                return $repositories[$class];
+            });
+
+        $entityManager->method('persist')->willReturnCallback(static function ($entity) use (&$persistedMeasures, &$persistedBlocks): void {
+            if ($entity instanceof Measure) {
+                $persistedMeasures[] = $entity;
+            }
+
+            if ($entity instanceof MeasureBlock) {
+                $persistedBlocks[] = $entity;
+            }
+        });
+        $entityManager->expects(self::once())->method('flush');
+
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('beginTransaction');
+        $connection->expects(self::once())->method('commit');
+        $entityManager->method('getConnection')->willReturn($connection);
+
+        $importer = new MeasureTemplateV23Importer(
+            $entityManager,
+            $this->createMock(TranslatableListener::class),
+            new MeasureCatalogAdminService(),
+        );
+
+        $report = new MeasureTemplateV23Report();
+        $report->addRow([
+            'row' => 2,
+            'protocol' => 'be-green-my-film - Be Green My Film',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => 'inventario-y-planificacion - Inventario y planificación',
+            'category' => 'Energía',
+            'categoryGhg' => 'Emisiones indirectas de GEI debido al consumo de energía importada',
+            'name' => 'Medida con bloque',
+            'nameReview' => '',
+            'description' => '',
+            'implementation' => '',
+            'score' => 5,
+            'mandatory' => 'No',
+            'departments' => 'prod',
+            'odsItems' => 'ODS7',
+            'esg' => 'Ambiental',
+            'scope' => 'Alcance 1',
+            'impactAreas' => 'a',
+            'tripleBalanceAxes' => 'ambiental',
+            'verificationSources' => [
+                ['priority' => 1, 'value' => 'Foto'],
+            ],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+        ]);
+        $report->addRow([
+            'row' => 3,
+            'protocol' => 'be-green-my-film - Be Green My Film',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => '',
+            'category' => 'Energía',
+            'categoryGhg' => 'Emisiones indirectas de GEI debido al consumo de energía importada',
+            'name' => 'Medida sin bloque',
+            'nameReview' => '',
+            'description' => '',
+            'implementation' => '',
+            'score' => 4,
+            'mandatory' => 'No',
+            'departments' => 'prod',
+            'odsItems' => 'ODS7',
+            'esg' => 'Ambiental',
+            'scope' => 'Alcance 1',
+            'impactAreas' => 'a',
+            'tripleBalanceAxes' => 'ambiental',
+            'verificationSources' => [
+                ['priority' => 1, 'value' => 'Foto'],
+            ],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+        ]);
+
+        $result = $importer->import($report, true);
+
+        self::assertSame('applied', $result->getImportSummary()['status'] ?? null);
+        self::assertCount(1, $persistedBlocks);
+        self::assertSame('inventario-y-planificacion', $persistedBlocks[0]->getCode());
+        self::assertSame('Inventario y planificación', $persistedBlocks[0]->getName());
+        self::assertCount(2, $persistedMeasures);
+        self::assertSame($persistedBlocks[0], $persistedMeasures[0]->getMeasureBlock());
+        self::assertNull($persistedMeasures[1]->getMeasureBlock());
+    }
+
+    public function testImportKeepsMeasureBlocksScopedByProtocol(): void
+    {
+        $protocolPeach = (new Protocol())->setCode('peach')->setName('Peach')->setType(Protocol::TYPE_RODAJE);
+        $protocolGreenFilm = (new Protocol())->setCode('green-film')->setName('Green Film')->setType(Protocol::TYPE_RODAJE);
+
+        $blockPeach = (new MeasureBlock())
+            ->setProtocol($protocolPeach)
+            ->setCode('shared__block')
+            ->setName('Bloque compartido')
+            ->setSortOrder(1);
+        $blockGreen = (new MeasureBlock())
+            ->setProtocol($protocolGreenFilm)
+            ->setCode('shared__block')
+            ->setName('Bloque compartido')
+            ->setSortOrder(1);
+
+        $persistedMeasures = [];
+        $repositories = [
+            Protocol::class => $this->createRepository(static function (array $criteria) use ($protocolPeach, $protocolGreenFilm): ?Protocol {
+                $code = $criteria['code'] ?? null;
+                $name = $criteria['name'] ?? null;
+
+                if ($code === 'peach' || $name === 'Peach') {
+                    return $protocolPeach;
+                }
+                if ($code === 'green-film' || $name === 'Green Film') {
+                    return $protocolGreenFilm;
+                }
+
+                return null;
+            }),
+            MeasureBlock::class => $this->createRepository(static function (array $criteria) use ($blockPeach, $blockGreen): ?MeasureBlock {
+                $protocol = $criteria['protocol'] ?? null;
+                $code = $criteria['code'] ?? null;
+                $name = $criteria['name'] ?? null;
+
+                if ($protocol === $blockPeach->getProtocol() && ($code === 'shared__block' || $name === 'Bloque compartido')) {
+                    return $blockPeach;
+                }
+                if ($protocol === $blockGreen->getProtocol() && ($code === 'shared__block' || $name === 'Bloque compartido')) {
+                    return $blockGreen;
+                }
+
+                return null;
+            }),
+            Measure::class => $this->createRepository(static fn (): ?Measure => null),
+            \Gedmo\Translatable\Entity\Translation::class => $this->createRepository(static fn (): ?object => null),
+        ];
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager
+            ->method('getRepository')
+            ->willReturnCallback(static function (string $class) use ($repositories) {
+                if (!isset($repositories[$class])) {
+                    throw new \RuntimeException(sprintf('Unexpected repository request for %s', $class));
+                }
+
+                return $repositories[$class];
+            });
+
+        $entityManager->method('persist')->willReturnCallback(static function ($entity) use (&$persistedMeasures): void {
+            if ($entity instanceof Measure) {
+                $persistedMeasures[] = $entity;
+            }
+        });
+        $entityManager->expects(self::once())->method('flush');
+
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('beginTransaction');
+        $connection->expects(self::once())->method('commit');
+        $entityManager->method('getConnection')->willReturn($connection);
+
+        $importer = new MeasureTemplateV23Importer(
+            $entityManager,
+            $this->createMock(TranslatableListener::class),
+            new MeasureCatalogAdminService(),
+        );
+
+        $report = new MeasureTemplateV23Report();
+        $report->addRow([
+            'row' => 2,
+            'protocol' => 'peach - Peach',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => 'shared__block - Bloque compartido',
+            'category' => '',
+            'categoryGhg' => '',
+            'name' => 'Medida Peach',
+            'nameReview' => '',
+            'description' => '',
+            'implementation' => '',
+            'score' => 5,
+            'mandatory' => 'No',
+            'departments' => '',
+            'odsItems' => '',
+            'esg' => '',
+            'scope' => '',
+            'impactAreas' => '',
+            'tripleBalanceAxes' => '',
+            'verificationSources' => [],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+        ]);
+        $report->addRow([
+            'row' => 3,
+            'protocol' => 'green-film - Green Film',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => 'shared__block - Bloque compartido',
+            'category' => '',
+            'categoryGhg' => '',
+            'name' => 'Medida Green',
+            'nameReview' => '',
+            'description' => '',
+            'implementation' => '',
+            'score' => 4,
+            'mandatory' => 'No',
+            'departments' => '',
+            'odsItems' => '',
+            'esg' => '',
+            'scope' => '',
+            'impactAreas' => '',
+            'tripleBalanceAxes' => '',
+            'verificationSources' => [],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+        ]);
+
+        $result = $importer->import($report, true);
+
+        self::assertSame('applied', $result->getImportSummary()['status'] ?? null);
+        self::assertCount(2, $persistedMeasures);
+        self::assertNotSame(
+            $persistedMeasures[0]->getMeasureBlock(),
+            $persistedMeasures[1]->getMeasureBlock(),
+            'Each protocol must keep its own block instance even if code/name match'
+        );
+        self::assertSame('peach', $persistedMeasures[0]->getProtocol()?->getCode());
+        self::assertSame('green-film', $persistedMeasures[1]->getProtocol()?->getCode());
+    }
+
     private function createRepository(callable $resolver): EntityRepository
     {
         $repository = $this->createMock(EntityRepository::class);

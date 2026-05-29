@@ -43,6 +43,13 @@ class PlanMeasure
     #[ORM\Column(type: 'boolean', nullable: true)]
     private ?bool $isApplicable = null;
 
+    #[ORM\Column(length: 20, options: ['default' => 'manual'])]
+    private string $applicabilitySource = 'manual';
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?SustainabilityPlanBlockAnswer $blockSkipAnswer = null;
+
     #[ORM\Column(type: 'boolean', nullable: true)]
     private ?bool $willImplement = null;
 
@@ -96,6 +103,44 @@ class PlanMeasure
     // isApplicable tri-estado
     public function isApplicable(): ?bool { return $this->isApplicable; }
     public function setIsApplicable(?bool $applicable): static { $this->isApplicable = $applicable; return $this; }
+
+    public function getApplicabilitySource(): string
+    {
+        return $this->applicabilitySource;
+    }
+
+    public function setApplicabilitySource(string $applicabilitySource): static
+    {
+        $this->applicabilitySource = $applicabilitySource;
+        return $this;
+    }
+
+    public function markAsManual(): static
+    {
+        $this->applicabilitySource = 'manual';
+        $this->blockSkipAnswer = null;
+
+        return $this;
+    }
+
+    public function markAsBlockSkipped(SustainabilityPlanBlockAnswer $blockSkipAnswer): static
+    {
+        $this->applicabilitySource = 'block_skip';
+        $this->blockSkipAnswer = $blockSkipAnswer;
+
+        return $this;
+    }
+
+    public function getBlockSkipAnswer(): ?SustainabilityPlanBlockAnswer
+    {
+        return $this->blockSkipAnswer;
+    }
+
+    public function setBlockSkipAnswer(?SustainabilityPlanBlockAnswer $blockSkipAnswer): static
+    {
+        $this->blockSkipAnswer = $blockSkipAnswer;
+        return $this;
+    }
 
     public function willImplement(): ?bool { return $this->willImplement; }
     public function setWillImplement(?bool $implement): static { $this->willImplement = $implement; return $this; }

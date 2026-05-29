@@ -179,6 +179,10 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 - El admin de medidas ya permite revisar y ajustar manualmente el catálogo importado, incluyendo taxonomías múltiples y fuentes de verificación por prioridad.
 - En el flujo del plan, el protocolo canónico de esta fase consume solo las medidas activas definidas para el plan; las medidas legacy del mismo protocolo quedan excluidas del recorrido canónico.
 - El review/listado del plan ya expone filtros básicos por departamento, ODS, área de impacto, triple balance y alcance, usando taxonomías múltiples cuando existen.
+- El orden de las medidas cambia según la vista:
+  - en la vista operativa de creación del plan se ordenan por `categoría` o `departamento` según el `groupingBy` del protocolo, y después por nombre de medida;
+  - en la vista tabular/review, ya con el plan creado, se ordenan por estado del plan de la medida (`rank`) y después por `nameReview` si existe, o por `name`;
+  - en las exportaciones agrupadas, el agrupado se hace por la taxonomía elegida y dentro de cada grupo se ordena por nombre visible (`displayName`).
 - Las exportaciones del plan ya siguen el modelo Basic / Standard / Pro: Basic solo descarga el PDF unificado, Standard añade PDF agrupado por departamentos y Pro añade PDF/Excel agrupados por categorías, departamentos, áreas de impacto, triple balance y ODS.
 - La capa Pro de colaboración añade comentarios visibles, notas internas, responsables por medida, resumen de validación y medidas personalizadas de proyecto.
 - El review del plan también muestra niveles de compromiso basados en puntos oficiales del catálogo de medidas:
@@ -188,6 +192,19 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
   - cálculo por puntos oficiales, no por número de medidas;
   - las medidas personalizadas no entran en este nivel;
   - es un indicador motivacional, no una certificación formal.
+- La inclusión de medidas por plan comercial es por puntuación, no por IDs fijos:
+  - `Basic`: medidas de 4 y 5 puntos;
+  - `Standard`: medidas de 3, 4 y 5 puntos;
+  - `Pro`: medidas de 1, 2, 3, 4 y 5 puntos.
+  - Este filtro se aplica sobre el catálogo oficial visible del protocolo y después de excluir bloques saltados.
+  - No existe una lista estática medida-por-medida en la documentación: la fuente de verdad funcional es el catálogo activo + la lógica de resolver el tier.
+- Los bloques de medidas son una subclasificación opcional dentro de un protocolo:
+  - no son categorías principales ni tienen subbloques;
+  - pueden tener una pregunta previa opcional;
+  - si se responde "No", el flujo marca automáticamente como `No aplica` las medidas visibles del bloque y deja trazabilidad del salto;
+  - si se responde "Sí", las medidas auto-descartadas por ese bloque vuelven a estado pendiente para poder responderse;
+  - los bloques descartados no computan en la puntuación máxima aplicable del plan.
+  - el campo `Orden` del bloque es interno y no gobierna el recorrido del plan; el recorrido operativo lo determinan las medidas.
 - Stripe Checkout ya activa `standard` y `pro` por proyecto con facturas emitidas por Stripe; la integración está documentada en [docs/stripe-payments.md](../docs/stripe-payments.md).
 
 ## Tiers comerciales

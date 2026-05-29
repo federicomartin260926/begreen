@@ -37,6 +37,9 @@ class Plan
     #[ORM\OneToMany(mappedBy: 'plan', targetEntity: PlanMeasure::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $planMeasures;
 
+    #[ORM\OneToMany(mappedBy: 'sustainabilityPlan', targetEntity: SustainabilityPlanBlockAnswer::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $blockAnswers;
+
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
     private ?Protocol $protocol = null;
@@ -48,6 +51,7 @@ class Plan
     public function __construct()
     {
         $this->planMeasures = new ArrayCollection();
+        $this->blockAnswers = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -110,6 +114,33 @@ class Plan
     public function setCustomMeasures(?string $customMeasures): static
     {
         $this->customMeasures = $customMeasures;
+        return $this;
+    }
+
+    /** @return Collection<int, SustainabilityPlanBlockAnswer> */
+    public function getBlockAnswers(): Collection
+    {
+        return $this->blockAnswers;
+    }
+
+    public function addBlockAnswer(SustainabilityPlanBlockAnswer $blockAnswer): static
+    {
+        if (!$this->blockAnswers->contains($blockAnswer)) {
+            $this->blockAnswers[] = $blockAnswer;
+            $blockAnswer->setSustainabilityPlan($this);
+        }
+
+        return $this;
+    }
+
+    public function removeBlockAnswer(SustainabilityPlanBlockAnswer $blockAnswer): static
+    {
+        if ($this->blockAnswers->removeElement($blockAnswer)) {
+            if ($blockAnswer->getSustainabilityPlan() === $this) {
+                $blockAnswer->setSustainabilityPlan(null);
+            }
+        }
+
         return $this;
     }
 }

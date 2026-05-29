@@ -39,6 +39,13 @@
                   <th class="text-center">{{ 'backend.aux.table.department'|trans }}</th>
                 {% endif %}
 
+                {% if type == 'measure_block' %}
+                  <th class="text-center">{{ 'backend.aux.table.protocol'|trans }}</th>
+                  <th class="text-center">{{ 'backend.aux.table.code'|trans }}</th>
+                  <th class="text-center">{{ 'backend.aux.table.active'|trans }}</th>
+                  <th class="text-center">{{ 'backend.aux.table.has_screening_question'|trans }}</th>
+                {% endif %}
+
                 <th width="200" class="text-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
               </tr>
             </thead>
@@ -68,6 +75,21 @@
                       {% else %}
                         —
                       {% endif %}
+                    </td>
+                  {% endif %}
+
+                  {% if type == 'measure_block' %}
+                    <td class="text-center">{{ item.protocol ? item.protocol.name : '—' }}</td>
+                    <td class="text-center">{{ item.code }}</td>
+                    <td class="text-center">
+                      <span class="badge {{ item.active ? 'bg-success' : 'bg-secondary' }}">
+                        {{ item.active ? 'backend.common.yes'|trans : 'backend.common.no'|trans }}
+                      </span>
+                    </td>
+                    <td class="text-center">
+                      <span class="badge {{ item.hasScreeningQuestion ? 'bg-warning text-dark' : 'bg-light text-dark border' }}">
+                        {{ item.hasScreeningQuestion ? 'backend.common.yes'|trans : 'backend.common.no'|trans }}
+                      </span>
                     </td>
                   {% endif %}
 
