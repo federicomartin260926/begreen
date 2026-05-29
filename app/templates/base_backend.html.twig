@@ -35,6 +35,7 @@
                 app.request.attributes.get('_route') starts with 'admin_auxiliary' or
                 app.request.attributes.get('_route') starts with 'admin_communication' or
                 app.request.attributes.get('_route') starts with 'admin_cms' or
+                app.request.attributes.get('_route') starts with 'admin_commercial_plans' or
                 app.request.attributes.get('_route') starts with 'admin_logo'
             %}
 
@@ -74,6 +75,11 @@
                             {% if app.request.attributes.get('_route') starts with 'admin_cms' or app.request.attributes.get('_route') starts with 'admin_logo' %}active fw-bold{% endif %}" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}">
                                 <i class="bi bi-layout-text-window-reverse flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.cms'|trans }}</span>
+                            </a>
+
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_commercial_plans' %}active fw-bold{% endif %}" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}">
+                                <i class="bi bi-currency-euro flex-shrink-0"></i>
+                                <span class="ms-2">{{ 'backend.menu.commercial_plans'|trans }}</span>
                             </a>
 
                             <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_communication' %}active fw-bold{% endif %}" href="{{ path('admin_communication_index', {'_locale': app.request.locale}) }}">
@@ -135,6 +141,11 @@
                                 <a class="dropdown-item text-decoration-none small
                                     {% if app.request.attributes.get('_route') starts with 'admin_cms' or app.request.attributes.get('_route') starts with 'admin_logo' %}fw-bold{% endif %}" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}">
                                     <i class="bi bi-layout-text-window-reverse me-1"></i> {{ 'backend.menu.cms'|trans }}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item text-decoration-none small {% if app.request.attributes.get('_route') starts with 'admin_commercial_plans' %}fw-bold{% endif %}" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}">
+                                    <i class="bi bi-currency-euro me-1"></i> {{ 'backend.menu.commercial_plans'|trans }}
                                 </a>
                             </li>
                             <li>

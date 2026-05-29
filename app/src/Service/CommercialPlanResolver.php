@@ -173,7 +173,6 @@ final class CommercialPlanResolver
                 'sustainability_plan.export.triple_balance' => false,
                 'sustainability_plan.export.ods' => false,
                 'sustainability_plan.export.excel' => false,
-                'sustainability_plan.custom_comments' => false,
                 'sustainability_plan.public_comments' => false,
                 'sustainability_plan.internal_notes' => false,
                 'sustainability_plan.responsibles' => false,

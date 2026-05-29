@@ -1,0 +1,85 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.commercial_plans.form.title'|trans({'%name%': plan.name}) }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item">
+        <a class="text-decoration-none" href="{{ path('admin_commercial_plans_index') }}">{{ 'backend.commercial_plans.list.breadcrumb'|trans }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{{ plan.name }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10 bg-white p-4 rounded shadow">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <h2 class="mb-1">{{ 'backend.commercial_plans.form.heading'|trans({'%name%': plan.name}) }}</h2>
+                    <p class="text-muted mb-0">{{ 'backend.commercial_plans.form.subtitle'|trans }}</p>
+                </div>
+                <span class="badge bg-secondary text-uppercase">{{ plan.code }}</span>
+            </div>
+
+            {{ form_start(form) }}
+                {{ form_errors(form) }}
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">{{ form_row(form.name) }}</div>
+                    <div class="col-md-6 mb-3">{{ form_row(form.priceCurrency) }}</div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">{{ form_row(form.priceAmount) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.maxEvidenceCount) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.sortOrder) }}</div>
+                </div>
+
+                <div class="mb-3">{{ form_row(form.description) }}</div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">{{ form_row(form.watermarkEnabled) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.active) }}</div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <h5 class="mb-3">{{ 'backend.commercial_plans.form.allowed_scores_heading'|trans }}</h5>
+                        {{ form_widget(form.allowedScores) }}
+                        {{ form_errors(form.allowedScores) }}
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <h5 class="mb-3">{{ 'backend.commercial_plans.form.features_heading'|trans }}</h5>
+                    </div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.pdfByDepartments) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.advancedExports) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.publicComments) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.internalNotes) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.responsibles) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.checklist) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.customMeasures) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.validationSummary) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.branding) }}</div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ path('admin_commercial_plans_index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+                    </a>
+                    <button class="btn btn-primary">
+                        <i class="bi bi-save"></i> {{ 'backend.common.save_changes'|trans }}
+                    </button>
+                </div>
+            {{ form_end(form) }}
+        </div>
+    </div>
+</div>
+{% endblock %}

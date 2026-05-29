@@ -4,7 +4,6 @@ namespace App\Tests\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
-use App\Service\CommercialPlanResolver;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use PHPUnit\Framework\TestCase;
 
@@ -22,6 +21,7 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertTrue($resolver->hasWatermark($project));
         self::assertSame(10, $resolver->getMaxEvidenceCount($project));
         self::assertFalse($resolver->canUseFeature($project, 'sustainability_plan.department_pdf'));
+        self::assertFalse($resolver->canUseFeature($project, 'sustainability_plan.custom_comments'));
         self::assertSame('Basic', $resolver->getPlanLabel($project));
     }
 
@@ -35,6 +35,7 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertFalse($resolver->hasWatermark($project));
         self::assertNull($resolver->getMaxEvidenceCount($project));
         self::assertTrue($resolver->canUseFeature($project, 'sustainability_plan.department_pdf'));
+        self::assertFalse($resolver->canUseFeature($project, 'sustainability_plan.custom_comments'));
         self::assertFalse($resolver->canUseFeature($project, 'sustainability_plan.export.excel'));
         self::assertSame('Standard', $resolver->getPlanLabel($project));
     }
@@ -50,6 +51,7 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertNull($resolver->getMaxEvidenceCount($project));
         self::assertTrue($resolver->canUseFeature($project, 'sustainability_plan.export.excel'));
         self::assertTrue($resolver->canUseFeature($project, 'sustainability_plan.branding'));
+        self::assertTrue($resolver->canUseFeature($project, 'sustainability_plan.custom_comments'));
         self::assertSame('Pro', $resolver->getPlanLabel($project));
     }
 
