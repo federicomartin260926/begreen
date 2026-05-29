@@ -3,13 +3,11 @@
 namespace App\DataFixtures;
 
 use App\Entity\Measure;
-use App\Entity\MeasureBlock;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Protocol;
 use App\Entity\Project;
 use App\Repository\MeasureRepository;
-use App\Service\PlanBlockQuestionService;
 use App\Service\PlanMeasureCatalogResolver;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
@@ -20,7 +18,6 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
 {
     public function __construct(
         private readonly MeasureRepository $measureRepository,
-        private readonly PlanBlockQuestionService $blockQuestionService,
     ) {
     }
 
@@ -71,34 +68,15 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
             ->setProject($project)
             ->setUser($project->getUser() ?? null)
             ->setProtocol($protocol)
-            ->setStatus('incompleto')
+            ->setStatus('completo')
             ->setStatusChangedAt(new \DateTimeImmutable())
             ->setCustomMeasures(null);
 
         $catalogMeasures = $this->measureRepository->getCatalogMeasuresForProtocol($project, $protocol);
-        $usedMeasureIds = [];
 
-        $blockSeed = $this->findSeedableBlockQuestion($catalogMeasures);
-        if ($blockSeed !== null) {
-            [$block, $blockMeasures] = $blockSeed;
-            $this->blockQuestionService->applyAnswer(
-                $plan,
-                $block,
-                false,
-                $project->getUser(),
-                $blockMeasures
-            );
-            foreach ($blockMeasures as $measure) {
-                $usedMeasureIds[(int) $measure->getId()] = true;
-            }
-        }
+        $measuresToSeed = array_values($catalogMeasures);
 
-        $remainingMeasures = array_values(array_filter(
-            $catalogMeasures,
-            static fn (Measure $measure): bool => !isset($usedMeasureIds[(int) $measure->getId()])
-        ));
-
-        usort($remainingMeasures, static function (Measure $left, Measure $right): int {
+        usort($measuresToSeed, static function (Measure $left, Measure $right): int {
             $scoreDiff = (int) ($right->getScore() ?? 0) <=> (int) ($left->getScore() ?? 0);
             if ($scoreDiff !== 0) {
                 return $scoreDiff;
@@ -111,16 +89,12 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
             ['isApplicable' => true,  'willImplement' => true,  'implemented' => true,  'isCritical' => true,  'criticalReason' => 'Demo'],
             ['isApplicable' => true,  'willImplement' => false, 'implemented' => null,   'isCritical' => false, 'criticalReason' => null],
             ['isApplicable' => false, 'willImplement' => null,  'implemented' => null,   'isCritical' => null,  'criticalReason' => null],
-            ['isApplicable' => null,  'willImplement' => null,  'implemented' => null,   'isCritical' => null,  'criticalReason' => null],
             ['isApplicable' => true,  'willImplement' => true,  'implemented' => false,  'isCritical' => true,  'criticalReason' => 'Demo'],
+            ['isApplicable' => false, 'willImplement' => null,  'implemented' => null,   'isCritical' => null,  'criticalReason' => null],
         ];
 
-        foreach ($states as $index => $state) {
-            if (!isset($remainingMeasures[$index])) {
-                break;
-            }
-
-            $measure = $remainingMeasures[$index];
+        foreach ($measuresToSeed as $index => $measure) {
+            $state = $states[$index % count($states)];
             $planMeasure = new PlanMeasure();
             $plan->addPlanMeasure($planMeasure);
             $planMeasure->setMeasure($measure);
@@ -149,48 +123,4 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
         }
     }
 
-    /**
-     * @param Measure[] $catalogMeasures
-     * @return array{0: MeasureBlock, 1: Measure[]}|null
-     */
-    private function findSeedableBlockQuestion(array $catalogMeasures): ?array
-    {
-        $preferredCodes = [
-            'modulo-animales-en-el-rodaje',
-            'modulo-menores-en-el-rodaje',
-            'biodiversidad',
-        ];
-
-        foreach ($preferredCodes as $preferredCode) {
-            $blockMeasures = array_values(array_filter(
-                $catalogMeasures,
-                static fn (Measure $measure): bool => $measure->getMeasureBlock()?->getCode() === $preferredCode
-            ));
-
-            if ($blockMeasures === []) {
-                continue;
-            }
-
-            $block = $blockMeasures[0]->getMeasureBlock();
-            if ($block instanceof MeasureBlock && $block->hasScreeningQuestion()) {
-                return [$block, $blockMeasures];
-            }
-        }
-
-        foreach ($catalogMeasures as $measure) {
-            $block = $measure->getMeasureBlock();
-            if ($block instanceof MeasureBlock && $block->hasScreeningQuestion()) {
-                $blockMeasures = array_values(array_filter(
-                    $catalogMeasures,
-                    static fn (Measure $candidate): bool => $candidate->getMeasureBlock()?->getId() === $block->getId()
-                ));
-
-                if ($blockMeasures !== []) {
-                    return [$block, $blockMeasures];
-                }
-            }
-        }
-
-        return null;
-    }
 }
