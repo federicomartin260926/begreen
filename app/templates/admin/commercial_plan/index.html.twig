@@ -30,7 +30,7 @@
                             <th class="text-end">{{ 'backend.commercial_plans.list.table.price'|trans }}</th>
                             <th>{{ 'backend.commercial_plans.list.table.status'|trans }}</th>
                             <th class="text-center">{{ 'backend.commercial_plans.list.table.sort_order'|trans }}</th>
-                            <th class="text-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
+                            <th class="text-center dt-head-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -60,10 +60,16 @@
                                 </td>
                                 <td class="text-center">{{ plan.sortOrder }}</td>
                                 <td class="text-center">
-                                    <a href="{{ path('admin_commercial_plans_edit', {id: plan.id}) }}"
-                                       class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
+                                    <div class="d-flex justify-content-center align-items-center">
+                                        <a
+                                            href="{{ path('admin_commercial_plans_edit', {id: plan.id}) }}"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="hover"
+                                            data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                            class="btn">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         {% else %}
