@@ -110,15 +110,16 @@
             </thead>
             <tbody>
             {% for project in projects %}
+              {% set activeRowStyle = activeProject and project.id == activeProject.id ? 'background-color: #efefef;' : '' %}
               <tr>
-                <td>{{ project.name }}</td>
-                <td class="text-center">
+                <td style="{{ activeRowStyle }}">{{ project.name }}</td>
+                <td class="text-center" style="{{ activeRowStyle }}">
                   {% if project.type == 'rodaje' %}{{ 'backend.aux.project_type.filming'|trans }}
                   {% elseif project.type == 'evento' %}{{ 'backend.aux.project_type.event'|trans }}
                   {% else %}{{ 'backend.aux.project_type.generic'|trans }}{% endif %}
                 </td>
-                <td class="text-center">{{ project.country }}</td>
-                <td class="text-center">
+                <td class="text-center" style="{{ activeRowStyle }}">{{ project.country }}</td>
+                <td class="text-center" style="{{ activeRowStyle }}">
                   {% set tier = project.subscription ? project.subscription.tier : 'basic' %}
                   <span class="badge {% if tier == 'pro' %}bg-success{% elseif tier == 'standard' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
                     {{ featureGate.getPlanLabel(project) }}
@@ -126,7 +127,7 @@
                 </td>
 
                 {% if is_admin %}
-                  <td class="text-center">
+                  <td class="text-center" style="{{ activeRowStyle }}">
                     {% set subscription = project.subscription %}
                     {% if subscription %}
                       <div class="d-flex flex-column gap-1">
@@ -166,7 +167,7 @@
                       <span class="text-muted">—</span>
                     {% endif %}
                   </td>
-                  <td class="text-left">
+                  <td class="text-left" style="{{ activeRowStyle }}">
                     {% if project.user %}
                         {{ (project.user.name|default('')) ~ (project.user.surnames ? ' ' ~ project.user.surnames : '') ~ (project.user.email ? ' (' ~ project.user.email ~ ')' : '') }}
                     {% else %}
@@ -174,19 +175,19 @@
                     {% endif %}
                   </td>
                 {% endif %}
-                <td class="text-center" data-order="{{ project.createdAt ? 'A' ~ project.createdAt|date('U') : '' }}">
+                <td class="text-center" data-order="{{ project.createdAt ? 'A' ~ project.createdAt|date('U') : '' }}" style="{{ activeRowStyle }}">
                   {{ project.createdAt ? project.createdAt|date('d/m/Y') : '' }}
                 </td>
 
                 {% if projects|length > 1 %}
-                  <td class="text-center">
+                  <td class="text-center" style="{{ activeRowStyle }}">
                     {% if activeProject and project.id == activeProject.id %}
                       <i class="bi bi-check-lg text-success" title="{{ 'backend.projects.table.active'|trans }}"></i>
                     {% endif %}
                   </td>
                 {% endif %}
 
-                <td class="text-center">
+                <td class="text-center" style="{{ activeRowStyle }}">
                   <a
                     href="{{ path('backend_project_edit', {id: project.id}) }}"
                     data-bs-toggle="popover"

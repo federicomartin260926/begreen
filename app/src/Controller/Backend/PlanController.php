@@ -569,6 +569,14 @@ class PlanController extends AbstractController
             $willImplement = $request->query->get('will_implement');
         }
 
+        $paginationQuery = $request->query->all();
+        if (!array_key_exists('is_applicable', $paginationQuery) && $isApplicable !== null && $isApplicable !== '') {
+            $paginationQuery['is_applicable'] = $isApplicable;
+        }
+        if (!array_key_exists('will_implement', $paginationQuery) && $willImplement !== null && $willImplement !== '') {
+            $paginationQuery['will_implement'] = $willImplement;
+        }
+
         $page    = max(1, (int)$request->query->get('page', 1));
         $perPage = 10;
 
@@ -728,6 +736,7 @@ class PlanController extends AbstractController
             'offset'           => $offset,
             'perPage'          => $perPage,
             'positionById'     => $positionById,
+            'paginationQuery'  => $paginationQuery,
             'filters'          => [
                 'protocol'          => $protocol,
                 'category'          => $category,

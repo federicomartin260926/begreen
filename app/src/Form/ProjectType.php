@@ -69,6 +69,7 @@ class ProjectType extends AbstractType
         ];
 
         $showCommercialTier = (bool) $options['show_commercial_tier'];
+        $commercialTierValue = (string) ($options['commercial_tier_value'] ?? 'basic');
         $basicPlan = $this->commercialPlanResolver->getPlanByCode('basic');
         $standardPlan = $this->commercialPlanResolver->getPlanByCode('standard');
         $proPlan = $this->commercialPlanResolver->getPlanByCode('pro');
@@ -117,7 +118,7 @@ class ProjectType extends AbstractType
                 ],
                 'choice_translation_domain' => false,
                 'placeholder' => false,
-                'data' => null,
+                'data' => $commercialTierValue,
                 'disabled' => !$showCommercialTier,
                 'row_attr' => $showCommercialTier ? [] : ['class' => 'd-none'],
             ])
@@ -308,6 +309,7 @@ class ProjectType extends AbstractType
         $resolver->setDefaults([
             'data_class' => Project::class,
             'show_commercial_tier' => false,
+            'commercial_tier_value' => 'basic',
         ]);
     }
 }

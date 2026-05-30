@@ -55,6 +55,7 @@ class ProjectController extends AbstractController
         $page    = max(1, (int) $request->query->get('page', 1));
         $perPage = 10;
         $offset  = ($page - 1) * $perPage;
+        $activeProject = $activeProjectService->getActiveProject();
 
         // Query base (membresías)
         $qb = $projectRepository->createQueryBuilder('p')
@@ -105,16 +106,23 @@ class ProjectController extends AbstractController
             ->getSingleScalarResult();
 
         // Página actual
-        $projects = $qb
-            ->select('DISTINCT p')
-            ->orderBy('p.createdAt', 'DESC')
+        $query = $qb->select('DISTINCT p');
+
+        if ($activeProject?->getId()) {
+            $query
+                ->addSelect('CASE WHEN p.id = :activeProjectId THEN 0 ELSE 1 END AS HIDDEN activeProjectOrder')
+                ->setParameter('activeProjectId', $activeProject->getId())
+                ->orderBy('activeProjectOrder', 'ASC')
+                ->addOrderBy('p.name', 'ASC');
+        } else {
+            $query->orderBy('p.name', 'ASC');
+        }
+
+        $projects = $query
             ->setFirstResult($offset)
             ->setMaxResults($perPage)
             ->getQuery()
             ->getResult();
-
-        // Proyecto activo
-        $activeProject = $activeProjectService->getActiveProject();
 
         return $this->render('backend/project/index.html.twig', [
             'projects'      => $projects,
@@ -208,10 +216,8 @@ class ProjectController extends AbstractController
 
         $form = $this->createForm(ProjectType::class, $project, [
             'show_commercial_tier' => $showCommercialTier,
+            'commercial_tier_value' => $this->featureGate->getTier($project),
         ]);
-        if ($form->has('commercialTier')) {
-            $form->get('commercialTier')->setData($this->featureGate->getTier($project));
-        }
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
