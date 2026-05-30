@@ -17,6 +17,8 @@ final class ProjectFeatureGateTest extends TestCase
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC);
 
         self::assertSame([4, 5], $gate->getAllowedScores($project));
+        self::assertSame('Basic', $gate->getPlanLabel($project));
+        self::assertSame('Plan gratuito de entrada.', $gate->getPlanDescription($project));
         self::assertTrue($gate->hasWatermark($project));
         self::assertSame(10, $gate->getMaxEvidenceCount($project));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
@@ -34,6 +36,8 @@ final class ProjectFeatureGateTest extends TestCase
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_STANDARD);
 
         self::assertSame([3, 4, 5], $gate->getAllowedScores($project));
+        self::assertSame('Standard', $gate->getPlanLabel($project));
+        self::assertSame('Plan intermedio.', $gate->getPlanDescription($project));
         self::assertFalse($gate->hasWatermark($project));
         self::assertNull($gate->getMaxEvidenceCount($project));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
@@ -50,6 +54,8 @@ final class ProjectFeatureGateTest extends TestCase
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_PRO);
 
         self::assertSame([1, 2, 3, 4, 5], $gate->getAllowedScores($project));
+        self::assertSame('Pro', $gate->getPlanLabel($project));
+        self::assertSame('Plan completo.', $gate->getPlanDescription($project));
         self::assertFalse($gate->hasWatermark($project));
         self::assertNull($gate->getMaxEvidenceCount($project));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.branding'));
@@ -69,6 +75,7 @@ final class ProjectFeatureGateTest extends TestCase
         $project = new Project();
 
         self::assertSame(ProjectSubscription::TIER_BASIC, $gate->getTier($project));
+        self::assertSame('Basic', $gate->getPlanLabel($project));
     }
 
     private function createProjectWithTier(string $tier): Project

@@ -187,6 +187,8 @@ class ProjectController extends AbstractController
             'form' => $form->createView(),
             'edit' => false,
             'commercialTier' => $this->featureGate->getTier($project),
+            'commercialTierLabel' => $this->featureGate->getPlanLabel($project),
+            'commercialTierDescription' => $this->featureGate->getPlanDescription($project),
         ]);
     }
 
@@ -244,6 +246,8 @@ class ProjectController extends AbstractController
             'lockedPhases' => $lockedPhases
             ,
             'commercialTier' => $this->featureGate->getTier($project),
+            'commercialTierLabel' => $this->featureGate->getPlanLabel($project),
+            'commercialTierDescription' => $this->featureGate->getPlanDescription($project),
         ]);
     }
 

@@ -121,7 +121,7 @@
                 <td class="text-center">
                   {% set tier = project.subscription ? project.subscription.tier : 'basic' %}
                   <span class="badge {% if tier == 'pro' %}bg-success{% elseif tier == 'standard' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                    {{ tier|upper }}
+                    {{ featureGate.getPlanLabel(project) }}
                   </span>
                 </td>
 

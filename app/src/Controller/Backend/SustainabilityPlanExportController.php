@@ -12,7 +12,6 @@ use App\Service\SustainabilityPlanGroupedPdfExporter;
 use App\Service\SustainabilityPlanGroupingService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
-use App\Entity\ProjectSubscription;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -76,7 +75,7 @@ final class SustainabilityPlanExportController extends AbstractController
             'groupingLabel' => $this->groupingService->getGroupingLabel($grouping),
             'groups' => $groups,
             'projectTier' => $this->featureGate->getTier($project),
-            'projectTierLabel' => $this->getProjectTierLabel($this->featureGate->getTier($project)),
+            'projectTierLabel' => $this->featureGate->getPlanLabel($project),
             'generatedAt' => new \DateTimeImmutable(),
             'hasWatermark' => $this->featureGate->hasWatermark($project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
@@ -202,12 +201,4 @@ final class SustainabilityPlanExportController extends AbstractController
         return sprintf('plan_sostenibilidad_%s_%s.%s', $projectSlug, $groupingSlug, $extension);
     }
 
-    private function getProjectTierLabel(string $tier): string
-    {
-        return match ($tier) {
-            ProjectSubscription::TIER_STANDARD => 'Standard',
-            ProjectSubscription::TIER_PRO => 'Pro',
-            default => 'Basic',
-        };
-    }
 }

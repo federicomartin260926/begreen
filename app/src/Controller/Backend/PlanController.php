@@ -390,14 +390,16 @@ class PlanController extends AbstractController
         $projectTier = $this->featureGate->getTier($project);
         $evidenceLimit = $this->featureGate->getMaxEvidenceCount($project);
         $evidenceCount = $this->countProjectEvidenceFiles($plan);
+        $projectTierLabel = $this->featureGate->getPlanLabel($project);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         // ===== Render =====
         return $this->render('backend/plan/measures.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
             'projectTier'      => $projectTier,
-            'projectTierLabel'  => $this->getProjectTierLabel($projectTier),
-            'projectTierSummary'=> $this->getProjectTierSummary($projectTier),
+            'projectTierLabel'  => $projectTierLabel,
+            'projectTierSummary'=> $projectTierSummary,
             'evidenceCount'    => $evidenceCount,
             'evidenceLimit'    => $evidenceLimit,
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
@@ -701,13 +703,15 @@ class PlanController extends AbstractController
         }
 
         $uiLocale = $request->getLocale();
+        $projectTierLabel = $this->featureGate->getPlanLabel($project);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
             'projectTier'      => $this->featureGate->getTier($project),
-            'projectTierLabel'  => $this->getProjectTierLabel($this->featureGate->getTier($project)),
-            'projectTierSummary'=> $this->getProjectTierSummary($this->featureGate->getTier($project)),
+            'projectTierLabel'  => $projectTierLabel,
+            'projectTierSummary'=> $projectTierSummary,
             'evidenceCount'    => $this->countProjectEvidenceFiles($plan),
             'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project),
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
@@ -1694,13 +1698,15 @@ class PlanController extends AbstractController
         }
 
         $activeFilters = array_merge($activeMain, $activeFlags);
+        $projectTierLabel = $this->featureGate->getPlanLabel($project);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         return [
             'project'        => $project,
             'plan'           => $plan,
             'projectTier'    => $this->featureGate->getTier($project),
-            'projectTierLabel'=> $this->getProjectTierLabel($this->featureGate->getTier($project)),
-            'projectTierSummary'=> $this->getProjectTierSummary($this->featureGate->getTier($project)),
+            'projectTierLabel'=> $projectTierLabel,
+            'projectTierSummary'=> $projectTierSummary,
             'hasWatermark'   => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
@@ -2070,24 +2076,6 @@ class PlanController extends AbstractController
         }
 
         return $cards;
-    }
-
-    private function getProjectTierLabel(string $tier): string
-    {
-        return match ($tier) {
-            ProjectSubscription::TIER_STANDARD => 'Standard',
-            ProjectSubscription::TIER_PRO => 'Pro',
-            default => 'Basic',
-        };
-    }
-
-    private function getProjectTierSummary(string $tier): string
-    {
-        return match ($tier) {
-            ProjectSubscription::TIER_STANDARD => $this->t->trans('backend.plan.tier.standard_summary'),
-            ProjectSubscription::TIER_PRO => $this->t->trans('backend.plan.tier.pro_summary'),
-            default => $this->t->trans('backend.plan.tier.basic_summary'),
-        };
     }
 
     private function countProjectEvidenceFiles(Plan $plan): int

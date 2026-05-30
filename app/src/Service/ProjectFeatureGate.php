@@ -45,6 +45,16 @@ final class ProjectFeatureGate
         return $this->commercialPlanResolver->getMaxEvidenceCount($project);
     }
 
+    public function getPlanLabel(Project $project): string
+    {
+        return $this->commercialPlanResolver->getPlanLabel($project);
+    }
+
+    public function getPlanDescription(Project $project): ?string
+    {
+        return $this->commercialPlanResolver->getPlanDescription($project);
+    }
+
     public function hasWatermark(Project $project): bool
     {
         return $this->commercialPlanResolver->hasWatermark($project);

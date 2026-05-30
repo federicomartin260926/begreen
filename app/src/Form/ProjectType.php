@@ -4,6 +4,7 @@ namespace App\Form;
 
 use App\Entity\Project;
 use App\Form\ProjectPhaseDateType;
+use App\Service\CommercialPlanResolver;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\CountryType;
@@ -16,6 +17,10 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class ProjectType extends AbstractType
 {
+    public function __construct(private readonly CommercialPlanResolver $commercialPlanResolver)
+    {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         // ====== Opciones de selects (todas con i18n) ======
@@ -64,6 +69,9 @@ class ProjectType extends AbstractType
         ];
 
         $showCommercialTier = (bool) $options['show_commercial_tier'];
+        $basicPlan = $this->commercialPlanResolver->getPlanByCode('basic');
+        $standardPlan = $this->commercialPlanResolver->getPlanByCode('standard');
+        $proPlan = $this->commercialPlanResolver->getPlanByCode('pro');
 
         $builder
             // ====== Datos básicos ======
@@ -103,9 +111,9 @@ class ProjectType extends AbstractType
                 'mapped' => false,
                 'required' => false,
                 'choices' => [
-                    'Basic' => 'basic',
-                    'Standard' => 'standard',
-                    'Pro' => 'pro',
+                    $basicPlan->getName() => 'basic',
+                    $standardPlan->getName() => 'standard',
+                    $proPlan->getName() => 'pro',
                 ],
                 'choice_translation_domain' => false,
                 'placeholder' => false,

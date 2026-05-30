@@ -70,8 +70,13 @@
                     <div class="col-12 col-md-4 form-label-over mb-3">
                         {{ form_label(form.commercialTier) }}
                         {{ form_widget(form.commercialTier) }}
-                        {% if commercialTier is defined %}
-                            <div class="small text-muted mt-1">{{ 'backend.projects.form.commercial_tier_current'|trans }} {{ commercialTier|upper }}</div>
+                        {% if commercialTierLabel is defined %}
+                            <div class="small text-muted mt-1">
+                                {{ 'backend.projects.form.commercial_tier_current'|trans }} {{ commercialTierLabel }}
+                                {% if commercialTierDescription is defined and commercialTierDescription %}
+                                    <br>{{ commercialTierDescription }}
+                                {% endif %}
+                            </div>
                         {% endif %}
                     </div>
                 </div>
