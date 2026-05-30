@@ -88,6 +88,13 @@ export default class extends Controller {
       columnDefs.push({ orderable: false, targets: noOrderIdx });
     }
 
+    const expectedColumns = $table.find('thead th').length;
+    const bodyRows = $table.find('tbody tr').toArray();
+    const hasUniformRows = bodyRows.every((row) => $(row).children('td,th').length === expectedColumns);
+    if (!hasUniformRows) {
+      return;
+    }
+
     if (columnDefs.length) {
       options.columnDefs = columnDefs;
     }
