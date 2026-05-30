@@ -1472,6 +1472,8 @@ class PlanController extends AbstractController
             'plan'           => $ctx['plan'],
             'measuresByDpto' => $ctx['measuresByDpto'],
             'activeFilters'  => $ctx['activeFilters'],
+            'taxonomyPresenter' => $ctx['taxonomyPresenter'],
+            'currentUserLabel'   => $ctx['currentUserLabel'],
             'scoreMax'       => $ctx['scoreMax'],
             'scoreGained'    => $ctx['scoreGained'],
             'scorePct'       => $ctx['scorePct'],
@@ -1716,6 +1718,7 @@ class PlanController extends AbstractController
             'projectTier'    => $this->featureGate->getTier($project),
             'projectTierLabel'=> $projectTierLabel,
             'projectTierSummary'=> $projectTierSummary,
+            'currentUserLabel'=> $this->buildCurrentUserLabel(),
             'hasWatermark'   => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
@@ -1734,6 +1737,21 @@ class PlanController extends AbstractController
     private function renderPdfHtml(array $context): string
     {
         return $this->renderView('backend/plan/pdf.html.twig', $context);
+    }
+
+    private function buildCurrentUserLabel(): string
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return '';
+        }
+
+        $fullName = trim((string) $user->getName() . ' ' . (string) $user->getSurnames());
+        if ($fullName !== '') {
+            return $fullName;
+        }
+
+        return (string) ($user->getEmail() ?? '');
     }
 
     private function pdfBytesFromHtml(string $html, string $orientation = 'landscape'): string

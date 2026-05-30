@@ -57,7 +57,7 @@
         '%status%': ('backend.plan.status.' ~ plan.status)|trans
     })|raw }}<br>
     {{ 'backend.plan.pdf.date'|trans }} {{ "now"|date("d/m/Y") }}<br>
-    {{ 'backend.plan.pdf.user'|trans }} {{ app.user.fullName ?? app.user.email }}<br>
+    {{ 'backend.plan.pdf.user'|trans }} {{ currentUserLabel|default(app.user.email ?? '') }}<br>
 
     {# ---línea: puntuación --- #}
     {% if scoreMax is defined and scoreMax > 0 %}
