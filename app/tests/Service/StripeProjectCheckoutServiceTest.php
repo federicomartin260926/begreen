@@ -126,6 +126,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $plans = $this->makeDefaultCommercialPlans();
         $plans['standard']->setStripePriceId('price_standard');
         $plans['pro']->setStripePriceId('price_pro_full');
+        $plans['pro']->setStripeUpgradeFromStandardPriceId(null);
         $service = $this->createService($this->createFakeStripeClient(), $plans);
         $project = $this->createProject(ProjectSubscription::TIER_STANDARD);
 

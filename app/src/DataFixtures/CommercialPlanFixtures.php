@@ -24,6 +24,7 @@ final class CommercialPlanFixtures extends Fixture implements FixtureGroupInterf
                 'priceAmount' => 0,
                 'priceCurrency' => 'EUR',
                 'stripePriceId' => null,
+                'stripeUpgradeFromStandardPriceId' => null,
                 'maxEvidenceCount' => 10,
                 'watermarkEnabled' => true,
                 'active' => true,

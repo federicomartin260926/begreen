@@ -143,7 +143,7 @@ trait CommercialPlanTestHelpers
                 'priceAmount' => 19900,
                 'priceCurrency' => 'EUR',
                 'stripePriceId' => null,
-                'stripeUpgradeFromStandardPriceId' => null,
+                'stripeUpgradeFromStandardPriceId' => 'price_1TedI4QbEObZty5pDwVrk5PS',
                 'maxEvidenceCount' => null,
                 'watermarkEnabled' => false,
                 'active' => true,

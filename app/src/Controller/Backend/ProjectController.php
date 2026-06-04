@@ -4,11 +4,12 @@ namespace App\Controller\Backend;
 
 use App\Entity\{Department, EmissionActivity, EmissionRecord, Plan, Position, Project, CrewMember, ProjectMembership, ProjectPhaseDate, User};
 use App\Form\{ CrewMemberImportType, ProjectType, CrewMemberType, CrewMemberCollectionType };
-use App\Repository\{ ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository };
+use App\Repository\{ ProjectBillingDocumentRepository, ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository };
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Entity\ProjectSubscription;
 use App\Service\ProjectFeatureGate;
+use App\Service\StripeInvoiceStorageService;
 use Gedmo\Translatable\Entity\Translation;
 
 use Doctrine\Common\Collections\ArrayCollection;
@@ -31,7 +32,12 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[IsGranted('ROLE_USER')]
 class ProjectController extends AbstractController
 {
-    public function __construct(private readonly TranslatorInterface $t, private readonly ProjectFeatureGate $featureGate) {}
+    public function __construct(
+        private readonly TranslatorInterface $t,
+        private readonly ProjectFeatureGate $featureGate,
+        private readonly ProjectBillingDocumentRepository $billingDocumentRepository,
+        private readonly StripeInvoiceStorageService $invoiceStorageService,
+    ) {}
 
     #[Route('/', name: 'index')]
     public function index(
@@ -245,6 +251,18 @@ class ProjectController extends AbstractController
                 ->count(['phase' => $phaseDate]) > 0;
         }
 
+        $billingInvoiceAvailable = false;
+        foreach ($this->billingDocumentRepository->findByProjectOrdered($project) as $document) {
+            if (
+                $this->invoiceStorageService->hasLocalCopy($document)
+                || $document->getHostedInvoiceUrl() !== null
+                || $document->getInvoicePdfUrl() !== null
+            ) {
+                $billingInvoiceAvailable = true;
+                break;
+            }
+        }
+
         return $this->render('backend/project/form.html.twig', [
             'form'         => $form->createView(),
             'edit'         => true,
@@ -254,6 +272,7 @@ class ProjectController extends AbstractController
             'commercialTier' => $this->featureGate->getTier($project),
             'commercialTierLabel' => $this->featureGate->getPlanLabel($project),
             'commercialTierDescription' => $this->featureGate->getPlanDescription($project),
+            'billingInvoiceAvailable' => $billingInvoiceAvailable,
         ]);
     }
 

@@ -126,4 +126,67 @@ final class CommercialPlanControllerTest extends KernelTestCase
         self::assertTrue($plan->getFeature('sustainability_plan.custom_comments', false));
         self::assertFalse(array_key_exists('sustainability_plan.custom_comments', $plan->getFeatures()));
     }
+
+    public function testEditFormRendersStripeUpgradePriceRightAfterStripePriceId(): void
+    {
+        $container = self::getContainer();
+
+        $plan = (new CommercialPlan())
+            ->setCode('pro-test')
+            ->setName('Pro')
+            ->setDescription('Plan avanzado.')
+            ->setPriceAmount(19900)
+            ->setPriceCurrency('EUR')
+            ->setStripePriceId('price_pro_live')
+            ->setStripeUpgradeFromStandardPriceId('price_upgrade_live')
+            ->setMaxEvidenceCount(null)
+            ->setWatermarkEnabled(false)
+            ->setActive(true)
+            ->setSortOrder(3)
+            ->setFeatures([
+                'allowed_scores' => [1, 2, 3, 4, 5],
+                'sustainability_plan.department_pdf' => true,
+                'sustainability_plan.export.department_pdf' => true,
+                'sustainability_plan.watermark_free_pdf' => true,
+                'sustainability_plan.history' => true,
+                'sustainability_plan.advanced_exports' => true,
+                'sustainability_plan.export.category' => true,
+                'sustainability_plan.export.department' => true,
+                'sustainability_plan.export.impact_area' => true,
+                'sustainability_plan.export.triple_balance' => true,
+                'sustainability_plan.export.ods' => true,
+                'sustainability_plan.export.excel' => true,
+                'sustainability_plan.public_comments' => true,
+                'sustainability_plan.internal_notes' => true,
+                'sustainability_plan.responsibles' => true,
+                'sustainability_plan.checklist' => true,
+                'sustainability_plan.custom_measures' => true,
+                'sustainability_plan.validation_summary' => true,
+                'sustainability_plan.branding' => true,
+            ]);
+
+        $form = $container->get('form.factory')->create(CommercialPlanType::class, $plan, [
+            'csrf_protection' => false,
+        ]);
+
+        $children = array_keys($form->createView()->children);
+        $stripePriceChildPosition = array_search('stripePriceId', $children, true);
+        $stripeUpgradeChildPosition = array_search('stripeUpgradeFromStandardPriceId', $children, true);
+
+        self::assertNotFalse($stripePriceChildPosition);
+        self::assertNotFalse($stripeUpgradeChildPosition);
+        self::assertGreaterThan($stripePriceChildPosition, $stripeUpgradeChildPosition);
+
+        $template = file_get_contents(__DIR__ . '/../../../templates/admin/commercial_plan/form.html.twig');
+        self::assertNotFalse($template);
+        $stripePriceRowPosition = strpos($template, 'form_row(form.stripePriceId)');
+        $stripeUpgradeRowPosition = strpos($template, 'form_row(form.stripeUpgradeFromStandardPriceId)');
+        $saveButtonPosition = strpos($template, 'backend.common.save_changes');
+
+        self::assertNotFalse($stripePriceRowPosition);
+        self::assertNotFalse($stripeUpgradeRowPosition);
+        self::assertNotFalse($saveButtonPosition);
+        self::assertLessThan($saveButtonPosition, $stripeUpgradeRowPosition);
+        self::assertLessThan($stripeUpgradeRowPosition, $stripePriceRowPosition);
+    }
 }
