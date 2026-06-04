@@ -47,6 +47,12 @@ final class CommercialPlanType extends AbstractType
                     new Length(min: 3, max: 3),
                 ],
             ])
+            ->add('stripePriceId', TextType::class, [
+                'label' => 'backend.commercial_plans.form.stripe_price_id',
+                'required' => false,
+                'attr' => ['maxlength' => 255],
+                'help' => 'backend.commercial_plans.form.stripe_price_id_help',
+            ])
             ->add('maxEvidenceCount', IntegerType::class, [
                 'label' => 'backend.commercial_plans.form.max_evidence_count',
                 'required' => false,

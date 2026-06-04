@@ -2,9 +2,11 @@
 
 namespace App\Service;
 
+use App\Entity\CommercialPlan;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\User;
+use App\Repository\CommercialPlanRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Stripe\Checkout\Session as StripeCheckoutSession;
 use Stripe\StripeClient;
@@ -14,24 +16,16 @@ use Throwable;
 final class StripeProjectCheckoutService
 {
     private const TARGET_CONFIG = [
-        ProjectSubscription::TIER_STANDARD => [
-            'label' => 'Standard',
-            'amount_cents' => 9900,
-        ],
-        ProjectSubscription::TIER_PRO => [
-            'label' => 'Pro',
-            'amount_cents' => 19900,
-        ],
+        ProjectSubscription::TIER_STANDARD => 'Standard',
+        ProjectSubscription::TIER_PRO => 'Pro',
     ];
 
     public function __construct(
         private readonly StripeClient $stripeClient,
         private readonly ProjectFeatureGate $featureGate,
+        private readonly CommercialPlanRepository $commercialPlanRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly UrlGeneratorInterface $urlGenerator,
-        private readonly ?string $standardPriceId,
-        private readonly ?string $proPriceId,
-        private readonly ?string $upgradeStandardToProPriceId,
         private readonly ?string $successUrlTemplate,
         private readonly ?string $cancelUrlTemplate,
     ) {
@@ -47,11 +41,16 @@ final class StripeProjectCheckoutService
                 continue;
             }
 
+            $targetPlan = $this->findTargetPlan($targetTier);
+            if (!$targetPlan instanceof CommercialPlan) {
+                continue;
+            }
+
             $available[$targetTier] = [
                 'targetTier' => $targetTier,
-                'label' => self::TARGET_CONFIG[$targetTier]['label'],
+                'label' => $this->resolveTargetLabel($targetTier),
                 'amountCents' => $this->resolveAmountCents($currentTier, $targetTier),
-                'priceId' => $this->resolvePriceId($currentTier, $targetTier),
+                'priceId' => $this->resolvePriceId($targetTier),
             ];
         }
 
@@ -110,15 +109,17 @@ final class StripeProjectCheckoutService
             ]
         );
 
-        $priceId = $this->resolvePriceId($currentTier, $targetTier);
+        $targetPlan = $this->resolveTargetPlan($targetTier);
+        $priceId = $targetPlan->getStripePriceId();
         if ($priceId === null || $priceId === '') {
-            throw new \RuntimeException('Stripe price id is not configured for the selected upgrade.');
+            throw new \RuntimeException(sprintf('Stripe price id is not configured for commercial plan "%s".', $targetPlan->getCode()));
         }
 
         $metadata = array_filter([
             'project_id' => (string) $project->getId(),
             'current_tier' => $currentTier,
             'target_tier' => $targetTier,
+            'commercial_plan_code' => $targetPlan->getCode(),
             'user_id' => $user?->getId() ? (string) $user->getId() : null,
         ], static fn ($value) => $value !== null && $value !== '');
 
@@ -175,7 +176,12 @@ final class StripeProjectCheckoutService
 
     public function resolveTargetLabel(string $targetTier): string
     {
-        return self::TARGET_CONFIG[$targetTier]['label'] ?? ucfirst($targetTier);
+        $plan = $this->findTargetPlan($targetTier);
+        if ($plan instanceof CommercialPlan && trim($plan->getName()) !== '') {
+            return $plan->getName();
+        }
+
+        return self::TARGET_CONFIG[$targetTier] ?? ucfirst($targetTier);
     }
 
     public function resolveTargetAmountCents(Project|string $projectOrTier, string $targetTier): ?int
@@ -191,30 +197,48 @@ final class StripeProjectCheckoutService
         return $this->resolveAmountCents($currentTier, $targetTier);
     }
 
-    private function resolveAmountCents(string $currentTier, string $targetTier): int
+    private function resolveAmountCents(string $currentTier, string $targetTier): ?int
     {
-        if ($currentTier === ProjectSubscription::TIER_STANDARD && $targetTier === ProjectSubscription::TIER_PRO) {
-            return 10000;
+        $currentPlan = $this->resolveCurrentPlan($currentTier);
+        $targetPlan = $this->findTargetPlan($targetTier);
+
+        if (!$targetPlan instanceof CommercialPlan) {
+            return null;
         }
 
-        return self::TARGET_CONFIG[$targetTier]['amount_cents'] ?? 0;
+        $currentAmount = $currentPlan?->getPriceAmount() ?? 0;
+        $targetAmount = $targetPlan->getPriceAmount();
+
+        if ($targetAmount === null) {
+            return null;
+        }
+
+        return max(0, $targetAmount - $currentAmount);
     }
 
-    private function resolvePriceId(string $currentTier, string $targetTier): ?string
+    private function resolvePriceId(string $targetTier): ?string
     {
-        if ($targetTier === ProjectSubscription::TIER_STANDARD) {
-            return $this->standardPriceId ?: null;
+        return $this->findTargetPlan($targetTier)?->getStripePriceId();
+    }
+
+    private function resolveTargetPlan(string $targetTier): CommercialPlan
+    {
+        $plan = $this->findTargetPlan($targetTier);
+        if ($plan instanceof CommercialPlan) {
+            return $plan;
         }
 
-        if ($currentTier === ProjectSubscription::TIER_STANDARD && $targetTier === ProjectSubscription::TIER_PRO) {
-            return $this->upgradeStandardToProPriceId ?: null;
-        }
+        throw new \RuntimeException(sprintf('Commercial plan "%s" is not available for checkout.', $targetTier));
+    }
 
-        if ($targetTier === ProjectSubscription::TIER_PRO) {
-            return $this->proPriceId ?: null;
-        }
+    private function findTargetPlan(string $targetTier): ?CommercialPlan
+    {
+        return $this->commercialPlanRepository->findActiveByCode($targetTier);
+    }
 
-        return null;
+    private function resolveCurrentPlan(string $currentTier): ?CommercialPlan
+    {
+        return $this->findTargetPlan($currentTier);
     }
 
     private function resolveUrlTemplate(?string $template, string $routeName, Project $project, array $query = []): string

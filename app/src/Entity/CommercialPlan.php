@@ -38,6 +38,9 @@ class CommercialPlan
     #[ORM\Column(length: 3, options: ['default' => 'EUR'])]
     private string $priceCurrency = 'EUR';
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripePriceId = null;
+
     #[ORM\Column(type: 'integer', nullable: true)]
     private ?int $maxEvidenceCount = null;
 
@@ -114,6 +117,22 @@ class CommercialPlan
     public function setPriceCurrency(string $priceCurrency): self
     {
         $this->priceCurrency = strtoupper(trim($priceCurrency));
+
+        return $this;
+    }
+
+    public function getStripePriceId(): ?string
+    {
+        return $this->stripePriceId;
+    }
+
+    public function setStripePriceId(?string $stripePriceId): self
+    {
+        $this->stripePriceId = $stripePriceId !== null ? trim($stripePriceId) : null;
+
+        if ($this->stripePriceId === '') {
+            $this->stripePriceId = null;
+        }
 
         return $this;
     }

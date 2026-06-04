@@ -221,6 +221,8 @@ backend:
       description: "Descripción"
       price_amount: "Precio"
       price_currency: "Moneda"
+      stripe_price_id: "Stripe Price ID"
+      stripe_price_id_help: "ID público de precio de Stripe, por ejemplo price_..."
       max_evidence_count: "Límite de evidencias"
       watermark_enabled: "Marca de agua activada"
       active: "Activo"

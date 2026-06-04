@@ -4,6 +4,7 @@ namespace App\Tests\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Repository\CommercialPlanRepository;
 use App\Service\StripeProjectCheckoutService;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use App\Tests\Support\Stripe\FakeStripeClient;
@@ -22,7 +23,9 @@ final class StripeProjectCheckoutServiceTest extends TestCase
     {
         $sessionId = 'cs_test_basic_standard';
         $client = $this->createFakeStripeClient($sessionId);
-        $service = $this->createService($client, true);
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $service = $this->createService($client, $plans, true);
         $project = $this->createProject(ProjectSubscription::TIER_BASIC);
 
         $url = $service->startCheckout($project, ProjectSubscription::TIER_STANDARD);
@@ -32,6 +35,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame('price_standard', $client->checkout->sessions->createCalls[0]['line_items'][0]['price']);
         self::assertSame('https://example.test/success?session_id={CHECKOUT_SESSION_ID}', $client->checkout->sessions->createCalls[0]['success_url']);
         self::assertSame('https://example.test/cancel?session_id={CHECKOUT_SESSION_ID}', $client->checkout->sessions->createCalls[0]['cancel_url']);
+        self::assertSame('standard', $client->checkout->sessions->createCalls[0]['metadata']['commercial_plan_code']);
         self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscription()?->getStatus());
         self::assertSame(ProjectSubscription::SOURCE_STRIPE, $project->getSubscription()?->getSource());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTargetTier());
@@ -45,7 +49,10 @@ final class StripeProjectCheckoutServiceTest extends TestCase
     {
         $sessionId = 'cs_test_standard_pro';
         $client = $this->createFakeStripeClient($sessionId);
-        $service = $this->createService($client, true);
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $plans['pro']->setStripePriceId('price_upgrade');
+        $service = $this->createService($client, $plans, true);
         $project = $this->createProject(ProjectSubscription::TIER_STANDARD);
 
         $url = $service->startCheckout($project, ProjectSubscription::TIER_PRO);
@@ -53,6 +60,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame('https://stripe.test/checkout', $url);
         self::assertCount(1, $client->checkout->sessions->createCalls);
         self::assertSame('price_upgrade', $client->checkout->sessions->createCalls[0]['line_items'][0]['price']);
+        self::assertSame('pro', $client->checkout->sessions->createCalls[0]['metadata']['commercial_plan_code']);
         self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscription()?->getStatus());
         self::assertSame(ProjectSubscription::TIER_PRO, $project->getSubscription()?->getTargetTier());
         self::assertSame($sessionId, $project->getSubscription()?->getStripeCheckoutSessionId());
@@ -61,7 +69,10 @@ final class StripeProjectCheckoutServiceTest extends TestCase
 
     public function testBasicProjectCanUpgradeToStandardAndPro(): void
     {
-        $service = $this->createService($this->createFakeStripeClient());
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $plans['pro']->setStripePriceId('price_pro');
+        $service = $this->createService($this->createFakeStripeClient(), $plans);
         $project = $this->createProject(ProjectSubscription::TIER_BASIC);
 
         self::assertTrue($service->canUpgrade($project, ProjectSubscription::TIER_STANDARD));
@@ -72,11 +83,16 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $available = $service->getAvailableUpgradeTargets($project);
         self::assertArrayHasKey(ProjectSubscription::TIER_STANDARD, $available);
         self::assertArrayHasKey(ProjectSubscription::TIER_PRO, $available);
+        self::assertSame('price_standard', $available[ProjectSubscription::TIER_STANDARD]['priceId']);
+        self::assertSame('price_pro', $available[ProjectSubscription::TIER_PRO]['priceId']);
     }
 
     public function testStandardProjectOnlyCanUpgradeToProWithDifferenceAmount(): void
     {
-        $service = $this->createService($this->createFakeStripeClient());
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $plans['pro']->setStripePriceId('price_upgrade');
+        $service = $this->createService($this->createFakeStripeClient(), $plans);
         $project = $this->createProject(ProjectSubscription::TIER_STANDARD);
 
         self::assertFalse($service->canUpgrade($project, ProjectSubscription::TIER_STANDARD));
@@ -86,11 +102,15 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $available = $service->getAvailableUpgradeTargets($project);
         self::assertArrayNotHasKey(ProjectSubscription::TIER_STANDARD, $available);
         self::assertArrayHasKey(ProjectSubscription::TIER_PRO, $available);
+        self::assertSame('price_upgrade', $available[ProjectSubscription::TIER_PRO]['priceId']);
     }
 
     public function testProProjectCannotUpgradeFurther(): void
     {
-        $service = $this->createService($this->createFakeStripeClient());
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $plans['pro']->setStripePriceId('price_pro');
+        $service = $this->createService($this->createFakeStripeClient(), $plans);
         $project = $this->createProject(ProjectSubscription::TIER_PRO);
 
         self::assertFalse($service->canUpgrade($project, ProjectSubscription::TIER_STANDARD));
@@ -98,9 +118,45 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame([], $service->getAvailableUpgradeTargets($project));
     }
 
-    private function createService(FakeStripeClient $stripeClient, bool $expectFlush = false): StripeProjectCheckoutService
+    public function testMissingStripePriceIdFailsForPaidUpgrade(): void
     {
-        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
+        $client = $this->createFakeStripeClient();
+        $plans = $this->makeDefaultCommercialPlans();
+        $service = $this->createService($client, $plans);
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Stripe price id is not configured for commercial plan "standard".');
+
+        $service->startCheckout($project, ProjectSubscription::TIER_STANDARD);
+    }
+
+    public function testBasicTierCannotStartCheckout(): void
+    {
+        $plans = $this->makeDefaultCommercialPlans();
+        $service = $this->createService($this->createFakeStripeClient(), $plans);
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $service->startCheckout($project, ProjectSubscription::TIER_BASIC);
+    }
+
+    private function createService(FakeStripeClient $stripeClient, array $plans, bool $expectFlush = false): StripeProjectCheckoutService
+    {
+        $gate = $this->makeProjectFeatureGate($plans);
+        $planRepository = $this->createMock(CommercialPlanRepository::class);
+        $indexedPlans = [];
+        foreach ($plans as $plan) {
+            if ($plan instanceof \App\Entity\CommercialPlan) {
+                $indexedPlans[strtolower($plan->getCode())] = $plan;
+            }
+        }
+        $planRepository->method('findActiveByCode')->willReturnCallback(
+            static function (string $code) use ($indexedPlans): ?\App\Entity\CommercialPlan {
+                return $indexedPlans[strtolower(trim($code))] ?? null;
+            }
+        );
 
         $em = $this->createMock(EntityManagerInterface::class);
         if ($expectFlush) {
@@ -114,11 +170,9 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         return new StripeProjectCheckoutService(
             $stripeClient,
             $gate,
+            $planRepository,
             $em,
             $urlGenerator,
-            'price_standard',
-            'price_pro',
-            'price_upgrade',
             'https://example.test/success?session_id={CHECKOUT_SESSION_ID}',
             'https://example.test/cancel?session_id={CHECKOUT_SESSION_ID}',
         );

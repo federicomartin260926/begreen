@@ -7,7 +7,8 @@ This project uses Stripe Checkout for one-time upgrades per `Project`.
 - `basic` remains free.
 - `standard` is purchased once per project.
 - `pro` is purchased once per project.
-- `standard -> pro` uses a dedicated checkout price for the difference.
+- Checkout price IDs live on `CommercialPlan` and are configured from Super Admin.
+- `standard -> pro` uses the `CommercialPlan` data for the target tier and the price difference is derived from plan amounts.
 - Begreen does not issue invoices itself in this phase.
 - Stripe generates invoices and Begreen stores the relevant references/URLs.
 
@@ -17,9 +18,6 @@ Required:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_STANDARD_PRICE_ID`
-- `STRIPE_PRO_PRICE_ID`
-- `STRIPE_UPGRADE_STANDARD_TO_PRO_PRICE_ID`
 - `STRIPE_SUCCESS_URL`
 - `STRIPE_CANCEL_URL`
 
@@ -40,6 +38,7 @@ STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription
 4. Stripe sends a webhook after payment completion.
 5. Begreen activates the target tier only after the webhook confirms the payment.
 6. Invoice links and invoice PDF links are stored on `ProjectSubscription`.
+7. The target tier must have a `stripePriceId` configured on its `CommercialPlan`.
 
 ## Routes
 

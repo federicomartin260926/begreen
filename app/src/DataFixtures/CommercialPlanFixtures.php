@@ -23,6 +23,7 @@ final class CommercialPlanFixtures extends Fixture implements FixtureGroupInterf
                 'description' => 'Plan gratuito de entrada.',
                 'priceAmount' => 0,
                 'priceCurrency' => 'EUR',
+                'stripePriceId' => null,
                 'maxEvidenceCount' => 10,
                 'watermarkEnabled' => true,
                 'active' => true,
@@ -57,6 +58,7 @@ final class CommercialPlanFixtures extends Fixture implements FixtureGroupInterf
                 'description' => 'Plan intermedio.',
                 'priceAmount' => 9900,
                 'priceCurrency' => 'EUR',
+                'stripePriceId' => null,
                 'maxEvidenceCount' => null,
                 'watermarkEnabled' => false,
                 'active' => true,
@@ -91,6 +93,7 @@ final class CommercialPlanFixtures extends Fixture implements FixtureGroupInterf
                 'description' => 'Plan completo.',
                 'priceAmount' => 19900,
                 'priceCurrency' => 'EUR',
+                'stripePriceId' => null,
                 'maxEvidenceCount' => null,
                 'watermarkEnabled' => false,
                 'active' => true,
@@ -134,6 +137,7 @@ final class CommercialPlanFixtures extends Fixture implements FixtureGroupInterf
                 ->setDescription($definition['description'])
                 ->setPriceAmount($definition['priceAmount'])
                 ->setPriceCurrency($definition['priceCurrency'])
+                ->setStripePriceId($definition['stripePriceId'])
                 ->setMaxEvidenceCount($definition['maxEvidenceCount'])
                 ->setWatermarkEnabled($definition['watermarkEnabled'])
                 ->setActive($definition['active'])

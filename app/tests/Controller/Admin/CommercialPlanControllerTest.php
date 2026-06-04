@@ -36,11 +36,12 @@ final class CommercialPlanControllerTest extends KernelTestCase
         $em = $container->get('doctrine')->getManager();
 
         $plan = (new CommercialPlan())
-            ->setCode('standard')
+            ->setCode('standard-test')
             ->setName('Standard')
             ->setDescription('Plan intermedio.')
             ->setPriceAmount(9900)
             ->setPriceCurrency('EUR')
+            ->setStripePriceId('price_standard_old')
             ->setMaxEvidenceCount(null)
             ->setWatermarkEnabled(false)
             ->setActive(true)
@@ -69,12 +70,15 @@ final class CommercialPlanControllerTest extends KernelTestCase
         $em->persist($plan);
         $em->flush();
 
-        $form = $container->get('form.factory')->create(CommercialPlanType::class, $plan);
+        $form = $container->get('form.factory')->create(CommercialPlanType::class, $plan, [
+            'csrf_protection' => false,
+        ]);
         $form->submit([
             'name' => 'Standard Plus',
             'description' => 'Plan actualizado',
             'priceAmount' => 1234,
             'priceCurrency' => 'eur',
+            'stripePriceId' => 'price_standard_live',
             'maxEvidenceCount' => 25,
             'watermarkEnabled' => true,
             'active' => false,
@@ -106,6 +110,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
         self::assertSame('Plan actualizado', $plan->getDescription());
         self::assertSame(1234, $plan->getPriceAmount());
         self::assertSame('EUR', $plan->getPriceCurrency());
+        self::assertSame('price_standard_live', $plan->getStripePriceId());
         self::assertSame(25, $plan->getMaxEvidenceCount());
         self::assertTrue($plan->isWatermarkEnabled());
         self::assertFalse($plan->isActive());
