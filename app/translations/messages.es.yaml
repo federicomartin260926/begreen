@@ -224,7 +224,7 @@ backend:
       stripe_price_id: "Stripe Price ID"
       stripe_price_id_help: "ID público de precio de Stripe, por ejemplo price_..."
       stripe_upgrade_from_standard_price_id: "Stripe Price ID upgrade"
-      stripe_upgrade_from_standard_price_id_help: "Se usa cuando un proyecto Standard actualiza a este plan. Déjalo vacío si no aplica."
+      stripe_upgrade_from_standard_price_id_help: "Se usa cuando un proyecto Standard actualiza a este plan."
       max_evidence_count: "Límite de evidencias"
       watermark_enabled: "Marca de agua activada"
       active: "Activo"

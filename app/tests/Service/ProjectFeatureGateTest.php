@@ -15,10 +15,11 @@ final class ProjectFeatureGateTest extends TestCase
     {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $basicDefinition = $this->defaultCommercialPlanDefinition('basic');
 
         self::assertSame([4, 5], $gate->getAllowedScores($project));
         self::assertSame('Basic', $gate->getPlanLabel($project));
-        self::assertSame('Plan gratuito de entrada.', $gate->getPlanDescription($project));
+        self::assertSame($basicDefinition['description'], $gate->getPlanDescription($project));
         self::assertTrue($gate->hasWatermark($project));
         self::assertSame(10, $gate->getMaxEvidenceCount($project));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
@@ -34,10 +35,11 @@ final class ProjectFeatureGateTest extends TestCase
     {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $standardDefinition = $this->defaultCommercialPlanDefinition('standard');
 
         self::assertSame([3, 4, 5], $gate->getAllowedScores($project));
         self::assertSame('Standard', $gate->getPlanLabel($project));
-        self::assertSame('Plan intermedio.', $gate->getPlanDescription($project));
+        self::assertSame($standardDefinition['description'], $gate->getPlanDescription($project));
         self::assertFalse($gate->hasWatermark($project));
         self::assertNull($gate->getMaxEvidenceCount($project));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
@@ -52,10 +54,11 @@ final class ProjectFeatureGateTest extends TestCase
     {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_PRO);
+        $proDefinition = $this->defaultCommercialPlanDefinition('pro');
 
         self::assertSame([1, 2, 3, 4, 5], $gate->getAllowedScores($project));
         self::assertSame('Pro', $gate->getPlanLabel($project));
-        self::assertSame('Plan completo.', $gate->getPlanDescription($project));
+        self::assertSame($proDefinition['description'], $gate->getPlanDescription($project));
         self::assertFalse($gate->hasWatermark($project));
         self::assertNull($gate->getMaxEvidenceCount($project));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.branding'));

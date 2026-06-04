@@ -5,7 +5,6 @@ namespace App\Tests\Controller\Admin;
 use App\Controller\Admin\CommercialPlanController;
 use App\Entity\CommercialPlan;
 use App\Form\CommercialPlanType;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class CommercialPlanControllerTest extends KernelTestCase
@@ -32,12 +31,9 @@ final class CommercialPlanControllerTest extends KernelTestCase
     public function testEditMapperNormalizesFeaturesAndAliasComments(): void
     {
         $container = self::getContainer();
-        /** @var EntityManagerInterface $em */
-        $em = $container->get('doctrine')->getManager();
-
         $plan = (new CommercialPlan())
-            ->setCode('standard-test')
-            ->setName('Standard')
+            ->setCode('pro')
+            ->setName('Pro')
             ->setDescription('Plan intermedio.')
             ->setPriceAmount(9900)
             ->setPriceCurrency('EUR')
@@ -68,11 +64,10 @@ final class CommercialPlanControllerTest extends KernelTestCase
                 'sustainability_plan.validation_summary' => false,
                 'sustainability_plan.branding' => false,
             ]);
-        $em->persist($plan);
-        $em->flush();
 
         $form = $container->get('form.factory')->create(CommercialPlanType::class, $plan, [
             'csrf_protection' => false,
+            'show_stripe_upgrade_from_standard_price_id' => true,
         ]);
         $form->submit([
             'name' => 'Standard Plus',
@@ -167,26 +162,98 @@ final class CommercialPlanControllerTest extends KernelTestCase
 
         $form = $container->get('form.factory')->create(CommercialPlanType::class, $plan, [
             'csrf_protection' => false,
+            'show_stripe_upgrade_from_standard_price_id' => true,
         ]);
 
-        $children = array_keys($form->createView()->children);
-        $stripePriceChildPosition = array_search('stripePriceId', $children, true);
-        $stripeUpgradeChildPosition = array_search('stripeUpgradeFromStandardPriceId', $children, true);
-
-        self::assertNotFalse($stripePriceChildPosition);
-        self::assertNotFalse($stripeUpgradeChildPosition);
-        self::assertGreaterThan($stripePriceChildPosition, $stripeUpgradeChildPosition);
+        self::assertTrue($form->has('stripePriceId'));
+        self::assertTrue($form->has('stripeUpgradeFromStandardPriceId'));
 
         $template = file_get_contents(__DIR__ . '/../../../templates/admin/commercial_plan/form.html.twig');
         self::assertNotFalse($template);
-        $stripePriceRowPosition = strpos($template, 'form_row(form.stripePriceId)');
-        $stripeUpgradeRowPosition = strpos($template, 'form_row(form.stripeUpgradeFromStandardPriceId)');
-        $saveButtonPosition = strpos($template, 'backend.common.save_changes');
+        $templateLines = explode("\n", $template);
+        $findLine = static function (array $lines, string $needle): ?int {
+            foreach ($lines as $index => $line) {
+                if (str_contains($line, $needle)) {
+                    return $index + 1;
+                }
+            }
 
-        self::assertNotFalse($stripePriceRowPosition);
-        self::assertNotFalse($stripeUpgradeRowPosition);
-        self::assertNotFalse($saveButtonPosition);
-        self::assertLessThan($saveButtonPosition, $stripeUpgradeRowPosition);
-        self::assertLessThan($stripeUpgradeRowPosition, $stripePriceRowPosition);
+            return null;
+        };
+
+        $stripePriceRowLine = $findLine($templateLines, 'form_row(form.stripePriceId)');
+        $stripeUpgradeRowLine = $findLine($templateLines, 'form_row(form.stripeUpgradeFromStandardPriceId)');
+        $saveButtonLine = $findLine($templateLines, 'backend.common.save_changes');
+
+        self::assertNotNull($stripePriceRowLine);
+        self::assertNotNull($stripeUpgradeRowLine);
+        self::assertNotNull($saveButtonLine);
+        self::assertTrue($stripePriceRowLine < $stripeUpgradeRowLine);
+        self::assertTrue($stripeUpgradeRowLine < $saveButtonLine);
+    }
+
+    public function testEditFormOnlyShowsStripeUpgradePriceForProPlans(): void
+    {
+        $container = self::getContainer();
+        $formFactory = $container->get('form.factory');
+
+        $basicPlan = (new CommercialPlan())
+            ->setCode('basic')
+            ->setName('Basic')
+            ->setDescription('Plan gratuito.')
+            ->setPriceAmount(0)
+            ->setPriceCurrency('EUR')
+            ->setStripePriceId(null)
+            ->setStripeUpgradeFromStandardPriceId(null)
+            ->setMaxEvidenceCount(10)
+            ->setWatermarkEnabled(true)
+            ->setActive(true)
+            ->setSortOrder(1)
+            ->setFeatures([]);
+
+        $standardPlan = (new CommercialPlan())
+            ->setCode('standard')
+            ->setName('Standard')
+            ->setDescription('Plan estándar.')
+            ->setPriceAmount(9900)
+            ->setPriceCurrency('EUR')
+            ->setStripePriceId('price_standard')
+            ->setStripeUpgradeFromStandardPriceId(null)
+            ->setMaxEvidenceCount(null)
+            ->setWatermarkEnabled(false)
+            ->setActive(true)
+            ->setSortOrder(2)
+            ->setFeatures([]);
+
+        $proPlan = (new CommercialPlan())
+            ->setCode('pro')
+            ->setName('Pro')
+            ->setDescription('Plan Pro.')
+            ->setPriceAmount(19900)
+            ->setPriceCurrency('EUR')
+            ->setStripePriceId('price_pro')
+            ->setStripeUpgradeFromStandardPriceId('price_upgrade_live')
+            ->setMaxEvidenceCount(null)
+            ->setWatermarkEnabled(false)
+            ->setActive(true)
+            ->setSortOrder(3)
+            ->setFeatures([]);
+
+        $basicForm = $formFactory->create(CommercialPlanType::class, $basicPlan, [
+            'csrf_protection' => false,
+            'show_stripe_upgrade_from_standard_price_id' => false,
+        ])->createView();
+        $standardForm = $formFactory->create(CommercialPlanType::class, $standardPlan, [
+            'csrf_protection' => false,
+            'show_stripe_upgrade_from_standard_price_id' => false,
+        ])->createView();
+        $proForm = $formFactory->create(CommercialPlanType::class, $proPlan, [
+            'csrf_protection' => false,
+            'show_stripe_upgrade_from_standard_price_id' => true,
+        ])->createView();
+
+        self::assertArrayNotHasKey('stripeUpgradeFromStandardPriceId', $basicForm->children);
+        self::assertArrayNotHasKey('stripeUpgradeFromStandardPriceId', $standardForm->children);
+        self::assertArrayHasKey('stripeUpgradeFromStandardPriceId', $proForm->children);
     }
 }

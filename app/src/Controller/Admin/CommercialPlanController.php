@@ -33,7 +33,9 @@ final class CommercialPlanController extends AbstractController
     {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
-        $form = $this->createForm(CommercialPlanType::class, $commercialPlan);
+        $form = $this->createForm(CommercialPlanType::class, $commercialPlan, [
+            'show_stripe_upgrade_from_standard_price_id' => strtolower(trim((string) $commercialPlan->getCode())) === 'pro',
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {

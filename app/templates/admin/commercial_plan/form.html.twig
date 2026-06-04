@@ -33,8 +33,12 @@
                 <div class="row">
                     <div class="col-md-3 mb-3">{{ form_row(form.priceAmount) }}</div>
                     <div class="col-md-3 mb-3">{{ form_row(form.stripePriceId) }}</div>
-                    <div class="col-md-3 mb-3">{{ form_row(form.stripeUpgradeFromStandardPriceId) }}</div>
-                    <div class="col-md-3 mb-3">{{ form_row(form.maxEvidenceCount) }}</div>
+                    {% if form.stripeUpgradeFromStandardPriceId is defined %}
+                        <div class="col-md-3 mb-3">{{ form_row(form.stripeUpgradeFromStandardPriceId) }}</div>
+                        <div class="col-md-3 mb-3">{{ form_row(form.maxEvidenceCount) }}</div>
+                    {% else %}
+                        <div class="col-md-3 mb-3">{{ form_row(form.maxEvidenceCount) }}</div>
+                    {% endif %}
                 </div>
 
                 <div class="row">

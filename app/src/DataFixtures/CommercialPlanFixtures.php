@@ -141,6 +141,7 @@ final class CommercialPlanFixtures extends Fixture implements FixtureGroupInterf
                 ->setPriceAmount($definition['priceAmount'])
                 ->setPriceCurrency($definition['priceCurrency'])
                 ->setStripePriceId($definition['stripePriceId'])
+                ->setStripeUpgradeFromStandardPriceId($definition['stripeUpgradeFromStandardPriceId'] ?? null)
                 ->setMaxEvidenceCount($definition['maxEvidenceCount'])
                 ->setWatermarkEnabled($definition['watermarkEnabled'])
                 ->setActive($definition['active'])

@@ -52,13 +52,18 @@ final class CommercialPlanType extends AbstractType
                 'required' => false,
                 'attr' => ['maxlength' => 255],
                 'help' => 'backend.commercial_plans.form.stripe_price_id_help',
-            ])
-            ->add('stripeUpgradeFromStandardPriceId', TextType::class, [
+            ]);
+
+        if ($options['show_stripe_upgrade_from_standard_price_id']) {
+            $builder->add('stripeUpgradeFromStandardPriceId', TextType::class, [
                 'label' => 'backend.commercial_plans.form.stripe_upgrade_from_standard_price_id',
                 'required' => false,
                 'attr' => ['maxlength' => 255, 'placeholder' => 'price_...'],
                 'help' => 'backend.commercial_plans.form.stripe_upgrade_from_standard_price_id_help',
-            ])
+            ]);
+        }
+
+        $builder
             ->add('maxEvidenceCount', IntegerType::class, [
                 'label' => 'backend.commercial_plans.form.max_evidence_count',
                 'required' => false,
@@ -155,6 +160,9 @@ final class CommercialPlanType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => CommercialPlan::class,
+            'show_stripe_upgrade_from_standard_price_id' => false,
         ]);
+
+        $resolver->setAllowedTypes('show_stripe_upgrade_from_standard_price_id', 'bool');
     }
 }
