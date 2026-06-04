@@ -10,17 +10,35 @@
                 data-phase="postproduccion"
                 value="{{ 'backend.projects.form.phase_postprod'|trans }}"
             >
-            {{ form_widget(prototype.phase, {'attr': {'hidden': 'hidden'}}) }}
+            <input
+                type="hidden"
+                name="{{ prototype.phase.vars.full_name }}"
+                value="postproduccion"
+            >
         </div>
         <div class="col-12 col-md-4 form-label-over">
-            {{ form_label(prototype.startDate) }}
-            {{ form_widget(prototype.startDate) }}
-            {{ form_errors(prototype.startDate) }}
+            <label class="form-label" for="{{ prototype.startDate.vars.id }}">
+                {{ prototype.startDate.vars.label|default('backend.projects.form.start_date'|trans) }}
+            </label>
+            <input
+                type="date"
+                class="form-control"
+                id="{{ prototype.startDate.vars.id }}"
+                name="{{ prototype.startDate.vars.full_name }}"
+                value="{{ prototype.startDate.vars.value|default('') }}"
+            >
         </div>
         <div class="col-12 col-md-4 form-label-over">
-            {{ form_label(prototype.endDate) }}
-            {{ form_widget(prototype.endDate) }}
-            {{ form_errors(prototype.endDate) }}
+            <label class="form-label" for="{{ prototype.endDate.vars.id }}">
+                {{ prototype.endDate.vars.label|default('backend.projects.form.end_date'|trans) }}
+            </label>
+            <input
+                type="date"
+                class="form-control"
+                id="{{ prototype.endDate.vars.id }}"
+                name="{{ prototype.endDate.vars.full_name }}"
+                value="{{ prototype.endDate.vars.value|default('') }}"
+            >
         </div>
     </div>
 

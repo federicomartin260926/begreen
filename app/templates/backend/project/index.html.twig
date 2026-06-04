@@ -162,6 +162,14 @@
                             </a>
                           {% endif %}
                         </div>
+                          {% if subscription.status == 'pending_payment' and subscription.stripeCheckoutSessionId %}
+                          <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id}) }}" class="mt-1">
+                            <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id) }}">
+                            <button type="submit" class="btn btn-sm btn-warning text-dark fw-semibold">
+                              {{ 'backend.subscription.actions.verify_payment'|trans }}
+                            </button>
+                          </form>
+                        {% endif %}
                       </div>
                     {% else %}
                       <span class="text-muted">—</span>

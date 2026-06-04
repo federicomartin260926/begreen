@@ -2,9 +2,11 @@
 
 namespace App\Tests\Service;
 
+use App\Exception\PendingStripeCheckoutException;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Repository\CommercialPlanRepository;
+use App\Service\StripeCheckoutReconciliationResult;
 use App\Service\StripeProjectCheckoutService;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use App\Tests\Support\Stripe\FakeStripeClient;
@@ -142,6 +144,146 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $service->startCheckout($project, ProjectSubscription::TIER_BASIC);
     }
 
+    public function testPendingPaymentPreventsStartingASecondCheckout(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $service = $this->createService($client, $plans);
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, 'cs_pending', 42);
+
+        try {
+            $service->startCheckout($project, ProjectSubscription::TIER_STANDARD);
+            self::fail('Expected PendingStripeCheckoutException.');
+        } catch (PendingStripeCheckoutException) {
+            self::assertCount(0, $client->checkout->sessions->createCalls);
+        }
+    }
+
+    public function testPaidPendingCheckoutIsReconciledAndActivatesPlan(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_paid_1',
+            'payment_status' => 'paid',
+            'amount_total' => 9900,
+            'currency' => 'eur',
+            'payment_intent' => (object) ['id' => 'pi_paid_1'],
+            'customer' => (object) ['id' => 'cus_paid_1'],
+            'invoice' => (object) [
+                'id' => 'in_paid_1',
+                'number' => 'INV-2026-001',
+                'hosted_invoice_url' => 'https://invoice.test/view',
+                'invoice_pdf' => 'https://invoice.test/pdf',
+            ],
+            'metadata' => (object) [
+                'project_id' => '42',
+                'target_tier' => ProjectSubscription::TIER_STANDARD,
+                'commercial_plan_code' => 'standard',
+            ],
+        ];
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $service = $this->createService($client, $plans, true);
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, 'cs_paid_1', 42);
+
+        $result = $service->reconcilePendingCheckout($project, 'cs_paid_1');
+
+        self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
+        self::assertSame(9900, $project->getSubscription()?->getPaidAmountCents());
+        self::assertSame('EUR', $project->getSubscription()?->getCurrency());
+        self::assertSame('INV-2026-001', $project->getSubscription()?->getPaymentReference());
+        self::assertSame('paid', $project->getSubscription()?->getLastPaymentStatus());
+        self::assertSame('pi_paid_1', $project->getSubscription()?->getStripePaymentIntentId());
+        self::assertSame('in_paid_1', $project->getSubscription()?->getStripeInvoiceId());
+        self::assertSame('cus_paid_1', $project->getSubscription()?->getStripeCustomerId());
+        self::assertSame('https://invoice.test/view', $project->getSubscription()?->getStripeHostedInvoiceUrl());
+        self::assertSame('https://invoice.test/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
+        self::assertSame('cs_paid_1', $project->getSubscription()?->getStripeCheckoutSessionId());
+        self::assertNull($project->getSubscription()?->getTargetTier());
+    }
+
+    public function testUnpaidCheckoutStaysPending(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_unpaid_1',
+            'payment_status' => 'unpaid',
+            'metadata' => (object) [
+                'project_id' => '42',
+                'target_tier' => ProjectSubscription::TIER_STANDARD,
+                'commercial_plan_code' => 'standard',
+            ],
+        ];
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $service = $this->createService($client, $plans, true);
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, 'cs_unpaid_1', 42);
+
+        $result = $service->reconcilePendingCheckout($project, 'cs_unpaid_1');
+
+        self::assertSame(StripeCheckoutReconciliationResult::STATUS_PENDING, $result->status);
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscription()?->getStatus());
+        self::assertSame('unpaid', $project->getSubscription()?->getLastPaymentStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTargetTier());
+    }
+
+    public function testMetadataMismatchDoesNotConfirmPayment(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_mismatch_1',
+            'payment_status' => 'paid',
+            'metadata' => (object) [
+                'project_id' => '999',
+                'target_tier' => ProjectSubscription::TIER_STANDARD,
+                'commercial_plan_code' => 'standard',
+            ],
+        ];
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $service = $this->createService($client, $plans);
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, 'cs_mismatch_1', 42);
+
+        $result = $service->reconcilePendingCheckout($project, 'cs_mismatch_1');
+
+        self::assertSame(StripeCheckoutReconciliationResult::STATUS_MISMATCH, $result->status);
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscription()?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTargetTier());
+    }
+
+    public function testAlreadyConfirmedCheckoutIsIdempotent(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_active_1',
+            'payment_status' => 'paid',
+            'amount_total' => 19900,
+            'currency' => 'eur',
+            'metadata' => (object) [
+                'project_id' => '42',
+                'target_tier' => ProjectSubscription::TIER_PRO,
+                'commercial_plan_code' => 'pro',
+            ],
+            'payment_intent' => (object) ['id' => 'pi_active_1'],
+        ];
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['pro']->setStripePriceId('price_pro');
+        $service = $this->createService($client, $plans, true);
+        $project = $this->createProject(ProjectSubscription::TIER_PRO, ProjectSubscription::STATUS_ACTIVE, null, 'cs_active_1', 42);
+        $project->getSubscription()?->setStripePaymentIntentId(null);
+        $project->getSubscription()?->setPaymentReference(null);
+
+        $result = $service->reconcilePendingCheckout($project, 'cs_active_1');
+
+        self::assertSame(StripeCheckoutReconciliationResult::STATUS_ALREADY_CONFIRMED, $result->status);
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
+        self::assertSame('pi_active_1', $project->getSubscription()?->getStripePaymentIntentId());
+        self::assertSame('cs_active_1', $project->getSubscription()?->getStripeCheckoutSessionId());
+    }
+
     private function createService(FakeStripeClient $stripeClient, array $plans, bool $expectFlush = false): StripeProjectCheckoutService
     {
         $gate = $this->makeProjectFeatureGate($plans);
@@ -192,16 +334,39 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         return new FakeStripeClient($checkout, $invoices);
     }
 
-    private function createProject(string $tier): Project
+    private function createProject(
+        string $tier,
+        ?string $status = null,
+        ?string $targetTier = null,
+        ?string $sessionId = null,
+        ?int $projectId = null
+    ): Project
     {
         $project = new Project();
+        if ($projectId !== null) {
+            $this->setEntityId($project, $projectId);
+        }
+
         $subscription = (new ProjectSubscription())
             ->setTier($tier)
-            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+            ->setStatus($status ?? ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_MANUAL);
+
+        if ($targetTier !== null) {
+            $subscription->setTargetTier($targetTier);
+        }
+        if ($sessionId !== null) {
+            $subscription->setStripeCheckoutSessionId($sessionId);
+        }
 
         $project->setSubscription($subscription);
 
         return $project;
+    }
+
+    private function setEntityId(object $entity, int $id): void
+    {
+        $reflection = new \ReflectionProperty($entity::class, 'id');
+        $reflection->setValue($entity, $id);
     }
 }

@@ -35,14 +35,16 @@ STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription
 1. The user starts the checkout from the plan review or project view.
 2. Begreen creates a Stripe Checkout Session in `payment` mode.
 3. The project subscription is marked as `pending_payment`.
-4. Stripe sends a webhook after payment completion.
-5. Begreen activates the target tier only after the webhook confirms the payment.
-6. Invoice links and invoice PDF links are stored on `ProjectSubscription`.
-7. The target tier must have a `stripePriceId` configured on its `CommercialPlan`.
+4. The success URL and the manual verification action reconcile the checkout against Stripe using the stored Checkout Session ID.
+5. Begreen activates the target tier only when Stripe reports the session as paid.
+6. Stripe webhooks remain pending as the durable production fallback.
+7. Invoice links and invoice PDF links are stored on `ProjectSubscription` when they are available.
+8. The target tier must have a `stripePriceId` configured on its `CommercialPlan`.
 
 ## Routes
 
 - `POST /backend/project/{id}/subscription/checkout/{targetTier}`
+- `POST /backend/project/{id}/subscription/confirm-pending`
 - `GET /backend/project/{id}/subscription/success`
 - `GET /backend/project/{id}/subscription/cancel`
 - `POST /webhooks/stripe`
@@ -63,6 +65,8 @@ The MVP stores, when available:
 
 ## Notes
 
-- The success URL is informational only.
-- The webhook is the source of truth for activating the tier.
+- In local development, keep the same host in the browser when you open Stripe and when you return from it. Mixing `localhost` and `127.0.0.1` can drop the session cookie and make the success return look unrelated to the active backend project.
+- The success URL now attempts a direct reconciliation against Stripe.
+- The `Verificar pago en Stripe` action is the manual/admin fallback when the browser return is missing or the project remains in `pending_payment`.
+- The webhook is still the source of truth for production-grade background confirmation.
 - This is a one-time payment flow, not Stripe Billing.

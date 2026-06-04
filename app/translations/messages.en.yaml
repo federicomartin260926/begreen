@@ -638,6 +638,7 @@ backend:
     actions:
       view_invoice: "View invoice"
       download_pdf: "Download PDF"
+      verify_payment: "Verify payment in Stripe"
     card:
       title: "Billing"
       subtitle: "Payments and invoices managed by Stripe"
@@ -647,10 +648,13 @@ backend:
     flash:
       invalid_token: "The payment request could not be validated."
       upgrade_not_allowed: "The requested upgrade is not available for this project."
+      pending_payment_exists: "There is already a pending payment in Stripe for this project. Verify or cancel it before starting another checkout."
       checkout_failed: "Stripe checkout could not be started."
-      success_confirmed: "Payment confirmed. The tier has been updated successfully."
+      success_confirmed: "Payment confirmed. The plan has been updated successfully."
       success_pending: "Payment received. We are waiting for Stripe's final confirmation."
       success_received: "We have received the return from Stripe. Checking the payment status."
+      reconcile_mismatch: "The Stripe session does not match this project."
+      reconcile_failed: "Could not verify the Stripe session."
       cancelled: "The payment process has been cancelled."
   plan:
     title: "Sustainability plan"
@@ -710,14 +714,17 @@ backend:
       evidence_unlimited: "Evidence used: %used% / unlimited"
     features_blocked: "Blocked features"
     features_blocked_help: "The current tier limits some export and management options."
-    upgrade_soon: "Upgrade plan · Coming soon"
     upgrade:
       title: "Upgrade your plan"
       help: "Payment is handled by Stripe and the invoice will be available in your project."
+      open_selector: "Upgrade plan"
+      select_title: "Choose your plan"
+      upgrade_to: "Upgrade to %name% — %price% + VAT"
+      price_id_missing: "Stripe Price ID not configured"
       to_standard: "Upgrade to Standard — €99 + VAT"
       to_pro: "Upgrade to Pro — €199 + VAT"
       to_pro_standard: "Upgrade to Pro — €100 + VAT"
-      active_title: "Pro plan active"
+      active_title: "Maximum plan"
       active_help: "Your project already has access to all Pro features."
     exports:
       title: "Exports"

@@ -2,8 +2,8 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User};
-use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
+use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User};
+use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanBlockQuestionService;
@@ -11,6 +11,7 @@ use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
+use App\Service\StripeProjectCheckoutService;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
@@ -159,7 +160,9 @@ class PlanController extends AbstractController
         MeasureRepository $measureRepository,
         PlanMeasureRepository $planMeasureRepository,
         SustainabilityPlanBlockAnswerRepository $blockAnswerRepository,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        StripeProjectCheckoutService $checkoutService,
+        CommercialPlanRepository $commercialPlanRepository
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) {
@@ -392,6 +395,8 @@ class PlanController extends AbstractController
         $evidenceCount = $this->countProjectEvidenceFiles($plan);
         $projectTierLabel = $this->featureGate->getPlanLabel($project);
         $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
+        $upgradeCta = $this->buildUpgradeCta($project, $projectTier, $availableUpgradeTargets, $commercialPlanRepository);
 
         // ===== Render =====
         return $this->render('backend/plan/measures.html.twig', [
@@ -405,6 +410,7 @@ class PlanController extends AbstractController
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
+            'upgradeCta'       => $upgradeCta,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
@@ -2103,6 +2109,109 @@ class PlanController extends AbstractController
         }
 
         return $cards;
+    }
+
+    /**
+     * @param array<string, array{label?:string, amountCents?:int|null, priceId?:string|null}> $availableUpgradeTargets
+     *
+     * @return array{
+     *     mode: string,
+     *     label: ?string,
+     *     title: ?string,
+     *     options: array<int, array{
+     *         targetTier: string,
+     *         name: string,
+     *         description: ?string,
+     *         priceAmount: ?int,
+     *         priceCurrency: string,
+     *         priceLabel: string,
+     *         ctaLabel: string,
+     *         allowedScores: int[]
+     *     }>
+     * }
+     */
+    private function buildUpgradeCta(Project $project, string $projectTier, array $availableUpgradeTargets, CommercialPlanRepository $commercialPlanRepository): array
+    {
+        if ($projectTier === ProjectSubscription::TIER_PRO) {
+            return [
+                'mode' => 'none',
+                'label' => $this->t->trans('backend.plan.upgrade.active_title'),
+                'title' => null,
+                'options' => [],
+            ];
+        }
+
+        $candidateTiers = match ($projectTier) {
+            ProjectSubscription::TIER_BASIC => [ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO],
+            ProjectSubscription::TIER_STANDARD => [ProjectSubscription::TIER_PRO],
+            default => [],
+        };
+
+        $options = [];
+        foreach ($candidateTiers as $targetTier) {
+            $targetData = $availableUpgradeTargets[$targetTier] ?? null;
+            if (!is_array($targetData) || !array_key_exists('priceId', $targetData) || trim((string) $targetData['priceId']) === '') {
+                continue;
+            }
+
+            $plan = $commercialPlanRepository->findActiveByCode($targetTier);
+            if (!$plan instanceof CommercialPlan) {
+                continue;
+            }
+
+            $priceLabel = $this->formatPlanPrice($plan->getPriceAmount(), $plan->getPriceCurrency());
+            $options[] = [
+                'targetTier' => $targetTier,
+                'name' => $plan->getName(),
+                'description' => $plan->getDescription(),
+                'priceAmount' => $plan->getPriceAmount(),
+                'priceCurrency' => $plan->getPriceCurrency(),
+                'priceLabel' => $priceLabel,
+                'ctaLabel' => $this->t->trans('backend.plan.upgrade.upgrade_to', [
+                    '%name%' => $plan->getName(),
+                    '%price%' => $priceLabel,
+                ]),
+                'allowedScores' => $plan->getAllowedScores(),
+            ];
+        }
+
+        if ($options === []) {
+            return [
+                'mode' => 'unavailable',
+                'label' => $this->t->trans('backend.plan.upgrade.price_id_missing'),
+                'title' => $this->t->trans('backend.plan.upgrade.select_title'),
+                'options' => [],
+            ];
+        }
+
+        if (\count($options) === 1) {
+            return [
+                'mode' => 'single',
+                'label' => $options[0]['ctaLabel'],
+                'title' => $this->t->trans('backend.plan.upgrade.select_title'),
+                'options' => $options,
+            ];
+        }
+
+        return [
+            'mode' => 'modal',
+            'label' => $this->t->trans('backend.plan.upgrade.open_selector'),
+            'title' => $this->t->trans('backend.plan.upgrade.select_title'),
+            'options' => $options,
+        ];
+    }
+
+    private function formatPlanPrice(?int $priceAmount, string $currency): string
+    {
+        if ($priceAmount === null) {
+            return $this->t->trans('backend.common.placeholder');
+        }
+
+        $amount = number_format($priceAmount / 100, 2, ',', '.');
+        $currency = strtoupper(trim($currency));
+        $currencyLabel = $currency === 'EUR' ? '€' : $currency;
+
+        return sprintf('%s %s', $amount, $currencyLabel);
     }
 
     private function countProjectEvidenceFiles(Plan $plan): int

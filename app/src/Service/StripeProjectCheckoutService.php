@@ -2,13 +2,13 @@
 
 namespace App\Service;
 
+use App\Exception\PendingStripeCheckoutException;
 use App\Entity\CommercialPlan;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\User;
 use App\Repository\CommercialPlanRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Stripe\Checkout\Session as StripeCheckoutSession;
 use Stripe\StripeClient;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Throwable;
@@ -57,6 +57,118 @@ final class StripeProjectCheckoutService
         return $available;
     }
 
+    public function reconcilePendingCheckout(Project $project, ?string $sessionId = null): StripeCheckoutReconciliationResult
+    {
+        $subscription = $project->getSubscription();
+        if (!$subscription instanceof ProjectSubscription) {
+            return StripeCheckoutReconciliationResult::nothingToConfirm();
+        }
+
+        $requestedSessionId = $this->normalizeString($sessionId);
+        $storedSessionId = $this->normalizeString($subscription->getStripeCheckoutSessionId());
+        $checkoutSessionId = $requestedSessionId ?? $storedSessionId;
+
+        if ($checkoutSessionId === null) {
+            return StripeCheckoutReconciliationResult::nothingToConfirm();
+        }
+
+        if (
+            $requestedSessionId !== null
+            && $storedSessionId !== null
+            && $storedSessionId !== $requestedSessionId
+        ) {
+            return StripeCheckoutReconciliationResult::mismatch($subscription);
+        }
+
+        try {
+            $session = $this->stripeClient->checkout->sessions->retrieve($checkoutSessionId, [
+                'expand' => [
+                    'payment_intent',
+                    'invoice',
+                ],
+            ]);
+        } catch (Throwable) {
+            return StripeCheckoutReconciliationResult::error($subscription);
+        }
+
+        if (!is_object($session)) {
+            return StripeCheckoutReconciliationResult::error($subscription);
+        }
+
+        $retrievedSessionId = $this->normalizeString($session->id ?? null);
+        if ($retrievedSessionId === null || $retrievedSessionId !== $checkoutSessionId) {
+            return StripeCheckoutReconciliationResult::mismatch($subscription);
+        }
+
+        $metadata = is_object($session->metadata ?? null) || is_array($session->metadata ?? null)
+            ? $session->metadata
+            : [];
+        $projectId = (int) ($this->readMetadataValue($metadata, 'project_id') ?? 0);
+        if ($projectId !== (int) $project->getId()) {
+            return StripeCheckoutReconciliationResult::mismatch($subscription);
+        }
+
+        $targetTier = $this->resolveReconciledTargetTier($subscription, $metadata);
+        if ($targetTier === null) {
+            return StripeCheckoutReconciliationResult::mismatch($subscription);
+        }
+
+        if (
+            $subscription->getStatus() === ProjectSubscription::STATUS_ACTIVE
+            && $subscription->getTier() === $targetTier
+            && $storedSessionId !== null
+            && $storedSessionId === $checkoutSessionId
+        ) {
+            $this->fillMissingStripeReferences($subscription, $session);
+            $this->entityManager->flush();
+
+            return StripeCheckoutReconciliationResult::alreadyConfirmed($subscription);
+        }
+
+        $paymentStatus = $this->normalizeString($session->payment_status ?? null) ?? 'unknown';
+        if ($paymentStatus !== 'paid') {
+            $subscription->setLastPaymentStatus($paymentStatus);
+            $this->entityManager->flush();
+
+            return StripeCheckoutReconciliationResult::pending($subscription);
+        }
+
+        if (!$this->canUpgrade($subscription->getTier(), $targetTier) && $subscription->getTier() !== $targetTier) {
+            return StripeCheckoutReconciliationResult::mismatch($subscription);
+        }
+
+        $invoice = $this->extractStripeObject($session->invoice ?? null);
+        $paymentIntentId = $this->extractStripeObjectId($session->payment_intent ?? null);
+        $customerId = $this->extractStripeObjectId($session->customer ?? null);
+        $invoiceId = $this->extractStripeObjectId($invoice);
+        $paidAmountCents = isset($session->amount_total) ? (int) $session->amount_total : null;
+        $currency = strtoupper($this->normalizeString($session->currency ?? null) ?? $subscription->getCurrency() ?? 'EUR');
+        $paymentReference = $this->normalizeString($this->readObjectValue($invoice, 'number'))
+            ?? $invoiceId
+            ?? $checkoutSessionId;
+
+        $subscription
+            ->setTier($targetTier)
+            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+            ->setSource(ProjectSubscription::SOURCE_STRIPE)
+            ->setPaidAmountCents($paidAmountCents)
+            ->setCurrency($currency !== '' ? $currency : 'EUR')
+            ->setPaymentReference($paymentReference)
+            ->setStripeCheckoutSessionId($checkoutSessionId)
+            ->setStripePaymentIntentId($paymentIntentId)
+            ->setStripeInvoiceId($invoiceId)
+            ->setStripeCustomerId($customerId)
+            ->setStripeHostedInvoiceUrl($this->normalizeString($this->readObjectValue($invoice, 'hosted_invoice_url')))
+            ->setStripeInvoicePdfUrl($this->normalizeString($this->readObjectValue($invoice, 'invoice_pdf')))
+            ->setLastPaymentStatus($paymentStatus)
+            ->setPaidAt(new \DateTimeImmutable())
+            ->setTargetTier(null);
+
+        $this->entityManager->flush();
+
+        return StripeCheckoutReconciliationResult::confirmed($subscription);
+    }
+
     public function canUpgrade(Project|string $projectOrTier, string $targetTier): bool
     {
         $currentTier = $projectOrTier instanceof Project
@@ -78,17 +190,9 @@ final class StripeProjectCheckoutService
 
         if (
             $subscription->getStatus() === ProjectSubscription::STATUS_PENDING_PAYMENT
-            && $subscription->getTargetTier() === $targetTier
-            && $subscription->getStripeCheckoutSessionId()
+            && $this->normalizeString($subscription->getStripeCheckoutSessionId()) !== null
         ) {
-            try {
-                $existingSession = $this->stripeClient->checkout->sessions->retrieve($subscription->getStripeCheckoutSessionId());
-                if ($existingSession instanceof StripeCheckoutSession && is_string($existingSession->url) && $existingSession->url !== '') {
-                    return $existingSession->url;
-                }
-            } catch (Throwable) {
-                // Rehacemos la sesión si Stripe ya no reconoce la anterior.
-            }
+            throw new PendingStripeCheckoutException('A Stripe payment is already pending for this project. Verify or cancel it before starting another checkout.');
         }
 
         $successUrl = $this->resolveUrlTemplate(
@@ -239,6 +343,114 @@ final class StripeProjectCheckoutService
     private function resolveCurrentPlan(string $currentTier): ?CommercialPlan
     {
         return $this->findTargetPlan($currentTier);
+    }
+
+    private function resolveReconciledTargetTier(ProjectSubscription $subscription, array|object $metadata): ?string
+    {
+        $targetTier = $this->normalizeString($this->readMetadataValue($metadata, 'target_tier'));
+        if ($targetTier !== null && $this->isValidTargetTier($targetTier)) {
+            return $targetTier;
+        }
+
+        $commercialPlanCode = $this->normalizeString($this->readMetadataValue($metadata, 'commercial_plan_code'));
+        if ($commercialPlanCode !== null) {
+            $mappedTier = strtolower($commercialPlanCode);
+            if ($this->isValidTargetTier($mappedTier)) {
+                return $mappedTier;
+            }
+        }
+
+        $storedTargetTier = $this->normalizeString($subscription->getTargetTier());
+        if ($storedTargetTier !== null && $this->isValidTargetTier($storedTargetTier)) {
+            return $storedTargetTier;
+        }
+
+        return null;
+    }
+
+    private function fillMissingStripeReferences(ProjectSubscription $subscription, object $session): void
+    {
+        $invoice = $this->extractStripeObject($session->invoice ?? null);
+
+        if ($subscription->getStripePaymentIntentId() === null) {
+            $subscription->setStripePaymentIntentId($this->extractStripeObjectId($session->payment_intent ?? null));
+        }
+        if ($subscription->getStripeInvoiceId() === null) {
+            $subscription->setStripeInvoiceId($this->extractStripeObjectId($invoice));
+        }
+        if ($subscription->getStripeCustomerId() === null) {
+            $subscription->setStripeCustomerId($this->extractStripeObjectId($session->customer ?? null));
+        }
+        if ($subscription->getStripeHostedInvoiceUrl() === null) {
+            $subscription->setStripeHostedInvoiceUrl($this->normalizeString($this->readObjectValue($invoice, 'hosted_invoice_url')));
+        }
+        if ($subscription->getStripeInvoicePdfUrl() === null) {
+            $subscription->setStripeInvoicePdfUrl($this->normalizeString($this->readObjectValue($invoice, 'invoice_pdf')));
+        }
+        if ($subscription->getPaymentReference() === null) {
+            $subscription->setPaymentReference(
+                $this->normalizeString($this->readObjectValue($invoice, 'number'))
+                ?? $this->extractStripeObjectId($invoice)
+                ?? $this->normalizeString($session->id ?? null)
+            );
+        }
+        if ($subscription->getLastPaymentStatus() === null) {
+            $subscription->setLastPaymentStatus($this->normalizeString($session->payment_status ?? null) ?? 'paid');
+        }
+        if ($subscription->getPaidAt() === null) {
+            $subscription->setPaidAt(new \DateTimeImmutable());
+        }
+        if ($subscription->getPaidAmountCents() === null && isset($session->amount_total)) {
+            $subscription->setPaidAmountCents((int) $session->amount_total);
+        }
+        if ($subscription->getTargetTier() !== null) {
+            $subscription->setTargetTier(null);
+        }
+    }
+
+    private function extractStripeObject(mixed $value): array|object|null
+    {
+        if (is_array($value) || is_object($value)) {
+            return $value;
+        }
+
+        return null;
+    }
+
+    private function extractStripeObjectId(mixed $value): ?string
+    {
+        return $this->normalizeString($this->readObjectValue($value, 'id'));
+    }
+
+    private function normalizeString(mixed $value): ?string
+    {
+        if (is_string($value) && trim($value) !== '') {
+            return trim($value);
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+
+        return null;
+    }
+
+    private function readObjectValue(mixed $value, string $key): mixed
+    {
+        if (is_array($value)) {
+            return $value[$key] ?? null;
+        }
+
+        if (is_object($value)) {
+            return $value->{$key} ?? null;
+        }
+
+        return null;
+    }
+
+    private function readMetadataValue(array|object $metadata, string $key): ?string
+    {
+        return $this->normalizeString($this->readObjectValue($metadata, $key));
     }
 
     private function resolveUrlTemplate(?string $template, string $routeName, Project $project, array $query = []): string

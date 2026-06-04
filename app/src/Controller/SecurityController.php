@@ -14,15 +14,11 @@ class SecurityController extends AbstractController
     #[Route(path: '/login/{_locale}', name: 'app_login', requirements: ['_locale' => 'es|en'], defaults: ['_locale' => 'es'])]
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
-        // Redirigir a home si ya está autenticado
         if ($this->getUser()) {
-            return $this->redirectToRoute('home');
+            return $this->redirectToRoute('app_backend');
         }
-        
-        // get the login error if there is one
-        $error = $authenticationUtils->getLastAuthenticationError();
 
-        // last username entered by the user
+        $error = $authenticationUtils->getLastAuthenticationError();
         $lastUsername = $authenticationUtils->getLastUsername();
 
         return $this->render('security/login.html.twig', [
