@@ -31,18 +31,21 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-3 mb-3">{{ form_row(form.priceAmount) }}</div>
-                    <div class="col-md-3 mb-3">{{ form_row(form.stripePriceId) }}</div>
-                    {% if form.stripeUpgradeFromStandardPriceId is defined %}
-                        <div class="col-md-3 mb-3">{{ form_row(form.stripeUpgradeFromStandardPriceId) }}</div>
-                        <div class="col-md-3 mb-3">{{ form_row(form.maxEvidenceCount) }}</div>
-                    {% else %}
-                        <div class="col-md-3 mb-3">{{ form_row(form.maxEvidenceCount) }}</div>
-                    {% endif %}
+                    <div class="col-md-4 mb-3">{{ form_row(form.priceAmount) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.sortOrder) }}</div>
+                    <div class="col-md-4 mb-3">{{ form_row(form.maxEvidenceCount) }}</div>
                 </div>
 
                 <div class="row">
-                    <div class="col-md-4 mb-3">{{ form_row(form.sortOrder) }}</div>
+                    <div class="{% if form.stripeUpgradeFromStandardPriceId is defined %}col-md-6{% else %}col-md-4{% endif %} mb-3">
+                        {{ form_row(form.stripePriceId) }}
+                    </div>
+
+                    {% if form.stripeUpgradeFromStandardPriceId is defined %}
+                        <div class="col-md-6 mb-3">
+                            {{ form_row(form.stripeUpgradeFromStandardPriceId) }}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <div class="mb-3">{{ form_row(form.description) }}</div>
@@ -57,8 +60,18 @@
                 <div class="row">
                     <div class="col-12 mb-3">
                         <h5 class="mb-3">{{ 'backend.commercial_plans.form.allowed_scores_heading'|trans }}</h5>
-                        {{ form_widget(form.allowedScores) }}
+
+                        <div class="d-flex flex-wrap gap-4 align-items-center">
+                            {% for scoreField in form.allowedScores %}
+                                <div class="form-check mb-0">
+                                    {{ form_widget(scoreField, {'attr': {'class': 'form-check-input'}}) }}
+                                    {{ form_label(scoreField, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
                         {{ form_errors(form.allowedScores) }}
+                        {% do form.allowedScores.setRendered %}
                     </div>
                 </div>
 
