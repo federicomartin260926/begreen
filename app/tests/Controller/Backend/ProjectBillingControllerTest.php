@@ -510,7 +510,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $content = $response->getContent();
 
         self::assertIsString($content);
-        self::assertStringContainsString('Intentar descargar factura', $content);
+        self::assertStringContainsString('Descargar factura', $content);
         self::assertStringContainsString('Abrir factura en Stripe', $content);
         self::assertStringContainsString('Sin factura disponible todavía', $content);
         self::assertStringNotContainsString('Ver factura', $content);
