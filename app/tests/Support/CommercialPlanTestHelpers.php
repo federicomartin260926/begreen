@@ -89,6 +89,7 @@ trait CommercialPlanTestHelpers
             ->setPriceAmount($definition['priceAmount'])
             ->setPriceCurrency($definition['priceCurrency'])
             ->setStripePriceId($definition['stripePriceId'])
+            ->setStripeUpgradeFromStandardPriceId($definition['stripeUpgradeFromStandardPriceId'])
             ->setMaxEvidenceCount($definition['maxEvidenceCount'])
             ->setWatermarkEnabled($definition['watermarkEnabled'])
             ->setActive($definition['active'])
@@ -102,10 +103,11 @@ trait CommercialPlanTestHelpers
             'standard' => [
                 'code' => 'standard',
                 'name' => 'Standard',
-                'description' => 'Plan intermedio.',
+                'description' => 'Incluye PDF agrupado por departamentos, marca de agua desactivada y evidencias ilimitadas para gestionar proyectos con más detalle.',
                 'priceAmount' => 9900,
                 'priceCurrency' => 'EUR',
                 'stripePriceId' => null,
+                'stripeUpgradeFromStandardPriceId' => null,
                 'maxEvidenceCount' => null,
                 'watermarkEnabled' => false,
                 'active' => true,
@@ -137,10 +139,11 @@ trait CommercialPlanTestHelpers
             'pro' => [
                 'code' => 'pro',
                 'name' => 'Pro',
-                'description' => 'Plan completo.',
+                'description' => 'Incluye exportaciones avanzadas por categorías, departamentos, áreas de impacto, triple balance y ODS, además de campos colaborativos y medidas custom.',
                 'priceAmount' => 19900,
                 'priceCurrency' => 'EUR',
                 'stripePriceId' => null,
+                'stripeUpgradeFromStandardPriceId' => null,
                 'maxEvidenceCount' => null,
                 'watermarkEnabled' => false,
                 'active' => true,
@@ -172,10 +175,11 @@ trait CommercialPlanTestHelpers
             default => [
                 'code' => 'basic',
                 'name' => 'Basic',
-                'description' => 'Plan gratuito de entrada.',
+                'description' => 'Plan gratuito para empezar, con PDF unificado, marca de agua activa y límite de 10 evidencias por proyecto.',
                 'priceAmount' => 0,
                 'priceCurrency' => 'EUR',
                 'stripePriceId' => null,
+                'stripeUpgradeFromStandardPriceId' => null,
                 'maxEvidenceCount' => 10,
                 'watermarkEnabled' => true,
                 'active' => true,

@@ -41,6 +41,9 @@ class CommercialPlan
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $stripePriceId = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripeUpgradeFromStandardPriceId = null;
+
     #[ORM\Column(type: 'integer', nullable: true)]
     private ?int $maxEvidenceCount = null;
 
@@ -132,6 +135,22 @@ class CommercialPlan
 
         if ($this->stripePriceId === '') {
             $this->stripePriceId = null;
+        }
+
+        return $this;
+    }
+
+    public function getStripeUpgradeFromStandardPriceId(): ?string
+    {
+        return $this->stripeUpgradeFromStandardPriceId;
+    }
+
+    public function setStripeUpgradeFromStandardPriceId(?string $stripeUpgradeFromStandardPriceId): self
+    {
+        $this->stripeUpgradeFromStandardPriceId = $stripeUpgradeFromStandardPriceId !== null ? trim($stripeUpgradeFromStandardPriceId) : null;
+
+        if ($this->stripeUpgradeFromStandardPriceId === '') {
+            $this->stripeUpgradeFromStandardPriceId = null;
         }
 
         return $this;

@@ -89,7 +89,9 @@
                   <div class="border rounded p-3 bg-light">
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                       <div>
-                        <div class="fw-semibold">{{ 'backend.subscription.card.title'|trans }}</div>
+                        <a href="{{ path('backend_project_billing', {id: project.id, from: 'project'}) }}" class="fw-semibold text-decoration-none">
+                          {{ 'backend.subscription.card.title'|trans }}
+                        </a>
                         <div class="small text-muted">{{ 'backend.subscription.card.subtitle'|trans }}</div>
                       </div>
                       <span class="badge {% if subscription.status == 'active' %}bg-success{% elseif subscription.status == 'pending_payment' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
@@ -118,7 +120,7 @@
                       {% endif %}
                     </div>
                     <div class="small text-muted mb-2">
-                      {% if subscription.stripeHostedInvoiceUrl or subscription.stripeInvoicePdfUrl %}
+                      {% if billingInvoiceAvailable|default(false) %}
                         {{ 'backend.billing.project.invoice_available'|trans }}
                       {% else %}
                         {{ 'backend.billing.project.no_invoice_yet'|trans }}

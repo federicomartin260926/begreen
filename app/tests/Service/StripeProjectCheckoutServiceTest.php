@@ -39,12 +39,13 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame('price_standard', $client->checkout->sessions->createCalls[0]['line_items'][0]['price']);
         self::assertSame('https://example.test/success?session_id={CHECKOUT_SESSION_ID}', $client->checkout->sessions->createCalls[0]['success_url']);
         self::assertSame('https://example.test/cancel?session_id={CHECKOUT_SESSION_ID}', $client->checkout->sessions->createCalls[0]['cancel_url']);
+        self::assertSame('always', $client->checkout->sessions->createCalls[0]['customer_creation']);
+        self::assertTrue($client->checkout->sessions->createCalls[0]['invoice_creation']['enabled']);
         self::assertSame('standard', $client->checkout->sessions->createCalls[0]['metadata']['commercial_plan_code']);
-        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscription()?->getStatus());
-        self::assertSame(ProjectSubscription::SOURCE_STRIPE, $project->getSubscription()?->getSource());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
+        self::assertSame(ProjectSubscription::SOURCE_MANUAL, $project->getSubscription()?->getSource());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTargetTier());
         self::assertSame($sessionId, $project->getSubscription()?->getStripeCheckoutSessionId());
-        self::assertSame($sessionId, $project->getSubscription()?->getPaymentReference());
         self::assertSame('checkout_created', $project->getSubscription()?->getLastPaymentStatus());
         self::assertNull($project->getSubscription()?->getPaidAmountCents());
     }
@@ -55,7 +56,8 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $client = $this->createFakeStripeClient($sessionId);
         $plans = $this->makeDefaultCommercialPlans();
         $plans['standard']->setStripePriceId('price_standard');
-        $plans['pro']->setStripePriceId('price_upgrade');
+        $plans['pro']->setStripePriceId('price_pro_full');
+        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
         $service = $this->createService($client, $plans, true);
         $project = $this->createProject(ProjectSubscription::TIER_STANDARD);
 
@@ -65,7 +67,15 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertCount(1, $client->checkout->sessions->createCalls);
         self::assertSame('price_upgrade', $client->checkout->sessions->createCalls[0]['line_items'][0]['price']);
         self::assertSame('pro', $client->checkout->sessions->createCalls[0]['metadata']['commercial_plan_code']);
-        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscription()?->getStatus());
+        self::assertSame('standard', $client->checkout->sessions->createCalls[0]['metadata']['current_tier']);
+        self::assertSame('pro', $client->checkout->sessions->createCalls[0]['metadata']['target_tier']);
+        self::assertSame('standard', $client->checkout->sessions->createCalls[0]['metadata']['upgrade_from_tier']);
+        self::assertSame('standard_to_pro', $client->checkout->sessions->createCalls[0]['metadata']['upgrade_type']);
+        self::assertSame('standard', $client->checkout->sessions->createCalls[0]['payment_intent_data']['metadata']['upgrade_from_tier']);
+        self::assertSame('standard_to_pro', $client->checkout->sessions->createCalls[0]['payment_intent_data']['metadata']['upgrade_type']);
+        self::assertSame('always', $client->checkout->sessions->createCalls[0]['customer_creation']);
+        self::assertTrue($client->checkout->sessions->createCalls[0]['invoice_creation']['enabled']);
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
         self::assertSame(ProjectSubscription::TIER_PRO, $project->getSubscription()?->getTargetTier());
         self::assertSame($sessionId, $project->getSubscription()?->getStripeCheckoutSessionId());
         self::assertSame(10000, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_PRO));
@@ -95,7 +105,8 @@ final class StripeProjectCheckoutServiceTest extends TestCase
     {
         $plans = $this->makeDefaultCommercialPlans();
         $plans['standard']->setStripePriceId('price_standard');
-        $plans['pro']->setStripePriceId('price_upgrade');
+        $plans['pro']->setStripePriceId('price_pro_full');
+        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
         $service = $this->createService($this->createFakeStripeClient(), $plans);
         $project = $this->createProject(ProjectSubscription::TIER_STANDARD);
 
@@ -107,6 +118,23 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertArrayNotHasKey(ProjectSubscription::TIER_STANDARD, $available);
         self::assertArrayHasKey(ProjectSubscription::TIER_PRO, $available);
         self::assertSame('price_upgrade', $available[ProjectSubscription::TIER_PRO]['priceId']);
+        self::assertSame(10000, $available[ProjectSubscription::TIER_PRO]['amountCents']);
+    }
+
+    public function testStandardProjectDoesNotOfferProUpgradeWithoutDifferentialPriceId(): void
+    {
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $plans['pro']->setStripePriceId('price_pro_full');
+        $service = $this->createService($this->createFakeStripeClient(), $plans);
+        $project = $this->createProject(ProjectSubscription::TIER_STANDARD);
+
+        self::assertSame([], $service->getAvailableUpgradeTargets($project));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Stripe upgrade price id is not configured for the Standard -> Pro transition.');
+
+        $service->startCheckout($project, ProjectSubscription::TIER_PRO);
     }
 
     public function testProProjectCannotUpgradeFurther(): void
@@ -162,6 +190,21 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         }
     }
 
+    public function testActiveUpgradePreventsStartingASecondCheckout(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $plans['pro']->setStripePriceId('price_pro_full');
+        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
+        $service = $this->createService($client, $plans);
+        $project = $this->createProject(ProjectSubscription::TIER_STANDARD, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_PRO, 'cs_active_upgrade', 42);
+
+        $this->expectException(PendingStripeCheckoutException::class);
+
+        $service->startCheckout($project, ProjectSubscription::TIER_PRO);
+    }
+
     public function testPaidPendingCheckoutIsReconciledAndActivatesPlan(): void
     {
         $client = $this->createFakeStripeClient();
@@ -203,6 +246,8 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $result = $service->reconcilePendingCheckout($project, 'cs_paid_1');
 
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
+        self::assertSame(['cs_paid_1'], array_column($client->checkout->sessions->retrieveCalls, 'sessionId'));
+        self::assertContains('customer', $client->checkout->sessions->retrieveCalls[0]['options']['expand']);
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
         self::assertSame(9900, $project->getSubscription()?->getPaidAmountCents());
@@ -251,6 +296,8 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $result = $service->reconcilePendingCheckout($project, 'cs_paid_no_invoice');
 
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
+        self::assertSame(['cs_paid_no_invoice'], array_column($client->checkout->sessions->retrieveCalls, 'sessionId'));
+        self::assertContains('customer', $client->checkout->sessions->retrieveCalls[0]['options']['expand']);
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
         self::assertSame('pi_paid_no_invoice', $project->getSubscription()?->getStripePaymentIntentId());
         self::assertSame('cus_paid_no_invoice', $project->getSubscription()?->getStripeCustomerId());
@@ -357,6 +404,53 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame('https://invoice.test/active/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
         self::assertSame('cs_active_1', $project->getSubscription()?->getStripeCheckoutSessionId());
         self::assertSame(['in_active_1'], $client->invoices->retrieveCalls);
+    }
+
+    public function testInvoiceObjectWithoutPdfTriggersInvoiceRefetch(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $client->invoices->retrieveReturn = (object) [
+            'id' => 'in_invoice_refetch_1',
+            'number' => 'INV-2026-011',
+            'hosted_invoice_url' => 'https://invoice.test/refetch/view',
+            'invoice_pdf' => 'https://invoice.test/refetch/pdf',
+            'created' => 1717495200,
+        ];
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_invoice_refetch_1',
+            'payment_status' => 'paid',
+            'amount_total' => 19900,
+            'currency' => 'eur',
+            'metadata' => (object) [
+                'project_id' => '42',
+                'target_tier' => ProjectSubscription::TIER_PRO,
+                'commercial_plan_code' => 'pro',
+            ],
+            'payment_intent' => 'pi_invoice_refetch_1',
+            'customer' => 'cus_invoice_refetch_1',
+            'invoice' => 'in_invoice_refetch_1',
+        ];
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['pro']->setStripePriceId('price_pro_full');
+        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
+        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
+        $invoiceStorage->expects(self::once())
+            ->method('upsertFromStripeCheckout')
+            ->with(
+                self::isInstanceOf(ProjectSubscription::class),
+                self::isType('object'),
+                self::isType('object')
+            )
+            ->willReturn(new ProjectBillingDocument());
+
+        $project = $this->createProject(ProjectSubscription::TIER_STANDARD, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_PRO, 'cs_invoice_refetch_1', 42);
+        $service = $this->createService($client, $plans, true, $invoiceStorage);
+
+        $result = $service->reconcilePendingCheckout($project, 'cs_invoice_refetch_1');
+
+        self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
+        self::assertSame(['in_invoice_refetch_1'], $client->invoices->retrieveCalls);
+        self::assertSame('https://invoice.test/refetch/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
     }
 
     private function createService(FakeStripeClient $stripeClient, array $plans, bool $expectFlush = false, ?StripeInvoiceStorageService $invoiceStorage = null): StripeProjectCheckoutService

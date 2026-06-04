@@ -47,11 +47,16 @@ final class StripeProjectCheckoutService
                 continue;
             }
 
+            $priceId = $this->resolvePriceId($currentTier, $targetTier);
+            if ($priceId === null || $priceId === '') {
+                continue;
+            }
+
             $available[$targetTier] = [
                 'targetTier' => $targetTier,
                 'label' => $this->resolveTargetLabel($targetTier),
                 'amountCents' => $this->resolveAmountCents($currentTier, $targetTier),
-                'priceId' => $this->resolvePriceId($targetTier),
+                'priceId' => $priceId,
             ];
         }
 
@@ -86,6 +91,7 @@ final class StripeProjectCheckoutService
                 'expand' => [
                     'payment_intent',
                     'invoice',
+                    'customer',
                 ],
             ]);
         } catch (Throwable) {
@@ -194,7 +200,7 @@ final class StripeProjectCheckoutService
         $subscription->setProject($project);
 
         if (
-            $subscription->getStatus() === ProjectSubscription::STATUS_PENDING_PAYMENT
+            $subscription->getTargetTier() !== null
             && $this->normalizeString($subscription->getStripeCheckoutSessionId()) !== null
         ) {
             throw new PendingStripeCheckoutException('A Stripe payment is already pending for this project. Verify or cancel it before starting another checkout.');
@@ -219,8 +225,12 @@ final class StripeProjectCheckoutService
         );
 
         $targetPlan = $this->resolveTargetPlan($targetTier);
-        $priceId = $targetPlan->getStripePriceId();
+        $priceId = $this->resolvePriceId($currentTier, $targetTier);
         if ($priceId === null || $priceId === '') {
+            if ($currentTier === ProjectSubscription::TIER_STANDARD && $targetTier === ProjectSubscription::TIER_PRO) {
+                throw new \RuntimeException('Stripe upgrade price id is not configured for the Standard -> Pro transition.');
+            }
+
             throw new \RuntimeException(sprintf('Stripe price id is not configured for commercial plan "%s".', $targetPlan->getCode()));
         }
 
@@ -229,6 +239,12 @@ final class StripeProjectCheckoutService
             'current_tier' => $currentTier,
             'target_tier' => $targetTier,
             'commercial_plan_code' => $targetPlan->getCode(),
+            'upgrade_from_tier' => $currentTier === ProjectSubscription::TIER_STANDARD && $targetTier === ProjectSubscription::TIER_PRO
+                ? $currentTier
+                : null,
+            'upgrade_type' => $currentTier === ProjectSubscription::TIER_STANDARD && $targetTier === ProjectSubscription::TIER_PRO
+                ? 'standard_to_pro'
+                : null,
             'user_id' => $user?->getId() ? (string) $user->getId() : null,
         ], static fn ($value) => $value !== null && $value !== '');
 
@@ -254,19 +270,12 @@ final class StripeProjectCheckoutService
 
         $subscription
             ->setTier($currentTier)
-            ->setStatus(ProjectSubscription::STATUS_PENDING_PAYMENT)
-            ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setCurrency('EUR')
-            ->setPaidAmountCents(null)
-            ->setPaymentReference($session->id)
+            ->setStatus($subscription->getStatus() ?: ProjectSubscription::STATUS_ACTIVE)
+            ->setCurrency($subscription->getCurrency() ?: 'EUR')
+            ->setPaidAmountCents($subscription->getPaidAmountCents())
+            ->setPaymentReference($subscription->getPaymentReference())
             ->setStripeCheckoutSessionId($session->id)
-            ->setStripePaymentIntentId(null)
-            ->setStripeInvoiceId(null)
-            ->setStripeCustomerId(null)
-            ->setStripeHostedInvoiceUrl(null)
-            ->setStripeInvoicePdfUrl(null)
             ->setLastPaymentStatus('checkout_created')
-            ->setPaidAt(null)
             ->setTargetTier($targetTier);
 
         if (!$project->getSubscription()) {
@@ -325,9 +334,18 @@ final class StripeProjectCheckoutService
         return max(0, $targetAmount - $currentAmount);
     }
 
-    private function resolvePriceId(string $targetTier): ?string
+    private function resolvePriceId(string $currentTier, string $targetTier): ?string
     {
-        return $this->findTargetPlan($targetTier)?->getStripePriceId();
+        $targetPlan = $this->findTargetPlan($targetTier);
+        if (!$targetPlan instanceof CommercialPlan) {
+            return null;
+        }
+
+        if ($currentTier === ProjectSubscription::TIER_STANDARD && $targetTier === ProjectSubscription::TIER_PRO) {
+            return $targetPlan->getStripeUpgradeFromStandardPriceId();
+        }
+
+        return $targetPlan->getStripePriceId();
     }
 
     private function resolveTargetPlan(string $targetTier): CommercialPlan
@@ -438,8 +456,18 @@ final class StripeProjectCheckoutService
 
     private function resolveStripeInvoice(mixed $value): array|object|null
     {
+        $originalInvoice = is_array($value) || is_object($value) ? $value : null;
+
         if (is_array($value) || is_object($value)) {
-            return $value;
+            $invoiceId = $this->normalizeString($this->readObjectValue($value, 'id'));
+            $hasDownloadData = $this->normalizeString($this->readObjectValue($value, 'invoice_pdf')) !== null
+                && $this->normalizeString($this->readObjectValue($value, 'hosted_invoice_url')) !== null;
+
+            if ($invoiceId === null || $hasDownloadData) {
+                return $value;
+            }
+
+            $value = $invoiceId;
         }
 
         $invoiceId = $this->normalizeString($value);
@@ -450,7 +478,7 @@ final class StripeProjectCheckoutService
         try {
             $invoice = $this->stripeClient->invoices->retrieve($invoiceId);
         } catch (Throwable) {
-            return null;
+            return $originalInvoice;
         }
 
         return is_array($invoice) || is_object($invoice) ? $invoice : null;

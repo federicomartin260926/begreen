@@ -46,14 +46,15 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
 
         $plans = $this->makeDefaultCommercialPlans();
-        $plans['pro']->setStripePriceId('price_pro');
+        $plans['pro']->setStripePriceId('price_pro_full');
+        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
 
         $result = $this->invokeBuildUpgradeCta(
             $controller,
             $project,
             ProjectSubscription::TIER_STANDARD,
             [
-                ProjectSubscription::TIER_PRO => ['priceId' => 'price_pro'],
+                ProjectSubscription::TIER_PRO => ['priceId' => 'price_upgrade', 'amountCents' => 10000],
             ],
             $this->makeCommercialPlanRepository($plans)
         );
@@ -63,6 +64,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         self::assertSame(ProjectSubscription::TIER_PRO, $result['options'][0]['targetTier']);
         self::assertSame('Pro', $result['options'][0]['name']);
         self::assertStringContainsString('Actualizar a Pro', $result['options'][0]['ctaLabel']);
+        self::assertStringContainsString('100,00 €', $result['options'][0]['ctaLabel']);
     }
 
     public function testProProjectShowsNoUpgradeCta(): void

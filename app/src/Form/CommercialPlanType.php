@@ -53,6 +53,12 @@ final class CommercialPlanType extends AbstractType
                 'attr' => ['maxlength' => 255],
                 'help' => 'backend.commercial_plans.form.stripe_price_id_help',
             ])
+            ->add('stripeUpgradeFromStandardPriceId', TextType::class, [
+                'label' => 'backend.commercial_plans.form.stripe_upgrade_from_standard_price_id',
+                'required' => false,
+                'attr' => ['maxlength' => 255, 'placeholder' => 'price_...'],
+                'help' => 'backend.commercial_plans.form.stripe_upgrade_from_standard_price_id_help',
+            ])
             ->add('maxEvidenceCount', IntegerType::class, [
                 'label' => 'backend.commercial_plans.form.max_evidence_count',
                 'required' => false,

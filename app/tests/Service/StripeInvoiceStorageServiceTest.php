@@ -12,6 +12,10 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\Stripe\FakeStripeClient;
+use App\Tests\Support\Stripe\FakeStripeCheckoutFacade;
+use App\Tests\Support\Stripe\FakeStripeCheckoutSessions;
+use App\Tests\Support\Stripe\FakeStripeInvoicesFacade;
 
 final class StripeInvoiceStorageServiceTest extends TestCase
 {
@@ -40,6 +44,7 @@ final class StripeInvoiceStorageServiceTest extends TestCase
             ->willReturn(null);
 
         $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
             new MockHttpClient(new MockResponse("%PDF-1.4\n%PDF test\n", [
                 'http_code' => 200,
                 'response_headers' => ['content-type: application/pdf'],
@@ -128,6 +133,7 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         file_put_contents($projectDir.'/var/private/stripe-invoices/project-86/invoice-in_test_86.pdf', "%PDF-1.4\n%existing\n");
 
         $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
             new MockHttpClient(static function (): never {
                 throw new \RuntimeException('HTTP client should not be called when the local copy already exists.');
             }),
@@ -165,6 +171,7 @@ final class StripeInvoiceStorageServiceTest extends TestCase
     {
         $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
         $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
             new MockHttpClient(new MockResponse('<html>not pdf</html>', [
                 'http_code' => 200,
                 'response_headers' => ['content-type: text/html'],
@@ -176,6 +183,245 @@ final class StripeInvoiceStorageServiceTest extends TestCase
 
         $document = $this->createDocument();
         $document->setInvoicePdfUrl('https://stripe.test/invoice.pdf');
+
+        self::assertFalse($service->syncInvoicePdf($document));
+        self::assertNull($document->getLocalPath());
+    }
+
+    public function testSyncFollowsRedirectsWhenDownloadingPdf(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $documentRepository = $this->createMock(ProjectBillingDocumentRepository::class);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+
+        $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
+            new MockHttpClient(function (string $method, string $url): MockResponse {
+                if ($url === 'https://stripe.test/invoice.pdf') {
+                    return new MockResponse('', [
+                        'http_code' => 302,
+                        'response_headers' => ['location: https://stripe.test/invoice-final.pdf'],
+                    ]);
+                }
+
+                return new MockResponse("%PDF-1.4\n%redirected\n", [
+                    'http_code' => 200,
+                    'response_headers' => ['content-type: application/pdf; charset=binary'],
+                ]);
+            }),
+            $documentRepository,
+            $entityManager,
+            $projectDir,
+        );
+
+        $document = $this->createDocument();
+        $document
+            ->setInvoicePdfUrl('https://stripe.test/invoice.pdf')
+            ->setStripeInvoiceId('in_test_86')
+            ->setLocalPath(null);
+
+        self::assertTrue($service->syncInvoicePdf($document));
+        self::assertSame('stripe-invoices/project-86/invoice-in_test_86.pdf', $document->getLocalPath());
+        self::assertFileExists($projectDir.'/var/private/'.$document->getLocalPath());
+    }
+
+    public function testSyncAcceptsOctetStreamWhenContentIsPdf(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
+            new MockHttpClient(new MockResponse("%PDF-1.4\n%octet-stream\n", [
+                'http_code' => 200,
+                'response_headers' => ['content-type: application/octet-stream'],
+            ])),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(EntityManagerInterface::class),
+            $projectDir,
+        );
+
+        $document = $this->createDocument();
+        $document->setInvoicePdfUrl('https://stripe.test/invoice.pdf');
+
+        self::assertTrue($service->syncInvoicePdf($document));
+        self::assertNotNull($document->getLocalPath());
+        self::assertFileExists($projectDir.'/var/private/'.$document->getLocalPath());
+    }
+
+    public function testSyncFailsWhenInvoiceFileCannotBeWritten(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $blocker = $projectDir.'/var/private/stripe-invoices/project-86';
+        $filesystem = new Filesystem();
+        $filesystem->mkdir($projectDir.'/var/private/stripe-invoices');
+        file_put_contents($blocker, 'blocked');
+
+        $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
+            new MockHttpClient(new MockResponse("%PDF-1.4\n%write-failure\n", [
+                'http_code' => 200,
+                'response_headers' => ['content-type: application/pdf'],
+            ])),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(EntityManagerInterface::class),
+            $projectDir,
+        );
+
+        $document = $this->createDocument();
+        $document
+            ->setStripeInvoiceId('in_test_86')
+            ->setInvoicePdfUrl('https://stripe.test/invoice.pdf')
+            ->setLocalPath(null);
+
+        self::assertFalse($service->syncInvoicePdf($document));
+        self::assertNull($document->getLocalPath());
+    }
+
+    public function testSyncDownloadsPdfWhenInvoicePdfUrlIsMissingButStripeInvoiceIdExists(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $documentRepository = $this->createMock(ProjectBillingDocumentRepository::class);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+
+        $stripeClient = $this->createStripeClient();
+        $stripeClient->invoices->retrieveReturn = (object) [
+            'id' => 'in_test_86',
+            'number' => 'INV-TEST-86',
+            'hosted_invoice_url' => 'https://stripe.test/invoice/view',
+            'invoice_pdf' => 'https://stripe.test/invoice/pdf',
+            'created' => 1717495200,
+        ];
+
+        $service = new StripeInvoiceStorageService(
+            $stripeClient,
+            new MockHttpClient(new MockResponse("%PDF-1.4\n%PDF test\n", [
+                'http_code' => 200,
+                'response_headers' => ['content-type: application/pdf'],
+            ])),
+            $documentRepository,
+            $entityManager,
+            $projectDir,
+        );
+
+        $document = $this->createDocument();
+        $document
+            ->setStripeInvoiceId('in_test_86')
+            ->setInvoicePdfUrl(null)
+            ->setHostedInvoiceUrl(null)
+            ->setLocalPath(null);
+
+        self::assertTrue($service->syncInvoicePdf($document));
+        self::assertSame('https://stripe.test/invoice/pdf', $document->getInvoicePdfUrl());
+        self::assertSame('https://stripe.test/invoice/view', $document->getHostedInvoiceUrl());
+        self::assertSame('stripe-invoices/project-86/invoice-in_test_86.pdf', $document->getLocalPath());
+        self::assertFileExists($projectDir.'/var/private/stripe-invoices/project-86/invoice-in_test_86.pdf');
+    }
+
+    public function testSyncDownloadsPdfWhenCheckoutSessionNeedsInvoiceRefresh(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $documentRepository = $this->createMock(ProjectBillingDocumentRepository::class);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+
+        $stripeClient = $this->createStripeClient();
+        $stripeClient->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_test_86',
+            'invoice' => (object) [
+                'id' => 'in_test_86',
+                'number' => 'INV-TEST-86',
+                'hosted_invoice_url' => 'https://stripe.test/invoice/view',
+                'invoice_pdf' => 'https://stripe.test/invoice/pdf',
+            ],
+        ];
+
+        $service = new StripeInvoiceStorageService(
+            $stripeClient,
+            new MockHttpClient(new MockResponse("%PDF-1.4\n%PDF test\n", [
+                'http_code' => 200,
+                'response_headers' => ['content-type: application/pdf'],
+            ])),
+            $documentRepository,
+            $entityManager,
+            $projectDir,
+        );
+
+        $document = $this->createDocument();
+        $document
+            ->setStripeCheckoutSessionId('cs_test_86')
+            ->setStripeInvoiceId(null)
+            ->setInvoicePdfUrl(null)
+            ->setHostedInvoiceUrl(null)
+            ->setLocalPath(null);
+
+        self::assertTrue($service->syncInvoicePdf($document));
+        self::assertSame('https://stripe.test/invoice/pdf', $document->getInvoicePdfUrl());
+        self::assertSame('https://stripe.test/invoice/view', $document->getHostedInvoiceUrl());
+        self::assertSame('stripe-invoices/project-86/invoice-in_test_86.pdf', $document->getLocalPath());
+        self::assertSame(['cs_test_86'], $stripeClient->checkout->sessions->retrieveCalls ? array_column($stripeClient->checkout->sessions->retrieveCalls, 'sessionId') : []);
+        self::assertSame([], $stripeClient->invoices->retrieveCalls);
+    }
+
+    public function testSyncDownloadsPdfWhenPaymentReferenceLooksLikeCheckoutSessionId(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $documentRepository = $this->createMock(ProjectBillingDocumentRepository::class);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+
+        $stripeClient = $this->createStripeClient();
+        $stripeClient->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_test_86',
+            'invoice' => (object) [
+                'id' => 'in_test_86',
+                'number' => 'INV-TEST-86',
+                'hosted_invoice_url' => 'https://stripe.test/invoice/view',
+                'invoice_pdf' => 'https://stripe.test/invoice/pdf',
+            ],
+        ];
+
+        $service = new StripeInvoiceStorageService(
+            $stripeClient,
+            new MockHttpClient(new MockResponse("%PDF-1.4\n%PDF test\n", [
+                'http_code' => 200,
+                'response_headers' => ['content-type: application/pdf'],
+            ])),
+            $documentRepository,
+            $entityManager,
+            $projectDir,
+        );
+
+        $document = $this->createDocument();
+        $document
+            ->setPaymentReference('cs_test_86')
+            ->setStripeCheckoutSessionId(null)
+            ->setStripeInvoiceId(null)
+            ->setInvoicePdfUrl(null)
+            ->setHostedInvoiceUrl(null)
+            ->setLocalPath(null);
+
+        self::assertTrue($service->syncInvoicePdf($document));
+        self::assertSame('https://stripe.test/invoice/pdf', $document->getInvoicePdfUrl());
+        self::assertSame('https://stripe.test/invoice/view', $document->getHostedInvoiceUrl());
+        self::assertSame('stripe-invoices/project-86/invoice-in_test_86.pdf', $document->getLocalPath());
+        self::assertSame(['cs_test_86'], array_column($stripeClient->checkout->sessions->retrieveCalls, 'sessionId'));
+    }
+
+    public function testSyncWithoutStripeReferencesDoesNotCrash(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
+            new MockHttpClient(new MockResponse('', [
+                'http_code' => 500,
+            ])),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(EntityManagerInterface::class),
+            $projectDir,
+        );
+
+        $document = $this->createDocument();
+        $document->setInvoicePdfUrl(null);
+        $document->setStripeInvoiceId(null);
+        $document->setStripeCheckoutSessionId(null);
+        $document->setPaymentReference(null);
 
         self::assertFalse($service->syncInvoicePdf($document));
         self::assertNull($document->getLocalPath());
@@ -208,6 +454,14 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         $this->setEntityId($document, 12);
 
         return $document;
+    }
+
+    private function createStripeClient(): FakeStripeClient
+    {
+        return new FakeStripeClient(
+            new FakeStripeCheckoutFacade(new FakeStripeCheckoutSessions()),
+            new FakeStripeInvoicesFacade(),
+        );
     }
 
     private function setEntityId(object $entity, int $id): void

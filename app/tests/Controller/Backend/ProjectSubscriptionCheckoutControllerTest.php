@@ -115,6 +115,41 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         self::assertSame('pi_manual_1', $project->getSubscription()?->getStripePaymentIntentId());
     }
 
+    public function testCancelUpgradeKeepsTheActivePlanIntact(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+
+        $project = $this->createProject(44, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO, 'cs_cancel_1');
+        $project->getSubscription()?->setPaidAmountCents(9900);
+        $project->getSubscription()?->setLastPaymentStatus('paid');
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('flush');
+
+        $service = $this->createCheckoutService($this->createFakeStripeClient(), $this->makeDefaultCommercialPlans());
+
+        $activeProjectService = $this->createMock(ActiveProjectService::class);
+        $activeProjectService->expects(self::once())
+            ->method('setActiveProject')
+            ->with($project);
+
+        $controller = new ProjectSubscriptionCheckoutController($service, $activeProjectService);
+        $controller->setContainer($container);
+        $this->setAdminToken();
+
+        $request = $this->createRequest(['session_id' => 'cs_cancel_1']);
+        $response = $controller->cancel($project, $request, $entityManager);
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertStringContainsString('/backend/plan', $response->getTargetUrl());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
+        self::assertSame('paid', $project->getSubscription()?->getLastPaymentStatus());
+        self::assertNull($project->getSubscription()?->getTargetTier());
+        self::assertNull($project->getSubscription()?->getStripeCheckoutSessionId());
+    }
+
     public function testLoginRedirectsAuthenticatedUsersToBackend(): void
     {
         self::bootKernel();

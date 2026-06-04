@@ -96,6 +96,25 @@
                   </div>
                 </div>
               {% endif %}
+              {% if pendingUpgrade %}
+                <div class="col-12">
+                  <div class="border rounded p-3 bg-warning-subtle">
+                    <div class="small text-muted">{{ 'backend.billing.project.upgrade_pending_title'|trans }}</div>
+                    <div class="fw-semibold">
+                      {{ pendingUpgrade.label }}
+                      {% if pendingUpgrade.priceLabel %}
+                        — {{ pendingUpgrade.priceLabel }} <span class="small text-muted">+ IVA</span>
+                      {% endif %}
+                    </div>
+                    {% if pendingUpgrade.description %}
+                      <div class="small text-muted">{{ pendingUpgrade.description }}</div>
+                    {% endif %}
+                    <div class="small text-muted mt-1">
+                      {{ 'backend.billing.project.upgrade_pending_status'|trans }}
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
               <div class="col-12">
                 <div class="d-flex flex-wrap gap-2">
                   {% if canSeeStripeAdminActions and canVerifyPayment %}
@@ -128,6 +147,11 @@
                     {% set document = item.document %}
                     {% set hasLocalCopy = item.hasLocalCopy %}
                     {% set documentDate = document.paidAt ?: document.issuedAt %}
+                    {% set paymentReference = document.paymentReference ?: document.stripeInvoiceId ?: document.stripeCheckoutSessionId ?: document.stripePaymentIntentId %}
+                    {% set shortPaymentReference = paymentReference %}
+                    {% if paymentReference and paymentReference|length > 20 %}
+                      {% set shortPaymentReference = paymentReference|slice(0, 12) ~ '...' ~ paymentReference|slice(-6) %}
+                    {% endif %}
                     <div class="col-12">
                       <div class="border rounded p-3 bg-white">
                         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -135,10 +159,13 @@
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                               <span class="badge bg-secondary">{{ ('backend.billing.document.type.' ~ document.type)|trans }}</span>
                               <span class="badge {% if document.status == 'paid' %}bg-success{% elseif document.status == 'void' %}bg-danger{% elseif document.status == 'open' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
-                                {{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}
-                              </span>
-                            </div>
-                            <div class="fw-semibold">{{ document.paymentReference ?: document.stripeInvoiceId ?: document.stripeCheckoutSessionId ?: '—' }}</div>
+                              {{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}
+                            </span>
+                          </div>
+                            {% if shortPaymentReference %}
+                              <div class="small text-muted">{{ 'backend.billing.project.payment_reference'|trans }}</div>
+                              <div class="fw-semibold text-break">{{ shortPaymentReference }}</div>
+                            {% endif %}
                             <div class="text-muted small">
                               {% if documentDate %}
                                 {{ documentDate|date('d/m/Y H:i') }}
@@ -164,7 +191,7 @@
                             <div class="border rounded p-3 h-100 bg-light">
                               <div class="small text-muted">{{ 'backend.billing.project.invoice_status'|trans }}</div>
                               <div class="fw-semibold">
-                                {% if hasLocalCopy %}
+                                {% if hasLocalCopy or document.hostedInvoiceUrl %}
                                   {{ 'backend.billing.project.invoice_available'|trans }}
                                 {% else %}
                                   {{ 'backend.billing.project.no_invoice_yet'|trans }}
@@ -172,14 +199,6 @@
                               </div>
                             </div>
                           </div>
-                          {% if canSeeStripeAdminActions %}
-                            <div class="col-12 col-md-4">
-                              <div class="border rounded p-3 h-100 bg-light">
-                                <div class="small text-muted">{{ 'backend.billing.project.payment_reference'|trans }}</div>
-                                <div class="fw-semibold text-break">{{ document.paymentReference ?: '—' }}</div>
-                              </div>
-                            </div>
-                          {% endif %}
                           <div class="col-12 col-md-4">
                             <div class="border rounded p-3 h-100 bg-light">
                               <div class="small text-muted">{{ 'backend.billing.project.document_status'|trans }}</div>
@@ -202,14 +221,15 @@
                           {% endif %}
                           {% if canSeeStripeAdminActions and document.hostedInvoiceUrl %}
                             <a href="{{ document.hostedInvoiceUrl }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
-                              {{ 'backend.billing.project.open_in_stripe'|trans }}
+                              {{ 'backend.billing.project.open_invoice_in_stripe'|trans }}
                             </a>
                           {% endif %}
-                          {% if canSeeStripeAdminActions and not hasLocalCopy and document.invoicePdfUrl %}
+                          {% set hasUsefulInvoiceRefs = document.invoicePdfUrl or document.stripeInvoiceId or document.stripeCheckoutSessionId or document.paymentReference %}
+                          {% if canSeeStripeAdminActions and not hasLocalCopy and hasUsefulInvoiceRefs %}
                             <form method="post" action="{{ path('backend_project_billing_document_sync', {id: project.id, documentId: document.id, from: from}) }}">
                               <input type="hidden" name="_token" value="{{ csrf_token('project_billing_document_sync_' ~ project.id ~ '_' ~ document.id) }}">
                               <button type="submit" class="btn btn-primary">
-                                {{ 'backend.billing.project.sync_document_from_stripe'|trans }}
+                                {{ 'backend.billing.project.try_download_invoice'|trans }}
                               </button>
                             </form>
                           {% endif %}
@@ -315,9 +335,97 @@
               {{ 'backend.billing.project.no_subscription'|trans }}
             </div>
           {% endif %}
+
+          {% if showUpgradeCta %}
+            <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4 mb-0">
+              <div class="d-flex flex-column gap-1">
+                <div>
+                  <strong>{{ 'backend.billing.project.no_active_plan'|trans }}</strong>
+                </div>
+                <div>{{ 'backend.billing.project.no_active_plan_help'|trans }}</div>
+              </div>
+              {% if upgradeCta.mode == 'modal' %}
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  data-bs-toggle="modal"
+                  data-bs-target="#projectBillingUpgradeModal">
+                  {{ 'backend.billing.project.upgrade_plan'|trans }}
+                </button>
+              {% elseif upgradeCta.mode == 'single' %}
+                {% set upgradeOption = upgradeCta.options|first %}
+                <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: upgradeOption.targetTier}) }}" class="d-inline">
+                  <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ upgradeOption.targetTier) }}">
+                  <button type="submit" class="btn btn-primary btn-sm">
+                    {{ upgradeOption.ctaLabel }}
+                  </button>
+                </form>
+              {% elseif upgradeCta.mode == 'unavailable' %}
+                <span class="badge bg-warning text-dark border border-warning-subtle">
+                  {{ upgradeCta.label }}
+                </span>
+              {% else %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                  {{ 'backend.plan.upgrade.active_title'|trans }}
+                </span>
+              {% endif %}
+            </div>
+          {% endif %}
         </div>
       </div>
     </div>
   </div>
 </div>
+
+{% if showUpgradeCta and upgradeCta.mode == 'modal' %}
+  <div class="modal fade" id="projectBillingUpgradeModal" tabindex="-1" aria-labelledby="projectBillingUpgradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-1" id="projectBillingUpgradeModalLabel">{{ upgradeCta.title }}</h5>
+            <div class="small text-muted">{{ 'backend.plan.upgrade.help'|trans }}</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            {% for option in upgradeCta.options %}
+              <div class="col-12 {% if upgradeCta.options|length > 1 %}col-md-6{% endif %}">
+                <div class="border rounded p-3 h-100 bg-light">
+                  <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                    <div>
+                      <div class="fw-semibold">{{ option.name }}</div>
+                      {% if option.description %}
+                        <div class="small text-muted">{{ option.description }}</div>
+                      {% endif %}
+                    </div>
+                    <div class="text-end">
+                      <div class="fw-semibold text-nowrap">{{ option.priceLabel }} <span class="small text-muted">+ IVA</span></div>
+                    </div>
+                  </div>
+
+                  {% if option.allowedScores is not empty %}
+                    <div class="d-flex flex-wrap gap-1 mb-3">
+                      {% for score in option.allowedScores %}
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ score }}</span>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+
+                  <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: option.targetTier}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ option.targetTier) }}">
+                    <button type="submit" class="btn btn-primary w-100">
+                      {{ option.ctaLabel }}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
 {% endblock %}

@@ -144,13 +144,18 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
         $sessionId = (string) $request->query->get('session_id', '');
         if (
             $subscription
-            && $subscription->getStatus() === ProjectSubscription::STATUS_PENDING_PAYMENT
+            && $subscription->getTargetTier() !== null
             && ($sessionId === '' || $subscription->getStripeCheckoutSessionId() === $sessionId)
         ) {
             $subscription
-                ->setStatus(ProjectSubscription::STATUS_CANCELLED)
-                ->setLastPaymentStatus('cancelled')
+                ->setStripeCheckoutSessionId(null)
                 ->setTargetTier(null);
+
+            if ($subscription->getPaidAmountCents() !== null || $subscription->getPaidAt() !== null) {
+                $subscription->setLastPaymentStatus('paid');
+            } else {
+                $subscription->setLastPaymentStatus(null);
+            }
 
             $entityManager->flush();
         }

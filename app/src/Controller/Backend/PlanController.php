@@ -2159,12 +2159,15 @@ class PlanController extends AbstractController
                 continue;
             }
 
-            $priceLabel = $this->formatPlanPrice($plan->getPriceAmount(), $plan->getPriceCurrency());
+            $displayAmountCents = isset($targetData['amountCents']) && is_int($targetData['amountCents'])
+                ? $targetData['amountCents']
+                : $plan->getPriceAmount();
+            $priceLabel = $this->formatPlanPrice($displayAmountCents, $plan->getPriceCurrency());
             $options[] = [
                 'targetTier' => $targetTier,
                 'name' => $plan->getName(),
                 'description' => $plan->getDescription(),
-                'priceAmount' => $plan->getPriceAmount(),
+                'priceAmount' => $displayAmountCents,
                 'priceCurrency' => $plan->getPriceCurrency(),
                 'priceLabel' => $priceLabel,
                 'ctaLabel' => $this->t->trans('backend.plan.upgrade.upgrade_to', [

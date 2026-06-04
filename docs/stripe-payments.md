@@ -101,6 +101,10 @@ If Stripe does not create an invoice for a given `payment` checkout, Begreen kee
 - Example: `stripe-invoices/project-86/invoice-in_1TeY3xQbEObZty5pSPZt9bDw.pdf`
 - The database stores only the relative path, never an absolute filesystem path.
 - PDFs are served only through protected Symfony controllers.
+- The private storage lives inside the `app_var` Docker volume, which persists `/app/var` across container restarts.
+- The PHP container entrypoint prepares `/app/var/private/stripe-invoices` with `www-data:www-data` ownership and writable permissions on startup.
+- If you need to repair permissions manually in local or production compose, run `make -C app prepare-private-storage` or `make -C app prepare-private-storage-prod`.
+- Do not remove the `app_var` volume if you want to keep stored invoices and other runtime state under `var/`.
 - The future Super Admin global billing view can read `ProjectBillingDocument` without changing the storage model.
 
 ## Notes

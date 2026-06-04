@@ -42,6 +42,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
             ->setPriceAmount(9900)
             ->setPriceCurrency('EUR')
             ->setStripePriceId('price_standard_old')
+            ->setStripeUpgradeFromStandardPriceId('price_upgrade_old')
             ->setMaxEvidenceCount(null)
             ->setWatermarkEnabled(false)
             ->setActive(true)
@@ -79,6 +80,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
             'priceAmount' => 1234,
             'priceCurrency' => 'eur',
             'stripePriceId' => 'price_standard_live',
+            'stripeUpgradeFromStandardPriceId' => 'price_upgrade_live',
             'maxEvidenceCount' => 25,
             'watermarkEnabled' => true,
             'active' => false,
@@ -111,6 +113,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
         self::assertSame(1234, $plan->getPriceAmount());
         self::assertSame('EUR', $plan->getPriceCurrency());
         self::assertSame('price_standard_live', $plan->getStripePriceId());
+        self::assertSame('price_upgrade_live', $plan->getStripeUpgradeFromStandardPriceId());
         self::assertSame(25, $plan->getMaxEvidenceCount());
         self::assertTrue($plan->isWatermarkEnabled());
         self::assertFalse($plan->isActive());
