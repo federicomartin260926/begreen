@@ -6,10 +6,12 @@ use App\Controller\Backend\ProjectSubscriptionCheckoutController;
 use App\Controller\SecurityController;
 use App\Entity\CommercialPlan;
 use App\Entity\Project;
+use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
 use App\Entity\User;
 use App\Repository\CommercialPlanRepository;
 use App\Service\ActiveProjectService;
+use App\Service\StripeInvoiceStorageService;
 use App\Service\StripeProjectCheckoutService;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use App\Tests\Support\Stripe\FakeStripeClient;
@@ -100,13 +102,14 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $controller->setContainer($container);
         $this->setAdminToken();
 
-        $request = $this->createRequest();
+        $request = $this->createRequest(['from' => 'index']);
         $token = $container->get('security.csrf.token_manager')->getToken('project_subscription_confirm_pending_43')->getValue();
         $request->request->set('_token', $token);
         $response = $controller->confirmPending($project, $request);
 
         self::assertInstanceOf(RedirectResponse::class, $response);
-        self::assertStringContainsString('/backend/plan', $response->getTargetUrl());
+        self::assertStringContainsString('/backend/project/43/billing', $response->getTargetUrl());
+        self::assertStringContainsString('from=index', $response->getTargetUrl());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
         self::assertSame('pi_manual_1', $project->getSubscription()?->getStripePaymentIntentId());
@@ -161,11 +164,15 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->method('generate')->willReturn('https://example.test/backend/project/42/subscription/success');
 
+        $invoiceStorage ??= $this->createMock(StripeInvoiceStorageService::class);
+        $invoiceStorage->method('upsertFromStripeCheckout')->willReturn(new ProjectBillingDocument());
+
         return new StripeProjectCheckoutService(
             $client,
             $gate,
             $planRepository,
             $entityManager,
+            $invoiceStorage,
             $urlGenerator,
             'https://example.test/backend/project/{PROJECT_ID}/subscription/success?session_id={CHECKOUT_SESSION_ID}',
             'https://example.test/backend/project/{PROJECT_ID}/subscription/cancel?session_id={CHECKOUT_SESSION_ID}',

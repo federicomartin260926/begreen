@@ -25,6 +25,7 @@ final class StripeProjectCheckoutService
         private readonly ProjectFeatureGate $featureGate,
         private readonly CommercialPlanRepository $commercialPlanRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly StripeInvoiceStorageService $invoiceStorageService,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly ?string $successUrlTemplate,
         private readonly ?string $cancelUrlTemplate,
@@ -113,13 +114,16 @@ final class StripeProjectCheckoutService
             return StripeCheckoutReconciliationResult::mismatch($subscription);
         }
 
+        $invoice = $this->resolveStripeInvoice($session->invoice ?? null);
+
         if (
             $subscription->getStatus() === ProjectSubscription::STATUS_ACTIVE
             && $subscription->getTier() === $targetTier
             && $storedSessionId !== null
             && $storedSessionId === $checkoutSessionId
         ) {
-            $this->fillMissingStripeReferences($subscription, $session);
+            $this->fillMissingStripeReferences($subscription, $session, $invoice);
+            $this->upsertBillingDocument($subscription, $session, $invoice);
             $this->entityManager->flush();
 
             return StripeCheckoutReconciliationResult::alreadyConfirmed($subscription);
@@ -137,7 +141,6 @@ final class StripeProjectCheckoutService
             return StripeCheckoutReconciliationResult::mismatch($subscription);
         }
 
-        $invoice = $this->extractStripeObject($session->invoice ?? null);
         $paymentIntentId = $this->extractStripeObjectId($session->payment_intent ?? null);
         $customerId = $this->extractStripeObjectId($session->customer ?? null);
         $invoiceId = $this->extractStripeObjectId($invoice);
@@ -163,6 +166,8 @@ final class StripeProjectCheckoutService
             ->setLastPaymentStatus($paymentStatus)
             ->setPaidAt(new \DateTimeImmutable())
             ->setTargetTier(null);
+
+        $this->upsertBillingDocument($subscription, $session, $invoice);
 
         $this->entityManager->flush();
 
@@ -368,9 +373,9 @@ final class StripeProjectCheckoutService
         return null;
     }
 
-    private function fillMissingStripeReferences(ProjectSubscription $subscription, object $session): void
+    private function fillMissingStripeReferences(ProjectSubscription $subscription, object $session, array|object|null $invoice = null): void
     {
-        $invoice = $this->extractStripeObject($session->invoice ?? null);
+        $invoice ??= $this->resolveStripeInvoice($session->invoice ?? null);
 
         if ($subscription->getStripePaymentIntentId() === null) {
             $subscription->setStripePaymentIntentId($this->extractStripeObjectId($session->payment_intent ?? null));
@@ -408,6 +413,11 @@ final class StripeProjectCheckoutService
         }
     }
 
+    private function upsertBillingDocument(ProjectSubscription $subscription, object $session, array|object|null $invoice): void
+    {
+        $this->invoiceStorageService->upsertFromStripeCheckout($subscription, $session, $invoice);
+    }
+
     private function extractStripeObject(mixed $value): array|object|null
     {
         if (is_array($value) || is_object($value)) {
@@ -419,7 +429,31 @@ final class StripeProjectCheckoutService
 
     private function extractStripeObjectId(mixed $value): ?string
     {
+        if (is_string($value) && trim($value) !== '') {
+            return trim($value);
+        }
+
         return $this->normalizeString($this->readObjectValue($value, 'id'));
+    }
+
+    private function resolveStripeInvoice(mixed $value): array|object|null
+    {
+        if (is_array($value) || is_object($value)) {
+            return $value;
+        }
+
+        $invoiceId = $this->normalizeString($value);
+        if ($invoiceId === null) {
+            return null;
+        }
+
+        try {
+            $invoice = $this->stripeClient->invoices->retrieve($invoiceId);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return is_array($invoice) || is_object($invoice) ? $invoice : null;
     }
 
     private function normalizeString(mixed $value): ?string

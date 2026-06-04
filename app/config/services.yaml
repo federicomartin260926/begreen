@@ -41,6 +41,10 @@ services:
 
     App\Service\PdfService: ~
 
+    App\Service\StripeInvoiceStorageService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     Stripe\StripeClient:
         arguments:
             - { api_key: '%stripe.secret_key%' }

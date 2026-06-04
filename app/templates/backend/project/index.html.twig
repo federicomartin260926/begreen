@@ -130,18 +130,17 @@
                   <td class="text-center" style="{{ activeRowStyle }}">
                     {% set subscription = project.subscription %}
                     {% if subscription %}
-                      <div class="d-flex flex-column gap-1">
+                      <div class="d-flex flex-column gap-1 small">
                         <span class="badge {% if subscription.status == 'active' %}bg-success{% elseif subscription.status == 'pending_payment' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
                           {{ ('backend.subscription.status.' ~ subscription.status)|trans }}
                         </span>
-                        <span class="small text-muted">
+                        <span class="text-muted text-nowrap">
                           {% if subscription.paidAmountCents is not null %}
                             {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
                           {% else %}
                             —
                           {% endif %}
-                        </span>
-                        <span class="small text-muted">
+                          ·
                           {% if subscription.paidAt %}
                             {{ subscription.paidAt|date('d/m/Y H:i') }}
                           {% elseif subscription.lastPaymentStatus %}
@@ -150,26 +149,13 @@
                             —
                           {% endif %}
                         </span>
-                        <div class="d-flex justify-content-center flex-wrap gap-1">
-                          {% if subscription.stripeHostedInvoiceUrl %}
-                            <a href="{{ subscription.stripeHostedInvoiceUrl }}" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
-                              {{ 'backend.subscription.actions.view_invoice'|trans }}
-                            </a>
+                        <span class="text-muted">
+                          {% if subscription.stripeHostedInvoiceUrl or subscription.stripeInvoicePdfUrl %}
+                            {{ 'backend.billing.project.invoice_available'|trans }}
+                          {% else %}
+                            {{ 'backend.billing.project.no_invoice_yet'|trans }}
                           {% endif %}
-                          {% if subscription.stripeInvoicePdfUrl %}
-                            <a href="{{ subscription.stripeInvoicePdfUrl }}" class="btn btn-sm btn-outline-success" target="_blank" rel="noopener">
-                              {{ 'backend.subscription.actions.download_pdf'|trans }}
-                            </a>
-                          {% endif %}
-                        </div>
-                          {% if subscription.status == 'pending_payment' and subscription.stripeCheckoutSessionId %}
-                          <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id}) }}" class="mt-1">
-                            <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id) }}">
-                            <button type="submit" class="btn btn-sm btn-warning text-dark fw-semibold">
-                              {{ 'backend.subscription.actions.verify_payment'|trans }}
-                            </button>
-                          </form>
-                        {% endif %}
+                        </span>
                       </div>
                     {% else %}
                       <span class="text-muted">—</span>
@@ -195,48 +181,63 @@
                   </td>
                 {% endif %}
 
-                <td class="text-center" style="{{ activeRowStyle }}">
-                  <a
-                    href="{{ path('backend_project_edit', {id: project.id}) }}"
-                    data-bs-toggle="popover"
-                    data-bs-trigger="hover"
-                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                    class="btn">
-                    <i class="bi bi-pencil-square"></i>
-                  </a>
+                <td class="text-center text-nowrap" style="{{ activeRowStyle }}">
+                  <div class="d-inline-flex align-items-center gap-1 flex-nowrap">
+                    <a
+                      href="{{ path('backend_project_edit', {id: project.id}) }}"
+                      data-bs-toggle="popover"
+                      data-bs-trigger="hover"
+                      data-bs-content="{{ 'backend.common.edit'|trans }}"
+                      class="btn">
+                      <i class="bi bi-pencil-square"></i>
+                    </a>
 
-                  <a
-                    href="{{ path('backend_project_clone', {id: project.id}) }}"
-                    data-bs-toggle="popover"
-                    data-bs-trigger="hover"
-                    data-bs-content="{{ 'backend.projects.actions.clone'|trans }}"
-                    class="btn">
-                    <i class="bi bi-files"></i>
-                  </a>
+                    <a
+                      href="{{ path('backend_project_clone', {id: project.id}) }}"
+                      data-bs-toggle="popover"
+                      data-bs-trigger="hover"
+                      data-bs-content="{{ 'backend.projects.actions.clone'|trans }}"
+                      class="btn">
+                      <i class="bi bi-files"></i>
+                    </a>
 
-                  <form
-                    method="post"
-                    action="{{ path('backend_project_select_project', {id: project.id}) }}"
-                    class="d-inline-block"
-                    data-bs-toggle="popover"
-                    data-bs-trigger="hover"
-                    data-bs-content="{{ 'backend.projects.actions.select'|trans }}">
-                    <button class="btn" title="{{ 'backend.projects.actions.select'|trans }}">
-                      <i class="bi bi-check2-square"></i>
-                    </button>
-                  </form>
+                    {% if project.subscription %}
+                      <a
+                        href="{{ path('backend_project_billing', {id: project.id, from: 'index'}) }}"
+                        data-bs-toggle="popover"
+                        data-bs-trigger="hover"
+                        title="{{ 'backend.billing.project.manage'|trans }}"
+                        aria-label="{{ 'backend.billing.project.manage'|trans }}"
+                        data-bs-content="{{ 'backend.billing.project.manage'|trans }}"
+                        class="btn">
+                        <i class="bi bi-receipt"></i>
+                      </a>
+                    {% endif %}
 
-                  <form
-                    method="post"
-                    action="{{ path('backend_project_delete', {id: project.id}) }}"
-                    class="d-inline-block"
-                    data-bs-toggle="popover"
-                    data-bs-trigger="hover"
-                    data-bs-content="{{ 'backend.common.delete'|trans }}"
-                    onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
-                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ project.id) }}">
-                    <button class="btn"><i class="bi bi-trash"></i></button>
-                  </form>
+                    <form
+                      method="post"
+                      action="{{ path('backend_project_select_project', {id: project.id}) }}"
+                      class="d-inline-flex"
+                      data-bs-toggle="popover"
+                      data-bs-trigger="hover"
+                      data-bs-content="{{ 'backend.projects.actions.select'|trans }}">
+                      <button class="btn" title="{{ 'backend.projects.actions.select'|trans }}">
+                        <i class="bi bi-check2-square"></i>
+                      </button>
+                    </form>
+
+                    <form
+                      method="post"
+                      action="{{ path('backend_project_delete', {id: project.id}) }}"
+                      class="d-inline-flex"
+                      data-bs-toggle="popover"
+                      data-bs-trigger="hover"
+                      data-bs-content="{{ 'backend.common.delete'|trans }}"
+                      onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
+                      <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ project.id) }}">
+                      <button class="btn"><i class="bi bi-trash"></i></button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             {% endfor %}

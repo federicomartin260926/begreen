@@ -96,42 +96,43 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
     public function confirmPending(Project $project, Request $request): RedirectResponse
     {
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $returnFrom = $request->query->getString('from') === 'index' ? 'index' : 'project';
 
         if (!$this->isCsrfTokenValid('project_subscription_confirm_pending_'.$project->getId(), (string) $request->request->get('_token'))) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.invalid_token');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'from' => $returnFrom]);
         }
 
         $reconciliation = $this->checkoutService->reconcilePendingCheckout($project);
         if ($reconciliation->isConfirmed()) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('success', 'backend.subscription.flash.success_confirmed');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'from' => $returnFrom]);
         }
 
         if ($reconciliation->status === StripeCheckoutReconciliationResult::STATUS_PENDING) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('info', 'backend.subscription.flash.success_pending');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'from' => $returnFrom]);
         }
 
         if ($reconciliation->status === StripeCheckoutReconciliationResult::STATUS_MISMATCH) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.reconcile_mismatch');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'from' => $returnFrom]);
         }
 
         if ($reconciliation->status === StripeCheckoutReconciliationResult::STATUS_ERROR) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.reconcile_failed');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'from' => $returnFrom]);
         }
 
         $this->activeProjectService->setActiveProject($project);
         $this->addFlash('info', 'backend.subscription.flash.success_received');
 
-        return $this->redirectToRoute('backend_plan_review');
+        return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'from' => $returnFrom]);
     }
 
     #[Route('/{id}/subscription/cancel', name: 'subscription_cancel', methods: ['GET'])]

@@ -9,8 +9,10 @@ This project uses Stripe Checkout for one-time upgrades per `Project`.
 - `pro` is purchased once per project.
 - Checkout price IDs live on `CommercialPlan` and are configured from Super Admin.
 - `standard -> pro` uses the `CommercialPlan` data for the target tier and the price difference is derived from plan amounts.
-- Begreen does not issue invoices itself in this phase.
-- Stripe generates invoices and Begreen stores the relevant references/URLs.
+- Begreen does not issue its own invoices in this phase.
+- Stripe is the official source of truth for payment and invoice data.
+- `ProjectSubscription` stores the current plan/payment state.
+- `ProjectBillingDocument` stores the billing documents associated with the project, including the private local PDF copy when available.
 
 ## Environment variables
 
@@ -36,10 +38,11 @@ STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription
 2. Begreen creates a Stripe Checkout Session in `payment` mode.
 3. The project subscription is marked as `pending_payment`.
 4. The success URL and the manual verification action reconcile the checkout against Stripe using the stored Checkout Session ID.
-5. Begreen activates the target tier only when Stripe reports the session as paid.
-6. Stripe webhooks remain pending as the durable production fallback.
-7. Invoice links and invoice PDF links are stored on `ProjectSubscription` when they are available.
-8. The target tier must have a `stripePriceId` configured on its `CommercialPlan`.
+5. When Stripe confirms the payment, Begreen activates the target tier on `ProjectSubscription` and creates or updates a `ProjectBillingDocument`.
+6. If Stripe provides a PDF invoice URL, Begreen downloads a private copy under `var/private/stripe-invoices` and stores only the relative path in `ProjectBillingDocument.localPath`.
+7. The billing view serves invoices and downloads only through protected Symfony routes.
+8. Stripe webhooks remain pending as the durable production fallback.
+9. The target tier must have a `stripePriceId` configured on its `CommercialPlan`.
 
 ## Routes
 
@@ -47,26 +50,64 @@ STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription
 - `POST /backend/project/{id}/subscription/confirm-pending`
 - `GET /backend/project/{id}/subscription/success`
 - `GET /backend/project/{id}/subscription/cancel`
+- `GET /backend/project/{id}/billing`
+- `GET /backend/project/{id}/billing/document/{documentId}/view`
+- `GET /backend/project/{id}/billing/document/{documentId}/download`
+- `POST /backend/project/{id}/billing/document/{documentId}/sync`
 - `POST /webhooks/stripe`
 
 ## Stored references
 
-The MVP stores, when available:
+`ProjectSubscription` keeps the current payment state:
 
+- tier
+- status
+- source
+- paid amount and currency
+- payment reference
+- paid date
+- current Stripe checkout session id
+- current Stripe payment intent id
+- current Stripe invoice id
+- current Stripe customer id
+- current hosted invoice URL
+- current invoice PDF URL
+- current payment status
+
+`ProjectBillingDocument` keeps the document history/details:
+
+- provider
+- type
+- status
 - checkout session id
 - payment intent id
 - invoice id
 - customer id
+- payment reference
+- amount and currency
 - hosted invoice URL
 - invoice PDF URL
-- payment reference
-- paid amount and currency
-- payment date
+- local relative path to the private PDF copy
+- downloaded date
+- issued date
+- paid date
+
+If Stripe does not create an invoice for a given `payment` checkout, Begreen keeps the payment confirmed and the billing view simply shows the document state that is available.
+
+## Private PDF storage
+
+- Local PDFs are stored outside `public/`.
+- Base path: `%kernel.project_dir%/var/private/stripe-invoices`
+- Example: `stripe-invoices/project-86/invoice-in_1TeY3xQbEObZty5pSPZt9bDw.pdf`
+- The database stores only the relative path, never an absolute filesystem path.
+- PDFs are served only through protected Symfony controllers.
+- The future Super Admin global billing view can read `ProjectBillingDocument` without changing the storage model.
 
 ## Notes
 
 - In local development, keep the same host in the browser when you open Stripe and when you return from it. Mixing `localhost` and `127.0.0.1` can drop the session cookie and make the success return look unrelated to the active backend project.
-- The success URL now attempts a direct reconciliation against Stripe.
-- The `Verificar pago en Stripe` action is the manual/admin fallback when the browser return is missing or the project remains in `pending_payment`.
-- The webhook is still the source of truth for production-grade background confirmation.
+- The success URL attempts a direct reconciliation against Stripe.
+- The `Verificar pago en Stripe` / `Actualizar referencias desde Stripe` action is the manual/admin fallback when the browser return is missing or the project remains in `pending_payment`.
+- The billing UI shows `Ver factura` only when a private local PDF exists, and `Descargar PDF` only when the local copy exists.
+- The billing UI keeps Stripe technical identifiers collapsed by default.
 - This is a one-time payment flow, not Stripe Billing.

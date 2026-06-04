@@ -1,0 +1,323 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.billing.project.title'|trans }} · {{ project.name }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item">
+    <a href="{{ path('backend_project_index') }}" class="text-decoration-none">{{ 'backend.projects.list.breadcrumb'|trans }}</a>
+  </li>
+  <li class="breadcrumb-item">
+    <a href="{{ path('backend_project_edit', {id: project.id}) }}" class="text-decoration-none">{{ project.name }}</a>
+  </li>
+  <li class="breadcrumb-item active">{{ 'backend.billing.project.title'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+      <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+        <div>
+          <h2 class="mb-1">{{ 'backend.billing.project.title'|trans }}</h2>
+          <div class="text-muted">{{ project.name }}</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{{ backUrl }}" class="btn btn-outline-secondary">
+            {{ 'backend.common.back'|trans }}
+          </a>
+        </div>
+      </div>
+
+      {% set subscription = subscription ?? null %}
+      {% set stripeReference = subscription ? (subscription.paymentReference ?: subscription.stripePaymentIntentId ?: subscription.stripeCheckoutSessionId) : null %}
+      {% set canSeeStripeAdminActions = app.user and ('ROLE_ADMIN' in app.user.roles or 'ROLE_SUPER_ADMIN' in app.user.roles) %}
+      {% set billingDocuments = billingDocuments ?? [] %}
+
+      <div class="card shadow-sm">
+        <div class="card-body">
+          {% if subscription %}
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100 bg-light">
+                  <div class="small text-muted">{{ 'backend.billing.project.payment_status'|trans }}</div>
+                  <div class="fw-semibold">{{ ('backend.subscription.status.' ~ subscription.status)|trans }}</div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100 bg-light">
+                  <div class="small text-muted">{{ 'backend.subscription.card.tier'|trans }}</div>
+                  <div class="fw-semibold">{{ subscription.tier|upper }}</div>
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="border rounded p-3 h-100 bg-light">
+                  <div class="small text-muted">{{ 'backend.subscription.card.amount'|trans }}</div>
+                  <div class="fw-semibold">
+                    {% if subscription.paidAmountCents is not null %}
+                      {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="border rounded p-3 h-100 bg-light">
+                  <div class="small text-muted">{{ 'backend.subscription.card.paid_at'|trans }}</div>
+                  <div class="fw-semibold">
+                    {% if subscription.paidAt %}
+                      {{ subscription.paidAt|date('d/m/Y H:i') }}
+                    {% elseif subscription.lastPaymentStatus %}
+                      {{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="border rounded p-3 h-100 bg-light">
+                  <div class="small text-muted">{{ 'backend.billing.project.invoice_status'|trans }}</div>
+                  <div class="fw-semibold">
+                    {% if hasLocalBillingDocument %}
+                      {{ 'backend.billing.project.invoice_available'|trans }}
+                    {% else %}
+                      {{ 'backend.billing.project.no_invoice_yet'|trans }}
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% if subscription.lastPaymentStatus %}
+                <div class="col-12">
+                  <div class="border rounded p-3 bg-light">
+                    <div class="small text-muted">{{ 'backend.billing.project.last_payment_status'|trans }}</div>
+                    <div class="fw-semibold">{{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}</div>
+                  </div>
+                </div>
+              {% endif %}
+              <div class="col-12">
+                <div class="d-flex flex-wrap gap-2">
+                  {% if canSeeStripeAdminActions and canVerifyPayment %}
+                    <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, from: from}) }}">
+                      <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id) }}">
+                      <button type="submit" class="btn btn-warning text-dark fw-semibold">
+                        {% if subscription.status == 'pending_payment' %}
+                          {{ 'backend.subscription.actions.verify_payment'|trans }}
+                        {% else %}
+                          {{ 'backend.billing.project.refresh_references'|trans }}
+                        {% endif %}
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                <div>
+                  <h3 class="h5 mb-1">{{ 'backend.billing.project.documents_title'|trans }}</h3>
+                  <div class="text-muted small">{{ 'backend.billing.project.documents_description'|trans }}</div>
+                </div>
+              </div>
+
+              {% if billingDocuments is not empty %}
+                <div class="row g-3">
+                  {% for item in billingDocuments %}
+                    {% set document = item.document %}
+                    {% set hasLocalCopy = item.hasLocalCopy %}
+                    {% set documentDate = document.paidAt ?: document.issuedAt %}
+                    <div class="col-12">
+                      <div class="border rounded p-3 bg-white">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                          <div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                              <span class="badge bg-secondary">{{ ('backend.billing.document.type.' ~ document.type)|trans }}</span>
+                              <span class="badge {% if document.status == 'paid' %}bg-success{% elseif document.status == 'void' %}bg-danger{% elseif document.status == 'open' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
+                                {{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}
+                              </span>
+                            </div>
+                            <div class="fw-semibold">{{ document.paymentReference ?: document.stripeInvoiceId ?: document.stripeCheckoutSessionId ?: '—' }}</div>
+                            <div class="text-muted small">
+                              {% if documentDate %}
+                                {{ documentDate|date('d/m/Y H:i') }}
+                              {% else %}
+                                {{ 'backend.billing.project.no_date'|trans }}
+                              {% endif %}
+                            </div>
+                          </div>
+                          <div class="text-md-end">
+                            <div class="small text-muted">{{ 'backend.billing.project.amount'|trans }}</div>
+                            <div class="fw-semibold">
+                              {% if document.amountCents is not null %}
+                                {{ (document.amountCents / 100)|number_format(2, ',', '.') }} {{ document.currency|default('EUR') }}
+                              {% else %}
+                                —
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                          <div class="col-12 col-md-4">
+                            <div class="border rounded p-3 h-100 bg-light">
+                              <div class="small text-muted">{{ 'backend.billing.project.invoice_status'|trans }}</div>
+                              <div class="fw-semibold">
+                                {% if hasLocalCopy %}
+                                  {{ 'backend.billing.project.invoice_available'|trans }}
+                                {% else %}
+                                  {{ 'backend.billing.project.no_invoice_yet'|trans }}
+                                {% endif %}
+                              </div>
+                            </div>
+                          </div>
+                          {% if canSeeStripeAdminActions %}
+                            <div class="col-12 col-md-4">
+                              <div class="border rounded p-3 h-100 bg-light">
+                                <div class="small text-muted">{{ 'backend.billing.project.payment_reference'|trans }}</div>
+                                <div class="fw-semibold text-break">{{ document.paymentReference ?: '—' }}</div>
+                              </div>
+                            </div>
+                          {% endif %}
+                          <div class="col-12 col-md-4">
+                            <div class="border rounded p-3 h-100 bg-light">
+                              <div class="small text-muted">{{ 'backend.billing.project.document_status'|trans }}</div>
+                              <div class="fw-semibold">{{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                          {% if hasLocalCopy %}
+                            <button type="button"
+                                    class="btn btn-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#billingDocumentModal{{ document.id }}">
+                              {{ 'backend.subscription.actions.view_invoice'|trans }}
+                            </button>
+                            <a href="{{ path('backend_project_billing_document_download', {id: project.id, documentId: document.id, from: from}) }}" class="btn btn-outline-success" target="_blank" rel="noopener">
+                              {{ 'backend.subscription.actions.download_pdf'|trans }}
+                            </a>
+                          {% endif %}
+                          {% if canSeeStripeAdminActions and document.hostedInvoiceUrl %}
+                            <a href="{{ document.hostedInvoiceUrl }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+                              {{ 'backend.billing.project.open_in_stripe'|trans }}
+                            </a>
+                          {% endif %}
+                          {% if canSeeStripeAdminActions and not hasLocalCopy and document.invoicePdfUrl %}
+                            <form method="post" action="{{ path('backend_project_billing_document_sync', {id: project.id, documentId: document.id, from: from}) }}">
+                              <input type="hidden" name="_token" value="{{ csrf_token('project_billing_document_sync_' ~ project.id ~ '_' ~ document.id) }}">
+                              <button type="submit" class="btn btn-primary">
+                                {{ 'backend.billing.project.sync_document_from_stripe'|trans }}
+                              </button>
+                            </form>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+
+                    {% if hasLocalCopy %}
+                      <div class="modal fade" id="billingDocumentModal{{ document.id }}" tabindex="-1" aria-labelledby="billingDocumentModalLabel{{ document.id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h5 class="modal-title" id="billingDocumentModalLabel{{ document.id }}">{{ 'backend.billing.project.invoice_title'|trans }}</h5>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                            </div>
+                            <div class="modal-body p-0">
+                              <div class="ratio ratio-16x9" style="min-height: 70vh;">
+                                <iframe
+                                  src="{{ path('backend_project_billing_document_view', {id: project.id, documentId: document.id, from: from}) }}"
+                                  title="{{ 'backend.billing.project.invoice_title'|trans }}"
+                                  referrerpolicy="no-referrer"
+                                  loading="lazy"
+                                  class="border-0 w-100 h-100"></iframe>
+                              </div>
+                            </div>
+                            <div class="modal-footer justify-content-between">
+                              <div class="small text-muted d-none d-md-block">
+                                {{ 'backend.billing.project.invoice_modal_hint'|trans }}
+                              </div>
+                              <div class="d-flex gap-2 ms-auto">
+                                <a href="{{ path('backend_project_billing_document_view', {id: project.id, documentId: document.id, from: from}) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+                                  {{ 'backend.billing.project.open_new_tab'|trans }}
+                                </a>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                  {{ 'backend.common.close'|trans }}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="alert alert-info mb-0">
+                  {{ 'backend.billing.project.no_documents'|trans }}
+                </div>
+              {% endif %}
+            </div>
+
+            {% if canSeeStripeAdminActions %}
+              <div class="col-12 mt-4">
+                <div class="accordion" id="stripeBillingDetailsAccordion">
+                  <div class="accordion-item">
+                    <h2 class="accordion-header" id="stripeBillingDetailsHeading">
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#stripeBillingDetailsCollapse" aria-expanded="false" aria-controls="stripeBillingDetailsCollapse">
+                        {{ 'backend.billing.project.stripe_technical_details'|trans }}
+                      </button>
+                    </h2>
+                    <div id="stripeBillingDetailsCollapse" class="accordion-collapse collapse" aria-labelledby="stripeBillingDetailsHeading" data-bs-parent="#stripeBillingDetailsAccordion">
+                      <div class="accordion-body">
+                        <div class="row g-3">
+                          <div class="col-12 col-md-6">
+                            <div class="border rounded p-3 h-100 bg-light">
+                              <div class="small text-muted">{{ 'backend.billing.project.checkout_session_id'|trans }}</div>
+                              <div class="fw-semibold text-break">{{ subscription.stripeCheckoutSessionId ?: '—' }}</div>
+                            </div>
+                          </div>
+                          <div class="col-12 col-md-6">
+                            <div class="border rounded p-3 h-100 bg-light">
+                              <div class="small text-muted">{{ 'backend.billing.project.payment_intent_id'|trans }}</div>
+                              <div class="fw-semibold text-break">{{ subscription.stripePaymentIntentId ?: '—' }}</div>
+                            </div>
+                          </div>
+                          <div class="col-12 col-md-6">
+                            <div class="border rounded p-3 h-100 bg-light">
+                              <div class="small text-muted">{{ 'backend.billing.project.invoice_id'|trans }}</div>
+                              <div class="fw-semibold text-break">{{ subscription.stripeInvoiceId ?: '—' }}</div>
+                            </div>
+                          </div>
+                          <div class="col-12 col-md-6">
+                            <div class="border rounded p-3 h-100 bg-light">
+                              <div class="small text-muted">{{ 'backend.billing.project.customer_id'|trans }}</div>
+                              <div class="fw-semibold text-break">{{ subscription.stripeCustomerId ?: '—' }}</div>
+                            </div>
+                          </div>
+                          <div class="col-12">
+                            <div class="border rounded p-3 h-100 bg-light">
+                              <div class="small text-muted">{{ 'backend.billing.project.payment_reference'|trans }}</div>
+                              <div class="fw-semibold text-break">{{ stripeReference ?: '—' }}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+          {% else %}
+            <div class="alert alert-secondary mb-0">
+              {{ 'backend.billing.project.no_subscription'|trans }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

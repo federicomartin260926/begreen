@@ -4,9 +4,11 @@ namespace App\Tests\Service;
 
 use App\Exception\PendingStripeCheckoutException;
 use App\Entity\Project;
+use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
 use App\Repository\CommercialPlanRepository;
 use App\Service\StripeCheckoutReconciliationResult;
+use App\Service\StripeInvoiceStorageService;
 use App\Service\StripeProjectCheckoutService;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use App\Tests\Support\Stripe\FakeStripeClient;
@@ -184,8 +186,19 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         ];
         $plans = $this->makeDefaultCommercialPlans();
         $plans['standard']->setStripePriceId('price_standard');
-        $service = $this->createService($client, $plans, true);
         $project = $this->createProject(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, 'cs_paid_1', 42);
+        $invoiceDocument = new ProjectBillingDocument();
+        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
+        $invoiceStorage->expects(self::once())
+            ->method('upsertFromStripeCheckout')
+            ->with(
+                $project->getSubscription(),
+                self::isType('object'),
+                self::isType('object')
+            )
+            ->willReturn($invoiceDocument);
+        $invoiceStorage->expects(self::never())->method('syncInvoicePdf');
+        $service = $this->createService($client, $plans, true, $invoiceStorage);
 
         $result = $service->reconcilePendingCheckout($project, 'cs_paid_1');
 
@@ -203,6 +216,46 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame('https://invoice.test/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
         self::assertSame('cs_paid_1', $project->getSubscription()?->getStripeCheckoutSessionId());
         self::assertNull($project->getSubscription()?->getTargetTier());
+    }
+
+    public function testPaidPendingCheckoutWithoutInvoiceStillActivatesPlan(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_paid_no_invoice',
+            'payment_status' => 'paid',
+            'amount_total' => 9900,
+            'currency' => 'eur',
+            'payment_intent' => 'pi_paid_no_invoice',
+            'customer' => 'cus_paid_no_invoice',
+            'metadata' => (object) [
+                'project_id' => '42',
+                'target_tier' => ProjectSubscription::TIER_STANDARD,
+                'commercial_plan_code' => 'standard',
+            ],
+        ];
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['standard']->setStripePriceId('price_standard');
+        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
+        $invoiceStorage->expects(self::once())
+            ->method('upsertFromStripeCheckout')
+            ->with(
+                self::isInstanceOf(ProjectSubscription::class),
+                self::isType('object'),
+                self::isNull()
+            )
+            ->willReturn(new ProjectBillingDocument());
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, 'cs_paid_no_invoice', 42);
+        $service = $this->createService($client, $plans, true, $invoiceStorage);
+
+        $result = $service->reconcilePendingCheckout($project, 'cs_paid_no_invoice');
+
+        self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
+        self::assertSame('pi_paid_no_invoice', $project->getSubscription()?->getStripePaymentIntentId());
+        self::assertSame('cus_paid_no_invoice', $project->getSubscription()?->getStripeCustomerId());
+        self::assertNull($project->getSubscription()?->getStripeHostedInvoiceUrl());
+        self::assertNull($project->getSubscription()?->getStripeInvoicePdfUrl());
     }
 
     public function testUnpaidCheckoutStaysPending(): void
@@ -257,6 +310,12 @@ final class StripeProjectCheckoutServiceTest extends TestCase
     public function testAlreadyConfirmedCheckoutIsIdempotent(): void
     {
         $client = $this->createFakeStripeClient();
+        $client->invoices->retrieveReturn = (object) [
+            'id' => 'in_active_1',
+            'number' => 'INV-2026-010',
+            'hosted_invoice_url' => 'https://invoice.test/active/view',
+            'invoice_pdf' => 'https://invoice.test/active/pdf',
+        ];
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_active_1',
             'payment_status' => 'paid',
@@ -267,24 +326,40 @@ final class StripeProjectCheckoutServiceTest extends TestCase
                 'target_tier' => ProjectSubscription::TIER_PRO,
                 'commercial_plan_code' => 'pro',
             ],
-            'payment_intent' => (object) ['id' => 'pi_active_1'],
+            'payment_intent' => 'pi_active_1',
+            'customer' => 'cus_active_1',
+            'invoice' => 'in_active_1',
         ];
         $plans = $this->makeDefaultCommercialPlans();
         $plans['pro']->setStripePriceId('price_pro');
-        $service = $this->createService($client, $plans, true);
         $project = $this->createProject(ProjectSubscription::TIER_PRO, ProjectSubscription::STATUS_ACTIVE, null, 'cs_active_1', 42);
         $project->getSubscription()?->setStripePaymentIntentId(null);
         $project->getSubscription()?->setPaymentReference(null);
+        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
+        $invoiceStorage->expects(self::once())
+            ->method('upsertFromStripeCheckout')
+            ->with(
+                $project->getSubscription(),
+                self::isType('object'),
+                self::isType('object')
+            )
+            ->willReturn(new ProjectBillingDocument());
+        $service = $this->createService($client, $plans, true, $invoiceStorage);
 
         $result = $service->reconcilePendingCheckout($project, 'cs_active_1');
 
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_ALREADY_CONFIRMED, $result->status);
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
         self::assertSame('pi_active_1', $project->getSubscription()?->getStripePaymentIntentId());
+        self::assertSame('cus_active_1', $project->getSubscription()?->getStripeCustomerId());
+        self::assertSame('in_active_1', $project->getSubscription()?->getStripeInvoiceId());
+        self::assertSame('https://invoice.test/active/view', $project->getSubscription()?->getStripeHostedInvoiceUrl());
+        self::assertSame('https://invoice.test/active/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
         self::assertSame('cs_active_1', $project->getSubscription()?->getStripeCheckoutSessionId());
+        self::assertSame(['in_active_1'], $client->invoices->retrieveCalls);
     }
 
-    private function createService(FakeStripeClient $stripeClient, array $plans, bool $expectFlush = false): StripeProjectCheckoutService
+    private function createService(FakeStripeClient $stripeClient, array $plans, bool $expectFlush = false, ?StripeInvoiceStorageService $invoiceStorage = null): StripeProjectCheckoutService
     {
         $gate = $this->makeProjectFeatureGate($plans);
         $planRepository = $this->createMock(CommercialPlanRepository::class);
@@ -303,17 +378,22 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $em = $this->createMock(EntityManagerInterface::class);
         if ($expectFlush) {
             $em->expects(self::once())->method('flush');
-            $em->expects(self::never())->method('persist');
         }
 
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->method('generate')->willReturn('https://example.test/stripe');
+
+        if ($invoiceStorage === null) {
+            $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
+            $invoiceStorage->method('upsertFromStripeCheckout')->willReturn(new ProjectBillingDocument());
+        }
 
         return new StripeProjectCheckoutService(
             $stripeClient,
             $gate,
             $planRepository,
             $em,
+            $invoiceStorage,
             $urlGenerator,
             'https://example.test/success?session_id={CHECKOUT_SESSION_ID}',
             'https://example.test/cancel?session_id={CHECKOUT_SESSION_ID}',
