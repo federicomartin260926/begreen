@@ -699,7 +699,7 @@ backend:
       open_in_stripe: "Open in Stripe"
       open_invoice_in_stripe: "Open invoice in Stripe"
       sync_document_from_stripe: "Sync from Stripe"
-      try_download_invoice: "Try downloading invoice"
+      try_download_invoice: "Downloading invoice"
       invoice_local_missing: "There is no local copy of the invoice yet."
       invoice_sync_success: "Invoice synchronized successfully from Stripe."
       invoice_sync_failed: "Could not synchronize the invoice from Stripe."

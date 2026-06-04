@@ -700,7 +700,7 @@ backend:
       open_in_stripe: "Abrir en Stripe"
       open_invoice_in_stripe: "Abrir factura en Stripe"
       sync_document_from_stripe: "Sincronizar desde Stripe"
-      try_download_invoice: "Intentar descargar factura"
+      try_download_invoice: "Descargar factura"
       invoice_local_missing: "No existe todavía una copia local de la factura."
       invoice_sync_success: "Factura sincronizada correctamente desde Stripe."
       invoice_sync_failed: "No se pudo sincronizar la factura desde Stripe."

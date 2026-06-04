@@ -44,7 +44,7 @@
                                     {% endif %}
                                 </td>
                                 <td><code>{{ plan.code }}</code></td>
-                                <td class="text-end">
+                                <td class="text-end text-nowrap">
                                     {% if plan.priceAmount is not null %}
                                         {{ (plan.priceAmount / 100)|number_format(2, ',', '.') }} {{ plan.priceCurrency }}
                                     {% else %}
