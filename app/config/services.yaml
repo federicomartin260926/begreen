@@ -9,9 +9,6 @@ parameters:
     communication_files_directory: '%kernel.project_dir%/public/uploads/communication_files'
     stripe.secret_key: '%env(string:STRIPE_SECRET_KEY)%'
     stripe.webhook_secret: '%env(string:STRIPE_WEBHOOK_SECRET)%'
-    stripe.standard_price_id: '%env(string:STRIPE_STANDARD_PRICE_ID)%'
-    stripe.pro_price_id: '%env(string:STRIPE_PRO_PRICE_ID)%'
-    stripe.upgrade_standard_to_pro_price_id: '%env(string:STRIPE_UPGRADE_STANDARD_TO_PRO_PRICE_ID)%'
     stripe.success_url: '%env(string:STRIPE_SUCCESS_URL)%'
     stripe.cancel_url: '%env(string:STRIPE_CANCEL_URL)%'
 
@@ -44,15 +41,16 @@ services:
 
     App\Service\PdfService: ~
 
+    App\Service\StripeInvoiceStorageService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     Stripe\StripeClient:
         arguments:
             - { api_key: '%stripe.secret_key%' }
 
     App\Service\StripeProjectCheckoutService:
         arguments:
-            $standardPriceId: '%stripe.standard_price_id%'
-            $proPriceId: '%stripe.pro_price_id%'
-            $upgradeStandardToProPriceId: '%stripe.upgrade_standard_to_pro_price_id%'
             $successUrlTemplate: '%stripe.success_url%'
             $cancelUrlTemplate: '%stripe.cancel_url%'
 

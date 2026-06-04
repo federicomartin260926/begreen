@@ -4,11 +4,12 @@ namespace App\Controller\Backend;
 
 use App\Entity\{Department, EmissionActivity, EmissionRecord, Plan, Position, Project, CrewMember, ProjectMembership, ProjectPhaseDate, User};
 use App\Form\{ CrewMemberImportType, ProjectType, CrewMemberType, CrewMemberCollectionType };
-use App\Repository\{ ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository };
+use App\Repository\{ ProjectBillingDocumentRepository, ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository };
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Entity\ProjectSubscription;
 use App\Service\ProjectFeatureGate;
+use App\Service\StripeInvoiceStorageService;
 use Gedmo\Translatable\Entity\Translation;
 
 use Doctrine\Common\Collections\ArrayCollection;
@@ -31,7 +32,12 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[IsGranted('ROLE_USER')]
 class ProjectController extends AbstractController
 {
-    public function __construct(private readonly TranslatorInterface $t, private readonly ProjectFeatureGate $featureGate) {}
+    public function __construct(
+        private readonly TranslatorInterface $t,
+        private readonly ProjectFeatureGate $featureGate,
+        private readonly ProjectBillingDocumentRepository $billingDocumentRepository,
+        private readonly StripeInvoiceStorageService $invoiceStorageService,
+    ) {}
 
     #[Route('/', name: 'index')]
     public function index(
@@ -55,6 +61,7 @@ class ProjectController extends AbstractController
         $page    = max(1, (int) $request->query->get('page', 1));
         $perPage = 10;
         $offset  = ($page - 1) * $perPage;
+        $activeProject = $activeProjectService->getActiveProject();
 
         // Query base (membresías)
         $qb = $projectRepository->createQueryBuilder('p')
@@ -105,16 +112,23 @@ class ProjectController extends AbstractController
             ->getSingleScalarResult();
 
         // Página actual
-        $projects = $qb
-            ->select('DISTINCT p')
-            ->orderBy('p.createdAt', 'DESC')
+        $query = $qb->select('DISTINCT p');
+
+        if ($activeProject?->getId()) {
+            $query
+                ->addSelect('CASE WHEN p.id = :activeProjectId THEN 0 ELSE 1 END AS HIDDEN activeProjectOrder')
+                ->setParameter('activeProjectId', $activeProject->getId())
+                ->orderBy('activeProjectOrder', 'ASC')
+                ->addOrderBy('p.name', 'ASC');
+        } else {
+            $query->orderBy('p.name', 'ASC');
+        }
+
+        $projects = $query
             ->setFirstResult($offset)
             ->setMaxResults($perPage)
             ->getQuery()
             ->getResult();
-
-        // Proyecto activo
-        $activeProject = $activeProjectService->getActiveProject();
 
         return $this->render('backend/project/index.html.twig', [
             'projects'      => $projects,
@@ -187,6 +201,8 @@ class ProjectController extends AbstractController
             'form' => $form->createView(),
             'edit' => false,
             'commercialTier' => $this->featureGate->getTier($project),
+            'commercialTierLabel' => $this->featureGate->getPlanLabel($project),
+            'commercialTierDescription' => $this->featureGate->getPlanDescription($project),
         ]);
     }
 
@@ -206,10 +222,8 @@ class ProjectController extends AbstractController
 
         $form = $this->createForm(ProjectType::class, $project, [
             'show_commercial_tier' => $showCommercialTier,
+            'commercial_tier_value' => $this->featureGate->getTier($project),
         ]);
-        if ($form->has('commercialTier')) {
-            $form->get('commercialTier')->setData($this->featureGate->getTier($project));
-        }
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -237,6 +251,18 @@ class ProjectController extends AbstractController
                 ->count(['phase' => $phaseDate]) > 0;
         }
 
+        $billingInvoiceAvailable = false;
+        foreach ($this->billingDocumentRepository->findByProjectOrdered($project) as $document) {
+            if (
+                $this->invoiceStorageService->hasLocalCopy($document)
+                || $document->getHostedInvoiceUrl() !== null
+                || $document->getInvoicePdfUrl() !== null
+            ) {
+                $billingInvoiceAvailable = true;
+                break;
+            }
+        }
+
         return $this->render('backend/project/form.html.twig', [
             'form'         => $form->createView(),
             'edit'         => true,
@@ -244,6 +270,9 @@ class ProjectController extends AbstractController
             'lockedPhases' => $lockedPhases
             ,
             'commercialTier' => $this->featureGate->getTier($project),
+            'commercialTierLabel' => $this->featureGate->getPlanLabel($project),
+            'commercialTierDescription' => $this->featureGate->getPlanDescription($project),
+            'billingInvoiceAvailable' => $billingInvoiceAvailable,
         ]);
     }
 

@@ -37,6 +37,7 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Keep controller logic in Stimulus controllers, not inline script blocks.
 * Make controllers idempotent on `connect()` and safe to initialize more than once.
 * Reuse the shared DataTables controller for admin tables instead of creating one-off initializers.
+* When styling UI changes, prefer Bootstrap utilities and components first; use custom CSS only when Bootstrap cannot express the needed layout or state clearly.
 
 ## DataTables
 

@@ -6,13 +6,14 @@ use App\Entity\Measure;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
-use App\Repository\ProjectSubscriptionRepository;
 use App\Service\PlanMeasureCatalogResolver;
-use App\Service\ProjectFeatureGate;
 use PHPUnit\Framework\TestCase;
+use App\Tests\Support\CommercialPlanTestHelpers;
 
 final class PlanMeasureCatalogResolverTest extends TestCase
 {
+    use CommercialPlanTestHelpers;
+
     public function testCanonicalProtocolUsesV23ImportVersion(): void
     {
         $resolver = $this->createResolver();
@@ -60,10 +61,7 @@ final class PlanMeasureCatalogResolverTest extends TestCase
 
     private function createResolver(): PlanMeasureCatalogResolver
     {
-        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(null);
-
-        $featureGate = new ProjectFeatureGate($subscriptionRepository);
+        $featureGate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
 
         return new PlanMeasureCatalogResolver($featureGate);
     }

@@ -90,9 +90,6 @@ Esta fase deja operativos estos bloques:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_STANDARD_PRICE_ID`
-- `STRIPE_PRO_PRICE_ID`
-- `STRIPE_UPGRADE_STANDARD_TO_PRO_PRICE_ID`
 - `STRIPE_SUCCESS_URL`
 - `STRIPE_CANCEL_URL`
 
@@ -118,7 +115,7 @@ Esta fase deja operativos estos bloques:
 ### Pruebas recomendadas en modo test
 
 1. Configurar variables de Stripe en `.env.local` o el env del entorno de pruebas.
-2. Crear Price IDs en Stripe Dashboard.
+2. Configurar `stripePriceId` en los planes `Standard` y `Pro` desde Super Admin o fixtures de prueba.
 3. Lanzar un checkout de prueba desde un proyecto `Basic` o `Standard`.
 4. Confirmar que el webhook activa el tier correcto.
 5. Confirmar que se guardan factura y enlaces.

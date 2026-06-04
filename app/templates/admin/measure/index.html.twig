@@ -271,15 +271,15 @@
                                 <th>{{ 'backend.measures.table.ods'|trans }}</th>
                                 <th>{{ 'backend.measures.table.esg'|trans }}</th>
                                 <th>{{ 'backend.measures.table.scope'|trans }}</th>
-                                <th>{{ 'backend.measures.table.score'|trans }}</th>
-                                <th>{{ 'backend.measures.table.mandatory'|trans }}</th>
+                                <th class="text-center">{{ 'backend.measures.table.score'|trans }}</th>
+                                <th class="text-center">{{ 'backend.measures.table.mandatory'|trans }}</th>
                                 <th>{{ 'backend.measures.form.measure_block'|trans }}</th>
                                 <th>{{ 'backend.measures.form.departments'|trans }}</th>
                                 <th>{{ 'backend.measures.form.ods_items'|trans }}</th>
                                 <th>{{ 'backend.measures.form.verification_source_priority_1'|trans }}</th>
                                 <th>{{ 'backend.measures.form.impact_areas'|trans }}</th>
                                 <th>{{ 'backend.measures.form.triple_balance_axes'|trans }}</th>
-                                <th class="text-end">{{ 'backend.common.actions'|trans }}</th>
+                                <th class="text-center dt-head-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -339,14 +339,14 @@
                                     <td class="measure-detail-cell">{{ measure.ods ? measure.ods.name : '' }}</td>
                                     <td class="measure-detail-cell">{{ measure.esg ? measure.esg.name : '' }}</td>
                                     <td class="measure-detail-cell">{{ measure.scope ? measure.scope.name : '' }}</td>
-                                    <td>
+                                    <td class="text-center">
                                         {% if measure.score is not null %}
                                             <span class="badge bg-success">{{ measure.score }}</span>
                                         {% else %}
                                             <span class="text-muted">—</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="text-center">
                                         {% if measure.mandatory %}
                                             <span class="badge bg-success">{{ 'backend.common.yes'|trans }}</span>
                                         {% else %}
@@ -409,16 +409,30 @@
                                             —
                                         {% endif %}
                                     </td>
-                                    <td class="text-end text-nowrap">
-                                        <a href="{{ path('admin_measures_edit', {'id': measure.id}) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <form method="post" action="{{ path('admin_measures_delete', {'id': measure.id}) }}" class="d-inline" onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
-                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_measure_' ~ measure.id) }}">
-                                            <button class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
+                                    <td class="text-center text-nowrap">
+                                        <div class="d-flex justify-content-center align-items-center gap-1">
+                                            <a
+                                                href="{{ path('admin_measures_edit', {'id': measure.id}) }}"
+                                                data-bs-toggle="popover"
+                                                data-bs-trigger="hover"
+                                                data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                                class="btn">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                            <form
+                                                method="post"
+                                                action="{{ path('admin_measures_delete', {'id': measure.id}) }}"
+                                                data-bs-toggle="popover"
+                                                data-bs-trigger="hover"
+                                                data-bs-content="{{ 'backend.common.delete'|trans }}"
+                                                class="d-inline"
+                                                onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('delete_measure_' ~ measure.id) }}">
+                                                <button class="btn">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             {% endfor %}

@@ -4,18 +4,22 @@ namespace App\Tests\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
-use App\Repository\ProjectSubscriptionRepository;
-use App\Service\ProjectFeatureGate;
+use App\Tests\Support\CommercialPlanTestHelpers;
 use PHPUnit\Framework\TestCase;
 
 final class ProjectFeatureGateTest extends TestCase
 {
+    use CommercialPlanTestHelpers;
+
     public function testBasicTierRules(): void
     {
-        $gate = $this->createGate();
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $basicDefinition = $this->defaultCommercialPlanDefinition('basic');
 
-        self::assertSame([5, 4], $gate->getAllowedScores($project));
+        self::assertSame([4, 5], $gate->getAllowedScores($project));
+        self::assertSame('Basic', $gate->getPlanLabel($project));
+        self::assertSame($basicDefinition['description'], $gate->getPlanDescription($project));
         self::assertTrue($gate->hasWatermark($project));
         self::assertSame(10, $gate->getMaxEvidenceCount($project));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
@@ -29,10 +33,13 @@ final class ProjectFeatureGateTest extends TestCase
 
     public function testStandardTierRules(): void
     {
-        $gate = $this->createGate();
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $standardDefinition = $this->defaultCommercialPlanDefinition('standard');
 
-        self::assertSame([5, 4, 3], $gate->getAllowedScores($project));
+        self::assertSame([3, 4, 5], $gate->getAllowedScores($project));
+        self::assertSame('Standard', $gate->getPlanLabel($project));
+        self::assertSame($standardDefinition['description'], $gate->getPlanDescription($project));
         self::assertFalse($gate->hasWatermark($project));
         self::assertNull($gate->getMaxEvidenceCount($project));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
@@ -45,10 +52,13 @@ final class ProjectFeatureGateTest extends TestCase
 
     public function testProTierRules(): void
     {
-        $gate = $this->createGate();
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_PRO);
+        $proDefinition = $this->defaultCommercialPlanDefinition('pro');
 
-        self::assertSame([5, 4, 3, 2, 1], $gate->getAllowedScores($project));
+        self::assertSame([1, 2, 3, 4, 5], $gate->getAllowedScores($project));
+        self::assertSame('Pro', $gate->getPlanLabel($project));
+        self::assertSame($proDefinition['description'], $gate->getPlanDescription($project));
         self::assertFalse($gate->hasWatermark($project));
         self::assertNull($gate->getMaxEvidenceCount($project));
         self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.branding'));
@@ -64,18 +74,11 @@ final class ProjectFeatureGateTest extends TestCase
 
     public function testMissingSubscriptionDefaultsToBasic(): void
     {
-        $gate = $this->createGate();
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = new Project();
 
         self::assertSame(ProjectSubscription::TIER_BASIC, $gate->getTier($project));
-    }
-
-    private function createGate(): ProjectFeatureGate
-    {
-        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(null);
-
-        return new ProjectFeatureGate($subscriptionRepository);
+        self::assertSame('Basic', $gate->getPlanLabel($project));
     }
 
     private function createProjectWithTier(string $tier): Project

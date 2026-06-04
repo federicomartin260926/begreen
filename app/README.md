@@ -215,6 +215,7 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 
 - Los tiers internos por proyecto son `basic`, `standard` y `pro`.
 - El detalle de reglas y bloqueo de funcionalidades está en [docs/commercial-tiers.md](../docs/commercial-tiers.md).
+- El inventario funcional de las opciones visibles en la ficha comercial está en [docs/commercial-plan-features.md](../docs/commercial-plan-features.md).
 - Los upgrades de pago único por proyecto se gestionan con Stripe Checkout y generan referencias de factura almacenadas en `ProjectSubscription`.
 - La suite PHPUnit ahora incluye `tests/Service` además de `Smoke` e `Import`.
 

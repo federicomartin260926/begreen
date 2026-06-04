@@ -5,7 +5,7 @@
     }
 </style>
 
-<div id="plan-preview-content" class="px-4 py-3">
+<div id="plan-preview-content" class="px-4 py-3 d-flex flex-column h-100">
     <h2 class="text-center">
         {{ 'backend.plan.preview.title'|trans({
             '%project%': project.name|slice(0, 50) ~ (project.name|length > 50 ? '…' : '')
@@ -45,7 +45,7 @@
 
     <div class="text-center text-muted mb-4">
         {{ 'backend.plan.preview.date'|trans }} {{ "now"|date("d/m/Y") }}<br>
-        {{ 'backend.plan.preview.user'|trans }} {{ app.user.fullName ?? app.user.email }}
+        {{ 'backend.plan.preview.user'|trans }} {{ currentUserLabel|default(app.user.email ?? '') }}
     </div>
 
     {% if commitmentSummary is defined %}
@@ -74,161 +74,165 @@
         </div>
     {% endif %}
 
-    {% if measuresByDpto is empty %}
-        <p class="text-center fw-semibold">{{ 'backend.plan.preview.empty'|trans }}</p>
-    {% else %}
-        <h4>{{ 'backend.plan.preview.summary_by_department'|trans }}</h4>
-        <table class="table table-bordered table-sm">
-            <thead class="bg_green_1">
-                <tr>
-                    <th>{{ 'backend.plan.preview.th.department'|trans }}</th>
-                    <th>{{ 'backend.plan.preview.th.total_measures'|trans }}</th>
-                    <th>{{ 'backend.plan.preview.th.applicable'|trans }}</th>
-                    <th>{{ 'backend.plan.preview.th.to_implement'|trans }}</th>
-                    <th>{{ 'backend.plan.preview.th.critical_yes'|trans }}</th>
-                    {% if plan.status == 'completo' %}
-                        <th>{{ 'backend.plan.preview.th.implemented'|trans }}</th>
-                    {% endif %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for dpto, measures in measuresByDpto %}
-                <tr>
-                    <td>{{ dpto }}</td>
-                    <td>{{ measures|length }}</td>
-                    <td>{{ measures|filter(pm => pm.isApplicable)|length }}</td>
-                    <td>{{ measures|filter(pm => pm.willImplement)|length }}</td>
-                    <td>{{ measures|filter(pm => pm.isCritical)|length }}</td>
-                    {% if plan.status == 'completo' %}
-                        <td>{{ measures|filter(pm => pm.isImplemented)|length }}</td>
-                    {% endif %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <hr class="my-4">
-
-        {% for dpto, measures in measuresByDpto %}
-            <h5 class="mt-4">{{ dpto }}</h5>
-            <table class="table table-bordered table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>{{ 'backend.plan.preview.th.measure'|trans }}</th>
-                        <th>{{ 'backend.plan.preview.th.applicable_q'|trans }}</th>
-                        <th>{{ 'backend.plan.preview.th.implement_q'|trans }}</th>
-                        {% if plan.status == 'completo' %}
-                            <th>{{ 'backend.plan.preview.th.implemented_q'|trans }}</th>
-                        {% endif %}
-                        <th>{{ 'backend.plan.preview.th.critical'|trans }}</th>
-                        <th>{{ 'backend.plan.measure.department'|trans }}</th>
-                        <th>{{ 'backend.plan.preview.th.ods'|trans }}</th>
-                        <th>{{ 'backend.plan.review.verification_sources'|trans }}</th>
-                        <th>Áreas de impacto</th>
-                        <th>Triple balance</th>
-                        <th>{{ 'backend.plan.preview.th.follow_up'|trans }}</th>
-                        <th>{{ 'backend.plan.preview.th.notes'|trans }}</th>
-                        <th>{{ 'backend.plan.preview.th.esg'|trans }}</th>
-                        <th>{{ 'backend.plan.preview.th.scope'|trans }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for pm in measures %}
+    <div class="flex-grow-1 overflow-auto pe-1" style="min-height: 0;">
+        {% if measuresByDpto is empty %}
+            <p class="text-center fw-semibold">{{ 'backend.plan.preview.empty'|trans }}</p>
+        {% else %}
+            <h4>{{ 'backend.plan.preview.summary_by_department'|trans }}</h4>
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered table-sm mb-0">
+                    <thead class="bg_green_1">
                         <tr>
-                            <td>{{ pm.measure.displayNameForReview }}</td>
-                            <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
-                            <td>{{ pm.willImplement ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                            <th>{{ 'backend.plan.preview.th.department'|trans }}</th>
+                            <th>{{ 'backend.plan.preview.th.total_measures'|trans }}</th>
+                            <th>{{ 'backend.plan.preview.th.applicable'|trans }}</th>
+                            <th>{{ 'backend.plan.preview.th.to_implement'|trans }}</th>
+                            <th>{{ 'backend.plan.preview.th.critical_yes'|trans }}</th>
                             {% if plan.status == 'completo' %}
-                                <td>{{ pm.isImplemented ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                                <th>{{ 'backend.plan.preview.th.implemented'|trans }}</th>
                             {% endif %}
-                            <td>
-                                {{ pm.isCritical is same as(true)
-                                    ? ('backend.plan.preview.yes'|trans)
-                                    : (pm.isCritical is same as(false) ? ('backend.plan.preview.no'|trans) : '—') }}
-                                {% if pm.criticalReason %}
-                                    <div class="small text-muted mt-1">{{ pm.criticalReason }}</div>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% set departments = pm.measure ? taxonomyPresenter.departments(pm.measure) : [] %}
-                                {% if departments is not empty %}
-                                    {% for department in departments %}
-                                        <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
-                                    {% endfor %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% set odsItems = pm.measure ? taxonomyPresenter.odsItems(pm.measure) : [] %}
-                                {% if odsItems is not empty %}
-                                    {% for ods in odsItems %}
-                                        <span class="badge bg-light text-dark border">
-                                            {{ ods.label }}
-                                        </span>
-                                    {% endfor %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% set sources = pm.measure ? taxonomyPresenter.verificationSourcesWithPriority(pm.measure) : [] %}
-                                {% if sources is not empty %}
-                                    <ol class="mb-0 ps-3">
-                                        {% for link in sources %}
-                                            <li>{{ link.priority }}. {{ link.name }}</li>
-                                        {% endfor %}
-                                    </ol>
-                                {% else %}
-                                    {{ pm.measure and pm.measure.verificationSources ? pm.measure.verificationSources : '—' }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% set impactAreas = pm.measure ? taxonomyPresenter.impactAreas(pm.measure) : [] %}
-                                {% if impactAreas is not empty %}
-                                    {% for impactArea in impactAreas %}
-                                        <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
-                                    {% endfor %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% set axes = pm.measure ? taxonomyPresenter.tripleBalanceAxes(pm.measure) : [] %}
-                                {% if axes is not empty %}
-                                    {% for axis in axes %}
-                                        <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>
-                                    {% endfor %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div><span class="fw-semibold">{{ 'backend.plan.preview.implemented'|trans }}:</span> {{ pm.isImplemented ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
-                                <div><span class="fw-semibold">{{ 'backend.plan.preview.verified'|trans }}:</span> {{ pm.verification ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
-                                <div><span class="fw-semibold">{{ 'backend.plan.preview.evidences'|trans }}:</span> {{ pm.evidence ? pm.evidence|split("\n")|filter(v => v)|length : 0 }}</div>
-                                <div>
-                                    <span class="fw-semibold">{{ 'backend.plan.preview.responsibles'|trans }}:</span>
-                                    {% set responsibles = [] %}
-                                    {% for member in pm.responsibleCrewMembers %}
-                                        {% set responsibles = responsibles|merge([((member.name ?? '') ~ ' ' ~ (member.lastName ?? ''))|trim]) %}
-                                    {% endfor %}
-                                    {{ responsibles is not empty ? responsibles|join(', ') : '—' }}
-                                </div>
-                            </td>
-                            <td>
-                                {% if pm.publicComment %}
-                                    <div class="small">{{ pm.publicComment }}</div>
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>{{ pm.measure and pm.measure.esg ? pm.measure.esg.name : '—' }}</td>
-                            <td>{{ pm.measure and pm.measure.scope ? pm.measure.scope.name : '—' }}</td>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% endfor %}
-    {% endif %}
+                    </thead>
+                    <tbody>
+                        {% for dpto, measures in measuresByDpto %}
+                        <tr>
+                            <td>{{ dpto }}</td>
+                            <td>{{ measures|length }}</td>
+                            <td>{{ measures|filter(pm => pm.isApplicable)|length }}</td>
+                            <td>{{ measures|filter(pm => pm.willImplement)|length }}</td>
+                            <td>{{ measures|filter(pm => pm.isCritical)|length }}</td>
+                            {% if plan.status == 'completo' %}
+                                <td>{{ measures|filter(pm => pm.isImplemented)|length }}</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% for dpto, measures in measuresByDpto %}
+                <h5 class="mt-4">{{ dpto }}</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{{ 'backend.plan.preview.th.measure'|trans }}</th>
+                                <th>{{ 'backend.plan.preview.th.applicable_q'|trans }}</th>
+                                <th>{{ 'backend.plan.preview.th.implement_q'|trans }}</th>
+                                {% if plan.status == 'completo' %}
+                                    <th>{{ 'backend.plan.preview.th.implemented_q'|trans }}</th>
+                                {% endif %}
+                                <th>{{ 'backend.plan.preview.th.critical'|trans }}</th>
+                                <th>{{ 'backend.plan.measure.department'|trans }}</th>
+                                <th>{{ 'backend.plan.preview.th.ods'|trans }}</th>
+                                <th>{{ 'backend.plan.review.verification_sources'|trans }}</th>
+                                <th>Áreas de impacto</th>
+                                <th>Triple balance</th>
+                                <th>{{ 'backend.plan.preview.th.follow_up'|trans }}</th>
+                                <th>{{ 'backend.plan.preview.th.notes'|trans }}</th>
+                                <th>{{ 'backend.plan.preview.th.esg'|trans }}</th>
+                                <th>{{ 'backend.plan.preview.th.scope'|trans }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pm in measures %}
+                                <tr>
+                                    <td>{{ pm.measure.displayNameForReview }}</td>
+                                    <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                                    <td>{{ pm.willImplement ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                                    {% if plan.status == 'completo' %}
+                                        <td>{{ pm.isImplemented ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                                    {% endif %}
+                                    <td>
+                                        {{ pm.isCritical is same as(true)
+                                            ? ('backend.plan.preview.yes'|trans)
+                                            : (pm.isCritical is same as(false) ? ('backend.plan.preview.no'|trans) : '—') }}
+                                        {% if pm.criticalReason %}
+                                            <div class="small text-muted mt-1">{{ pm.criticalReason }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set departments = pm.measure ? taxonomyPresenter.departments(pm.measure) : [] %}
+                                        {% if departments is not empty %}
+                                            {% for department in departments %}
+                                                <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set odsItems = pm.measure ? taxonomyPresenter.odsItems(pm.measure) : [] %}
+                                        {% if odsItems is not empty %}
+                                            {% for ods in odsItems %}
+                                                <span class="badge bg-light text-dark border">
+                                                    {{ ods.label }}
+                                                </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set sources = pm.measure ? taxonomyPresenter.verificationSourcesWithPriority(pm.measure) : [] %}
+                                        {% if sources is not empty %}
+                                            <ol class="mb-0 ps-3">
+                                                {% for link in sources %}
+                                                    <li>{{ link.priority }}. {{ link.name }}</li>
+                                                {% endfor %}
+                                            </ol>
+                                        {% else %}
+                                            {{ pm.measure and pm.measure.verificationSources ? pm.measure.verificationSources : '—' }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set impactAreas = pm.measure ? taxonomyPresenter.impactAreas(pm.measure) : [] %}
+                                        {% if impactAreas is not empty %}
+                                            {% for impactArea in impactAreas %}
+                                                <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set axes = pm.measure ? taxonomyPresenter.tripleBalanceAxes(pm.measure) : [] %}
+                                        {% if axes is not empty %}
+                                            {% for axis in axes %}
+                                                <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div><span class="fw-semibold">{{ 'backend.plan.preview.implemented'|trans }}:</span> {{ pm.isImplemented ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
+                                        <div><span class="fw-semibold">{{ 'backend.plan.preview.verified'|trans }}:</span> {{ pm.verification ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
+                                        <div><span class="fw-semibold">{{ 'backend.plan.preview.evidences'|trans }}:</span> {{ pm.evidence ? pm.evidence|split("\n")|filter(v => v)|length : 0 }}</div>
+                                        <div>
+                                            <span class="fw-semibold">{{ 'backend.plan.preview.responsibles'|trans }}:</span>
+                                            {% set responsibles = [] %}
+                                            {% for member in pm.responsibleCrewMembers %}
+                                                {% set responsibles = responsibles|merge([((member.name ?? '') ~ ' ' ~ (member.lastName ?? ''))|trim]) %}
+                                            {% endfor %}
+                                            {{ responsibles is not empty ? responsibles|join(', ') : '—' }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if pm.publicComment %}
+                                            <div class="small">{{ pm.publicComment }}</div>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ pm.measure and pm.measure.esg ? pm.measure.esg.name : '—' }}</td>
+                                    <td>{{ pm.measure and pm.measure.scope ? pm.measure.scope.name : '—' }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
 </div>

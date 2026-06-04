@@ -2,8 +2,8 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User};
-use App\Repository\{PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
+use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User};
+use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanBlockQuestionService;
@@ -11,6 +11,7 @@ use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
+use App\Service\StripeProjectCheckoutService;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
@@ -159,7 +160,9 @@ class PlanController extends AbstractController
         MeasureRepository $measureRepository,
         PlanMeasureRepository $planMeasureRepository,
         SustainabilityPlanBlockAnswerRepository $blockAnswerRepository,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        StripeProjectCheckoutService $checkoutService,
+        CommercialPlanRepository $commercialPlanRepository
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) {
@@ -390,19 +393,24 @@ class PlanController extends AbstractController
         $projectTier = $this->featureGate->getTier($project);
         $evidenceLimit = $this->featureGate->getMaxEvidenceCount($project);
         $evidenceCount = $this->countProjectEvidenceFiles($plan);
+        $projectTierLabel = $this->featureGate->getPlanLabel($project);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
+        $upgradeCta = $this->buildUpgradeCta($project, $projectTier, $availableUpgradeTargets, $commercialPlanRepository);
 
         // ===== Render =====
         return $this->render('backend/plan/measures.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
             'projectTier'      => $projectTier,
-            'projectTierLabel'  => $this->getProjectTierLabel($projectTier),
-            'projectTierSummary'=> $this->getProjectTierSummary($projectTier),
+            'projectTierLabel'  => $projectTierLabel,
+            'projectTierSummary'=> $projectTierSummary,
             'evidenceCount'    => $evidenceCount,
             'evidenceLimit'    => $evidenceLimit,
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
+            'upgradeCta'       => $upgradeCta,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
@@ -567,6 +575,14 @@ class PlanController extends AbstractController
             $willImplement = $request->query->get('will_implement');
         }
 
+        $paginationQuery = $request->query->all();
+        if (!array_key_exists('is_applicable', $paginationQuery) && $isApplicable !== null && $isApplicable !== '') {
+            $paginationQuery['is_applicable'] = $isApplicable;
+        }
+        if (!array_key_exists('will_implement', $paginationQuery) && $willImplement !== null && $willImplement !== '') {
+            $paginationQuery['will_implement'] = $willImplement;
+        }
+
         $page    = max(1, (int)$request->query->get('page', 1));
         $perPage = 10;
 
@@ -701,13 +717,15 @@ class PlanController extends AbstractController
         }
 
         $uiLocale = $request->getLocale();
+        $projectTierLabel = $this->featureGate->getPlanLabel($project);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
             'projectTier'      => $this->featureGate->getTier($project),
-            'projectTierLabel'  => $this->getProjectTierLabel($this->featureGate->getTier($project)),
-            'projectTierSummary'=> $this->getProjectTierSummary($this->featureGate->getTier($project)),
+            'projectTierLabel'  => $projectTierLabel,
+            'projectTierSummary'=> $projectTierSummary,
             'evidenceCount'    => $this->countProjectEvidenceFiles($plan),
             'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project),
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
@@ -724,6 +742,7 @@ class PlanController extends AbstractController
             'offset'           => $offset,
             'perPage'          => $perPage,
             'positionById'     => $positionById,
+            'paginationQuery'  => $paginationQuery,
             'filters'          => [
                 'protocol'          => $protocol,
                 'category'          => $category,
@@ -1459,6 +1478,8 @@ class PlanController extends AbstractController
             'plan'           => $ctx['plan'],
             'measuresByDpto' => $ctx['measuresByDpto'],
             'activeFilters'  => $ctx['activeFilters'],
+            'taxonomyPresenter' => $ctx['taxonomyPresenter'],
+            'currentUserLabel'   => $ctx['currentUserLabel'],
             'scoreMax'       => $ctx['scoreMax'],
             'scoreGained'    => $ctx['scoreGained'],
             'scorePct'       => $ctx['scorePct'],
@@ -1694,13 +1715,16 @@ class PlanController extends AbstractController
         }
 
         $activeFilters = array_merge($activeMain, $activeFlags);
+        $projectTierLabel = $this->featureGate->getPlanLabel($project);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         return [
             'project'        => $project,
             'plan'           => $plan,
             'projectTier'    => $this->featureGate->getTier($project),
-            'projectTierLabel'=> $this->getProjectTierLabel($this->featureGate->getTier($project)),
-            'projectTierSummary'=> $this->getProjectTierSummary($this->featureGate->getTier($project)),
+            'projectTierLabel'=> $projectTierLabel,
+            'projectTierSummary'=> $projectTierSummary,
+            'currentUserLabel'=> $this->buildCurrentUserLabel(),
             'hasWatermark'   => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
@@ -1719,6 +1743,21 @@ class PlanController extends AbstractController
     private function renderPdfHtml(array $context): string
     {
         return $this->renderView('backend/plan/pdf.html.twig', $context);
+    }
+
+    private function buildCurrentUserLabel(): string
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return '';
+        }
+
+        $fullName = trim((string) $user->getName() . ' ' . (string) $user->getSurnames());
+        if ($fullName !== '') {
+            return $fullName;
+        }
+
+        return (string) ($user->getEmail() ?? '');
     }
 
     private function pdfBytesFromHtml(string $html, string $orientation = 'landscape'): string
@@ -2072,22 +2111,110 @@ class PlanController extends AbstractController
         return $cards;
     }
 
-    private function getProjectTierLabel(string $tier): string
+    /**
+     * @param array<string, array{label?:string, amountCents?:int|null, priceId?:string|null}> $availableUpgradeTargets
+     *
+     * @return array{
+     *     mode: string,
+     *     label: ?string,
+     *     title: ?string,
+     *     options: array<int, array{
+     *         targetTier: string,
+     *         name: string,
+     *         description: ?string,
+     *         priceAmount: ?int,
+     *         priceCurrency: string,
+     *         priceLabel: string,
+     *         ctaLabel: string,
+     *         allowedScores: int[]
+     *     }>
+     * }
+     */
+    private function buildUpgradeCta(Project $project, string $projectTier, array $availableUpgradeTargets, CommercialPlanRepository $commercialPlanRepository): array
     {
-        return match ($tier) {
-            ProjectSubscription::TIER_STANDARD => 'Standard',
-            ProjectSubscription::TIER_PRO => 'Pro',
-            default => 'Basic',
+        if ($projectTier === ProjectSubscription::TIER_PRO) {
+            return [
+                'mode' => 'none',
+                'label' => $this->t->trans('backend.plan.upgrade.active_title'),
+                'title' => null,
+                'options' => [],
+            ];
+        }
+
+        $candidateTiers = match ($projectTier) {
+            ProjectSubscription::TIER_BASIC => [ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO],
+            ProjectSubscription::TIER_STANDARD => [ProjectSubscription::TIER_PRO],
+            default => [],
         };
+
+        $options = [];
+        foreach ($candidateTiers as $targetTier) {
+            $targetData = $availableUpgradeTargets[$targetTier] ?? null;
+            if (!is_array($targetData) || !array_key_exists('priceId', $targetData) || trim((string) $targetData['priceId']) === '') {
+                continue;
+            }
+
+            $plan = $commercialPlanRepository->findActiveByCode($targetTier);
+            if (!$plan instanceof CommercialPlan) {
+                continue;
+            }
+
+            $displayAmountCents = isset($targetData['amountCents']) && is_int($targetData['amountCents'])
+                ? $targetData['amountCents']
+                : $plan->getPriceAmount();
+            $priceLabel = $this->formatPlanPrice($displayAmountCents, $plan->getPriceCurrency());
+            $options[] = [
+                'targetTier' => $targetTier,
+                'name' => $plan->getName(),
+                'description' => $plan->getDescription(),
+                'priceAmount' => $displayAmountCents,
+                'priceCurrency' => $plan->getPriceCurrency(),
+                'priceLabel' => $priceLabel,
+                'ctaLabel' => $this->t->trans('backend.plan.upgrade.upgrade_to', [
+                    '%name%' => $plan->getName(),
+                    '%price%' => $priceLabel,
+                ]),
+                'allowedScores' => $plan->getAllowedScores(),
+            ];
+        }
+
+        if ($options === []) {
+            return [
+                'mode' => 'unavailable',
+                'label' => $this->t->trans('backend.plan.upgrade.price_id_missing'),
+                'title' => $this->t->trans('backend.plan.upgrade.select_title'),
+                'options' => [],
+            ];
+        }
+
+        if (\count($options) === 1) {
+            return [
+                'mode' => 'single',
+                'label' => $options[0]['ctaLabel'],
+                'title' => $this->t->trans('backend.plan.upgrade.select_title'),
+                'options' => $options,
+            ];
+        }
+
+        return [
+            'mode' => 'modal',
+            'label' => $this->t->trans('backend.plan.upgrade.open_selector'),
+            'title' => $this->t->trans('backend.plan.upgrade.select_title'),
+            'options' => $options,
+        ];
     }
 
-    private function getProjectTierSummary(string $tier): string
+    private function formatPlanPrice(?int $priceAmount, string $currency): string
     {
-        return match ($tier) {
-            ProjectSubscription::TIER_STANDARD => $this->t->trans('backend.plan.tier.standard_summary'),
-            ProjectSubscription::TIER_PRO => $this->t->trans('backend.plan.tier.pro_summary'),
-            default => $this->t->trans('backend.plan.tier.basic_summary'),
-        };
+        if ($priceAmount === null) {
+            return $this->t->trans('backend.common.placeholder');
+        }
+
+        $amount = number_format($priceAmount / 100, 2, ',', '.');
+        $currency = strtoupper(trim($currency));
+        $currencyLabel = $currency === 'EUR' ? '€' : $currency;
+
+        return sprintf('%s %s', $amount, $currencyLabel);
     }
 
     private function countProjectEvidenceFiles(Plan $plan): int

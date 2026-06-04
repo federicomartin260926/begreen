@@ -3,8 +3,65 @@ import { Controller } from '@hotwired/stimulus';
 import $ from 'jquery';
 import 'datatables.net-bs5';
 import 'datatables.net-responsive-bs5';
-import esLanguage from '../datatables/i18n/es-ES.json';
-import enLanguage from '../datatables/i18n/en-GB.json';
+
+const ES_LANGUAGE = {
+  processing: 'Procesando...',
+  search: 'Buscar:',
+  lengthMenu: 'Mostrar _MENU_ registros',
+  info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+  infoEmpty: 'Mostrando 0 a 0 de 0 registros',
+  infoFiltered: '(filtrado de _MAX_ registros totales)',
+  infoPostFix: '',
+  loadingRecords: 'Cargando...',
+  zeroRecords: 'No se encontraron resultados',
+  emptyTable: 'Ningún dato disponible en la tabla',
+  paginate: {
+    first: 'Primero',
+    previous: 'Anterior',
+    next: 'Siguiente',
+    last: 'Último',
+  },
+  aria: {
+    sortAscending: ': activar para ordenar la columna ascendente',
+    sortDescending: ': activar para ordenar la columna descendente',
+  },
+  select: {
+    rows: {
+      _: '%d filas seleccionadas',
+      0: 'Haz clic en una fila para seleccionarla',
+      1: '1 fila seleccionada',
+    },
+  },
+};
+
+const EN_LANGUAGE = {
+  processing: 'Processing...',
+  search: 'Search:',
+  lengthMenu: 'Show _MENU_ entries',
+  info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+  infoEmpty: 'Showing 0 to 0 of 0 entries',
+  infoFiltered: '(filtered from _MAX_ total entries)',
+  loadingRecords: 'Loading...',
+  zeroRecords: 'No matching records found',
+  emptyTable: 'No data available in table',
+  paginate: {
+    first: 'First',
+    previous: 'Previous',
+    next: 'Next',
+    last: 'Last',
+  },
+  aria: {
+    sortAscending: ': activate to sort column ascending',
+    sortDescending: ': activate to sort column descending',
+  },
+  select: {
+    rows: {
+      _: '%d rows selected',
+      0: 'Click a row to select it',
+      1: '1 row selected',
+    },
+  },
+};
 
 export default class extends Controller {
   connect() {
@@ -17,11 +74,7 @@ export default class extends Controller {
     const attrLang = ($table.data('dt-lang') || '').toLowerCase(); // override opcional por tabla
     const dtMode = ($table.data('dt-mode') || '').toLowerCase();
     const locale   = attrLang || htmlLang;
-    const languageMap = {
-      es: esLanguage,
-      en: enLanguage,
-    };
-    const languageConfig = Object.assign({}, languageMap[locale] || enLanguage);
+    const languageConfig = locale === 'es' ? ES_LANGUAGE : EN_LANGUAGE;
 
     // ===== 1) Columnas sin orden =====
     const noOrderIdx = [];
@@ -79,13 +132,20 @@ export default class extends Controller {
             },
           }
         : true,
-      language: $.extend(true, {}, languageConfig),
+      language: languageConfig,
       order: initialOrder,
       bgmBuildMarker: 'datatable-local-i18n'
     };
 
     if (noOrderIdx.length) {
       columnDefs.push({ orderable: false, targets: noOrderIdx });
+    }
+
+    const expectedColumns = $table.find('thead th').length;
+    const bodyRows = $table.find('tbody tr').toArray();
+    const hasUniformRows = bodyRows.every((row) => $(row).children('td,th').length === expectedColumns);
+    if (!hasUniformRows) {
+      return;
     }
 
     if (columnDefs.length) {

@@ -49,6 +49,9 @@ class Project
     #[Assert\Valid]
     private ?ProjectSubscription $subscription = null;
 
+    #[ORM\OneToMany(mappedBy: 'project', targetEntity: ProjectBillingDocument::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $billingDocuments;
+
     #[ORM\OneToMany(mappedBy: 'project', targetEntity: CrewMember::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[Assert\Valid]
     private Collection $crewMembers;
@@ -150,6 +153,7 @@ class Project
         $this->projectMemberships = new ArrayCollection();
         $this->phaseDates = new ArrayCollection();
         $this->crewMembers = new ArrayCollection();
+        $this->billingDocuments = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -226,6 +230,33 @@ class Project
         if ($subscription && $subscription->getProject() !== $this) {
             $subscription->setProject($this);
         }
+        return $this;
+    }
+
+    /** @return Collection<int, ProjectBillingDocument> */
+    public function getBillingDocuments(): Collection
+    {
+        return $this->billingDocuments;
+    }
+
+    public function addBillingDocument(ProjectBillingDocument $billingDocument): static
+    {
+        if (!$this->billingDocuments->contains($billingDocument)) {
+            $this->billingDocuments->add($billingDocument);
+            $billingDocument->setProject($this);
+        }
+
+        return $this;
+    }
+
+    public function removeBillingDocument(ProjectBillingDocument $billingDocument): static
+    {
+        if ($this->billingDocuments->removeElement($billingDocument)) {
+            if ($billingDocument->getProject() === $this) {
+                $billingDocument->setProject(null);
+            }
+        }
+
         return $this;
     }
 

@@ -4,6 +4,7 @@ set -eu
 mkdir -p \
   /app/var/cache \
   /app/var/log \
+  /app/var/private/stripe-invoices \
   /app/public/uploads/communication_files \
   /app/public/uploads/logos \
   /app/public/uploads/evidences \
@@ -15,6 +16,8 @@ if [ -d /opt/begreen-build ]; then
 fi
 
 if [ "$(id -u)" = "0" ]; then
+  chown -R www-data:www-data /app/var/private || true
+  chmod -R u+rwX,g+rwX /app/var/private || true
   chown -R www-data:www-data /app/var /app/public/uploads || true
 fi
 

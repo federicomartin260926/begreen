@@ -10,6 +10,11 @@ services:
   nginx:
     ports:
       - "127.0.0.1:${APP_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./:/app:ro
+      - app_var:/app/var:ro
+      - app_uploads:/app/public/uploads:ro
+      - app_build:/app/public/build:ro
 
   db:
     ports:
