@@ -184,6 +184,8 @@ final class MeasureTemplateV23Parser
             'descriptionEn' => $this->cell($row, $columnMap['description_en'] ?? null),
             'implementationEn' => $this->cell($row, $columnMap['implementation_en'] ?? null),
             'verificationSourcesEn' => $this->cell($row, $columnMap['verification_sources_en'] ?? null),
+            'departmentActionText' => $this->cell($row, $columnMap['department_action_text'] ?? null),
+            'departmentActionTextEn' => $this->cell($row, $columnMap['department_action_text_en'] ?? null),
         ];
 
         if ($rowData['protocol'] === '') {
@@ -400,6 +402,8 @@ final class MeasureTemplateV23Parser
         $rowData['descriptionEn'] = (string) ($rowData['description_en'] ?? $rowData['descriptionEn'] ?? '');
         $rowData['implementationEn'] = (string) ($rowData['implementation_en'] ?? $rowData['implementationEn'] ?? '');
         $rowData['verificationSourcesEn'] = (string) ($rowData['verification_sources_en'] ?? $rowData['verificationSourcesEn'] ?? '');
+        $rowData['departmentActionText'] = (string) ($rowData['department_action_text'] ?? $rowData['departmentActionText'] ?? '');
+        $rowData['departmentActionTextEn'] = (string) ($rowData['department_action_text_en'] ?? $rowData['departmentActionTextEn'] ?? '');
 
         $rowData['departments'] = implode('; ', array_values($matrixSelections['departments']));
         $rowData['odsItems'] = implode('; ', array_values($matrixSelections['odsItems']));

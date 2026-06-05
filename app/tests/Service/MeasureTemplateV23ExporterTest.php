@@ -80,12 +80,14 @@ final class MeasureTemplateV23ExporterTest extends TestCase
         self::assertSame('Bloque', (string) $sheet->getCell('C1')->getValue());
         self::assertSame('Categoría', (string) $sheet->getCell('D1')->getValue());
         self::assertSame('Medida', (string) $sheet->getCell('F1')->getValue());
-        self::assertSame('Impacto ambiental', (string) $sheet->getCell('N1')->getValue());
-        self::assertSame('Departamento', (string) $sheet->getCell('P1')->getValue());
-        self::assertSame('Fuente de verificación', (string) $sheet->getCell('S1')->getValue());
-        self::assertSame('ODS', (string) $sheet->getCell('V1')->getValue());
-        self::assertSame('Triple balance', (string) $sheet->getCell('Y1')->getValue());
-        self::assertSame('Nombre EN (opcional)', (string) $sheet->getCell('AB1')->getValue());
+        self::assertSame('Acción por departamento', (string) $sheet->getCell('N1')->getValue());
+        self::assertSame('Impacto ambiental', (string) $sheet->getCell('O1')->getValue());
+        self::assertSame('Departamento', (string) $sheet->getCell('Q1')->getValue());
+        self::assertSame('Fuente de verificación', (string) $sheet->getCell('T1')->getValue());
+        self::assertSame('ODS', (string) $sheet->getCell('W1')->getValue());
+        self::assertSame('Triple balance', (string) $sheet->getCell('Z1')->getValue());
+        self::assertSame('Nombre EN (opcional)', (string) $sheet->getCell('AC1')->getValue());
+        self::assertSame('Acción por departamento EN (opcional)', (string) $sheet->getCell('AH1')->getValue());
 
         self::assertSame('', (string) $sheet->getCell('A2')->getValue());
         self::assertSame('', (string) $sheet->getCell('B2')->getValue());
@@ -95,27 +97,28 @@ final class MeasureTemplateV23ExporterTest extends TestCase
         self::assertSame('', (string) $sheet->getCell('H2')->getValue());
         self::assertSame('', (string) $sheet->getCell('I2')->getValue());
         self::assertSame('', (string) $sheet->getCell('J2')->getValue());
-        self::assertSame('a - Cambio Climático', (string) $sheet->getCell('N2')->getValue());
-        self::assertSame('b - Recursos', (string) $sheet->getCell('O2')->getValue());
-        self::assertSame('art - Arte', (string) $sheet->getCell('P2')->getValue());
-        self::assertSame('cam - Cámara', (string) $sheet->getCell('Q2')->getValue());
-        self::assertSame('prod - Producción', (string) $sheet->getCell('R2')->getValue());
-        self::assertSame('Certif. / Licencia', (string) $sheet->getCell('S2')->getValue());
-        self::assertSame('Factura / Albarán', (string) $sheet->getCell('T2')->getValue());
-        self::assertSame('Foto', (string) $sheet->getCell('U2')->getValue());
-        self::assertSame('1', (string) $sheet->getCell('V2')->getValue());
-        self::assertSame('2', (string) $sheet->getCell('W2')->getValue());
-        self::assertSame('10', (string) $sheet->getCell('X2')->getValue());
-        self::assertSame('Ambiental (E)', (string) $sheet->getCell('Y2')->getValue());
-        self::assertSame('Económico (M)', (string) $sheet->getCell('Z2')->getValue());
-        self::assertSame('Social (S)', (string) $sheet->getCell('AA2')->getValue());
+        self::assertSame('a - Cambio Climático', (string) $sheet->getCell('O2')->getValue());
+        self::assertSame('b - Recursos', (string) $sheet->getCell('P2')->getValue());
+        self::assertSame('Arte', (string) $sheet->getCell('Q2')->getValue());
+        self::assertSame('Cámara', (string) $sheet->getCell('R2')->getValue());
+        self::assertSame('Producción', (string) $sheet->getCell('S2')->getValue());
+        self::assertSame('Certif. / Licencia', (string) $sheet->getCell('T2')->getValue());
+        self::assertSame('Factura / Albarán', (string) $sheet->getCell('U2')->getValue());
+        self::assertSame('Foto', (string) $sheet->getCell('V2')->getValue());
+        self::assertSame('1', (string) $sheet->getCell('W2')->getValue());
+        self::assertSame('2', (string) $sheet->getCell('X2')->getValue());
+        self::assertSame('10', (string) $sheet->getCell('Y2')->getValue());
+        self::assertSame('Ambiental (E)', (string) $sheet->getCell('Z2')->getValue());
+        self::assertSame('Económico (M)', (string) $sheet->getCell('AA2')->getValue());
+        self::assertSame('Social (S)', (string) $sheet->getCell('AB2')->getValue());
 
         self::assertArrayHasKey('A1:A2', $sheet->getMergeCells());
-        self::assertArrayHasKey('N1:O1', $sheet->getMergeCells());
-        self::assertArrayHasKey('P1:R1', $sheet->getMergeCells());
-        self::assertArrayHasKey('S1:U1', $sheet->getMergeCells());
-        self::assertArrayHasKey('V1:X1', $sheet->getMergeCells());
-        self::assertArrayHasKey('Y1:AA1', $sheet->getMergeCells());
+        self::assertArrayHasKey('N1:N2', $sheet->getMergeCells());
+        self::assertArrayHasKey('O1:P1', $sheet->getMergeCells());
+        self::assertArrayHasKey('Q1:S1', $sheet->getMergeCells());
+        self::assertArrayHasKey('T1:V1', $sheet->getMergeCells());
+        self::assertArrayHasKey('W1:Y1', $sheet->getMergeCells());
+        self::assertArrayHasKey('Z1:AB1', $sheet->getMergeCells());
 
         self::assertNotNull($listSheet);
         self::assertSame('peach - Peach', (string) $listSheet->getCell('A1')->getValue());
@@ -132,12 +135,16 @@ final class MeasureTemplateV23ExporterTest extends TestCase
         self::assertStringContainsString("'Listas'!\$F\$1:\$F\$", $sheet->getCell('I3')->getDataValidation()->getFormula1());
         self::assertSame('list', $sheet->getCell('J3')->getDataValidation()->getType());
         self::assertStringContainsString("'Listas'!\$G\$1:\$G\$", $sheet->getCell('J3')->getDataValidation()->getFormula1());
-        self::assertSame('list', $sheet->getCell('P3')->getDataValidation()->getType());
-        self::assertSame('"X"', $sheet->getCell('P3')->getDataValidation()->getFormula1());
-        self::assertSame('list', $sheet->getCell('S3')->getDataValidation()->getType());
-        self::assertSame('"X"', $sheet->getCell('S3')->getDataValidation()->getFormula1());
-        self::assertSame('list', $sheet->getCell('V3')->getDataValidation()->getType());
-        self::assertSame('"X"', $sheet->getCell('V3')->getDataValidation()->getFormula1());
+        self::assertSame('list', $sheet->getCell('O3')->getDataValidation()->getType());
+        self::assertSame('"X"', $sheet->getCell('O3')->getDataValidation()->getFormula1());
+        self::assertSame('list', $sheet->getCell('Q3')->getDataValidation()->getType());
+        self::assertSame('"X"', $sheet->getCell('Q3')->getDataValidation()->getFormula1());
+        self::assertSame('list', $sheet->getCell('T3')->getDataValidation()->getType());
+        self::assertSame('"X"', $sheet->getCell('T3')->getDataValidation()->getFormula1());
+        self::assertSame('list', $sheet->getCell('W3')->getDataValidation()->getType());
+        self::assertSame('"X"', $sheet->getCell('W3')->getDataValidation()->getFormula1());
+        self::assertSame('list', $sheet->getCell('Z3')->getDataValidation()->getType());
+        self::assertSame('"X"', $sheet->getCell('Z3')->getDataValidation()->getFormula1());
     }
 
     public function testSpreadsheetCanBeWrittenToXlsxFile(): void

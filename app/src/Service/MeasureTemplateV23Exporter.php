@@ -119,6 +119,7 @@ final class MeasureTemplateV23Exporter
             $this->scalarSection('name_review', MeasureTemplateV23Schema::headers()['name_review'], 'K', 24),
             $this->scalarSection('description', MeasureTemplateV23Schema::headers()['description'], 'L', 42),
             $this->scalarSection('implementation', MeasureTemplateV23Schema::headers()['implementation'], 'M', 42),
+            $this->scalarSection('department_action_text', MeasureTemplateV23Schema::headers()['department_action_text'], 'N', 42),
             $this->matrixSection('impact_areas', MeasureTemplateV23Schema::matrixGroupLabels()['impact_areas'], $impactAreas, 'N', 14),
             $this->matrixSection('departments', MeasureTemplateV23Schema::matrixGroupLabels()['departments'], $departments, null, 12),
             $this->matrixSection('verification_sources', MeasureTemplateV23Schema::matrixGroupLabels()['verification_sources'], $verificationSources, null, 15),
@@ -129,6 +130,7 @@ final class MeasureTemplateV23Exporter
             $this->scalarSection('description_en', MeasureTemplateV23Schema::headers()['description_en'], 'Q', 42),
             $this->scalarSection('implementation_en', MeasureTemplateV23Schema::headers()['implementation_en'], 'R', 42),
             $this->scalarSection('verification_sources_en', MeasureTemplateV23Schema::headers()['verification_sources_en'], 'S', 42),
+            $this->scalarSection('department_action_text_en', MeasureTemplateV23Schema::headers()['department_action_text_en'], 'T', 42),
         ];
     }
 
@@ -548,10 +550,12 @@ final class MeasureTemplateV23Exporter
 
     private function formatDepartmentValue(Department $department): string
     {
-        $code = (string) ($department->getCode() ?? $department->getDisplayName());
-        $name = (string) ($department->getDisplayName() ?: $code);
+        $displayName = trim((string) $department->getDisplayName());
+        if ($displayName !== '') {
+            return $displayName;
+        }
 
-        return sprintf('%s - %s', $code, $name);
+        return (string) ($department->getCode() ?? '');
     }
 
     private function formatImpactAreaValue(ImpactArea $impactArea): string

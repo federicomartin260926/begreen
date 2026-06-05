@@ -190,6 +190,8 @@ final class MeasureTemplateV23Importer
         $descriptionEn = trim((string) ($rowData['descriptionEn'] ?? '')) ?: null;
         $implementationEn = trim((string) ($rowData['implementationEn'] ?? '')) ?: null;
         $verificationSourcesEn = trim((string) ($rowData['verificationSourcesEn'] ?? '')) ?: null;
+        $departmentActionText = trim((string) ($rowData['departmentActionText'] ?? '')) ?: null;
+        $departmentActionTextEn = trim((string) ($rowData['departmentActionTextEn'] ?? '')) ?: null;
 
         $measure = $this->em->getRepository(Measure::class)->findOneBy([
             'protocol' => $protocol,
@@ -244,6 +246,8 @@ final class MeasureTemplateV23Importer
                 'descriptionEn' => $descriptionEn,
                 'implementationEn' => $implementationEn,
                 'verificationSourcesEn' => $verificationSourcesEn,
+                'departmentActionText' => $departmentActionText,
+                'departmentActionTextEn' => $departmentActionTextEn,
             ]));
 
         $this->syncDepartments($measure, $departments);
@@ -278,7 +282,17 @@ final class MeasureTemplateV23Importer
             }
         }
 
-        $this->syncTranslations($measure, $nameEn, $nameReviewEn, $descriptionEn, $implementationEn, $verificationSourcesEn);
+        $this->syncTranslations(
+            $measure,
+            $nameEn,
+            $nameReviewEn,
+            $descriptionEn,
+            $implementationEn,
+            $verificationSourcesEn,
+            $departmentActionTextEn
+        );
+
+        $measure->setDepartmentActionText($departmentActionText);
 
         $summary[$created ? 'imported' : 'updated']++;
     }
@@ -688,7 +702,8 @@ final class MeasureTemplateV23Importer
         ?string $nameReviewEn,
         ?string $descriptionEn,
         ?string $implementationEn,
-        ?string $verificationSourcesEn
+        ?string $verificationSourcesEn,
+        ?string $departmentActionTextEn
     ): void {
         /** @var \Gedmo\Translatable\Entity\Repository\TranslationRepository $translationRepository */
         $translationRepository = $this->em->getRepository(Translation::class);
@@ -699,6 +714,7 @@ final class MeasureTemplateV23Importer
             'description' => $descriptionEn,
             'implementation' => $implementationEn,
             'verificationSources' => $verificationSourcesEn,
+            'departmentActionText' => $departmentActionTextEn,
         ];
 
         foreach ($translations as $field => $value) {

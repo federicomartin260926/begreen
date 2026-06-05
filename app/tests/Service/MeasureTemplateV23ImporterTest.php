@@ -285,6 +285,86 @@ final class MeasureTemplateV23ImporterTest extends TestCase
         self::assertSame(3, $persistedMeasures[1]->getSourceRow());
     }
 
+    public function testImportPersistsDepartmentActionTextAndEnglishTranslation(): void
+    {
+        $protocol = (new Protocol())->setCode('be-green-my-film')->setName('Be Green My Film')->setType(Protocol::TYPE_RODAJE);
+        $department = (new Department())->setCode('prod')->setName('Producción');
+
+        $persistedMeasures = [];
+        $repositories = [
+            Protocol::class => $this->createRepository(static fn (array $criteria): ?Protocol => (($criteria['code'] ?? null) === 'be-green-my-film' || ($criteria['name'] ?? null) === 'Be Green My Film') ? $protocol : null),
+            Department::class => $this->createRepository(static fn (array $criteria): ?Department => (($criteria['code'] ?? null) === 'prod' || ($criteria['name'] ?? null) === 'Producción') ? $department : null),
+            Measure::class => $this->createRepository(static fn (): ?Measure => null),
+            MeasureBlock::class => $this->createRepository(static fn (): ?MeasureBlock => null),
+            \Gedmo\Translatable\Entity\Translation::class => $this->createTranslationRepository(),
+        ];
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager
+            ->method('getRepository')
+            ->willReturnCallback(static function (string $class) use ($repositories) {
+                if (!isset($repositories[$class])) {
+                    throw new \RuntimeException(sprintf('Unexpected repository request for %s', $class));
+                }
+
+                return $repositories[$class];
+            });
+
+        $entityManager->method('persist')->willReturnCallback(static function ($entity) use (&$persistedMeasures): void {
+            if ($entity instanceof Measure) {
+                $persistedMeasures[] = $entity;
+            }
+        });
+        $entityManager->expects(self::once())->method('flush');
+
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('beginTransaction');
+        $connection->expects(self::once())->method('commit');
+        $entityManager->method('getConnection')->willReturn($connection);
+
+        $importer = new MeasureTemplateV23Importer(
+            $entityManager,
+            $this->createMock(TranslatableListener::class),
+            new MeasureCatalogAdminService(),
+        );
+
+        $report = new MeasureTemplateV23Report();
+        $report->addRow([
+            'row' => 2,
+            'protocol' => 'be-green-my-film - Be Green My Film',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => '',
+            'category' => '',
+            'categoryGhg' => '',
+            'name' => 'Medida con acción por departamento',
+            'nameReview' => '',
+            'description' => '',
+            'implementation' => '',
+            'score' => 5,
+            'mandatory' => 'No',
+            'departments' => 'prod',
+            'odsItems' => '',
+            'esg' => '',
+            'scope' => '',
+            'impactAreas' => '',
+            'tripleBalanceAxes' => '',
+            'verificationSources' => [],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+            'departmentActionText' => 'Acción por departamento',
+            'departmentActionTextEn' => 'Department action text EN',
+        ]);
+
+        $result = $importer->import($report, true, false);
+
+        self::assertSame('applied', $result->getImportSummary()['status'] ?? null);
+        self::assertCount(1, $persistedMeasures);
+        self::assertSame('Acción por departamento', $persistedMeasures[0]->getDepartmentActionText());
+    }
+
     public function testImportReusesMeasureBlockWithinSameBatch(): void
     {
         $protocolPeach = (new Protocol())->setCode('peach')->setName('Peach')->setType(Protocol::TYPE_RODAJE);
@@ -685,6 +765,25 @@ final class MeasureTemplateV23ImporterTest extends TestCase
     {
         $repository = $this->createMock(EntityRepository::class);
         $repository->method('findOneBy')->willReturnCallback($resolver);
+
+        return $repository;
+    }
+
+    private function createTranslationRepository(): EntityRepository
+    {
+        $repository = $this->getMockBuilder(EntityRepository::class)
+            ->disableOriginalConstructor()
+            ->addMethods(['translate'])
+            ->getMock();
+
+        $repository->expects(self::once())
+            ->method('translate')
+            ->with(
+                self::isInstanceOf(Measure::class),
+                'departmentActionText',
+                'en',
+                'Department action text EN'
+            );
 
         return $repository;
     }

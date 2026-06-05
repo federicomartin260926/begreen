@@ -31,6 +31,7 @@ final class MeasureTemplateV23Schema
             'name_review' => 'Nombre revisión',
             'description' => 'Descripción',
             'implementation' => 'Implementación',
+            'department_action_text' => 'Acción por departamento',
             'score' => 'Puntuación',
             'mandatory' => 'Obligatoria',
             'departments' => 'Departamentos',
@@ -45,6 +46,7 @@ final class MeasureTemplateV23Schema
             'description_en' => 'Descripción EN (opcional)',
             'implementation_en' => 'Implementación EN (opcional)',
             'verification_sources_en' => 'Fuentes de verificación EN (opcional)',
+            'department_action_text_en' => 'Acción por departamento EN (opcional)',
         ];
     }
 
@@ -83,6 +85,8 @@ final class MeasureTemplateV23Schema
             'description_en',
             'implementation_en',
             'verification_sources_en',
+            'department_action_text',
+            'department_action_text_en',
         ], true);
     }
 
