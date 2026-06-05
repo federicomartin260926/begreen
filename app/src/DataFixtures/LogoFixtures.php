@@ -129,14 +129,28 @@ class LogoFixtures extends Fixture
         ];
 
         $publicPrefix = rtrim($this->projectDir, '/').'/public';
+        $fixtureSourceDir = $publicPrefix.'/fixtures/logos_carrusel';
+        $uploadTargetDir = $publicPrefix.'/uploads/logos_carrusel';
+
+        if (!is_dir($uploadTargetDir) && !mkdir($uploadTargetDir, 0775, true) && !is_dir($uploadTargetDir)) {
+            echo "[LogoFixtures] No se pudo crear el directorio destino: {$uploadTargetDir}\n";
+        }
 
         foreach ($data as [$name, $path, $url, $active, $order]) {
-            $abs = $publicPrefix.$path;
+            $filename = basename($path);
+            $source = $fixtureSourceDir.'/'.$filename;
+            $target = $publicPrefix.$path;
 
-            $exists = is_file($abs);
+            $exists = false;
 
-            if (!$exists) {
-                echo "[LogoFixtures] Archivo no encontrado, se omite: {$path}\n";
+            if (!is_file($source)) {
+                echo "[LogoFixtures] Archivo fixture no encontrado, se omite: {$source}\n";
+            } elseif (!is_dir(dirname($target)) && !mkdir(dirname($target), 0775, true) && !is_dir(dirname($target))) {
+                echo "[LogoFixtures] No se pudo crear el directorio destino: ".dirname($target)."\n";
+            } elseif (!copy($source, $target)) {
+                echo "[LogoFixtures] No se pudo copiar logo fixture: {$source} -> {$target}\n";
+            } else {
+                $exists = is_file($target);
             }
 
             $logo = (new Logo())
