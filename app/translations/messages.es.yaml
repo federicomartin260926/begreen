@@ -302,6 +302,7 @@ backend:
       download_pdf: "Descargar PDF"
       import_excel: "Cargar desde Excel"
       download_template: "Descarga Plantilla"
+      download_excel: "Descargar Excel"
       download_template_hint: "Descargar plantilla estándar de medidas para cualquier protocolo"
     filters:
       all_protocols: "Todos los protocolos"

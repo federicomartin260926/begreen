@@ -27,8 +27,8 @@
                     <a href="{{ path('admin_measures_export_pdf') }}" class="btn btn-outline-primary text-decoration-none">
                         <i class="bi bi-file-earmark-pdf"></i> {{ 'backend.measures.actions.download_pdf'|trans }}
                     </a>
-                    <a href="#" class="btn btn-outline-primary text-decoration-none" data-bs-toggle="modal" data-bs-target="#importModal">
-                        <i class="bi bi-upload"></i> {{ 'backend.measures.actions.import_excel'|trans }}
+                    <a href="{{ path('admin_measures_export_excel') }}" class="btn btn-outline-success text-decoration-none" download>
+                        <i class="bi bi-file-earmark-excel"></i> {{ 'backend.measures.actions.download_excel'|trans }}
                     </a>
                     <a
                         href="{{ path('admin_measures_template_download') }}"
@@ -38,6 +38,9 @@
                         data-bs-content="{{ 'backend.measures.actions.download_template_hint'|trans }}"
                         download>
                         <i class="bi bi-download"></i> {{ 'backend.measures.actions.download_template'|trans }}
+                    </a>
+                    <a href="#" class="btn btn-outline-primary text-decoration-none" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="bi bi-upload"></i> {{ 'backend.measures.actions.import_excel'|trans }}
                     </a>
                 </div>
             </div>
@@ -50,11 +53,6 @@
                                 <h5 class="card-title mb-1">{{ 'backend.measures.summary.title'|trans }}</h5>
                                 <div class="text-muted small">{{ 'backend.measures.summary.description'|trans }}</div>
                             </div>
-                            {% if catalogSummary.isExpected %}
-                                <span class="badge bg-success align-self-start">Conteos correctos</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark align-self-start">Revisar catálogo</span>
-                            {% endif %}
                         </div>
 
                         <div class="row g-3">

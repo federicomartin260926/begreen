@@ -218,6 +218,35 @@ class MeasureRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
+    /**
+     * @return Measure[]
+     */
+    public function findAllForExport(): array
+    {
+        return $this->createQueryBuilder('m')
+            ->leftJoin('m.protocol', 'p')->addSelect('p')
+            ->leftJoin('m.measureBlock', 'mb')->addSelect('mb')
+            ->leftJoin('m.category', 'c')->addSelect('c')
+            ->leftJoin('m.categoryGhg', 'cghg')->addSelect('cghg')
+            ->leftJoin('m.department', 'd')->addSelect('d')
+            ->leftJoin('m.departments', 'dm')->addSelect('dm')
+            ->leftJoin('m.ods', 'o')->addSelect('o')
+            ->leftJoin('m.odsItems', 'oi')->addSelect('oi')
+            ->leftJoin('m.esg', 'e')->addSelect('e')
+            ->leftJoin('m.scope', 's')->addSelect('s')
+            ->leftJoin('m.impactAreas', 'ia')->addSelect('ia')
+            ->leftJoin('m.tripleBalanceAxes', 'tba')->addSelect('tba')
+            ->leftJoin('m.verificationSourceLinks', 'vsl')->addSelect('vsl')
+            ->leftJoin('vsl.verificationSource', 'vs')->addSelect('vs')
+            ->orderBy('p.name', 'ASC')
+            ->addOrderBy('mb.sortOrder', 'ASC')
+            ->addOrderBy('m.name', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->distinct()
+            ->getQuery()
+            ->getResult();
+    }
+
     private function applyCatalogFilter(QueryBuilder $qb, Project $project): void
     {
         $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);

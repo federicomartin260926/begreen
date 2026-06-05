@@ -394,6 +394,48 @@ class AdminMeasureController extends AbstractController
         return $response;
     }
 
+    #[Route('/export/xlsx', name: 'export_excel', methods: ['GET'])]
+    public function exportExcel(
+        MeasureRepository $measureRepository,
+        EntityManagerInterface $em,
+        TranslatableListener $translatableListener
+    ): Response {
+        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+
+        $translatableListener->setTranslatableLocale('es');
+        $measures = $measureRepository->findAllForExport();
+        $catalog = $this->buildExportCatalogFromMeasures($measures);
+        $translationsByMeasure = $this->loadMeasureEnglishTranslations($em);
+
+        $spreadsheet = $this->measureTemplateExporter->buildMeasuresSpreadsheet(
+            $catalog,
+            $measures,
+            static function (Measure $measure) use ($translationsByMeasure): array {
+                return $measure->getId() !== null && isset($translationsByMeasure[$measure->getId()])
+                    ? $translationsByMeasure[$measure->getId()]
+                    : [];
+            }
+        );
+
+        $response = new StreamedResponse(function () use ($spreadsheet) {
+            (new Xlsx($spreadsheet))->save('php://output');
+        });
+
+        $filename = sprintf(
+            'medidas_catalogo_completo_%s.xlsx',
+            (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Madrid')))->format('Ymd')
+        );
+        $disposition = $response->headers->makeDisposition(
+            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            $filename
+        );
+
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $response->headers->set('Content-Disposition', $disposition);
+
+        return $response;
+    }
+
     #[Route('/export/pdf', name: 'export_pdf')]
     public function exportPdf(MeasureRepository $measureRepository): Response
     {
@@ -426,5 +468,117 @@ class AdminMeasureController extends AbstractController
                 'Content-Disposition' => 'attachment; filename="measures.pdf"',
             ]
         );
+    }
+
+    /**
+     * @param array<int, Measure> $measures
+     * @return array{
+     *     protocols: array<int, object>,
+     *     measureBlocks: array<int, object>,
+     *     categories: array<int, object>,
+     *     categoryGhgs: array<int, object>,
+     *     departments: array<int, object>,
+     *     ods: array<int, object>,
+     *     esg: array<int, object>,
+     *     scopes: array<int, object>,
+     *     impactAreas: array<int, object>,
+     *     verificationSources: array<int, object>,
+     *     tripleBalanceAxes: array<int, object>
+     * }
+     */
+    private function buildExportCatalogFromMeasures(array $measures): array
+    {
+        $catalog = [
+            'protocols' => [],
+            'measureBlocks' => [],
+            'categories' => [],
+            'categoryGhgs' => [],
+            'departments' => [],
+            'ods' => [],
+            'esg' => [],
+            'scopes' => [],
+            'impactAreas' => [],
+            'verificationSources' => [],
+            'tripleBalanceAxes' => [],
+        ];
+
+        foreach ($measures as $measure) {
+            $this->addEntityToCatalog($catalog['protocols'], $measure->getProtocol());
+            $this->addEntityToCatalog($catalog['measureBlocks'], $measure->getMeasureBlock());
+            $this->addEntityToCatalog($catalog['categories'], $measure->getCategory());
+            $this->addEntityToCatalog($catalog['categoryGhgs'], $measure->getCategoryGhg());
+            $this->addEntityToCatalog($catalog['ods'], $measure->getOds());
+            $this->addEntityToCatalog($catalog['esg'], $measure->getEsg());
+            $this->addEntityToCatalog($catalog['scopes'], $measure->getScope());
+
+            foreach ($measure->getResolvedDepartments() as $department) {
+                $this->addEntityToCatalog($catalog['departments'], $department);
+            }
+
+            foreach ($measure->getResolvedOdsItems() as $odsItem) {
+                $this->addEntityToCatalog($catalog['ods'], $odsItem);
+            }
+
+            foreach ($measure->getResolvedImpactAreas() as $impactArea) {
+                $this->addEntityToCatalog($catalog['impactAreas'], $impactArea);
+            }
+
+            foreach ($measure->getResolvedTripleBalanceAxes() as $axis) {
+                $this->addEntityToCatalog($catalog['tripleBalanceAxes'], $axis);
+            }
+
+            foreach ($measure->getResolvedVerificationSourceLinks() as $link) {
+                $source = $link->getVerificationSource();
+                if ($source) {
+                    $this->addEntityToCatalog($catalog['verificationSources'], $source);
+                }
+            }
+        }
+
+        return array_map(static fn (array $items): array => array_values($items), $catalog);
+    }
+
+    /**
+     * @param array<int, object> $catalog
+     */
+    private function addEntityToCatalog(array &$catalog, ?object $entity): void
+    {
+        if (!$entity || !method_exists($entity, 'getId')) {
+            return;
+        }
+
+        $id = $entity->getId();
+        if ($id === null) {
+            return;
+        }
+
+        $catalog[(string) $id] = $entity;
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function loadMeasureEnglishTranslations(EntityManagerInterface $em): array
+    {
+        $rows = $em->getConnection()->fetchAllAssociative(
+            'SELECT foreign_key, field, content FROM ext_translations WHERE object_class = :class AND locale = :locale',
+            [
+                'class' => Measure::class,
+                'locale' => 'en',
+            ]
+        );
+
+        $translations = [];
+        foreach ($rows as $row) {
+            $measureId = (int) ($row['foreign_key'] ?? 0);
+            $field = (string) ($row['field'] ?? '');
+            if ($measureId <= 0 || $field === '') {
+                continue;
+            }
+
+            $translations[$measureId][$field] = (string) ($row['content'] ?? '');
+        }
+
+        return $translations;
     }
 }

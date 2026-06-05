@@ -7,6 +7,8 @@ use App\Entity\CategoryGhg;
 use App\Entity\Department;
 use App\Entity\EsG;
 use App\Entity\ImpactArea;
+use App\Entity\Measure;
+use App\Entity\MeasureVerificationSource;
 use App\Entity\MeasureBlock;
 use App\Entity\Ods;
 use App\Entity\Protocol;
@@ -87,6 +89,37 @@ final class MeasureTemplateExporter
      *     verificationSources?: VerificationSource[],
      *     tripleBalanceAxes?: TripleBalanceAxis[]
      * } $catalog
+     * @param array<int, Measure> $measures
+     * @param null|callable(Measure): array<string, string> $translationResolver
+     */
+    public function buildMeasuresSpreadsheet(
+        array $catalog,
+        array $measures,
+        ?callable $translationResolver = null
+    ): Spreadsheet {
+        $spreadsheet = $this->buildSpreadsheet($catalog);
+        $sheet = $spreadsheet->getActiveSheet();
+        $sections = $this->buildSections($catalog);
+
+        $this->fillMeasureRows($sheet, $sections, $measures, $translationResolver);
+
+        return $spreadsheet;
+    }
+
+    /**
+     * @param array{
+     *     protocols?: Protocol[],
+     *     measureBlocks?: MeasureBlock[],
+     *     categories?: Category[],
+     *     categoryGhgs?: CategoryGhg[],
+     *     departments?: Department[],
+     *     ods?: Ods[],
+     *     esg?: EsG[],
+     *     scopes?: Scope[],
+     *     impactAreas?: ImpactArea[],
+     *     verificationSources?: VerificationSource[],
+     *     tripleBalanceAxes?: TripleBalanceAxis[]
+     * } $catalog
      *
      * @return array<int, array<string, mixed>>
      */
@@ -132,6 +165,139 @@ final class MeasureTemplateExporter
             $this->scalarSection('verification_sources_en', MeasureTemplateSchema::headers()['verification_sources_en'], 'S', 42),
             $this->scalarSection('department_action_text_en', MeasureTemplateSchema::headers()['department_action_text_en'], 'T', 42),
         ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $sections
+     * @param array<int, Measure> $measures
+     * @param null|callable(Measure): array<string, string> $translationResolver
+     */
+    private function fillMeasureRows(
+        Worksheet $sheet,
+        array $sections,
+        array $measures,
+        ?callable $translationResolver = null
+    ): void {
+        $rowNumber = 3;
+
+        foreach ($measures as $measure) {
+            $translations = $translationResolver ? (array) $translationResolver($measure) : [];
+            $this->fillMeasureRow($sheet, $sections, $measure, $translations, $rowNumber);
+            $rowNumber++;
+        }
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $sections
+     * @param array<string, string> $translations
+     */
+    private function fillMeasureRow(
+        Worksheet $sheet,
+        array $sections,
+        Measure $measure,
+        array $translations,
+        int $rowNumber
+    ): void {
+        $columnIndex = 1;
+
+        $selectedImpactAreas = [];
+        foreach ($measure->getResolvedImpactAreas() as $impactArea) {
+            $selectedImpactAreas[$this->formatImpactAreaValue($impactArea)] = 'X';
+        }
+
+        $selectedDepartments = [];
+        foreach ($measure->getResolvedDepartments() as $department) {
+            $selectedDepartments[$this->formatDepartmentValue($department)] = 'X';
+        }
+
+        $selectedVerificationSources = [];
+        foreach ($measure->getResolvedVerificationSourceLinks() as $link) {
+            if (!$link instanceof MeasureVerificationSource) {
+                continue;
+            }
+
+            $source = $link->getVerificationSource();
+            if (!$source) {
+                continue;
+            }
+
+            $selectedVerificationSources[$this->formatVerificationSourceValue($source)] = (string) $link->getPriority();
+        }
+
+        $selectedOds = [];
+        foreach ($measure->getResolvedOdsItems() as $odsItem) {
+            $selectedOds[$this->formatOdsValue($odsItem)] = 'X';
+        }
+
+        $selectedTripleBalanceAxes = [];
+        foreach ($measure->getResolvedTripleBalanceAxes() as $axis) {
+            $selectedTripleBalanceAxes[$this->formatTripleBalanceAxisValue($axis)] = 'X';
+        }
+
+        foreach ($sections as $section) {
+            if (($section['type'] ?? null) === 'scalar') {
+                $column = Coordinate::stringFromColumnIndex($columnIndex);
+                $value = $this->measureScalarValue($measure, (string) ($section['key'] ?? ''), $translations);
+                if ($value !== '') {
+                    $sheet->setCellValue(sprintf('%s%d', $column, $rowNumber), $value);
+                }
+                $columnIndex++;
+                continue;
+            }
+
+            if (($section['type'] ?? null) !== 'matrix') {
+                continue;
+            }
+
+            $options = $section['options'] ?? [];
+            foreach ($options as $offset => $label) {
+                $column = Coordinate::stringFromColumnIndex($columnIndex + $offset);
+                $value = match ((string) ($section['key'] ?? '')) {
+                    'impact_areas' => $selectedImpactAreas[(string) $label] ?? '',
+                    'departments' => $selectedDepartments[(string) $label] ?? '',
+                    'verification_sources' => $selectedVerificationSources[(string) $label] ?? '',
+                    'ods_items' => $selectedOds[(string) $label] ?? '',
+                    'triple_balance_axes' => $selectedTripleBalanceAxes[(string) $label] ?? '',
+                    default => '',
+                };
+
+                if ($value !== '') {
+                    $sheet->setCellValue(sprintf('%s%d', $column, $rowNumber), $value);
+                }
+            }
+
+            $columnIndex += count($options);
+        }
+    }
+
+    /**
+     * @param array<string, string> $translations
+     */
+    private function measureScalarValue(Measure $measure, string $key, array $translations): string
+    {
+        return match ($key) {
+            'protocol' => $measure->getProtocol() ? $this->formatProtocolValue($measure->getProtocol()) : '',
+            'project_type' => (string) ($measure->getProtocol()?->getType() ?? ''),
+            'measure_block' => $measure->getMeasureBlock() ? $this->formatMeasureBlockValue($measure->getMeasureBlock()) : '',
+            'category' => (string) ($measure->getCategory()?->getName() ?? ''),
+            'category_ghg' => (string) ($measure->getCategoryGhg()?->getName() ?? ''),
+            'name' => (string) ($measure->getName() ?? ''),
+            'score' => $measure->getScore() !== null ? (string) $measure->getScore() : '',
+            'mandatory' => $measure->isMandatory() ? 'Sí' : 'No',
+            'esg' => (string) ($measure->getEsg()?->getName() ?? ''),
+            'scope' => (string) ($measure->getScope()?->getName() ?? ''),
+            'name_review' => (string) ($measure->getNameReview() ?? ''),
+            'description' => (string) ($measure->getDescription() ?? ''),
+            'implementation' => (string) ($measure->getImplementation() ?? ''),
+            'department_action_text' => (string) ($measure->getDepartmentActionText() ?? ''),
+            'name_en' => (string) ($translations['name'] ?? ''),
+            'name_review_en' => (string) ($translations['nameReview'] ?? ''),
+            'description_en' => (string) ($translations['description'] ?? ''),
+            'implementation_en' => (string) ($translations['implementation'] ?? ''),
+            'verification_sources_en' => (string) ($translations['verificationSources'] ?? ''),
+            'department_action_text_en' => (string) ($translations['departmentActionText'] ?? ''),
+            default => '',
+        };
     }
 
     /**
