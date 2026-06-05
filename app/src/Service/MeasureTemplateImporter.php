@@ -323,9 +323,25 @@ final class MeasureTemplateImporter
             if ($category instanceof Category) {
                 return $category;
             }
+
+            $categoryAlias = $this->resolveCategoryAlias($candidate);
+            if ($categoryAlias !== null) {
+                $category = $this->em->getRepository(Category::class)->findOneBy(['name' => $categoryAlias]);
+                if ($category instanceof Category) {
+                    return $category;
+                }
+            }
         }
 
         return null;
+    }
+
+    private function resolveCategoryAlias(string $candidate): ?string
+    {
+        return match (MeasureTemplateSchema::normalizeHeader($candidate)) {
+            MeasureTemplateSchema::normalizeHeader('ALOJAMIENTO') => 'Alojamientos',
+            default => null,
+        };
     }
 
     private function resolveCategoryGhg(string $value): ?CategoryGhg

@@ -761,6 +761,93 @@ final class MeasureTemplateImporterTest extends TestCase
         self::assertSame('green-film', $persistedMeasures[1]->getProtocol()?->getCode());
     }
 
+    public function testImportResolvesAlojamientoCategoryAliasToAlojamientos(): void
+    {
+        $protocol = (new Protocol())->setCode('be-green-my-film')->setName('Be Green My Film')->setType(Protocol::TYPE_RODAJE);
+        $category = (new Category())->setName('Alojamientos');
+        $department = (new Department())->setCode('prod')->setName('Producción');
+
+        $persistedMeasures = [];
+        $persistedBlocks = [];
+        $repositories = [
+            Protocol::class => $this->createRepository(static fn (array $criteria): ?Protocol => (($criteria['code'] ?? null) === 'be-green-my-film' || ($criteria['name'] ?? null) === 'Be Green My Film') ? $protocol : null),
+            Category::class => $this->createRepository(static fn (array $criteria): ?Category => ($criteria['name'] ?? null) === 'Alojamientos' ? $category : null),
+            Department::class => $this->createRepository(static fn (array $criteria): ?Department => (($criteria['code'] ?? null) === 'prod' || ($criteria['name'] ?? null) === 'Producción') ? $department : null),
+            MeasureBlock::class => $this->createRepository(static fn (): ?MeasureBlock => null),
+            Measure::class => $this->createRepository(static fn (): ?Measure => null),
+            \Gedmo\Translatable\Entity\Translation::class => $this->createRepository(static fn (): ?object => null),
+        ];
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager
+            ->method('getRepository')
+            ->willReturnCallback(static function (string $class) use ($repositories) {
+                if (!isset($repositories[$class])) {
+                    throw new \RuntimeException(sprintf('Unexpected repository request for %s', $class));
+                }
+
+                return $repositories[$class];
+            });
+
+        $entityManager->expects(self::exactly(2))
+            ->method('persist')
+            ->willReturnCallback(static function ($entity) use (&$persistedMeasures, &$persistedBlocks): void {
+                if ($entity instanceof Measure) {
+                    $persistedMeasures[] = $entity;
+                }
+                if ($entity instanceof MeasureBlock) {
+                    $persistedBlocks[] = $entity;
+                }
+            });
+        $entityManager->expects(self::once())->method('flush');
+
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('beginTransaction');
+        $connection->expects(self::once())->method('commit');
+        $entityManager->method('getConnection')->willReturn($connection);
+
+        $importer = new MeasureTemplateImporter(
+            $entityManager,
+            $this->createMock(TranslatableListener::class),
+            new MeasureCatalogAdminService(),
+        );
+
+        $report = new MeasureTemplateReport();
+        $report->addRow([
+            'row' => 22,
+            'protocol' => 'be-green-my-film - Be Green My Film',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => 'ALOJAMIENTO',
+            'category' => 'ALOJAMIENTO',
+            'name' => 'Prioriza alojamientos a menos de 10km del rodaje.',
+            'description' => 'Descripción',
+            'implementation' => '',
+            'score' => 1,
+            'mandatory' => 'No',
+            'departments' => 'prod',
+            'odsItems' => '',
+            'esg' => '',
+            'scope' => '',
+            'impactAreas' => '',
+            'tripleBalanceAxes' => '',
+            'verificationSources' => [],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+            'departmentActionText' => 'Texto de acción',
+            'departmentActionTextEn' => '',
+        ]);
+
+        $result = $importer->import($report, true, false);
+
+        self::assertSame('applied', $result->getImportSummary()['status'] ?? null);
+        self::assertCount(1, $persistedMeasures);
+        self::assertSame('Alojamientos', $persistedMeasures[0]->getCategory()?->getName());
+        self::assertSame('ALOJAMIENTO', $persistedMeasures[0]->getMeasureBlock()?->getName());
+    }
+
     private function createRepository(callable $resolver): EntityRepository
     {
         $repository = $this->createMock(EntityRepository::class);
