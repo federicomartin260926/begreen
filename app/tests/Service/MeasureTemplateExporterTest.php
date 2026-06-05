@@ -13,12 +13,12 @@ use App\Entity\Protocol;
 use App\Entity\Scope;
 use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
-use App\Service\MeasureTemplateV23Exporter;
-use App\Service\MeasureTemplateV23Schema;
+use App\Service\MeasureTemplateExporter;
+use App\Service\MeasureTemplateSchema;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PHPUnit\Framework\TestCase;
 
-final class MeasureTemplateV23ExporterTest extends TestCase
+final class MeasureTemplateExporterTest extends TestCase
 {
     public function testBuildSpreadsheetCreatesMatrixTemplateWithGroupedHeadersAndSelectionMarkers(): void
     {
@@ -57,7 +57,7 @@ final class MeasureTemplateV23ExporterTest extends TestCase
             ->setName('Movilidad')
             ->setSortOrder(1);
 
-        $spreadsheet = (new MeasureTemplateV23Exporter())->buildSpreadsheet([
+        $spreadsheet = (new MeasureTemplateExporter())->buildSpreadsheet([
             'protocols' => [$protocol],
             'categories' => [$category],
             'categoryGhgs' => [$categoryGhg],
@@ -72,9 +72,9 @@ final class MeasureTemplateV23ExporterTest extends TestCase
         ]);
 
         $sheet = $spreadsheet->getActiveSheet();
-        $listSheet = $spreadsheet->getSheetByName(MeasureTemplateV23Schema::LISTS_SHEET);
+        $listSheet = $spreadsheet->getSheetByName(MeasureTemplateSchema::LISTS_SHEET);
 
-        self::assertSame(MeasureTemplateV23Schema::SHEET_TITLE, $sheet->getTitle());
+        self::assertSame(MeasureTemplateSchema::SHEET_TITLE, $sheet->getTitle());
         self::assertSame('Protocolo', (string) $sheet->getCell('A1')->getValue());
         self::assertSame('Tipo de proyecto', (string) $sheet->getCell('B1')->getValue());
         self::assertSame('Bloque', (string) $sheet->getCell('C1')->getValue());
@@ -149,7 +149,7 @@ final class MeasureTemplateV23ExporterTest extends TestCase
 
     public function testSpreadsheetCanBeWrittenToXlsxFile(): void
     {
-        $spreadsheet = (new MeasureTemplateV23Exporter())->buildSpreadsheet([
+        $spreadsheet = (new MeasureTemplateExporter())->buildSpreadsheet([
             'protocols' => [],
             'categories' => [],
             'categoryGhgs' => [],

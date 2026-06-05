@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-final class MeasureTemplateV23Schema
+final class MeasureTemplateSchema
 {
     public const SHEET_TITLE = 'Plantilla estándar de medidas';
     public const LISTS_SHEET = 'Listas';

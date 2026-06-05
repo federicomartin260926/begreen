@@ -22,7 +22,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
-final class MeasureTemplateV23Exporter
+final class MeasureTemplateExporter
 {
     private const MAX_ROWS = 250;
     private const SIMPLE_HEADER_FILL = '4A4A4A';
@@ -54,14 +54,14 @@ final class MeasureTemplateV23Exporter
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle(MeasureTemplateV23Schema::SHEET_TITLE);
+        $sheet->setTitle(MeasureTemplateSchema::SHEET_TITLE);
 
         $sections = $this->buildSections($catalog);
         $this->writeHeaderRows($sheet, $sections);
         $this->applyHeaderStyles($sheet, $sections);
         $this->applyDataValidations($sheet, $sections);
 
-        $listSheet = new Worksheet($spreadsheet, MeasureTemplateV23Schema::LISTS_SHEET);
+        $listSheet = new Worksheet($spreadsheet, MeasureTemplateSchema::LISTS_SHEET);
         $spreadsheet->addSheet($listSheet);
         $this->fillListSheet($listSheet, $catalog);
         $listSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
@@ -106,31 +106,31 @@ final class MeasureTemplateV23Exporter
         $tripleBalanceAxes = $this->sortByLabel($catalog['tripleBalanceAxes'] ?? [], fn (TripleBalanceAxis $axis): string => $this->formatTripleBalanceAxisValue($axis));
 
         return [
-            $this->scalarSection('protocol', MeasureTemplateV23Schema::headers()['protocol'], 'A', 22, $protocols),
-            $this->scalarSection('project_type', MeasureTemplateV23Schema::headers()['project_type'], 'B', 18, null, null, true),
-            $this->scalarSection('measure_block', MeasureTemplateV23Schema::headers()['measure_block'], 'C', 24, $measureBlocks),
-            $this->scalarSection('category', MeasureTemplateV23Schema::headers()['category'], 'D', 18, $categories),
-            $this->scalarSection('category_ghg', MeasureTemplateV23Schema::headers()['category_ghg'], 'E', 24, $categoryGhgs),
-            $this->scalarSection('name', MeasureTemplateV23Schema::headers()['name'], 'F', 42),
-            $this->scalarSection('score', MeasureTemplateV23Schema::headers()['score'], 'G', 8, null, null, true),
-            $this->scalarSection('mandatory', MeasureTemplateV23Schema::headers()['mandatory'], 'H', 12, null, null, true),
-            $this->scalarSection('esg', MeasureTemplateV23Schema::headers()['esg'], 'I', 14, $esg, 'F'),
-            $this->scalarSection('scope', MeasureTemplateV23Schema::headers()['scope'], 'J', 14, $scopes, 'G'),
-            $this->scalarSection('name_review', MeasureTemplateV23Schema::headers()['name_review'], 'K', 24),
-            $this->scalarSection('description', MeasureTemplateV23Schema::headers()['description'], 'L', 42),
-            $this->scalarSection('implementation', MeasureTemplateV23Schema::headers()['implementation'], 'M', 42),
-            $this->scalarSection('department_action_text', MeasureTemplateV23Schema::headers()['department_action_text'], 'N', 42),
-            $this->matrixSection('impact_areas', MeasureTemplateV23Schema::matrixGroupLabels()['impact_areas'], $impactAreas, 'N', 14),
-            $this->matrixSection('departments', MeasureTemplateV23Schema::matrixGroupLabels()['departments'], $departments, null, 12),
-            $this->matrixSection('verification_sources', MeasureTemplateV23Schema::matrixGroupLabels()['verification_sources'], $verificationSources, null, 15),
-            $this->matrixSection('ods_items', MeasureTemplateV23Schema::matrixGroupLabels()['ods_items'], $ods, null, 6),
-            $this->matrixSection('triple_balance_axes', MeasureTemplateV23Schema::matrixGroupLabels()['triple_balance_axes'], $tripleBalanceAxes, null, 14),
-            $this->scalarSection('name_en', MeasureTemplateV23Schema::headers()['name_en'], 'O', 28),
-            $this->scalarSection('name_review_en', MeasureTemplateV23Schema::headers()['name_review_en'], 'P', 28),
-            $this->scalarSection('description_en', MeasureTemplateV23Schema::headers()['description_en'], 'Q', 42),
-            $this->scalarSection('implementation_en', MeasureTemplateV23Schema::headers()['implementation_en'], 'R', 42),
-            $this->scalarSection('verification_sources_en', MeasureTemplateV23Schema::headers()['verification_sources_en'], 'S', 42),
-            $this->scalarSection('department_action_text_en', MeasureTemplateV23Schema::headers()['department_action_text_en'], 'T', 42),
+            $this->scalarSection('protocol', MeasureTemplateSchema::headers()['protocol'], 'A', 22, $protocols),
+            $this->scalarSection('project_type', MeasureTemplateSchema::headers()['project_type'], 'B', 18, null, null, true),
+            $this->scalarSection('measure_block', MeasureTemplateSchema::headers()['measure_block'], 'C', 24, $measureBlocks),
+            $this->scalarSection('category', MeasureTemplateSchema::headers()['category'], 'D', 18, $categories),
+            $this->scalarSection('category_ghg', MeasureTemplateSchema::headers()['category_ghg'], 'E', 24, $categoryGhgs),
+            $this->scalarSection('name', MeasureTemplateSchema::headers()['name'], 'F', 42),
+            $this->scalarSection('score', MeasureTemplateSchema::headers()['score'], 'G', 8, null, null, true),
+            $this->scalarSection('mandatory', MeasureTemplateSchema::headers()['mandatory'], 'H', 12, null, null, true),
+            $this->scalarSection('esg', MeasureTemplateSchema::headers()['esg'], 'I', 14, $esg, 'F'),
+            $this->scalarSection('scope', MeasureTemplateSchema::headers()['scope'], 'J', 14, $scopes, 'G'),
+            $this->scalarSection('name_review', MeasureTemplateSchema::headers()['name_review'], 'K', 24),
+            $this->scalarSection('description', MeasureTemplateSchema::headers()['description'], 'L', 42),
+            $this->scalarSection('implementation', MeasureTemplateSchema::headers()['implementation'], 'M', 42),
+            $this->scalarSection('department_action_text', MeasureTemplateSchema::headers()['department_action_text'], 'N', 42),
+            $this->matrixSection('impact_areas', MeasureTemplateSchema::matrixGroupLabels()['impact_areas'], $impactAreas, 'N', 14),
+            $this->matrixSection('departments', MeasureTemplateSchema::matrixGroupLabels()['departments'], $departments, null, 12),
+            $this->matrixSection('verification_sources', MeasureTemplateSchema::matrixGroupLabels()['verification_sources'], $verificationSources, null, 15),
+            $this->matrixSection('ods_items', MeasureTemplateSchema::matrixGroupLabels()['ods_items'], $ods, null, 6),
+            $this->matrixSection('triple_balance_axes', MeasureTemplateSchema::matrixGroupLabels()['triple_balance_axes'], $tripleBalanceAxes, null, 14),
+            $this->scalarSection('name_en', MeasureTemplateSchema::headers()['name_en'], 'O', 28),
+            $this->scalarSection('name_review_en', MeasureTemplateSchema::headers()['name_review_en'], 'P', 28),
+            $this->scalarSection('description_en', MeasureTemplateSchema::headers()['description_en'], 'Q', 42),
+            $this->scalarSection('implementation_en', MeasureTemplateSchema::headers()['implementation_en'], 'R', 42),
+            $this->scalarSection('verification_sources_en', MeasureTemplateSchema::headers()['verification_sources_en'], 'S', 42),
+            $this->scalarSection('department_action_text_en', MeasureTemplateSchema::headers()['department_action_text_en'], 'T', 42),
         ];
     }
 
@@ -430,7 +430,7 @@ final class MeasureTemplateV23Exporter
             ->setDataValidation(
                 (new DataValidation())
                     ->setType(DataValidation::TYPE_LIST)
-                    ->setFormula1(sprintf("'%s'!\$%s\$1:\$%s\$%d", MeasureTemplateV23Schema::LISTS_SHEET, $listColumn, $listColumn, $lastRow))
+                    ->setFormula1(sprintf("'%s'!\$%s\$1:\$%s\$%d", MeasureTemplateSchema::LISTS_SHEET, $listColumn, $listColumn, $lastRow))
                     ->setAllowBlank(true)
                     ->setShowDropDown(true)
             );

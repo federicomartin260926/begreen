@@ -15,7 +15,7 @@ use App\Entity\Scope;
 use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
 use App\Service\MeasureCatalogAdminService;
-use App\Service\MeasureTemplateV23Importer;
+use App\Service\MeasureTemplateImporter;
 use App\Service\MeasureTemplateV23Report;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -23,7 +23,7 @@ use Doctrine\ORM\EntityRepository;
 use Gedmo\Translatable\TranslatableListener;
 use PHPUnit\Framework\TestCase;
 
-final class MeasureTemplateV23ImporterTest extends TestCase
+final class MeasureTemplateImporterTest extends TestCase
 {
     public function testImportPersistsMeasuresForMultipleProtocolsWithoutMixingTaxonomies(): void
     {
@@ -199,7 +199,7 @@ final class MeasureTemplateV23ImporterTest extends TestCase
 
         $entityManager->method('getConnection')->willReturn($connection);
 
-        $importer = new MeasureTemplateV23Importer(
+        $importer = new MeasureTemplateImporter(
             $entityManager,
             $this->createMock(TranslatableListener::class),
             new MeasureCatalogAdminService(),
@@ -322,7 +322,7 @@ final class MeasureTemplateV23ImporterTest extends TestCase
         $connection->expects(self::once())->method('commit');
         $entityManager->method('getConnection')->willReturn($connection);
 
-        $importer = new MeasureTemplateV23Importer(
+        $importer = new MeasureTemplateImporter(
             $entityManager,
             $this->createMock(TranslatableListener::class),
             new MeasureCatalogAdminService(),
@@ -416,7 +416,7 @@ final class MeasureTemplateV23ImporterTest extends TestCase
         $connection->expects(self::once())->method('commit');
         $entityManager->method('getConnection')->willReturn($connection);
 
-        $importer = new MeasureTemplateV23Importer(
+        $importer = new MeasureTemplateImporter(
             $entityManager,
             $this->createMock(TranslatableListener::class),
             new MeasureCatalogAdminService(),
@@ -541,7 +541,7 @@ final class MeasureTemplateV23ImporterTest extends TestCase
         $connection->expects(self::once())->method('commit');
         $entityManager->method('getConnection')->willReturn($connection);
 
-        $importer = new MeasureTemplateV23Importer(
+        $importer = new MeasureTemplateImporter(
             $entityManager,
             $this->createMock(TranslatableListener::class),
             new MeasureCatalogAdminService(),
@@ -688,7 +688,7 @@ final class MeasureTemplateV23ImporterTest extends TestCase
         $connection->expects(self::once())->method('commit');
         $entityManager->method('getConnection')->willReturn($connection);
 
-        $importer = new MeasureTemplateV23Importer(
+        $importer = new MeasureTemplateImporter(
             $entityManager,
             $this->createMock(TranslatableListener::class),
             new MeasureCatalogAdminService(),

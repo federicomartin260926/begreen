@@ -7,7 +7,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-final class MeasureTemplateV23Parser
+final class MeasureTemplateParser
 {
     public function parseFile(string $path): MeasureTemplateV23Report
     {
@@ -16,7 +16,7 @@ final class MeasureTemplateV23Parser
 
     public function parseSpreadsheet(Spreadsheet $spreadsheet): MeasureTemplateV23Report
     {
-        $sheet = $spreadsheet->getSheetByName(MeasureTemplateV23Schema::SHEET_TITLE) ?? $spreadsheet->getActiveSheet();
+        $sheet = $spreadsheet->getSheetByName(MeasureTemplateSchema::SHEET_TITLE) ?? $spreadsheet->getActiveSheet();
 
         return $this->parseSheet($sheet);
     }
@@ -45,14 +45,14 @@ final class MeasureTemplateV23Parser
      */
     private function looksLikeMatrixTemplate(array $headerRow, array $secondRow): bool
     {
-        $scalarLookup = MeasureTemplateV23Schema::scalarHeaderLookup();
-        $groupLookup = MeasureTemplateV23Schema::matrixGroupLookup();
+        $scalarLookup = MeasureTemplateSchema::scalarHeaderLookup();
+        $groupLookup = MeasureTemplateSchema::matrixGroupLookup();
         $hasMatrixGroup = false;
         $hasMatrixOptions = false;
         $hasScalarDataInSecondRow = false;
 
         foreach ($headerRow as $column => $header) {
-            $normalized = MeasureTemplateV23Schema::normalizeHeader((string) $header);
+            $normalized = MeasureTemplateSchema::normalizeHeader((string) $header);
             if (isset($groupLookup[$normalized])) {
                 $hasMatrixGroup = true;
                 if (trim((string) ($secondRow[$column] ?? '')) !== '') {
@@ -132,14 +132,14 @@ final class MeasureTemplateV23Parser
     {
         $normalized = [];
         foreach ($headerRow as $column => $header) {
-            $normalized[MeasureTemplateV23Schema::normalizeHeader((string) $header)] = $column;
+            $normalized[MeasureTemplateSchema::normalizeHeader((string) $header)] = $column;
         }
 
         $columnMap = [];
-        foreach (MeasureTemplateV23Schema::headers() as $key => $label) {
-            $normalizedKey = MeasureTemplateV23Schema::normalizeHeader($label);
+        foreach (MeasureTemplateSchema::headers() as $key => $label) {
+            $normalizedKey = MeasureTemplateSchema::normalizeHeader($label);
             if (!isset($normalized[$normalizedKey])) {
-                if (!MeasureTemplateV23Schema::isOptionalHeader($key)) {
+                if (!MeasureTemplateSchema::isOptionalHeader($key)) {
                     $report->addError('missing_header', sprintf('Falta la columna requerida "%s".', $label), ['header' => $label]);
                 }
                 continue;
@@ -202,7 +202,7 @@ final class MeasureTemplateV23Parser
 
         $verificationSources = [];
         try {
-            $verificationSources = MeasureTemplateV23Schema::splitVerificationSourcesCell($rowData['verificationSources']);
+            $verificationSources = MeasureTemplateSchema::splitVerificationSourcesCell($rowData['verificationSources']);
         } catch (\InvalidArgumentException $e) {
             $report->addError('invalid_verification_sources', sprintf('Fila %d: %s', $rowNumber, $e->getMessage()), ['row' => $rowNumber]);
         }
@@ -220,8 +220,8 @@ final class MeasureTemplateV23Parser
      */
     private function buildMatrixLayout(array $row1, array $row2, MeasureTemplateV23Report $report): array
     {
-        $scalarLookup = MeasureTemplateV23Schema::scalarHeaderLookup();
-        $groupLookup = MeasureTemplateV23Schema::matrixGroupLookup();
+        $scalarLookup = MeasureTemplateSchema::scalarHeaderLookup();
+        $groupLookup = MeasureTemplateSchema::matrixGroupLookup();
         $highestColumn = max(array_map(
             static fn (string $column): int => Coordinate::columnIndexFromString($column),
             array_keys($row1) ?: ['A']
@@ -238,7 +238,7 @@ final class MeasureTemplateV23Parser
             $second = trim((string) ($row2[$column] ?? ''));
 
             if ($top !== '') {
-                $normalized = MeasureTemplateV23Schema::normalizeHeader($top);
+                $normalized = MeasureTemplateSchema::normalizeHeader($top);
                 if (isset($groupLookup[$normalized]) && $second !== '') {
                     $currentGroupKey = $groupLookup[$normalized];
                     $foundGroupKeys[$currentGroupKey] = true;
@@ -302,10 +302,10 @@ final class MeasureTemplateV23Parser
             }
         }
 
-        foreach (MeasureTemplateV23Schema::requiredHeaders() as $requiredKey) {
-            $label = MeasureTemplateV23Schema::headers()[$requiredKey] ?? $requiredKey;
-            if (isset(MeasureTemplateV23Schema::matrixGroupLabels()[$requiredKey])) {
-                $groupLabel = MeasureTemplateV23Schema::matrixGroupLabels()[$requiredKey];
+        foreach (MeasureTemplateSchema::requiredHeaders() as $requiredKey) {
+            $label = MeasureTemplateSchema::headers()[$requiredKey] ?? $requiredKey;
+            if (isset(MeasureTemplateSchema::matrixGroupLabels()[$requiredKey])) {
+                $groupLabel = MeasureTemplateSchema::matrixGroupLabels()[$requiredKey];
                 if (!isset($foundGroupKeys[$requiredKey])) {
                     $report->addError('missing_header', sprintf('Falta la columna requerida "%s".', $groupLabel), ['header' => $groupLabel]);
                 }
@@ -313,7 +313,7 @@ final class MeasureTemplateV23Parser
                 continue;
             }
 
-            if (isset($scalarLookup[MeasureTemplateV23Schema::normalizeHeader($label)])) {
+            if (isset($scalarLookup[MeasureTemplateSchema::normalizeHeader($label)])) {
                 if (!isset($foundScalarKeys[$requiredKey])) {
                     $report->addError('missing_header', sprintf('Falta la columna requerida "%s".', $label), ['header' => $label]);
                 }
@@ -361,7 +361,7 @@ final class MeasureTemplateV23Parser
                 continue;
             }
 
-            if (!MeasureTemplateV23Schema::isSelectionMarker($value)) {
+            if (!MeasureTemplateSchema::isSelectionMarker($value)) {
                 $report->addError(
                     'invalid_matrix_value',
                     sprintf('Fila %d, columna %s: solo se permite "X" en la plantilla de selección múltiple.', $rowNumber, $column),

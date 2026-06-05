@@ -229,7 +229,7 @@ final class MeasureTemplateV31Extractor
     {
         $values = [];
         foreach ($columns as $column) {
-            if (!MeasureTemplateV23Schema::isSelectionMarker($row[$column] ?? null)) {
+            if (!MeasureTemplateSchema::isSelectionMarker($row[$column] ?? null)) {
                 continue;
             }
 

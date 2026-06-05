@@ -2,18 +2,18 @@
 
 namespace App\Tests\Service;
 
-use App\Service\MeasureTemplateV23Parser;
-use App\Service\MeasureTemplateV23Schema;
+use App\Service\MeasureTemplateParser;
+use App\Service\MeasureTemplateSchema;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PHPUnit\Framework\TestCase;
 
-final class MeasureTemplateV23ParserTest extends TestCase
+final class MeasureTemplateParserTest extends TestCase
 {
     public function testParserReadsMatrixWorkbookWithSelectionColumns(): void
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle(MeasureTemplateV23Schema::SHEET_TITLE);
+        $sheet->setTitle(MeasureTemplateSchema::SHEET_TITLE);
 
         $sheet->setCellValue('A1', 'Protocolo');
         $sheet->setCellValue('B1', 'Tipo de proyecto');
@@ -83,7 +83,7 @@ final class MeasureTemplateV23ParserTest extends TestCase
         $sheet->setCellValue('AA3', 'X');
         $sheet->setCellValue('AB3', 'X');
 
-        $report = (new MeasureTemplateV23Parser())->parseSpreadsheet($spreadsheet);
+        $report = (new MeasureTemplateParser())->parseSpreadsheet($spreadsheet);
 
         self::assertSame('OK', $report->getStatus());
         self::assertCount(1, $report->getRows());
@@ -113,9 +113,9 @@ final class MeasureTemplateV23ParserTest extends TestCase
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle(MeasureTemplateV23Schema::SHEET_TITLE);
+        $sheet->setTitle(MeasureTemplateSchema::SHEET_TITLE);
 
-        $sheet->fromArray(array_values(MeasureTemplateV23Schema::headers()), null, 'A1');
+        $sheet->fromArray(array_values(MeasureTemplateSchema::headers()), null, 'A1');
         $sheet->fromArray([
             'Peach',
             'rodaje',
@@ -144,7 +144,7 @@ final class MeasureTemplateV23ParserTest extends TestCase
             'Department action text',
         ], null, 'A2');
 
-        $report = (new MeasureTemplateV23Parser())->parseSpreadsheet($spreadsheet);
+        $report = (new MeasureTemplateParser())->parseSpreadsheet($spreadsheet);
 
         self::assertSame('OK', $report->getStatus());
         self::assertCount(1, $report->getRows());
@@ -161,10 +161,10 @@ final class MeasureTemplateV23ParserTest extends TestCase
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle(MeasureTemplateV23Schema::SHEET_TITLE);
+        $sheet->setTitle(MeasureTemplateSchema::SHEET_TITLE);
 
         $legacyHeaders = array_values(array_filter(
-            MeasureTemplateV23Schema::headers(),
+            MeasureTemplateSchema::headers(),
             static fn (string $key): bool => !in_array($key, ['department_action_text', 'department_action_text_en'], true),
             ARRAY_FILTER_USE_KEY
         ));
@@ -195,7 +195,7 @@ final class MeasureTemplateV23ParserTest extends TestCase
             '',
         ], null, 'A2');
 
-        $report = (new MeasureTemplateV23Parser())->parseSpreadsheet($spreadsheet);
+        $report = (new MeasureTemplateParser())->parseSpreadsheet($spreadsheet);
 
         self::assertSame('OK', $report->getStatus());
         self::assertCount(1, $report->getRows());

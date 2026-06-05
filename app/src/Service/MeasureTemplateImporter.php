@@ -19,7 +19,7 @@ use Gedmo\Translatable\Entity\Translation;
 use Gedmo\Translatable\TranslatableListener;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
-final class MeasureTemplateV23Importer
+final class MeasureTemplateImporter
 {
     private const TEMPLATE_VERSION = 'v23';
 
@@ -299,7 +299,7 @@ final class MeasureTemplateV23Importer
 
     private function resolveProtocol(string $value, MeasureTemplateV23Report $report, int $rowNumber): ?Protocol
     {
-        foreach (MeasureTemplateV23Schema::lookupCandidates($value) as $candidate) {
+        foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
             $protocol = $this->em->getRepository(Protocol::class)->findOneBy(['code' => $candidate])
                 ?? $this->em->getRepository(Protocol::class)->findOneBy(['name' => $candidate]);
 
@@ -318,7 +318,7 @@ final class MeasureTemplateV23Importer
             return null;
         }
 
-        foreach (MeasureTemplateV23Schema::lookupCandidates($value) as $candidate) {
+        foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
             $category = $this->em->getRepository(Category::class)->findOneBy(['name' => $candidate]);
             if ($category instanceof Category) {
                 return $category;
@@ -334,7 +334,7 @@ final class MeasureTemplateV23Importer
             return null;
         }
 
-        foreach (MeasureTemplateV23Schema::lookupCandidates($value) as $candidate) {
+        foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
             $category = $this->em->getRepository(CategoryGhg::class)->findOneBy(['name' => $candidate]);
             if ($category instanceof CategoryGhg) {
                 return $category;
@@ -350,7 +350,7 @@ final class MeasureTemplateV23Importer
             return null;
         }
 
-        foreach (MeasureTemplateV23Schema::lookupCandidates($value) as $candidate) {
+        foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
             $item = $this->em->getRepository(EsG::class)->findOneBy(['name' => $candidate]);
             if ($item instanceof EsG) {
                 return $item;
@@ -366,7 +366,7 @@ final class MeasureTemplateV23Importer
             return null;
         }
 
-        foreach (MeasureTemplateV23Schema::lookupCandidates($value) as $candidate) {
+        foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
             $item = $this->em->getRepository(Scope::class)->findOneBy(['name' => $candidate]);
             if ($item instanceof Scope) {
                 return $item;
@@ -389,7 +389,7 @@ final class MeasureTemplateV23Importer
         $candidates = array_values(array_unique(array_filter([
             $explicitCode,
             $explicitName,
-            ...MeasureTemplateV23Schema::lookupCandidates($value),
+            ...MeasureTemplateSchema::lookupCandidates($value),
         ])));
 
         foreach ($candidates as $candidate) {
@@ -490,9 +490,9 @@ final class MeasureTemplateV23Importer
     private function resolveOdsItems(string $value, int $rowNumber, MeasureTemplateV23Report $report): array
     {
         $resolved = [];
-        foreach (MeasureTemplateV23Schema::splitMultiValueCell($value) as $itemValue) {
+        foreach (MeasureTemplateSchema::splitMultiValueCell($value) as $itemValue) {
             $entity = null;
-            foreach (MeasureTemplateV23Schema::lookupCandidates($itemValue) as $candidate) {
+            foreach (MeasureTemplateSchema::lookupCandidates($itemValue) as $candidate) {
                 $entity = $this->em->getRepository(Ods::class)->findOneBy(['code' => $candidate])
                     ?? $this->em->getRepository(Ods::class)->findOneBy(['name' => $candidate]);
                 if ($entity instanceof Ods) {
@@ -545,9 +545,9 @@ final class MeasureTemplateV23Importer
     private function resolveMultipleEntities(string $value, string $class, string $label, int $rowNumber, MeasureTemplateV23Report $report, ?callable $labelCallback = null): array
     {
         $resolved = [];
-        foreach (MeasureTemplateV23Schema::splitMultiValueCell($value) as $itemValue) {
+        foreach (MeasureTemplateSchema::splitMultiValueCell($value) as $itemValue) {
             $entity = null;
-            foreach (MeasureTemplateV23Schema::lookupCandidates($itemValue) as $candidate) {
+            foreach (MeasureTemplateSchema::lookupCandidates($itemValue) as $candidate) {
                 $entity = $this->em->getRepository($class)->findOneBy(['code' => $candidate])
                     ?? $this->em->getRepository($class)->findOneBy(['name' => $candidate]);
                 if ($entity instanceof $class) {
@@ -583,7 +583,7 @@ final class MeasureTemplateV23Importer
             }
 
             $source = null;
-            foreach (MeasureTemplateV23Schema::lookupCandidates($value) as $candidate) {
+            foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
                 $source = $this->em->getRepository(VerificationSource::class)->findOneBy(['code' => $candidate])
                     ?? $this->em->getRepository(VerificationSource::class)->findOneBy(['name' => $candidate]);
                 if ($source instanceof VerificationSource) {

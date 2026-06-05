@@ -4,8 +4,8 @@ namespace App\DataFixtures;
 
 use App\Entity\MeasureBlock;
 use App\Entity\Protocol;
-use App\Service\MeasureTemplateV23Importer;
-use App\Service\MeasureTemplateV23Parser;
+use App\Service\MeasureTemplateImporter;
+use App\Service\MeasureTemplateParser;
 use App\Repository\MeasureBlockRepository;
 use App\Repository\ProtocolRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -18,8 +18,8 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
 {
     public function __construct(
         private readonly TranslatableListener $translatableListener,
-        private readonly MeasureTemplateV23Parser $measureTemplateParser,
-        private readonly MeasureTemplateV23Importer $measureTemplateImporter,
+        private readonly MeasureTemplateParser $measureTemplateParser,
+        private readonly MeasureTemplateImporter $measureTemplateImporter,
         private readonly ParameterBagInterface $params,
     ) {}
 

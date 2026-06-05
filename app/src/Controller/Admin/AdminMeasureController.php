@@ -10,9 +10,9 @@ use App\Repository\MeasureBlockRepository;
 use App\Service\MeasureCatalogAdminService;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanMeasureCatalogResolver;
-use App\Service\MeasureTemplateV23Exporter;
-use App\Service\MeasureTemplateV23Importer;
-use App\Service\MeasureTemplateV23Parser;
+use App\Service\MeasureTemplateExporter;
+use App\Service\MeasureTemplateImporter;
+use App\Service\MeasureTemplateParser;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{Request, Response, StreamedResponse, ResponseHeaderBag, File\Exception\FileException};
@@ -29,9 +29,9 @@ class AdminMeasureController extends AbstractController
 {
     public function __construct(
         private TranslatorInterface $translator,
-        private MeasureTemplateV23Parser $measureTemplateParser,
-        private MeasureTemplateV23Importer $measureTemplateImporter,
-        private MeasureTemplateV23Exporter $measureTemplateExporter,
+        private MeasureTemplateParser $measureTemplateParser,
+        private MeasureTemplateImporter $measureTemplateImporter,
+        private MeasureTemplateExporter $measureTemplateExporter,
         private MeasureCatalogAdminService $catalogAdminService,
         private MeasureTaxonomyPresenter $taxonomyPresenter
     ) {}
