@@ -3,6 +3,10 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-prod}
       APP_DEBUG: ${APP_DEBUG:-0}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-}
     volumes:
       - ./.env.local:/app/.env.local:ro
       - app_var:/app/var
