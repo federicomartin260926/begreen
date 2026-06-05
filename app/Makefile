@@ -41,7 +41,7 @@ cache-clear:
 	$(COMPOSE_DEV) exec php php bin/console cache:clear
 
 schema-update:
-	$(COMPOSE_DEV) exec php php bin/console doctrine:schema:update --dump-sql
+	$(COMPOSE_DEV) exec php php bin/console doctrine:schema:update --force
 
 fixtures:
 	$(COMPOSE_DEV) exec php php bin/console doctrine:fixtures:load --no-interaction
