@@ -131,6 +131,12 @@
                             {{ form_widget(form.implementation, {'attr': {'class': 'form-control', 'rows': 4}}) }}
                             {{ form_errors(form.implementation) }}
                         </div>
+
+                        <div class="mb-3">
+                            {{ form_label(form.departmentActionText) }}
+                            {{ form_widget(form.departmentActionText, {'attr': {'class': 'form-control', 'rows': 4}}) }}
+                            {{ form_errors(form.departmentActionText) }}
+                        </div>
                     </div>
 
                     {# --- Inglés (campos unmapped *_en) --- #}
@@ -158,6 +164,12 @@
                             {{ form_label(form.implementation_en) }}
                             {{ form_widget(form.implementation_en, {'attr': {'class': 'form-control', 'rows': 4}}) }}
                             {{ form_errors(form.implementation_en) }}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form_label(form.departmentActionText_en) }}
+                            {{ form_widget(form.departmentActionText_en, {'attr': {'class': 'form-control', 'rows': 4}}) }}
+                            {{ form_errors(form.departmentActionText_en) }}
                         </div>
                     </div>
                 </div>

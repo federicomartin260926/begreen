@@ -97,6 +97,10 @@ class Measure
     private ?string $implementation = null;
 
     #[Gedmo\Translatable]
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $departmentActionText = null;
+
+    #[Gedmo\Translatable]
     #[ORM\Column(type: 'string', length: 300, nullable: true)]
     private ?string $verificationSources = null;
 
@@ -266,6 +270,21 @@ class Measure
     public function getImplementation(): ?string { return $this->implementation; }
 
     public function setImplementation(?string $implementation): static { $this->implementation = $implementation; return $this; }
+
+    public function getDepartmentActionText(): ?string { return $this->departmentActionText; }
+
+    public function setDepartmentActionText(?string $departmentActionText): static
+    {
+        $this->departmentActionText = $departmentActionText;
+        return $this;
+    }
+
+    public function getDepartmentActionDisplayName(): string
+    {
+        return trim((string) $this->departmentActionText) !== ''
+            ? (string) $this->departmentActionText
+            : $this->getDisplayNameForReview();
+    }
 
     public function getVerificationSources(): ?string { return $this->verificationSources; }
 

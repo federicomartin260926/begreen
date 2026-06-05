@@ -375,6 +375,7 @@ backend:
       h2_edit: "Edit measure"
       name_review: "Past tense text (plan complete)"
       name_review_ph: "E.g.: Was implemented…, Were replaced…, Were carried out…"
+      department_action_text: "Department action text"
       title_edit: "Edit measure"
       title_new: "New measure"
   projects:

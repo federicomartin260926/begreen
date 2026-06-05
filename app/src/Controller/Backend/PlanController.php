@@ -1505,7 +1505,8 @@ class PlanController extends AbstractController
             $protocolRepository,
             $em,
             $filters,
-            $translator
+            $translator,
+            true
         );
         $html = $this->renderPdfHtml($ctx);
         return $this->pdfBytesFromHtml($html);
@@ -1604,7 +1605,8 @@ class PlanController extends AbstractController
         ProtocolRepository $protocolRepository,
         EntityManagerInterface $em,
         array $filters,
-        TranslatorInterface $translator
+        TranslatorInterface $translator,
+        bool $useDepartmentActionText = false
     ): array {
         $project = $activeProjectService->getActiveProject();
         if (!$project) throw $this->createNotFoundException('backend.projects.flash.no_active');
@@ -1737,6 +1739,7 @@ class PlanController extends AbstractController
             'scoreMax'       => $scoreMax,
             'scoreGained'    => $scoreGained,
             'scorePct'       => $scorePct,
+            'useDepartmentActionText' => $useDepartmentActionText,
         ];
     }
 

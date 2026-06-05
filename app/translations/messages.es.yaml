@@ -376,6 +376,7 @@ backend:
       h2_edit: "Editar medida"
       name_review: "Texto en pasado (plan completo)"
       name_review_ph: "Ej.: Se implementó…, Se sustituyeron…, Se realizaron…"
+      department_action_text: "Acción por departamento"
       title_edit: "Editar medida"
       title_new: "Nueva medida"
   projects:
