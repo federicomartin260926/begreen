@@ -4,7 +4,7 @@ namespace App\Service;
 
 use JsonSerializable;
 
-final class MeasureTemplateV23Report implements JsonSerializable
+final class MeasureTemplateReport implements JsonSerializable
 {
     private string $status = 'OK';
     private array $warnings = [];

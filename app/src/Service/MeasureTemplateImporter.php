@@ -36,7 +36,7 @@ final class MeasureTemplateImporter
     ) {
     }
 
-    public function import(MeasureTemplateV23Report $report, bool $apply, bool $validateCanonical = true): MeasureTemplateV23Report
+    public function import(MeasureTemplateReport $report, bool $apply, bool $validateCanonical = true): MeasureTemplateReport
     {
         $this->measureBlockCache = [];
         $this->validateCanonicalMeasures = $validateCanonical;
@@ -111,7 +111,7 @@ final class MeasureTemplateImporter
     /**
      * @param array<string, mixed> $rowData
      */
-    private function importRow(array $rowData, MeasureTemplateV23Report $report, array &$summary): void
+    private function importRow(array $rowData, MeasureTemplateReport $report, array &$summary): void
     {
         $rowNumber = (int) ($rowData['row'] ?? 0);
         $errorsBeforeRow = count($report->getErrors());
@@ -297,7 +297,7 @@ final class MeasureTemplateImporter
         $summary[$created ? 'imported' : 'updated']++;
     }
 
-    private function resolveProtocol(string $value, MeasureTemplateV23Report $report, int $rowNumber): ?Protocol
+    private function resolveProtocol(string $value, MeasureTemplateReport $report, int $rowNumber): ?Protocol
     {
         foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
             $protocol = $this->em->getRepository(Protocol::class)->findOneBy(['code' => $candidate])
@@ -479,7 +479,7 @@ final class MeasureTemplateImporter
     /**
      * @return Department[]
      */
-    private function resolveDepartments(string $value, int $rowNumber, MeasureTemplateV23Report $report): array
+    private function resolveDepartments(string $value, int $rowNumber, MeasureTemplateReport $report): array
     {
         return $this->resolveMultipleEntities($value, Department::class, 'departamento', $rowNumber, $report, static fn (Department $department): string => $department->getDisplayName());
     }
@@ -487,7 +487,7 @@ final class MeasureTemplateImporter
     /**
      * @return Ods[]
      */
-    private function resolveOdsItems(string $value, int $rowNumber, MeasureTemplateV23Report $report): array
+    private function resolveOdsItems(string $value, int $rowNumber, MeasureTemplateReport $report): array
     {
         $resolved = [];
         foreach (MeasureTemplateSchema::splitMultiValueCell($value) as $itemValue) {
@@ -521,7 +521,7 @@ final class MeasureTemplateImporter
     /**
      * @return ImpactArea[]
      */
-    private function resolveImpactAreas(string $value, int $rowNumber, MeasureTemplateV23Report $report): array
+    private function resolveImpactAreas(string $value, int $rowNumber, MeasureTemplateReport $report): array
     {
         return $this->resolveMultipleEntities($value, ImpactArea::class, 'área de impacto', $rowNumber, $report);
     }
@@ -529,7 +529,7 @@ final class MeasureTemplateImporter
     /**
      * @return TripleBalanceAxis[]
      */
-    private function resolveTripleBalanceAxes(string $value, int $rowNumber, MeasureTemplateV23Report $report): array
+    private function resolveTripleBalanceAxes(string $value, int $rowNumber, MeasureTemplateReport $report): array
     {
         return $this->resolveMultipleEntities($value, TripleBalanceAxis::class, 'eje de triple balance', $rowNumber, $report);
     }
@@ -542,7 +542,7 @@ final class MeasureTemplateImporter
      *
      * @return T[]
      */
-    private function resolveMultipleEntities(string $value, string $class, string $label, int $rowNumber, MeasureTemplateV23Report $report, ?callable $labelCallback = null): array
+    private function resolveMultipleEntities(string $value, string $class, string $label, int $rowNumber, MeasureTemplateReport $report, ?callable $labelCallback = null): array
     {
         $resolved = [];
         foreach (MeasureTemplateSchema::splitMultiValueCell($value) as $itemValue) {
@@ -571,7 +571,7 @@ final class MeasureTemplateImporter
      *
      * @return array<int, array{priority:int, source:VerificationSource}>
      */
-    private function resolveVerificationSources(array $values, int $rowNumber, MeasureTemplateV23Report $report): array
+    private function resolveVerificationSources(array $values, int $rowNumber, MeasureTemplateReport $report): array
     {
         $resolved = [];
         foreach ($values as $item) {

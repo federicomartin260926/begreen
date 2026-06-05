@@ -9,21 +9,21 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 final class MeasureTemplateParser
 {
-    public function parseFile(string $path): MeasureTemplateV23Report
+    public function parseFile(string $path): MeasureTemplateReport
     {
         return $this->parseSpreadsheet(IOFactory::load($path));
     }
 
-    public function parseSpreadsheet(Spreadsheet $spreadsheet): MeasureTemplateV23Report
+    public function parseSpreadsheet(Spreadsheet $spreadsheet): MeasureTemplateReport
     {
         $sheet = $spreadsheet->getSheetByName(MeasureTemplateSchema::SHEET_TITLE) ?? $spreadsheet->getActiveSheet();
 
         return $this->parseSheet($sheet);
     }
 
-    public function parseSheet(Worksheet $sheet): MeasureTemplateV23Report
+    public function parseSheet(Worksheet $sheet): MeasureTemplateReport
     {
-        $report = new MeasureTemplateV23Report();
+        $report = new MeasureTemplateReport();
         $report->setSheetName($sheet->getTitle());
         $report->setDimension(sprintf('A1:%s%d', $sheet->getHighestColumn(), $sheet->getHighestRow()));
 
@@ -72,7 +72,7 @@ final class MeasureTemplateParser
     /**
      * @param array<int, array<string, string|null>> $rows
      */
-    private function parseLegacySheet(Worksheet $sheet, array $rows, MeasureTemplateV23Report $report): MeasureTemplateV23Report
+    private function parseLegacySheet(Worksheet $sheet, array $rows, MeasureTemplateReport $report): MeasureTemplateReport
     {
         $columnMap = $this->buildLegacyColumnMap($rows[1] ?? [], $report);
         if ($columnMap === []) {
@@ -99,7 +99,7 @@ final class MeasureTemplateParser
     /**
      * @param array<int, array<string, string|null>> $rows
      */
-    private function parseMatrixSheet(Worksheet $sheet, array $rows, MeasureTemplateV23Report $report): MeasureTemplateV23Report
+    private function parseMatrixSheet(Worksheet $sheet, array $rows, MeasureTemplateReport $report): MeasureTemplateReport
     {
         $layout = $this->buildMatrixLayout($rows[1] ?? [], $rows[2] ?? [], $report);
         if ($layout === []) {
@@ -128,7 +128,7 @@ final class MeasureTemplateParser
      *
      * @return array<string, string>
      */
-    private function buildLegacyColumnMap(array $headerRow, MeasureTemplateV23Report $report): array
+    private function buildLegacyColumnMap(array $headerRow, MeasureTemplateReport $report): array
     {
         $normalized = [];
         foreach ($headerRow as $column => $header) {
@@ -157,7 +157,7 @@ final class MeasureTemplateParser
      *
      * @return array<string, mixed>
      */
-    private function buildLegacyRowData(array $row, array $columnMap, int $rowNumber, MeasureTemplateV23Report $report): array
+    private function buildLegacyRowData(array $row, array $columnMap, int $rowNumber, MeasureTemplateReport $report): array
     {
         $rowData = [
             'row' => $rowNumber,
@@ -218,7 +218,7 @@ final class MeasureTemplateParser
      *
      * @return array<int, array<string, mixed>>
      */
-    private function buildMatrixLayout(array $row1, array $row2, MeasureTemplateV23Report $report): array
+    private function buildMatrixLayout(array $row1, array $row2, MeasureTemplateReport $report): array
     {
         $scalarLookup = MeasureTemplateSchema::scalarHeaderLookup();
         $groupLookup = MeasureTemplateSchema::matrixGroupLookup();
@@ -331,7 +331,7 @@ final class MeasureTemplateParser
      *
      * @return array<string, mixed>
      */
-    private function buildMatrixRowData(array $row, array $layout, int $rowNumber, MeasureTemplateV23Report $report): array
+    private function buildMatrixRowData(array $row, array $layout, int $rowNumber, MeasureTemplateReport $report): array
     {
         $rowData = ['row' => $rowNumber];
         $matrixSelections = [
@@ -446,7 +446,7 @@ final class MeasureTemplateParser
         return trim((string) ($row[$column] ?? ''));
     }
 
-    private function parseScore(string $value, int $rowNumber, MeasureTemplateV23Report $report): ?int
+    private function parseScore(string $value, int $rowNumber, MeasureTemplateReport $report): ?int
     {
         if ($value === '') {
             $report->addError('missing_score', sprintf('Fila %d sin puntuación.', $rowNumber), ['row' => $rowNumber]);

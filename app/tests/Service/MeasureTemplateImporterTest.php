@@ -16,7 +16,7 @@ use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
 use App\Service\MeasureCatalogAdminService;
 use App\Service\MeasureTemplateImporter;
-use App\Service\MeasureTemplateV23Report;
+use App\Service\MeasureTemplateReport;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
@@ -205,7 +205,7 @@ final class MeasureTemplateImporterTest extends TestCase
             new MeasureCatalogAdminService(),
         );
 
-        $report = new MeasureTemplateV23Report();
+        $report = new MeasureTemplateReport();
         $report->addRow([
             'row' => 2,
             'protocol' => 'peach - Peach',
@@ -328,7 +328,7 @@ final class MeasureTemplateImporterTest extends TestCase
             new MeasureCatalogAdminService(),
         );
 
-        $report = new MeasureTemplateV23Report();
+        $report = new MeasureTemplateReport();
         $report->addRow([
             'row' => 2,
             'protocol' => 'be-green-my-film - Be Green My Film',
@@ -422,7 +422,7 @@ final class MeasureTemplateImporterTest extends TestCase
             new MeasureCatalogAdminService(),
         );
 
-        $report = new MeasureTemplateV23Report();
+        $report = new MeasureTemplateReport();
         $report->addRow([
             'row' => 2,
             'protocol' => 'peach - Peach',
@@ -547,7 +547,7 @@ final class MeasureTemplateImporterTest extends TestCase
             new MeasureCatalogAdminService(),
         );
 
-        $report = new MeasureTemplateV23Report();
+        $report = new MeasureTemplateReport();
         $report->addRow([
             'row' => 2,
             'protocol' => 'be-green-my-film - Be Green My Film',
@@ -694,7 +694,7 @@ final class MeasureTemplateImporterTest extends TestCase
             new MeasureCatalogAdminService(),
         );
 
-        $report = new MeasureTemplateV23Report();
+        $report = new MeasureTemplateReport();
         $report->addRow([
             'row' => 2,
             'protocol' => 'peach - Peach',
