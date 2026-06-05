@@ -74,9 +74,9 @@ final class MeasureTemplateParserTest extends TestCase
         $sheet->setCellValue('Q3', 'X');
         $sheet->setCellValue('R3', 'X');
         $sheet->setCellValue('S3', 'X');
-        $sheet->setCellValue('T3', 'X');
-        $sheet->setCellValue('U3', 'X');
-        $sheet->setCellValue('V3', 'X');
+        $sheet->setCellValue('T3', '1');
+        $sheet->setCellValue('U3', '2');
+        $sheet->setCellValue('V3', '3');
         $sheet->setCellValue('W3', 'X');
         $sheet->setCellValue('X3', 'X');
         $sheet->setCellValue('Z3', 'X');

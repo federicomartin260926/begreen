@@ -404,6 +404,25 @@ final class MeasureTemplateV31FixtureBuilder
                 continue;
             }
 
+            if ($groupKey === 'verification_sources') {
+                foreach ((array) $selectedValues as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+
+                    $priority = (int) ($item['priority'] ?? 0);
+                    $value = trim((string) ($item['value'] ?? ''));
+                    $column = $this->resolveMatrixColumn($matrixLayout[$groupKey], $value);
+                    if ($column === null || $priority < 1 || $priority > 3) {
+                        continue;
+                    }
+
+                    $sheet->setCellValue(sprintf('%s%d', $column, $rowNumber), $priority);
+                }
+
+                continue;
+            }
+
             foreach ((array) $selectedValues as $value) {
                 $column = $this->resolveMatrixColumn($matrixLayout[$groupKey], (string) $value);
                 if ($column === null) {

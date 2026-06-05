@@ -19,7 +19,7 @@ final class MeasureTemplateV31FixtureBuilderTest extends TestCase
                 'categories' => ['ENERGÍA'],
                 'blocks' => ['Inventario y planificación'],
                 'environmental_impacts' => ['Cambio Climático'],
-                'verification_sources' => [],
+                'verification_sources' => ['Listado / Invent.', 'Informe Técnico', 'Declaración Resp.'],
                 'ods' => ['7', '13'],
                 'triple_balance' => ['Ambiental (E)', 'Económico (M)'],
             ],
@@ -36,7 +36,11 @@ final class MeasureTemplateV31FixtureBuilderTest extends TestCase
                     'description' => 'Descripción de prueba',
                     'environmental_impacts' => ['Cambio Climático'],
                     'departments' => ['Producción', 'Dirección'],
-                    'verification_sources' => [],
+                    'verification_sources' => [
+                        ['priority' => 1, 'value' => 'Listado / Invent.'],
+                        ['priority' => 2, 'value' => 'Informe Técnico'],
+                        ['priority' => 3, 'value' => 'Declaración Resp.'],
+                    ],
                     'ods' => ['7', '13'],
                     'triple_balance' => ['Ambiental (E)', 'Económico (M)'],
                 ],
@@ -58,5 +62,12 @@ final class MeasureTemplateV31FixtureBuilderTest extends TestCase
         $departments = array_map('trim', explode(';', (string) $report->getRows()[0]['departments']));
         sort($departments);
         self::assertSame(['Dirección', 'Producción'], $departments);
+        self::assertCount(3, $report->getRows()[0]['verificationSources']);
+        self::assertSame(1, $report->getRows()[0]['verificationSources'][0]['priority']);
+        self::assertSame('Listado / Invent.', $report->getRows()[0]['verificationSources'][0]['value']);
+        self::assertSame(2, $report->getRows()[0]['verificationSources'][1]['priority']);
+        self::assertSame('Informe Técnico', $report->getRows()[0]['verificationSources'][1]['value']);
+        self::assertSame(3, $report->getRows()[0]['verificationSources'][2]['priority']);
+        self::assertSame('Declaración Resp.', $report->getRows()[0]['verificationSources'][2]['value']);
     }
 }

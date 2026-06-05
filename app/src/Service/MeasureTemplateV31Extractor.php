@@ -99,7 +99,7 @@ final class MeasureTemplateV31Extractor
 
             $environmentalImpacts = $this->collectSelections($row, self::ENVIRONMENTAL_IMPACT_COLUMNS, $headerLabels);
             $departments = $this->collectSelections($row, self::DEPARTMENT_COLUMNS, $headerLabels);
-            $verificationSources = $this->collectSelections($row, self::VERIFICATION_SOURCE_COLUMNS, $headerLabels);
+            $verificationSources = $this->collectVerificationSources($row, self::VERIFICATION_SOURCE_COLUMNS, $headerLabels);
             $ods = $this->collectSelections($row, self::ODS_COLUMNS, $headerLabels);
             $tripleBalance = $this->collectSelections($row, self::TRIPLE_BALANCE_COLUMNS, $headerLabels);
 
@@ -138,7 +138,7 @@ final class MeasureTemplateV31Extractor
             $this->addUnique($summarySets['categories'], $category);
             $this->addUniqueMany($summarySets['environmental_impacts'], $environmentalImpacts);
             $this->addUniqueMany($summarySets['departments'], $departments);
-            $this->addUniqueMany($summarySets['verification_sources'], $verificationSources);
+            $this->addUniqueMany($summarySets['verification_sources'], array_map(static fn (array $item): string => (string) ($item['value'] ?? ''), $verificationSources));
             $this->addUniqueMany($summarySets['ods'], $ods);
             $this->addUniqueMany($summarySets['triple_balance'], $tripleBalance);
 
@@ -238,6 +238,41 @@ final class MeasureTemplateV31Extractor
                 $values[] = $label;
             }
         }
+
+        return $values;
+    }
+
+    /**
+     * @param string[] $columns
+     * @param array<string, string|null> $labelsByColumn
+     *
+     * @return array<int, array{priority:int, value:string}>
+     */
+    private function collectVerificationSources(array $row, array $columns, array $labelsByColumn): array
+    {
+        $values = [];
+        foreach ($columns as $column) {
+            $raw = trim((string) ($row[$column] ?? ''));
+            if ($raw === '') {
+                continue;
+            }
+
+            if (!preg_match('/^\d+$/', $raw)) {
+                continue;
+            }
+
+            $label = $this->clean((string) ($labelsByColumn[$column] ?? ''));
+            if ($label === '') {
+                continue;
+            }
+
+            $values[] = [
+                'priority' => (int) $raw,
+                'value' => $label,
+            ];
+        }
+
+        usort($values, static fn (array $left, array $right): int => $left['priority'] <=> $right['priority']);
 
         return $values;
     }

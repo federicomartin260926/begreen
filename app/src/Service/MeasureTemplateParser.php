@@ -362,9 +362,18 @@ final class MeasureTemplateParser
             }
 
             if (!MeasureTemplateSchema::isSelectionMarker($value)) {
+                if (($columnDescriptor['groupKey'] ?? null) === 'verification_sources' && preg_match('/^\d+$/', $value)) {
+                    $label = (string) ($columnDescriptor['label'] ?? '');
+                    $matrixSelections['verificationSources'][] = [
+                        'priority' => (int) $value,
+                        'value' => $label,
+                    ];
+                    continue;
+                }
+
                 $report->addError(
                     'invalid_matrix_value',
-                    sprintf('Fila %d, columna %s: solo se permite "X" en la plantilla de selección múltiple.', $rowNumber, $column),
+                    sprintf('Fila %d, columna %s: solo se permite "X" o prioridad numérica en la plantilla de selección múltiple.', $rowNumber, $column),
                     ['row' => $rowNumber, 'column' => $column, 'value' => $value]
                 );
                 continue;
@@ -409,6 +418,7 @@ final class MeasureTemplateParser
         $rowData['odsItems'] = implode('; ', array_values($matrixSelections['odsItems']));
         $rowData['impactAreas'] = implode('; ', array_values($matrixSelections['impactAreas']));
         $rowData['tripleBalanceAxes'] = implode('; ', array_values($matrixSelections['tripleBalanceAxes']));
+        usort($matrixSelections['verificationSources'], static fn (array $left, array $right): int => $left['priority'] <=> $right['priority']);
         $rowData['verificationSources'] = array_values($matrixSelections['verificationSources']);
 
         if ($rowData['protocol'] === '') {

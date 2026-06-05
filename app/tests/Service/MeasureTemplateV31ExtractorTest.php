@@ -31,6 +31,13 @@ final class MeasureTemplateV31ExtractorTest extends TestCase
         $sheet->setCellValue('L2', 'Dirección');
         $sheet->setCellValue('AG2', 'Factura / Albarán');
         $sheet->setCellValue('AH2', 'Foto');
+        $sheet->setCellValue('AI2', 'Captura / Email');
+        $sheet->setCellValue('AJ2', 'Declaración Resp.');
+        $sheet->setCellValue('AK2', 'Informe Técnico');
+        $sheet->setCellValue('AL2', 'Certif. / Licencia');
+        $sheet->setCellValue('AM2', 'Listado / Invent.');
+        $sheet->setCellValue('AN2', 'Ficha Técnica');
+        $sheet->setCellValue('AO2', 'Contrato / Acuerdo');
         $sheet->setCellValue('AT2', '1');
         $sheet->setCellValue('AU2', '2');
         $sheet->setCellValue('BK2', 'Ambiental (E)');
@@ -47,7 +54,9 @@ final class MeasureTemplateV31ExtractorTest extends TestCase
         $sheet->setCellValue('K5', 'X');
         $sheet->setCellValue('L5', 'X');
         $sheet->setCellValue('A5', 'X');
-        $sheet->setCellValue('AG5', 'X');
+        $sheet->setCellValue('AJ5', '3');
+        $sheet->setCellValue('AK5', '2');
+        $sheet->setCellValue('AM5', '1');
         $sheet->setCellValue('AT5', 'X');
         $sheet->setCellValue('BK5', 'X');
         $sheet->setCellValue('BN5', 'Descripción completa');
@@ -64,7 +73,7 @@ final class MeasureTemplateV31ExtractorTest extends TestCase
         self::assertSame(['ENERGÍA'], $report['summary']['categories']);
         self::assertSame(['ENERGÍA', 'Inventario y planificación'], $report['summary']['blocks']);
         self::assertSame(['Cambio Climático'], $report['summary']['environmental_impacts']);
-        self::assertSame(['Factura / Albarán'], $report['summary']['verification_sources']);
+        self::assertSame(['Listado / Invent.', 'Informe Técnico', 'Declaración Resp.'], $report['summary']['verification_sources']);
         self::assertSame(['1'], $report['summary']['ods']);
         self::assertSame(['Ambiental (E)'], $report['summary']['triple_balance']);
 
@@ -73,6 +82,11 @@ final class MeasureTemplateV31ExtractorTest extends TestCase
         self::assertSame('Realiza un inventario de los equipos y consumos energéticos de tu departamento antes del rodaje.', $report['measures'][0]['department_action_text']);
         self::assertSame(['Cambio Climático'], $report['measures'][0]['environmental_impacts']);
         self::assertSame(['Producción', 'Dirección'], $report['measures'][0]['departments']);
+        self::assertSame([
+            ['priority' => 1, 'value' => 'Listado / Invent.'],
+            ['priority' => 2, 'value' => 'Informe Técnico'],
+            ['priority' => 3, 'value' => 'Declaración Resp.'],
+        ], $report['measures'][0]['verification_sources']);
 
         self::assertSame(4, count($report['warnings']));
         self::assertSame('missing_points', $report['warnings'][0]['code']);
