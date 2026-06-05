@@ -43,7 +43,7 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
             $em->flush();
         }
 
-        // 2) ALTAS: Departamentos nuevos (Rodajes / Genérico)
+        // 2) ALTAS: Departamentos nuevos (Rodaje)
         // Nota: NO tocamos los de 'evento' existentes.
         $departments = [
             // --- Eventos ---
@@ -52,33 +52,28 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
             ['name' => 'Seguridad',                'projectType' => 'evento'],
 
             // --- Rodajes ---
-            ['name' => 'Localizaciones',          'projectType' => 'rodaje'],
             ['name' => 'Producción',              'projectType' => 'rodaje'],
             ['name' => 'Dirección',               'projectType' => 'rodaje'],
-            ['name' => 'Realización',             'projectType' => 'rodaje'],
-            ['name' => 'Redacción',               'projectType' => 'rodaje'],
-            ['name' => 'Casting',                 'projectType' => 'rodaje'],
-            ['name' => 'Cámara',                  'projectType' => 'rodaje'],
+            ['name' => 'Fotografía y Cámara',     'projectType' => 'rodaje'],
+            ['name' => 'Eléctrico',               'projectType' => 'rodaje'],
+            ['name' => 'Maquinista y Grip',       'projectType' => 'rodaje'],
             ['name' => 'Sonido',                  'projectType' => 'rodaje'],
-            ['name' => 'Iluminación',             'projectType' => 'rodaje'], // alias de Eléctricos
-            ['name' => 'Maquinistas',             'projectType' => 'rodaje'], // alias de Grip
-            ['name' => 'Decoración',              'projectType' => 'rodaje'],
-            ['name' => 'Ambientación',            'projectType' => 'rodaje'],
+            ['name' => 'Arte',                    'projectType' => 'rodaje'],
+            ['name' => 'Construcción',            'projectType' => 'rodaje'],
+            ['name' => 'Vestuario',               'projectType' => 'rodaje'],
+            ['name' => 'Maquillaje y Peluquería', 'projectType' => 'rodaje'],
+            ['name' => 'SFX',                     'projectType' => 'rodaje'],
+            ['name' => 'Localizaciones',          'projectType' => 'rodaje'],
+            ['name' => 'Transporte',              'projectType' => 'rodaje'],
             ['name' => 'Atrezzo',                 'projectType' => 'rodaje'],
-            ['name' => 'Construcción decorados',  'projectType' => 'rodaje'],
-            ['name' => 'Estilismo',               'projectType' => 'rodaje'],
-            ['name' => 'Maquillaje',              'projectType' => 'rodaje'],
-            ['name' => 'Peluquería',              'projectType' => 'rodaje'],
-
-            // --- Genérico (post/soporte) ---
-            ['name' => 'Edición de Vídeo',        'projectType' => null],
-            ['name' => 'Edición de Audio',        'projectType' => null],
-            ['name' => 'Montaje',                 'projectType' => null],
-            ['name' => 'Catering',                'projectType' => null],
-            ['name' => 'Transporte',              'projectType' => null],
-            ['name' => 'Equipo Técnico (AV)',     'projectType' => null],
-            ['name' => 'Guionistas',              'projectType' => null],
-            ['name' => 'Contabilidad',            'projectType' => null],
+            ['name' => 'Casting',                 'projectType' => 'rodaje'],
+            ['name' => 'Catering',                'projectType' => 'rodaje'],
+            ['name' => 'Home Economist',          'projectType' => 'rodaje'],
+            ['name' => 'Postproducción',          'projectType' => 'rodaje'],
+            ['name' => 'Contabilidad',            'projectType' => 'rodaje'],
+            ['name' => 'Sostenibilidad',          'projectType' => 'rodaje'],
+            ['name' => 'Veterinario y Animales',  'projectType' => 'rodaje'],
+            ['name' => 'Guion y Dirección',       'projectType' => 'rodaje'],
         ];
 
         // upsert department
@@ -123,7 +118,7 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
                 'Coordinador/a de Flota',
             ],
 
-            // === Casting ===
+            // === Escenario ===
             'Escenario' => [
                 'Stage Manager',
                 'Técnico de Escenario',
@@ -143,24 +138,14 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
                 'Primer Ayudante de Dirección',
                 'Segundo Ayudante de Dirección',
                 'Auxiliar de Dirección',
+            ],
+
+            // === Guion y Dirección ===
+            'Guion y Dirección' => [
                 'Script Supervisor / Supervisor de Continuidad',
-            ],
-
-            // === Realización ===
-            'Realización' => [
-                'Realizador/a',
-                'Ayudante de Realización',
-                'Regidor/a',
-                'Auxiliar de Realización',
-            ],
-
-            // === Redacción ===
-            'Redacción' => [
-                'Jefe/a de Redacción',
-                'Redactor/a / Comentarista / Tertuliano/a / Colaborador/a',
-                'Documentalista',
-                'Ayudante de Redacción',
-                'Secretario/a de Redacción',
+                'Coordinador/a de Guiones',
+                'Guionista de Ficción',
+                'Guionista de No Ficción',
             ],
 
             // === Casting ===
@@ -169,8 +154,8 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
                 'Ayudante de Casting',
             ],
 
-            // === Cámara ===
-            'Cámara' => [
+            // === Fotografía y Cámara ===
+            'Fotografía y Cámara' => [
                 'Director/a de Fotografía',
                 'Operador/a Especialista de Cámara de Vídeo (steadycam, aéreo, submarina)',
                 'Operador/a Reportero/a de Cámara de Vídeo',
@@ -192,15 +177,15 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
                 'Microfonista / Boom Operator',
             ],
 
-            // === Iluminación ===
-            'Iluminación' => [
+            // === Eléctrico ===
+            'Eléctrico' => [
                 'Gaffer (Jefe/a de Eléctricos)',
                 'Eléctrico/a',
                 'Ayudante de Eléctrico',
             ],
 
-            // === Maquinistas ===
-            'Maquinistas' => [
+            // === Maquinista y Grip ===
+            'Maquinista y Grip' => [
                 'Jefe/a de Maquinistas',
                 'Maquinista / Gruista',
                 'Ayudante de Maquinista',
@@ -209,20 +194,11 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
                 'Grip',
             ],
 
-            // === Decoración ===
-            'Decoración' => [
+            // === Arte ===
+            'Arte' => [
                 'Director/a de Arte',
                 'Decorador/a',
-                'Regidor/a', // si prefieres tenerlo solo en Realización, elimínalo aquí
                 'Ayudante de Decoración',
-            ],
-
-            // === Ambientación ===
-            'Ambientación' => [
-                'Ambientador/a',
-                'Ayudante de Ambientación',
-                'Auxiliar de Ambientación',
-                'Asistencia de Rodaje',
             ],
 
             // === Atrezzo ===
@@ -231,8 +207,8 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
                 'Ayudante de Atrezzo',
             ],
 
-            // === Construcción decorados ===
-            'Construcción decorados' => [
+            // === Construcción ===
+            'Construcción' => [
                 'Jefe/a de Construcción',
                 'Jefe/a de Carpintería',           // FIX “Jede” → “Jefe/a”
                 'Jefe/a de Pintura/Empapelado',    // FIX “Epapelado” → “Empapelado”
@@ -244,8 +220,8 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
                 'Estructurista',
             ],
 
-            // === Estilismo ===
-            'Estilismo' => [
+            // === Vestuario ===
+            'Vestuario' => [
                 'Estilista',
                 'Figurinista',
                 'Estilista / Figurinista',
@@ -255,55 +231,61 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
                 'Auxiliar de Estilismo / Auxiliar de Figurinista',
             ],
 
-            // === Maquillaje ===
-            'Maquillaje' => [
+            // === Maquillaje y Peluquería ===
+            'Maquillaje y Peluquería' => [
                 'Jefe/a de Maquillaje',
                 'Maquillador/a',
                 'Ayudante de Maquillaje',
                 'Auxiliar de Maquillaje',
-            ],
-
-            // === Peluquería ===
-            'Peluquería' => [
                 'Jefe/a de Peluquería',
                 'Peluquero/a',
                 'Ayudante de Peluquería',
                 'Auxiliar de Peluquería',
             ],
 
-            // === Genérico ===
-            'Edición de Vídeo' => [
+            // === SFX ===
+            'SFX' => [
+                'Técnico/a de SFX',
+                'Supervisor/a de SFX',
+            ],
+
+            // === Postproducción ===
+            'Postproducción' => [
                 'Editor/a Montador/a de Vídeo',
                 'Editor/a de Vídeo',
                 'Operador/a de VTR',
-            ],
-            'Edición de Audio' => [
                 'Editor/a de Audio',
                 'Ayudante de Edición de Audio',
-            ],
-            'Montaje' => [
                 'Montador/a de Imagen',
                 'Ayudante de Montaje de Imagen',
                 'Auxiliar de Montaje de Imagen',
                 'Montador/a de Sonido',
                 'Ayudante de Montaje de Sonido',
             ],
-            'Equipo Técnico (AV)' => [
-                'Jefe/a Técnico/a',
-                'Técnico/a de Audio Vídeo',
-                'Ayudante Técnico/a de Audio Vídeo',
-            ],
-            'Guionistas' => [
-                'Coordinador/a de Guiones',
-                'Guionista de Ficción',
-                'Guionista de No Ficción', // FIX
-            ],
-            'Contabilidad (Administración y Servicios Generales)' => [
+
+            // === Contabilidad ===
+            'Contabilidad' => [
                 'Contable de Producción',
                 'Ayudante de Contabilidad',
                 'Cajero/a - Pagador/a',
                 'Auxiliar Administrativo/a',
                 'Meritorio/a',
+            ],
+
+            // === Sostenibilidad ===
+            'Sostenibilidad' => [
+                'Responsable de Sostenibilidad',
+            ],
+
+            // === Veterinario y Animales ===
+            'Veterinario y Animales' => [
+                'Veterinario/a',
+                'Cuidador/a de Animales',
+            ],
+
+            // === Home Economist ===
+            'Home Economist' => [
+                'Home Economist',
             ],
         ];
 
