@@ -1,3 +1,6 @@
 /.codegraph/
 .env
 .env.prod
+
+# Local database dumps
+/backups/

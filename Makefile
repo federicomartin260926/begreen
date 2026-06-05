@@ -6,15 +6,23 @@
 #   make dev-update
 #   make deploy-prod
 #
-# DEV usa .env de raíz.
-# PROD usa .env.prod de raíz.
+# DEV usa:
+#   app/.env
+#   app/.env.local
 #
-# Symfony mantiene su propia configuración dentro de app/.env, app/.env.local,
-# app/.env.prod, etc. Este Makefile controla Docker Compose.
+# PROD usa:
+#   app/.env
+#   app/.env.prod
+#
+# Nota:
+# - El Makefile está en raíz, pero los compose siguen en app/.
+# - Se fuerza PROJECT_NAME=app para mantener nombres/volúmenes históricos.
 # =============================================================================
 
-COMPOSE_DEV := docker compose --env-file .env -f app/docker-compose.yml -f app/docker-compose.dev.yml
-COMPOSE_PROD := docker compose --env-file .env.prod -f app/docker-compose.yml -f app/docker-compose.prod.yml
+PROJECT_NAME := begreen
+
+COMPOSE_DEV := docker compose -p $(PROJECT_NAME) --env-file app/.env --env-file app/.env.local -f app/docker-compose.yml -f app/docker-compose.dev.yml
+COMPOSE_PROD := docker compose -p $(PROJECT_NAME) --env-file app/.env --env-file app/.env.prod -f app/docker-compose.yml -f app/docker-compose.prod.yml
 
 PHP_DEV := $(COMPOSE_DEV) exec php
 PHP_PROD := $(COMPOSE_PROD) exec php
@@ -40,7 +48,7 @@ help:
 	@echo "  make up-build                   Levanta dev reconstruyendo imágenes"
 	@echo "  make dev-update                 git pull + up + composer install + assets build + cache clear"
 	@echo "  make dev-update-build           git pull + up-build + composer install + assets build + cache clear"
-	@echo "  make dev-reset-fixtures         Actualiza dev y recarga schema + fixtures"
+	@echo "  make dev-reset-fixtures         git pull + up + schema update + fixtures"
 	@echo ""
 	@echo "DEV - utilidades"
 	@echo "  make down                       Baja dev"
@@ -74,15 +82,21 @@ help:
 	@echo "  make shell-prod                 Shell dentro del contenedor php prod"
 	@echo "  make console-prod ARGS='...'    Ejecuta bin/console en prod"
 	@echo "  make composer-install-prod      composer install --no-dev en prod"
+	@echo "  make assets-install-prod        npm ci en prod"
 	@echo "  make assets-build-prod          npm run build en prod"
 	@echo "  make cache-clear-prod           Limpia cache prod"
 	@echo "  make schema-dump-prod           Muestra SQL de schema:update en prod"
 	@echo "  make schema-update-prod         Aplica doctrine:schema:update --force en prod"
 	@echo ""
-	@echo "Notas:"
-	@echo "  DEV  usa:  docker compose --env-file .env      -f app/docker-compose.yml -f app/docker-compose.dev.yml"
-	@echo "  PROD usa:  docker compose --env-file .env.prod -f app/docker-compose.yml -f app/docker-compose.prod.yml"
-	@echo "  Mailpit local: configurar APP_MAILPIT_WEB_PORT en .env de raíz."
+	@echo "Entornos usados:"
+	@echo "  DEV  -> app/.env + app/.env.local"
+	@echo "  PROD -> app/.env + app/.env.prod"
+	@echo ""
+	@echo "Mailpit local:"
+	@echo "  Configurar en app/.env.local:"
+	@echo "    APP_MAILPIT_SMTP_PORT=1027"
+	@echo "    APP_MAILPIT_WEB_PORT=8027"
+	@echo "  UI: http://127.0.0.1:8027"
 	@echo ""
 
 # =============================================================================
