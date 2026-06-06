@@ -18,7 +18,13 @@
 
     /* Tablas de resumen y detalle */
     .summary-table, .detail-table { width: 100%; border-collapse: collapse; margin: 0 0 18px; }
+    .detail-table { table-layout: fixed; }
     th, td { border: 1px solid #999; padding: 6px; text-align: left; vertical-align: top; }
+    .detail-table th,
+    .detail-table td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     th { background-color: rgba(63, 195, 138, 0.40); }
     .page-break { page-break-before: always; }
 
@@ -91,7 +97,7 @@
       <ul style="margin:6px 0 0 20px;padding:0;">
         <li>{{ 'backend.plan.pdf.follow_up.to_implement'|trans }}: {{ collaborationSummary.toImplement }}</li>
         <li>{{ 'backend.plan.pdf.follow_up.implemented'|trans }}: {{ collaborationSummary.implemented }}</li>
-        <li>{{ 'backend.plan.pdf.follow_up.verified'|trans }}: {{ collaborationSummary.verified }}</li>
+        <li>{{ 'backend.plan.pdf.follow_up.verified_count'|trans }}: {{ collaborationSummary.verified }}</li>
         <li>{{ 'backend.plan.pdf.follow_up.evidences'|trans }}: {{ collaborationSummary.evidenceFiles }}</li>
       </ul>
     </div>
@@ -124,6 +130,17 @@
           </td>
         </tr>
       </table>
+    </div>
+  {% endif %}
+
+  {% if commitmentSummary is defined %}
+    {% set hiddenMeasures = commitmentSummary.catalogMeasures - commitmentSummary.officialMeasures %}
+    <div style="margin:0 0 16px;font-size:12px;background-color:#eff6ff;border:1px solid #bfdbfe;padding:8px 12px;border-radius:4px;">
+      {{ 'backend.plan.tier.catalog_breakdown'|trans({
+        '%included%': commitmentSummary.catalogMeasures,
+        '%visible%': commitmentSummary.officialMeasures,
+        '%skipped%': hiddenMeasures
+      }) }}
     </div>
   {% endif %}
 
@@ -274,12 +291,12 @@
             </td>
             <td>
               {% if pm.publicComment %}
-                <div style="white-space:pre-wrap;">{{ pm.publicComment }}</div>
+                <div style="white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;">{{ pm.publicComment }}</div>
               {% else %}
                 —
               {% endif %}
               {% if pm.measure and pm.measure.description %}
-                <div style="font-size:10px;color:#666;margin-top:4px;">{{ pm.measure.description }}</div>
+                <div style="font-size:10px;color:#666;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;">{{ pm.measure.description }}</div>
               {% endif %}
             </td>
             <td>{{ pm.measure.esg.name|default('—') }}</td>

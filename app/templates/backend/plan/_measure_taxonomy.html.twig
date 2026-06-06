@@ -1,4 +1,5 @@
 {% import '_macros/logos.html.twig' as logos %}
+{% set showVerificationSources = showVerificationSources is defined ? showVerificationSources : true %}
 
 {% set departments = taxonomyPresenter.departments(measure) %}
 {% if departments is not empty %}
@@ -45,17 +46,19 @@
     </dd>
 {% endif %}
 
-{% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
-{% if verificationLinks is not empty %}
-    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
-    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }}">
-        <ol class="mb-0 ps-3">
-            {% for link in verificationLinks %}
-                <li>{{ link.priority }}. {{ link.name }}</li>
-            {% endfor %}
-        </ol>
-    </dd>
-{% elseif measure.verificationSources %}
-    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
-    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }}">{{ measure.verificationSources }}</dd>
+{% if showVerificationSources %}
+    {% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
+    {% if verificationLinks is not empty %}
+        <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
+        <dd class="{{ ddClass|default('col-md-8 col-lg-10') }}">
+            <ol class="mb-0 ps-3">
+                {% for link in verificationLinks %}
+                    <li>{{ link.priority }}. {{ link.name }}</li>
+                {% endfor %}
+            </ol>
+        </dd>
+    {% elseif measure.verificationSources %}
+        <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
+        <dd class="{{ ddClass|default('col-md-8 col-lg-10') }}">{{ measure.verificationSources }}</dd>
+    {% endif %}
 {% endif %}

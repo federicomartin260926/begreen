@@ -16,6 +16,7 @@ use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{Request, Response, JsonResponse};
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -229,37 +230,17 @@ class PlanController extends AbstractController
         }
 
         // ===== Medidas del protocolo seleccionado (ORDER BY dinámico: categoría o departamento) =====
-        $qb = $measureRepository->createQueryBuilder('m')
-            ->join('m.protocol', 'p')
-            ->leftJoin('m.category', 'c')
-            ->leftJoin('m.department', 'd')
-            ->andWhere('p = :protocol')
-            ->setParameter('protocol', $protocol);
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
+        $qb = $this->createVisibleMeasuresQueryBuilder($measureRepository, $protocol, $project);
 
-        if ($isDept) {
-            // Orden principal por Departamento
-            $qb->addOrderBy('d.name', 'ASC')
-            ->addOrderBy('m.name', 'ASC');
-        } else {
-            // Orden principal por Categoría (comportamiento actual)
-            $qb->addOrderBy('c.name', 'ASC')
-            ->addOrderBy('m.name', 'ASC');
-        }
-
-        $measures = $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
+        $allMeasures = $qb->getQuery()->getResult();
+        $catalogMeasuresTotal = count($allMeasures);
+        $measures = $this->filterMeasuresBySkippedBlocks($allMeasures, $plan);
 
         $total = count($measures);
         $index = $request->query->has('i')
             ? max(0, min($total - 1, $request->query->getInt('i', 0)))
             : $this->resumeService->resolveIndex($measures, $plan->getPlanMeasures());
         $currentMeasure = $measures[$index] ?? null;
-
-        // ¿Plan completo?
-        $planComplete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepository);
-        if ($planComplete && $index > 0) {
-            return $this->redirectToRoute('backend_plan_measures');
-        }
 
         // ===== START mensajes de "cambios de grupo" (categoría/departamento) =====
         $session   = $request->getSession();
@@ -329,7 +310,11 @@ class PlanController extends AbstractController
                 $canGoNext = true;
             } elseif ($applies === true) {
                 if ($critical !== null && $willImpl !== null) {
-                    $canGoNext = true;
+                    if ($critical === true && !$this->hasCriticalReason($currentPm)) {
+                        $canGoNext = false;
+                    } else {
+                        $canGoNext = true;
+                    }
                 }
             }
         }
@@ -418,6 +403,7 @@ class PlanController extends AbstractController
             // navegación y medida actual
             'index'            => $index,
             'total'            => $total,
+            'catalogMeasuresTotal' => $catalogMeasuresTotal,
             'measure'          => $planComplete ? null : $currentMeasure,
             'planMeasures'     => $visiblePlanMeasures,
             'canGoNext'        => !$planComplete && $canGoNext,
@@ -884,6 +870,9 @@ class PlanController extends AbstractController
             case 'criticalReason':
             case 'critical_reason':
                 $text = trim((string)($value ?? ''));
+                if ($response = $this->validateCriticalReasonField($planMeasure, $text)) {
+                    return $response;
+                }
                 $planMeasure->setCriticalReason($text !== '' ? $text : null);
                 $planMeasure->markAsManual();
                 break;
@@ -891,6 +880,9 @@ class PlanController extends AbstractController
             case 'willImplement':
                 // Solo permitir elegir implementar si aplica === true y la crítica fue respondida (null=no respondida)
                 if ($planMeasure->isApplicable() === true && $planMeasure->isCritical() !== null) {
+                    if ($response = $this->validateCriticalReasonBeforeImplementing($planMeasure)) {
+                        return $response;
+                    }
                     $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
                     $planMeasure->setWillImplement($bool);
                     $planMeasure->markAsManual();
@@ -979,7 +971,38 @@ class PlanController extends AbstractController
         $plan->setStatusChangedAt(new \DateTimeImmutable());
         $em->flush();
 
-        return new JsonResponse(['success' => true]);
+        $nextUrl = null;
+        if ($this->isTerminalSelectionAction($field, $value)) {
+            $pendingMeasure = $this->findFirstPendingVisibleMeasure($plan, $project, $measureRepo);
+            if ($complete) {
+                $nextUrl = $this->generateUrl('backend_plan_done');
+            } elseif ($pendingMeasure !== null) {
+                $pendingIndex = $pendingMeasure['index'] ?? null;
+                if (!is_int($pendingIndex) || $pendingIndex < 0) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
+                    ], 409);
+                }
+
+                $this->addFlash(
+                    'warning',
+                    $this->pendingMeasureFlashMessage((string) ($pendingMeasure['reason'] ?? ''))
+                );
+
+                $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $pendingIndex]);
+            } else {
+                return new JsonResponse([
+                    'success' => false,
+                    'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
+                ], 409);
+            }
+        }
+
+        return new JsonResponse([
+            'success' => true,
+            'nextUrl' => $nextUrl,
+        ]);
     }
 
     private function handleSendEtEmails(
@@ -1119,38 +1142,30 @@ class PlanController extends AbstractController
         Project $project,
         MeasureRepository $measureRepository
     ): bool {
+        return !$this->hasPendingVisibleMeasures($plan, $project, $measureRepository);
+    }
+
+    private function hasPendingVisibleMeasures(
+        Plan $plan,
+        Project $project,
+        MeasureRepository $measureRepository
+    ): bool {
+        return $this->findFirstPendingVisibleMeasure($plan, $project, $measureRepository) !== null;
+    }
+
+    /**
+     * @return Measure[]
+     */
+    private function getVisibleMeasuresForProtocol(Plan $plan, Project $project, MeasureRepository $measureRepository): array
+    {
         $protocol = $plan->getProtocol();
-        if (!$protocol) return false;
-
-        $measures = $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepository);
-
-        $pmByMeasureId = [];
-        foreach ($this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan) as $pm) {
-            $measure = $pm->getMeasure();
-            if (!$measure || !$this->catalogResolver->isCatalogMeasure($measure, $project)) {
-                continue;
-            }
-            if ($measure->getProtocol()?->getId() === $protocol->getId()) {
-                $pmByMeasureId[$measure->getId()] = $pm;
-            }
+        if (!$protocol) {
+            return [];
         }
 
-        foreach ($measures as $m) {
-            $pm = $pmByMeasureId[$m->getId()] ?? null;
-            if (!$pm) return false;
+        $qb = $this->createVisibleMeasuresQueryBuilder($measureRepository, $protocol, $project);
 
-            $applies  = $pm->isApplicable();   // null|bool
-            $critical = $pm->isCritical();     // null|bool
-            $willImpl = $pm->willImplement();  // null|bool
-
-            if ($applies === null) return false;
-            if ($applies === true) {
-                if ($critical === null) return false;
-                if ($willImpl === null)  return false;
-            }
-        }
-
-        return true;
+        return $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
     }
 
     #[Route('/upload-evidences', name: 'upload_evidences', methods: ['POST'])]
@@ -1885,6 +1900,71 @@ class PlanController extends AbstractController
     }
 
     /**
+     * @return array{measure: Measure, index: int, reason: string}|null
+     */
+    private function findFirstPendingVisibleMeasure(
+        Plan $plan,
+        Project $project,
+        MeasureRepository $measureRepository
+    ): ?array {
+        $protocol = $plan->getProtocol();
+        if (!$protocol) {
+            return null;
+        }
+
+        foreach ($this->getVisibleMeasuresForProtocol($plan, $project, $measureRepository) as $index => $measure) {
+            $planMeasure = $this->findPlanMeasureForMeasure($plan, $measure);
+            if (!$planMeasure instanceof PlanMeasure) {
+                return [
+                    'measure' => $measure,
+                    'index'   => (int) $index,
+                    'reason'  => 'missing_plan_measure',
+                ];
+            }
+
+            if ($planMeasure->getApplicabilitySource() === 'block_skip') {
+                continue;
+            }
+
+            if ($planMeasure->isApplicable() === null) {
+                return [
+                    'measure' => $measure,
+                    'index'   => (int) $index,
+                    'reason'  => 'applicability_missing',
+                ];
+            }
+
+            if ($planMeasure->isApplicable() === true) {
+                if ($planMeasure->isCritical() === null) {
+                    return [
+                        'measure' => $measure,
+                        'index'   => (int) $index,
+                        'reason'  => 'critical_missing',
+                    ];
+                }
+
+                if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
+                    return [
+                        'measure' => $measure,
+                        'index'   => (int) $index,
+                        'reason'  => 'critical_reason_missing',
+                    ];
+                }
+
+                if ($planMeasure->willImplement() === null) {
+                    return [
+                        'measure' => $measure,
+                        'index'   => (int) $index,
+                        'reason'  => 'will_implement_missing',
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param iterable<int, PlanMeasure> $planMeasures
      * @return array<int, PlanMeasure>
      */
@@ -1907,6 +1987,66 @@ class PlanController extends AbstractController
         }
 
         return $result;
+    }
+
+    private function hasCriticalReason(PlanMeasure $planMeasure): bool
+    {
+        return trim((string) ($planMeasure->getCriticalReason() ?? '')) !== '';
+    }
+
+    private function validateCriticalReasonField(PlanMeasure $planMeasure, string $text): ?JsonResponse
+    {
+        if ($text === '' && $planMeasure->isCritical() === true) {
+            return new JsonResponse([
+                'success' => false,
+                'error'   => $this->criticalReasonRequiredMessage(),
+            ], 400);
+        }
+
+        return null;
+    }
+
+    private function validateCriticalReasonBeforeImplementing(PlanMeasure $planMeasure): ?JsonResponse
+    {
+        if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
+            return new JsonResponse([
+                'success' => false,
+                'error'   => $this->criticalReasonRequiredMessage(),
+            ], 400);
+        }
+
+        return null;
+    }
+
+    private function criticalReasonRequiredMessage(): string
+    {
+        return $this->t->trans('backend.plan.measures.critical_reason_required');
+    }
+
+    private function pendingMeasureFlashMessage(string $reason): string
+    {
+        return match ($reason) {
+            'critical_reason_missing' => 'backend.plan.flash.pending_critical_reason',
+            default => 'backend.plan.flash.pending_measure',
+        };
+    }
+
+    private function isTerminalSelectionAction(string $field, mixed $value): bool
+    {
+        if ($field === 'willImplement') {
+            return true;
+        }
+
+        return $field === 'isApplicable' && $value === 'false';
+    }
+
+    private function resolveTerminalSelectionNextUrl(bool $planComplete, int $nextIndex): string
+    {
+        if ($planComplete) {
+            return $this->generateUrl('backend_plan_done');
+        }
+
+        return $this->generateUrl('backend_plan_measures', ['i' => $nextIndex]);
     }
 
     private function findBlockAnswer(Plan $plan, ?MeasureBlock $block): ?SustainabilityPlanBlockAnswer
@@ -1940,16 +2080,12 @@ class PlanController extends AbstractController
         return null;
     }
 
-    /**
-     * @return Measure[]
-     */
-    private function getVisibleMeasuresForProtocol(Plan $plan, Project $project, MeasureRepository $measureRepository): array
+    private function createVisibleMeasuresQueryBuilder(
+        MeasureRepository $measureRepository,
+        Protocol $protocol,
+        Project $project
+    ): QueryBuilder
     {
-        $protocol = $plan->getProtocol();
-        if (!$protocol) {
-            return [];
-        }
-
         $qb = $measureRepository->createQueryBuilder('m')
             ->join('m.protocol', 'p')
             ->leftJoin('m.category', 'c')
@@ -1957,9 +2093,16 @@ class PlanController extends AbstractController
             ->andWhere('p = :protocol')
             ->setParameter('protocol', $protocol);
         $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
-        $qb->addOrderBy('m.id', 'ASC');
 
-        return $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
+        if ($protocol->getGroupingBy() === Protocol::GROUP_BY_DEPARTMENT) {
+            $qb->addOrderBy('d.name', 'ASC')
+                ->addOrderBy('m.name', 'ASC');
+        } else {
+            $qb->addOrderBy('c.name', 'ASC')
+                ->addOrderBy('m.name', 'ASC');
+        }
+
+        return $qb;
     }
 
     /**

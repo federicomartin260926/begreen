@@ -133,6 +133,7 @@ final class SustainabilityCommitmentLevelServiceTest extends TestCase
         $summary = $service->buildSummary($plan, $project);
 
         self::assertSame(5, $summary['totalOfficialPoints']);
+        self::assertSame(2, $summary['catalogMeasures']);
         self::assertSame(1, $summary['officialMeasures']);
         self::assertSame(5, $summary['planned']['points']);
         self::assertSame(5, $summary['implemented']['points']);

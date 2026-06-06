@@ -65,7 +65,7 @@
                         {{ measure.displayNameForReview }}
                         {% if measure.score is not null %}
                             <span class="badge bg-light text-dark border ms-2" title="{{ 'backend.plan.review.score_badge_title'|trans }}">
-                                <i class="bi bi-star-fill text-warning me-1"></i>{{ measure.score }}
+                                <i class="bi bi-star-fill text-warning me-1"></i>{{ measure.score }} {{ 'backend.common.points'|trans }}
                             </span>
                         {% endif %}
                         {% if is_granted('ROLE_SUPER_ADMIN') %}
@@ -101,7 +101,8 @@
                                             measure: measure,
                                             taxonomyPresenter: taxonomyPresenter,
                                             dtClass: 'col-md-3 col-lg-2',
-                                            ddClass: 'col-md-9 col-lg-10'
+                                            ddClass: 'col-md-9 col-lg-10',
+                                            showVerificationSources: false
                                         } %}
                                     </div>
                                 </div>
@@ -385,12 +386,14 @@
                                                         id="observations-{{ measure.id }}"
                                                         class="form-control"
                                                         rows="2"
+                                                        autocomplete="off"
                                                         placeholder="{{ 'backend.plan.review.public_comment_ph'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
                                                 {% else %}
                                                     <textarea
                                                         id="observations-{{ measure.id }}"
                                                         class="form-control"
                                                         rows="2"
+                                                        autocomplete="off"
                                                         disabled
                                                         placeholder="{{ 'backend.plan.review.available_in_pro'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
                                                 {% endif %}

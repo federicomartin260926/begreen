@@ -19,6 +19,7 @@ final class SustainabilityCommitmentLevelService
     /**
      * @return array{
      *     totalOfficialPoints:int,
+     *     catalogMeasures:int,
      *     officialMeasures:int,
      *     planned: array{
      *         points:int,
@@ -92,6 +93,7 @@ final class SustainabilityCommitmentLevelService
 
         return [
             'totalOfficialPoints' => $totalOfficialPoints,
+            'catalogMeasures' => count($catalogMeasures),
             'officialMeasures' => count($visibleCatalogMeasures),
             'planned' => $this->buildLevelBlock($plannedPoints, $totalOfficialPoints),
             'implemented' => $this->buildLevelBlock($implementedPoints, $totalOfficialPoints),
@@ -193,6 +195,7 @@ final class SustainabilityCommitmentLevelService
     /**
      * @return array{
      *     totalOfficialPoints:int,
+     *     catalogMeasures:int,
      *     officialMeasures:int,
      *     planned: array{
      *         points:int,
@@ -218,6 +221,7 @@ final class SustainabilityCommitmentLevelService
     {
         return [
             'totalOfficialPoints' => 0,
+            'catalogMeasures' => 0,
             'officialMeasures' => 0,
             'planned' => $this->buildLevelBlock(0, 0),
             'implemented' => $this->buildLevelBlock(0, 0),

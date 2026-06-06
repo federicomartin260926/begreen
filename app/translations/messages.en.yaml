@@ -879,7 +879,9 @@ backend:
     measures:
       no_items: "No measures available."
       mandatory_warning: "This measure is mandatory. You must select “Applies” and “Will be implemented” to continue."
-    progress: "Measure %current% of %total%"
+      critical_reason_required: "You must write a reason when the measure is critical."
+    progress_applicable: "Measure %current% of %total% applicable"
+    progress_included: "%total% included in your plan"
     category:
       done: "You’ve finished all measures for <strong>%prev%</strong>!"
       next: "Let’s continue with the category <strong>%next%</strong>"
@@ -936,6 +938,9 @@ backend:
       select_protocol_to_continue: "Select a protocol to continue."
       completed: "Plan completed. You can review and export it!"
       saved_incomplete: "Saved. There are still measures to be answered."
+      pending_measure: "There is a previous measure that must be completed before finishing the plan."
+      pending_critical_reason: "Complete the criticality reason to continue."
+      validation_unexpected_error: "An unexpected error occurred while validating the plan. Delete the plan and start again."
       no_plan_for_project: "There is no plan for this project."
       deleted: "Plan deleted."
       delete_failed: "The plan could not be deleted."

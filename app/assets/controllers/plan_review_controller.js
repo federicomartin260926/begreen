@@ -323,6 +323,10 @@ export default class extends Controller {
           this.showModal(this.t('modal.missing_title'), this.t('save_missing_fields_html'));
           return;
         }
+        if (valCritical === 'true' && reasonText === '') {
+          this.showModal(this.t('modal.missing_title'), this.t('critical_reason_required_html'));
+          return;
+        }
         if (valApplies !== null)    updates.push({ field: 'isApplicable',    value: valApplies });
         if (valCritical !== null)   updates.push({ field: 'critical',        value: valCritical });
         if (valCritical === 'true') updates.push({ field: 'critical_reason', value: reasonText });

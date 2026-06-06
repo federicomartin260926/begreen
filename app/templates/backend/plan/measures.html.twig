@@ -8,7 +8,13 @@
 {% endblock %}
 
 {% block body %}
-<div class="container my-4" data-controller="plan-measures">
+<div
+    class="container my-4"
+    data-controller="plan-measures"
+    data-current-index="{{ index }}"
+    data-total-measures="{{ total }}"
+    data-review-url="{{ path('backend_plan_review') }}"
+    data-critical-reason-error="{{ 'backend.plan.measures.critical_reason_required'|trans|e('html_attr') }}">
     <div class="row justify-content-center">
         <div class="col-12 bg-white p-4 rounded shadow">
 
@@ -80,7 +86,7 @@
                                 data-bs-trigger="hover"
                                 data-bs-html="true"
                                 data-bs-content="{{ 'backend.plan.score.total_popover'|trans({'%gained%': scoreGained, '%max%': scoreMax})|e('html_attr') }}">
-                                <i class="bi bi-star-fill me-1 text-warning me-2"></i>{{ scoreGained }} / {{ scoreMax }}
+                                <i class="bi bi-star-fill me-1 text-warning me-2"></i>{{ scoreGained }} {{ 'backend.common.points'|trans }} / {{ scoreMax }} {{ 'backend.common.points'|trans }}
                             </div>
                         {% endif %}
                         <div
@@ -90,7 +96,7 @@
                             data-bs-html="true"
                             data-bs-content="{{ 'backend.plan.score.current_popover'|trans({'%score%': (measure.score is not null ? measure.score : 0)})|e('html_attr') }}">
                             {{ 'backend.plan.score.current_label'|trans }}
-                            <i class="bi bi-star-fill ms-1 me-1 text-warning"></i>{{ measure.score is not null ? measure.score : '—' }}
+                            <i class="bi bi-star-fill ms-1 me-1 text-warning"></i>{{ measure.score is not null ? (measure.score ~ ' ' ~ 'backend.common.points'|trans) : '—' }}
                         </div>
                     {% endif %}
                 </div>
@@ -317,7 +323,10 @@
 
                     <div class="text-muted">
                         {% if total > 0 %}
-                            {{ 'backend.plan.progress'|trans({'%current%': index + 1, '%total%': total}) }}
+                            {{ 'backend.plan.progress_applicable'|trans({'%current%': index + 1, '%total%': total}) }}
+                            {% if catalogMeasuresTotal is defined and catalogMeasuresTotal > total %}
+                                · {{ 'backend.plan.progress_included'|trans({'%total%': catalogMeasuresTotal}) }}
+                            {% endif %}
                         {% else %}
                             —
                         {% endif %}

@@ -20,31 +20,44 @@
         <h1 class="mb-3">{{ 'backend.plan.welcome.h1'|trans }}</h1>
         <h2 class="h5 mb-3">{{ 'backend.plan.welcome.h2'|trans }}</h2>
         <p class="mb-4">{{ 'backend.plan.welcome.intro'|trans }}</p>
-        <button id="btn-start" class="btn btn-success px-4">{{ 'backend.plan.welcome.start_btn'|trans }}</button>
+        {% if protocols|length > 1 %}
+          <button id="btn-start" class="btn btn-success px-4">{{ 'backend.plan.welcome.start_btn'|trans }}</button>
+        {% endif %}
       </section>
 
       {# Formulario selección de protocolo (manual, sin FormType) #}
-      <section id="protocol-form-block" class="d-none">
-        <h4 class="mb-3">{{ 'backend.plan.welcome.select_title'|trans }}</h4>
-
-        <form action="{{ path('backend_plan_select_protocol') }}" method="post" class="d-grid gap-3">
-          <div class="d-flex justify-content-center">
-            <select class="form-select w-auto mb-4" id="protocol_id" name="protocol_id" style="max-width:300px" required>
-              <option value="" selected disabled>{{ 'backend.plan.welcome.select_placeholder'|trans }}</option>
-              {% for proto in protocols %}
-                <option value="{{ proto.id }}" {% if plan.protocol and plan.protocol.id == proto.id %}selected{% endif %}>
-                  {{ proto.name }}
-                </option>
-              {% endfor %}
-            </select>
+      <section id="protocol-form-block" class="{% if protocols|length > 1 %}d-none{% endif %}">
+        {% if protocols|length == 1 %}
+          {% set proto = protocols|first %}
+          <div class="border rounded-4 p-4 bg-light text-center mx-auto" style="max-width: 520px;">
+            <form action="{{ path('backend_plan_select_protocol') }}" method="post">
+              <input type="hidden" name="protocol_id" value="{{ proto.id }}">
+              <p class="mb-4">{{ 'backend.plan.welcome.single_protocol_copy'|trans }}</p>
+              <button type="submit" class="btn btn-primary">{{ 'backend.plan.welcome.single_protocol_button'|trans }}</button>
+            </form>
           </div>
+        {% else %}
+          <h4 class="mb-3">{{ 'backend.plan.welcome.select_title'|trans }}</h4>
 
-          <p class="mb-4">{{ 'backend.plan.welcome.helper_text'|trans }}</p>
+          <form action="{{ path('backend_plan_select_protocol') }}" method="post" class="d-grid gap-3">
+            <div class="d-flex justify-content-center">
+              <select class="form-select w-auto mb-4" id="protocol_id" name="protocol_id" style="max-width:300px" required>
+                <option value="" selected disabled>{{ 'backend.plan.welcome.select_placeholder'|trans }}</option>
+                {% for proto in protocols %}
+                  <option value="{{ proto.id }}" {% if plan.protocol and plan.protocol.id == proto.id %}selected{% endif %}>
+                    {{ proto.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
 
-          <div class="d-flex justify-content-end">
-            <button type="submit" class="btn btn-primary">{{ 'backend.plan.welcome.continue'|trans }}</button>
-          </div>
-        </form>
+            <p class="mb-4">{{ 'backend.plan.welcome.helper_text'|trans }}</p>
+
+            <div class="d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary">{{ 'backend.plan.welcome.continue'|trans }}</button>
+            </div>
+          </form>
+        {% endif %}
       </section>
 
     </div>
