@@ -206,6 +206,210 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
+    public function testBlockQuestionYesKeepsCurrentMeasurePendingAndReturnsCurrentIndex(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $block = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('biodiversity')
+            ->setName('Biodiversidad')
+            ->setHasScreeningQuestion(true)
+            ->setScreeningQuestion('¿Se va a rodar en espacios naturales?');
+        $this->setEntityId($block, 301);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setMeasureBlock($block)
+            ->setScore(5);
+        $this->setEntityId($currentMeasure, 401);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($nextMeasure, 402);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setIsApplicable(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'blockQuestion',
+            'value' => 'true',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $persistedEntities = [];
+        $entityManager = $this->createEntityManagerMockForBlockQuestion($persistedEntities);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=0', (string) $data['nextUrl']);
+        self::assertCount(1, $persistedEntities);
+        self::assertSame($currentPlanMeasure, $persistedEntities[0]);
+        self::assertNull($currentPlanMeasure->isApplicable());
+        self::assertNull($currentPlanMeasure->willImplement());
+        self::assertNull($currentPlanMeasure->isCritical());
+        self::assertNull($currentPlanMeasure->getCriticalReason());
+    }
+
+    public function testBlockQuestionNoSkipsBlockAndReturnsFirstVisibleMeasureAfterBlock(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $previousMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($previousMeasure, 501);
+
+        $block = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('biodiversity')
+            ->setName('Biodiversidad')
+            ->setHasScreeningQuestion(true)
+            ->setScreeningQuestion('¿Se va a rodar en espacios naturales?');
+        $this->setEntityId($block, 302);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setMeasureBlock($block)
+            ->setScore(5);
+        $this->setEntityId($currentMeasure, 502);
+
+        $blockedSiblingMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setMeasureBlock($block)
+            ->setScore(5);
+        $this->setEntityId($blockedSiblingMeasure, 503);
+
+        $nextVisibleMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($nextVisibleMeasure, 504);
+
+        $previousPlanMeasure = (new PlanMeasure())
+            ->setMeasure($previousMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(false)
+            ->setWillImplement(true)
+            ->markAsManual();
+        $plan->addPlanMeasure($previousPlanMeasure);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $blockedSiblingPlanMeasure = (new PlanMeasure())
+            ->setMeasure($blockedSiblingMeasure)
+            ->setIsApplicable(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($blockedSiblingPlanMeasure);
+
+        $nextVisiblePlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextVisibleMeasure)
+            ->setIsApplicable(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($nextVisiblePlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'blockQuestion',
+            'value' => 'false',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([
+            $previousMeasure,
+            $currentMeasure,
+            $blockedSiblingMeasure,
+            $nextVisibleMeasure,
+        ], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $persistedEntities = [];
+        $entityManager = $this->createEntityManagerMockForBlockQuestion($persistedEntities);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertCount(1, $persistedEntities);
+        self::assertSame($currentPlanMeasure, $persistedEntities[0]);
+    }
+
     public function testSkippedBlockDoesNotPreventPlanCompletion(): void
     {
         $controller = $this->getController();
@@ -376,6 +580,22 @@ final class PlanControllerNavigationTest extends KernelTestCase
     {
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('persist')->with($planMeasure);
+        $entityManager->expects(self::exactly(2))->method('flush');
+
+        return $entityManager;
+    }
+
+    /**
+     * @param array<int, object> $persistedEntities
+     */
+    private function createEntityManagerMockForBlockQuestion(array &$persistedEntities): EntityManagerInterface
+    {
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())
+            ->method('persist')
+            ->willReturnCallback(static function (object $entity) use (&$persistedEntities): void {
+                $persistedEntities[] = $entity;
+            });
         $entityManager->expects(self::exactly(2))->method('flush');
 
         return $entityManager;

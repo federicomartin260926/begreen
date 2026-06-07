@@ -826,6 +826,7 @@ class PlanController extends AbstractController
         }
 
         // --- Mutaciones por campo ---
+        $nextUrl = null;
         switch ($field) {
             case 'blockQuestion':
                 $block = $measure->getMeasureBlock();
@@ -838,11 +839,62 @@ class PlanController extends AbstractController
                     return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
                 }
 
+                $visibleMeasuresBefore = $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepo);
+                $visibleIndexByMeasureId = [];
+                foreach ($visibleMeasuresBefore as $visibleIndex => $visibleMeasure) {
+                    $visibleMeasureId = $visibleMeasure->getId();
+                    if ($visibleMeasureId !== null) {
+                        $visibleIndexByMeasureId[(int) $visibleMeasureId] = (int) $visibleIndex;
+                    }
+                }
+
+                $currentMeasureId = $measure->getId();
+                if ($currentMeasureId === null || !isset($visibleIndexByMeasureId[(int) $currentMeasureId])) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
+                    ], 409);
+                }
+
+                $currentIndex = $visibleIndexByMeasureId[(int) $currentMeasureId];
                 $blockMeasures = array_values(array_filter(
-                    $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepo),
+                    $visibleMeasuresBefore,
                     static fn (Measure $candidate) => $candidate->getMeasureBlock()?->getId() === $block->getId()
                 ));
                 $this->blockQuestionService->applyAnswer($plan, $block, $applies, $user instanceof User ? $user : null, $blockMeasures);
+
+                if ($applies) {
+                    $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $currentIndex]);
+                } else {
+                    $visibleMeasuresAfter = $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepo);
+                    $nextVisibleMeasureIndex = null;
+
+                    foreach ($visibleMeasuresAfter as $visibleIndex => $visibleMeasure) {
+                        $visibleMeasureId = $visibleMeasure->getId();
+                        if ($visibleMeasureId === null) {
+                            continue;
+                        }
+
+                        $originalIndex = $visibleIndexByMeasureId[(int) $visibleMeasureId] ?? null;
+                        if (!is_int($originalIndex) || $originalIndex <= $currentIndex) {
+                            continue;
+                        }
+
+                        $nextVisibleMeasureIndex = (int) $visibleIndex;
+                        break;
+                    }
+
+                    if ($nextVisibleMeasureIndex !== null) {
+                        $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $nextVisibleMeasureIndex]);
+                    } elseif ($this->isPlanCompleteForProtocol($plan, $project, $measureRepo)) {
+                        $nextUrl = $this->generateUrl('backend_plan_done');
+                    } else {
+                        return new JsonResponse([
+                            'success' => false,
+                            'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
+                        ], 409);
+                    }
+                }
                 break;
 
             case 'isApplicable':
@@ -971,7 +1023,6 @@ class PlanController extends AbstractController
         $plan->setStatusChangedAt(new \DateTimeImmutable());
         $em->flush();
 
-        $nextUrl = null;
         if ($this->isTerminalSelectionAction($field, $value)) {
             $pendingMeasure = $this->findFirstPendingVisibleMeasure($plan, $project, $measureRepo);
             if ($complete) {
