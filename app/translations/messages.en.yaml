@@ -231,6 +231,7 @@ backend:
       allowed_scores: "Allowed scores"
       allowed_scores_heading: "Allowed scores"
       features_heading: "Main features"
+      features_info_button: "More information"
       pdf_by_departments: "Department PDF"
       pdf_by_departments_help: "Enables the department PDF and the associated export."
       advanced_exports: "Advanced exports"
@@ -242,6 +243,16 @@ backend:
       custom_measures: "Custom measures"
       validation_summary: "Validation summary"
       branding: "Branding"
+      features_info_modal:
+        pdf_by_departments: "Allows generating the plan/PDF grouped by department. Useful for giving each filming area its own responsibilities."
+        advanced_exports: "Enables richer or segmented exports, for example by categories, departments, impact areas, triple bottom line, SDGs or other catalog criteria."
+        public_comments: "Allows adding project-specific comments to measures or plan sections, so the report can fit the real client case."
+        internal_notes: "Allows saving private team notes that do not necessarily appear in the final PDF. Useful for internal management and follow-up."
+        responsibles: "Allows assigning people or areas responsible for specific measures, so it is clear who must execute or validate each action."
+        checklist: "Turns measures into an operational tracking list, marking tasks, progress or pending items."
+        custom_measures: "Allows creating custom measures outside the base catalog, adapted to the project's specific needs."
+        validation_summary: "Adds a validation status view/summary: completed, pending and verified measures, evidence and progress level."
+        branding: "Allows customizing the output or presentation with visual identity: logo, brand or client/project elements, depending on what the plan supports."
     flash:
       updated: "Commercial plan updated successfully."
   measures:

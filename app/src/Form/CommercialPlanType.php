@@ -103,7 +103,7 @@ final class CommercialPlanType extends AbstractType
                 'mapped' => false,
                 'required' => false,
                 'data' => $featureValue($plan, 'sustainability_plan.department_pdf'),
-                'help' => 'backend.commercial_plans.form.pdf_by_departments_help',
+                // 'help' => 'backend.commercial_plans.form.pdf_by_departments_help',
             ])
             ->add('advancedExports', CheckboxType::class, [
                 'label' => 'backend.commercial_plans.form.advanced_exports',
@@ -116,7 +116,7 @@ final class CommercialPlanType extends AbstractType
                 'mapped' => false,
                 'required' => false,
                 'data' => $featureValue($plan, 'sustainability_plan.public_comments'),
-                'help' => 'backend.commercial_plans.form.public_comments_help',
+                // 'help' => 'backend.commercial_plans.form.public_comments_help',
             ])
             ->add('internalNotes', CheckboxType::class, [
                 'label' => 'backend.commercial_plans.form.internal_notes',

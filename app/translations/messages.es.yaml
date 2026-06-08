@@ -233,6 +233,7 @@ backend:
       allowed_scores: "Puntuaciones permitidas"
       allowed_scores_heading: "Puntuaciones permitidas"
       features_heading: "Funciones principales"
+      features_info_button: "Más información"
       pdf_by_departments: "PDF por departamentos"
       pdf_by_departments_help: "Activa el PDF por departamentos y el export asociado."
       advanced_exports: "Exportaciones avanzadas"
@@ -244,6 +245,16 @@ backend:
       custom_measures: "Medidas custom"
       validation_summary: "Resumen de validación"
       branding: "Branding"
+      features_info_modal:
+        pdf_by_departments: "Permite generar el plan/PDF agrupando las medidas por departamento. Útil para entregar a cada área del rodaje sus responsabilidades."
+        advanced_exports: "Habilita exportaciones más completas o segmentadas, por ejemplo por categorías, departamentos, áreas de impacto, triple balance, ODS u otros criterios del catálogo."
+        public_comments: "Permite añadir comentarios propios del proyecto en medidas o apartados del plan, para adaptar el informe al caso real del cliente."
+        internal_notes: "Permite guardar observaciones privadas del equipo que no necesariamente salen en el PDF final. Sirve para gestión interna y seguimiento."
+        responsibles: "Permite asignar personas o áreas responsables a medidas concretas, para saber quién debe ejecutar o validar cada acción."
+        checklist: "Convierte las medidas en una lista operativa de seguimiento, marcando tareas, avances o puntos pendientes."
+        custom_measures: "Permite crear medidas personalizadas fuera del catálogo base, adaptadas a necesidades concretas del proyecto."
+        validation_summary: "Añade una vista/resumen del estado de validación: medidas completadas, pendientes, verificadas, evidencias y nivel de avance."
+        branding: "Permite personalizar la salida o presentación con identidad visual: logo, marca o elementos del cliente/proyecto, según lo que tenga implementado el plan."
     flash:
       updated: "Plan comercial actualizado correctamente."
   measures:
