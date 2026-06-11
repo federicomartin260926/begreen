@@ -272,6 +272,7 @@ backend:
     template:
       sheet_title: "Plantilla estándar de medidas"
       lists_sheet: "Listas"
+      order_note: "Para que el flujo del plan funcione correctamente, el orden de las medidas debe respetar la agrupación del protocolo y mantener juntos los bloques."
       headers:
         protocol: "Protocolo"
         project_type: "Tipo de proyecto"
@@ -352,6 +353,7 @@ backend:
       cta: "Importar"
       mime_invalid: "Por favor, sube un archivo Excel válido (.xlsx o .xls)."
       summary: "Importadas: %imported%. Actualizadas: %updated%. Duplicados: %duplicates%. Errores: %errors%."
+      order_note: "Antes de cargar la plantilla, verifica que las medidas sigan la agrupación del protocolo y que cada bloque quede junto."
       lang_info_title: "Importación en español con plantilla estándar de medidas y traducciones opcionales al inglés."
       lang_info_html: >
         <ul class="mb-0 ps-3">
@@ -370,6 +372,7 @@ backend:
       protocol: "Protocolo"
       category: "Categoría"
       measure_block: "Bloque"
+      sort_order: "Orden de visualización"
       departments: "Departamentos"
       ods_items: "ODS"
       esg: "ESG"
@@ -1660,6 +1663,7 @@ backend:
       grouping:
         category: "Categoría"
         department: "Departamento"
+      grouping_help: "Para que el flujo del plan funcione correctamente, organiza las medidas por categoría o departamento y, dentro de cada grupo, por bloques. Mantén juntas las medidas de un mismo bloque para que las preguntas previas y los saltos de bloque funcionen correctamente."
   aux:
     index:
       title: "Tablas auxiliares"

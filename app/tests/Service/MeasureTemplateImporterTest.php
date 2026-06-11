@@ -30,11 +30,11 @@ final class MeasureTemplateImporterTest extends TestCase
         $protocolPeach = (new Protocol())->setCode('peach')->setName('Peach')->setType(Protocol::TYPE_RODAJE);
         $protocolGreenFilm = (new Protocol())->setCode('green-film')->setName('Green Film')->setType(Protocol::TYPE_RODAJE);
 
-        $category = (new Category())->setName('Movilidad');
+        $category = (new Category())->setName('Movilidad')->setSortOrder(70);
         $categoryGhg = (new CategoryGhg())->setName('Emisiones indirectas de GEI debido al transporte');
-        $departmentProd = (new Department())->setCode('prod')->setName('Producción');
-        $departmentPost = (new Department())->setCode('post')->setName('Postproducción');
-        $departmentDir = (new Department())->setCode('dir')->setName('Dirección');
+        $departmentProd = (new Department())->setCode('prod')->setName('Producción')->setSortOrder(10);
+        $departmentPost = (new Department())->setCode('post')->setName('Postproducción')->setSortOrder(20);
+        $departmentDir = (new Department())->setCode('dir')->setName('Dirección')->setSortOrder(30);
         $ods12 = (new Ods())->setCode('ODS12')->setName('Producción y consumo responsables');
         $ods13 = (new Ods())->setCode('ODS13')->setName('Acción por el clima');
         $ods14 = (new Ods())->setCode('ODS14')->setName('Vida submarina');
@@ -76,7 +76,9 @@ final class MeasureTemplateImporterTest extends TestCase
 
                 return null;
             }),
-            Category::class => $this->createRepository(static fn (array $criteria): ?Category => ($criteria['name'] ?? null) === 'Movilidad' ? (new Category())->setName('Movilidad') : null),
+            Category::class => $this->createRepository(static function (array $criteria) use ($category): ?Category {
+                return ($criteria['name'] ?? null) === 'Movilidad' ? $category : null;
+            }),
             CategoryGhg::class => $this->createRepository(static fn (array $criteria): ?CategoryGhg => ($criteria['name'] ?? null) === 'Emisiones indirectas de GEI debido al transporte' ? (new CategoryGhg())->setName('Emisiones indirectas de GEI debido al transporte') : null),
             Department::class => $this->createRepository(static function (array $criteria) use ($departmentProd, $departmentPost, $departmentDir): ?Department {
                 $code = $criteria['code'] ?? null;
@@ -282,7 +284,91 @@ final class MeasureTemplateImporterTest extends TestCase
         self::assertSame(1, $persistedMeasures[0]->getResolvedVerificationSourceLinks()[0]->getPriority());
         self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia', $persistedMeasures[0]->getVerificationSourcesSummary());
         self::assertSame('v23', $persistedMeasures[0]->getImportVersion());
+        self::assertSame(70, $category->getSortOrder());
+        self::assertSame(10, $departmentProd->getSortOrder());
+        self::assertSame(20, $departmentPost->getSortOrder());
+        self::assertSame(30, $departmentDir->getSortOrder());
+        self::assertSame(2, $persistedMeasures[0]->getSortOrder());
         self::assertSame(3, $persistedMeasures[1]->getSourceRow());
+        self::assertSame(3, $persistedMeasures[1]->getSortOrder());
+    }
+
+    public function testImportUpdatesExistingMeasureWithZeroSortOrder(): void
+    {
+        $protocol = (new Protocol())->setCode('be-green-my-film')->setName('Be Green My Film')->setType(Protocol::TYPE_RODAJE);
+        $category = (new Category())->setName('Energía')->setSortOrder(10);
+        $department = (new Department())->setCode('prod')->setName('Producción')->setSortOrder(10);
+        $existingMeasure = (new Measure())->setProtocol($protocol)->setSortOrder(0);
+
+        $repositories = [
+            Protocol::class => $this->createRepository(static fn (array $criteria): ?Protocol => (($criteria['code'] ?? null) === 'be-green-my-film' || ($criteria['name'] ?? null) === 'Be Green My Film') ? $protocol : null),
+            Category::class => $this->createRepository(static fn (array $criteria): ?Category => ($criteria['name'] ?? null) === 'Energía' ? $category : null),
+            Department::class => $this->createRepository(static fn (array $criteria): ?Department => (($criteria['code'] ?? null) === 'prod' || ($criteria['name'] ?? null) === 'Producción') ? $department : null),
+            Measure::class => $this->createRepository(static fn (): ?Measure => $existingMeasure),
+            MeasureBlock::class => $this->createRepository(static fn (): ?MeasureBlock => null),
+            \Gedmo\Translatable\Entity\Translation::class => $this->createRepository(static fn (): ?object => null),
+        ];
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager
+            ->method('getRepository')
+            ->willReturnCallback(static function (string $class) use ($repositories) {
+                if (!isset($repositories[$class])) {
+                    throw new \RuntimeException(sprintf('Unexpected repository request for %s', $class));
+                }
+
+                return $repositories[$class];
+            });
+
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::once())->method('flush');
+
+        $connection = $this->createMock(Connection::class);
+        $connection->expects(self::once())->method('beginTransaction');
+        $connection->expects(self::once())->method('commit');
+        $entityManager->method('getConnection')->willReturn($connection);
+
+        $importer = new MeasureTemplateImporter(
+            $entityManager,
+            $this->createMock(TranslatableListener::class),
+            new MeasureCatalogAdminService(),
+        );
+
+        $report = new MeasureTemplateReport();
+        $report->addRow([
+            'row' => 7,
+            'protocol' => 'be-green-my-film - Be Green My Film',
+            'projectType' => Protocol::TYPE_RODAJE,
+            'measureBlock' => '',
+            'category' => 'Energía',
+            'categoryGhg' => '',
+            'name' => 'Medida existente',
+            'nameReview' => '',
+            'description' => '',
+            'implementation' => '',
+            'score' => 4,
+            'mandatory' => 'No',
+            'departments' => 'prod',
+            'odsItems' => '',
+            'esg' => '',
+            'scope' => '',
+            'impactAreas' => '',
+            'tripleBalanceAxes' => '',
+            'verificationSources' => [],
+            'nameEn' => '',
+            'nameReviewEn' => '',
+            'descriptionEn' => '',
+            'implementationEn' => '',
+            'verificationSourcesEn' => '',
+            'departmentActionText' => '',
+            'departmentActionTextEn' => '',
+        ]);
+
+        $result = $importer->import($report, true, false);
+
+        self::assertSame('applied', $result->getImportSummary()['status'] ?? null);
+        self::assertSame(7, $existingMeasure->getSourceRow());
+        self::assertSame(7, $existingMeasure->getSortOrder());
     }
 
     public function testImportPersistsDepartmentActionTextAndEnglishTranslation(): void

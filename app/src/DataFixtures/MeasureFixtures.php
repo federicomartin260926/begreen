@@ -2,6 +2,7 @@
 // src/DataFixtures/MeasureFixtures.php
 namespace App\DataFixtures;
 
+use App\Entity\Measure;
 use App\Entity\MeasureBlock;
 use App\Entity\Protocol;
 use App\Service\MeasureTemplateImporter;
@@ -54,6 +55,7 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
 
         $report = $this->measureTemplateParser->parseFile($path);
         $report = $this->measureTemplateImporter->import($report, true, false);
+        $this->backfillMeasureSortOrders($manager);
         $this->seedInitialBlockQuestions($manager);
         $manager->flush();
         $summary = $report->getImportSummary();
@@ -124,6 +126,37 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
             $block
                 ->setHasScreeningQuestion(true)
                 ->setScreeningQuestion($definition['question']);
+        }
+    }
+
+    private function backfillMeasureSortOrders(ObjectManager $manager): void
+    {
+        /** @var ProtocolRepository $protocolRepository */
+        $protocolRepository = $manager->getRepository(Protocol::class);
+        $protocol = $protocolRepository->findOneBy(['code' => 'be-green-my-film'])
+            ?? $protocolRepository->findOneBy(['name' => 'Be Green My Film']);
+
+        if (!$protocol instanceof Protocol) {
+            echo "⚠️  Protocol not found for measure sort order backfill: Be Green My Film\n";
+
+            return;
+        }
+
+        $measureRepository = $manager->getRepository(Measure::class);
+        $measures = $measureRepository->createQueryBuilder('m')
+            ->andWhere('m.protocol = :protocol')
+            ->andWhere('m.sourceRow IS NOT NULL')
+            ->andWhere('m.sortOrder = 0')
+            ->setParameter('protocol', $protocol)
+            ->getQuery()
+            ->getResult();
+
+        foreach ($measures as $measure) {
+            if (!$measure instanceof Measure) {
+                continue;
+            }
+
+            $measure->setSortOrder((int) $measure->getSourceRow());
         }
     }
 }

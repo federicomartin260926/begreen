@@ -25,4 +25,13 @@ final class MeasureTest extends TestCase
 
         self::assertSame('Medida en pasado', $measure->getDepartmentActionDisplayName());
     }
+
+    public function testSortOrderCanBeReadAndWritten(): void
+    {
+        $measure = (new Measure())
+            ->setName('Medida base')
+            ->setSortOrder(30);
+
+        self::assertSame(30, $measure->getSortOrder());
+    }
 }

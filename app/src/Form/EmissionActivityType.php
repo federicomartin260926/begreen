@@ -90,6 +90,7 @@ class EmissionActivityType extends AbstractType
             ->add('category', EntityType::class, [
                 'class' => Category::class,
                 'choice_label' => 'name',
+                'query_builder' => fn($r) => $r->createQueryBuilder('c')->orderBy('c.sortOrder', 'ASC')->addOrderBy('c.name', 'ASC'),
                 'required' => true,
                 'label' => 'backend.admin.emission.form.category',
                 'attr' => ['class' => 'form-select'],

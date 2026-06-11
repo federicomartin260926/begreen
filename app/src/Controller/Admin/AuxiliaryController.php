@@ -111,6 +111,12 @@ class AuxiliaryController extends AbstractController
                 ->addOrderBy('b.code', 'ASC')
                 ->getQuery()
                 ->getResult();
+        } elseif (in_array($type, ['category', 'department'], true)) {
+            $items = $repo->createQueryBuilder('i')
+                ->orderBy('i.sortOrder', 'ASC')
+                ->addOrderBy('i.name', 'ASC')
+                ->getQuery()
+                ->getResult();
         } elseif (in_array($type, ['impact_area', 'verification_source'], true)) {
             $items = $repo->createQueryBuilder('i')
                 ->orderBy('i.sortOrder', 'ASC')
@@ -137,6 +143,10 @@ class AuxiliaryController extends AbstractController
 
         $class = self::ENTITY_MAP[$type];
         $item = new $class();
+
+        if ($item instanceof Category || $item instanceof Department) {
+            $item->setSortOrder($this->nextSortOrder($em, $class));
+        }
 
         $translatableFields = self::TRANSLATABLE_FIELDS[$type] ?? ['name'];
 
@@ -208,6 +218,17 @@ class AuxiliaryController extends AbstractController
             'default_locale' => self::DEFAULT_LOCALE,
             'translatableFields' => $translatableFields,
         ]);
+    }
+
+    private function nextSortOrder(EntityManagerInterface $em, string $class): int
+    {
+        $max = (int) $em->createQueryBuilder()
+            ->select('COALESCE(MAX(i.sortOrder), 0)')
+            ->from($class, 'i')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $max + 10;
     }
 
     #[Route('/{type}/{id}/edit', name: 'edit')]

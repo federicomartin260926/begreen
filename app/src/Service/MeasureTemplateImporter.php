@@ -221,6 +221,7 @@ final class MeasureTemplateImporter
             ->setScore($score)
             ->setMandatory($mandatory)
             ->setSourceRow($rowNumber)
+            ->setSortOrder($measure->getSortOrder() > 0 ? $measure->getSortOrder() : $rowNumber)
             ->setImportVersion(self::TEMPLATE_VERSION)
             ->setImportHash($this->buildImportHash([
                 'protocol' => $protocol->getCode() ?? $protocol->getName(),

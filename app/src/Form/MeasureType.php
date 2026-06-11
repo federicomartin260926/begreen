@@ -77,6 +77,15 @@ class MeasureType extends AbstractType
             ]);
         };
 
+        $builder->add('sortOrder', IntegerType::class, [
+            'label' => 'backend.measures.form.sort_order',
+            'required' => false,
+            'empty_data' => '0',
+            'attr' => [
+                'min' => 0,
+            ],
+        ]);
+
         // ===== Campos translatables base (locale por defecto, mapeados) =====
         $builder
             ->add('name', TextType::class, [
@@ -176,6 +185,7 @@ class MeasureType extends AbstractType
             ->add('category', EntityType::class, [
                 'class' => Category::class,
                 'choice_label' => 'name',
+                'query_builder' => fn($r) => $r->createQueryBuilder('c')->orderBy('c.sortOrder', 'ASC')->addOrderBy('c.name', 'ASC'),
                 'placeholder' => 'backend.common.select',
                 'label' => 'backend.measures.form.category',
                 'required' => false,

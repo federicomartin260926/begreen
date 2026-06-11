@@ -40,6 +40,11 @@
               {{ form_label(field, null, { label_attr: { class: 'form-label' } }) }}
               {{ form_widget(field) }}
               {{ form_errors(field) }}
+              {% if type == 'protocol' and fname == 'groupingBy' %}
+                <div class="form-text">
+                  {{ 'backend.protocol.form.grouping_help'|trans }}
+                </div>
+              {% endif %}
             </div>
           {% endif %}
         {% endfor %}

@@ -38,14 +38,32 @@ class MeasureRepository extends ServiceEntityRepository
             ->innerJoin('m.protocol', 'p')
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
-            ->orderBy('c.name', 'ASC');
+            ->orderBy('c.sortOrder', 'ASC')
+            ->addOrderBy('c.name', 'ASC');
         $this->applyCatalogFilter($qb, $project);
 
         $q = $qb->getQuery();
         if ($locale) {
             $q->setHint(TranslatableListener::HINT_TRANSLATABLE_LOCALE, $locale);
         }
-        return $q->getResult();
+        $result = $q->getResult();
+
+        usort($result, static function (Category $left, Category $right): int {
+            $leftOrder = $left->getSortOrder() > 0 ? $left->getSortOrder() : PHP_INT_MAX;
+            $rightOrder = $right->getSortOrder() > 0 ? $right->getSortOrder() : PHP_INT_MAX;
+
+            if ($leftOrder !== $rightOrder) {
+                return $leftOrder <=> $rightOrder;
+            }
+
+            if ($left->getName() !== $right->getName()) {
+                return strcmp((string) $left->getName(), (string) $right->getName());
+            }
+
+            return ($left->getId() ?? 0) <=> ($right->getId() ?? 0);
+        });
+
+        return $result;
     }
 
     /** @return Department[] */
@@ -58,7 +76,8 @@ class MeasureRepository extends ServiceEntityRepository
             ->innerJoin('m.protocol', 'p')
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
-            ->orderBy('d.name', 'ASC');
+            ->orderBy('d.sortOrder', 'ASC')
+            ->addOrderBy('d.name', 'ASC');
         $this->applyCatalogFilter($legacyQb, $project);
 
         $multiQb = $this->getEntityManager()->createQueryBuilder()
@@ -68,7 +87,8 @@ class MeasureRepository extends ServiceEntityRepository
             ->innerJoin('m.protocol', 'p')
             ->where('p.name IN (:protocols)')
             ->setParameter('protocols', $this->getProtocols($project))
-            ->orderBy('d.name', 'ASC');
+            ->orderBy('d.sortOrder', 'ASC')
+            ->addOrderBy('d.name', 'ASC');
         $this->applyCatalogFilter($multiQb, $project);
 
         $legacyQuery = $legacyQb->getQuery();
@@ -82,6 +102,22 @@ class MeasureRepository extends ServiceEntityRepository
             $legacyQuery->getResult(),
             $multiQuery->getResult()
         );
+
+        usort($result, static function (Department $left, Department $right): int {
+            $leftOrder = $left->getSortOrder() > 0 ? $left->getSortOrder() : PHP_INT_MAX;
+            $rightOrder = $right->getSortOrder() > 0 ? $right->getSortOrder() : PHP_INT_MAX;
+
+            if ($leftOrder !== $rightOrder) {
+                return $leftOrder <=> $rightOrder;
+            }
+
+            if ($left->getName() !== $right->getName()) {
+                return strcmp((string) $left->getName(), (string) $right->getName());
+            }
+
+            return ($left->getId() ?? 0) <=> ($right->getId() ?? 0);
+        });
+
         return $result;
     }
 

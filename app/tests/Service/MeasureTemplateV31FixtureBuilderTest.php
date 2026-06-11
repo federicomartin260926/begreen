@@ -70,4 +70,67 @@ final class MeasureTemplateV31FixtureBuilderTest extends TestCase
         self::assertSame(3, $report->getRows()[0]['verificationSources'][2]['priority']);
         self::assertSame('Declaración Resp.', $report->getRows()[0]['verificationSources'][2]['value']);
     }
+
+    public function testBuilderSortsMeasuresBySourceRowBeforeWriting(): void
+    {
+        $builder = new MeasureTemplateV31FixtureBuilder();
+        $parser = new MeasureTemplateParser();
+
+        $spreadsheet = $builder->build([
+            'summary' => [
+                'departments' => ['Producción'],
+                'categories' => ['ENERGÍA'],
+                'blocks' => ['Bloque A'],
+                'environmental_impacts' => ['Cambio Climático'],
+                'verification_sources' => ['Foto'],
+                'ods' => ['7'],
+                'triple_balance' => ['Ambiental (E)'],
+            ],
+            'measures' => [
+                [
+                    'source_row' => 20,
+                    'protocol' => 'Be Green My Film',
+                    'project_type' => 'rodaje',
+                    'category' => 'ENERGÍA',
+                    'block' => 'Bloque A',
+                    'measure' => 'Medida tardía',
+                    'department_action_text' => '',
+                    'points' => 1,
+                    'description' => '',
+                    'environmental_impacts' => ['Cambio Climático'],
+                    'departments' => ['Producción'],
+                    'verification_sources' => [
+                        ['priority' => 1, 'value' => 'Foto'],
+                    ],
+                    'ods' => ['7'],
+                    'triple_balance' => ['Ambiental (E)'],
+                ],
+                [
+                    'source_row' => 5,
+                    'protocol' => 'Be Green My Film',
+                    'project_type' => 'rodaje',
+                    'category' => 'ENERGÍA',
+                    'block' => 'Bloque A',
+                    'measure' => 'Medida temprana',
+                    'department_action_text' => '',
+                    'points' => 2,
+                    'description' => '',
+                    'environmental_impacts' => ['Cambio Climático'],
+                    'departments' => ['Producción'],
+                    'verification_sources' => [
+                        ['priority' => 1, 'value' => 'Foto'],
+                    ],
+                    'ods' => ['7'],
+                    'triple_balance' => ['Ambiental (E)'],
+                ],
+            ],
+            'warnings' => [],
+        ]);
+
+        $report = $parser->parseSpreadsheet($spreadsheet);
+
+        self::assertCount(2, $report->getRows());
+        self::assertSame('Medida temprana', $report->getRows()[0]['name']);
+        self::assertSame('Medida tardía', $report->getRows()[1]['name']);
+    }
 }

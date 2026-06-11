@@ -160,13 +160,35 @@ final class MeasureTemplateV31FixtureBuilder
      */
     private function buildCategories(array $categories): array
     {
+        $sortOrders = [
+            'ENERGÍA' => 10,
+            'ALOJAMIENTO' => 20,
+            'TRANSPORTE' => 30,
+            'CONSUMO EFICIENTE DE RECURSOS NATURALES' => 40,
+            'MATERIALES' => 50,
+            'RESIDUOS' => 60,
+            'CATERING' => 70,
+            'BIODIVERSIDAD' => 80,
+            'COMUNICACIÓN' => 90,
+            'CONTENIDO' => 100,
+            'SOCIAL' => 110,
+        ];
+
         $items = [];
+        $fallbackSortOrder = 120;
         foreach (array_values(array_unique(array_map('trim', $categories))) as $name) {
             if ($name === '') {
                 continue;
             }
 
-            $items[] = (new Category())->setName($name);
+            $sortOrder = $sortOrders[mb_strtoupper($name)] ?? $fallbackSortOrder;
+            if (!isset($sortOrders[mb_strtoupper($name)])) {
+                $fallbackSortOrder += 10;
+            }
+
+            $items[] = (new Category())
+                ->setName($name)
+                ->setSortOrder($sortOrder);
         }
 
         return $items;
@@ -180,14 +202,15 @@ final class MeasureTemplateV31FixtureBuilder
     private function buildDepartments(array $departments): array
     {
         $items = [];
-        foreach (array_values(array_unique(array_map('trim', $departments))) as $name) {
+        foreach (array_values(array_unique(array_map('trim', $departments))) as $index => $name) {
             if ($name === '') {
                 continue;
             }
 
             $items[] = (new Department())
                 ->setName($name)
-                ->setProjectType(Protocol::TYPE_RODAJE);
+                ->setProjectType(Protocol::TYPE_RODAJE)
+                ->setSortOrder(($index + 1) * 10);
         }
 
         return $items;
@@ -340,6 +363,17 @@ final class MeasureTemplateV31FixtureBuilder
      */
     private function fillRows(Worksheet $sheet, array $layout, array $measures): void
     {
+        usort($measures, static function (array $left, array $right): int {
+            $leftRow = (int) ($left['source_row'] ?? $left['row'] ?? 0);
+            $rightRow = (int) ($right['source_row'] ?? $right['row'] ?? 0);
+
+            if ($leftRow !== $rightRow) {
+                return $leftRow <=> $rightRow;
+            }
+
+            return strcmp((string) ($left['measure'] ?? $left['name'] ?? ''), (string) ($right['measure'] ?? $right['name'] ?? ''));
+        });
+
         foreach ($measures as $index => $measure) {
             $rowNumber = 3 + $index;
             $this->fillScalarRows($sheet, $layout['scalar'], $measure, $rowNumber);

@@ -37,7 +37,8 @@ class DepartmentAjaxController extends AbstractController
         $type = $protocol->getType(); // 'rodaje' | 'evento' | 'ambos'
 
         $qb = $departmentRepo->createQueryBuilder('d')
-            ->orderBy('d.name', 'ASC');
+            ->orderBy('d.sortOrder', 'ASC')
+            ->addOrderBy('d.name', 'ASC');
 
         if ($type === 'rodaje' || $type === 'evento') {
             $qb->andWhere('(d.projectType = :t OR d.projectType IS NULL)')

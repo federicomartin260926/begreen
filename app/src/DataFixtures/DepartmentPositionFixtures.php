@@ -47,50 +47,52 @@ class DepartmentPositionFixtures extends Fixture implements FixtureGroupInterfac
         // Nota: NO tocamos los de 'evento' existentes.
         $departments = [
             // --- Eventos ---
-            ['name' => 'Escenario',                'projectType' => 'evento'],
-            ['name' => 'Proveedores',              'projectType' => 'evento'],
-            ['name' => 'Seguridad',                'projectType' => 'evento'],
+            ['name' => 'Escenario',                'projectType' => 'evento', 'sortOrder' => 10],
+            ['name' => 'Proveedores',              'projectType' => 'evento', 'sortOrder' => 20],
+            ['name' => 'Seguridad',                'projectType' => 'evento', 'sortOrder' => 30],
 
             // --- Rodajes ---
-            ['name' => 'Producción',              'projectType' => 'rodaje'],
-            ['name' => 'Dirección',               'projectType' => 'rodaje'],
-            ['name' => 'Fotografía y Cámara',     'projectType' => 'rodaje'],
-            ['name' => 'Eléctrico',               'projectType' => 'rodaje'],
-            ['name' => 'Maquinista y Grip',       'projectType' => 'rodaje'],
-            ['name' => 'Sonido',                  'projectType' => 'rodaje'],
-            ['name' => 'Arte',                    'projectType' => 'rodaje'],
-            ['name' => 'Construcción',            'projectType' => 'rodaje'],
-            ['name' => 'Vestuario',               'projectType' => 'rodaje'],
-            ['name' => 'Maquillaje y Peluquería', 'projectType' => 'rodaje'],
-            ['name' => 'SFX',                     'projectType' => 'rodaje'],
-            ['name' => 'Localizaciones',          'projectType' => 'rodaje'],
-            ['name' => 'Transporte',              'projectType' => 'rodaje'],
-            ['name' => 'Atrezzo',                 'projectType' => 'rodaje'],
-            ['name' => 'Casting',                 'projectType' => 'rodaje'],
-            ['name' => 'Catering',                'projectType' => 'rodaje'],
-            ['name' => 'Home Economist',          'projectType' => 'rodaje'],
-            ['name' => 'Postproducción',          'projectType' => 'rodaje'],
-            ['name' => 'Contabilidad',            'projectType' => 'rodaje'],
-            ['name' => 'Sostenibilidad',          'projectType' => 'rodaje'],
-            ['name' => 'Veterinario y Animales',  'projectType' => 'rodaje'],
-            ['name' => 'Guion y Dirección',       'projectType' => 'rodaje'],
+            ['name' => 'Producción',              'projectType' => 'rodaje', 'sortOrder' => 40],
+            ['name' => 'Dirección',               'projectType' => 'rodaje', 'sortOrder' => 50],
+            ['name' => 'Fotografía y Cámara',     'projectType' => 'rodaje', 'sortOrder' => 60],
+            ['name' => 'Eléctrico',               'projectType' => 'rodaje', 'sortOrder' => 70],
+            ['name' => 'Maquinista y Grip',       'projectType' => 'rodaje', 'sortOrder' => 80],
+            ['name' => 'Sonido',                  'projectType' => 'rodaje', 'sortOrder' => 90],
+            ['name' => 'Arte',                    'projectType' => 'rodaje', 'sortOrder' => 100],
+            ['name' => 'Construcción',            'projectType' => 'rodaje', 'sortOrder' => 110],
+            ['name' => 'Vestuario',               'projectType' => 'rodaje', 'sortOrder' => 120],
+            ['name' => 'Maquillaje y Peluquería', 'projectType' => 'rodaje', 'sortOrder' => 130],
+            ['name' => 'SFX',                     'projectType' => 'rodaje', 'sortOrder' => 140],
+            ['name' => 'Localizaciones',          'projectType' => 'rodaje', 'sortOrder' => 150],
+            ['name' => 'Transporte',              'projectType' => 'rodaje', 'sortOrder' => 160],
+            ['name' => 'Atrezzo',                 'projectType' => 'rodaje', 'sortOrder' => 170],
+            ['name' => 'Casting',                 'projectType' => 'rodaje', 'sortOrder' => 180],
+            ['name' => 'Catering',                'projectType' => 'rodaje', 'sortOrder' => 190],
+            ['name' => 'Home Economist',          'projectType' => 'rodaje', 'sortOrder' => 200],
+            ['name' => 'Postproducción',          'projectType' => 'rodaje', 'sortOrder' => 210],
+            ['name' => 'Contabilidad',            'projectType' => 'rodaje', 'sortOrder' => 220],
+            ['name' => 'Sostenibilidad',          'projectType' => 'rodaje', 'sortOrder' => 230],
+            ['name' => 'Veterinario y Animales',  'projectType' => 'rodaje', 'sortOrder' => 240],
+            ['name' => 'Guion y Dirección',       'projectType' => 'rodaje', 'sortOrder' => 250],
         ];
 
         // upsert department
-        $upsertDepartment = function(string $name, ?string $projectType) use ($deptRepo, $em): Department {
+        $upsertDepartment = function(string $name, ?string $projectType, int $sortOrder) use ($deptRepo, $em): Department {
             $dept = $deptRepo->findOneBy(['name' => $name, 'projectType' => $projectType]);
             if (!$dept) {
                 $dept = new Department();
                 $dept->setName($name)->setProjectType($projectType);
                 $em->persist($dept);
             }
+
+            $dept->setSortOrder($sortOrder);
             return $dept;
         };
 
         /** @var array<string, Department> $deptIndex */
         $deptIndex = [];
         foreach ($departments as $d) {
-            $dept = $upsertDepartment($d['name'], $d['projectType']);
+            $dept = $upsertDepartment($d['name'], $d['projectType'], $d['sortOrder']);
             $deptIndex[$d['name']] = $dept;
         }
         $em->flush();

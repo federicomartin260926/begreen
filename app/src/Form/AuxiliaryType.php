@@ -29,6 +29,15 @@ class AuxiliaryType extends AbstractType
             'attr'  => ['class' => 'form-control'],
         ]);
 
+        if (in_array($type, ['category', 'department'], true)) {
+            $builder->add('sortOrder', \Symfony\Component\Form\Extension\Core\Type\IntegerType::class, [
+                'label' => 'backend.aux.form.sort_order',
+                'required' => false,
+                'empty_data' => '0',
+                'attr' => ['class' => 'form-control', 'min' => 0],
+            ]);
+        }
+
         // ===== Específicos por tipo =====
         if ($type === 'protocol') {
             // Tipo de protocolo (rodaje, evento, ambos)

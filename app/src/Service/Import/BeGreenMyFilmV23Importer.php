@@ -100,6 +100,12 @@ final class BeGreenMyFilmV23Importer
         'ar' => 'Permiso Admin.',
     ];
 
+    /**
+     * @var array<string, Category>
+     */
+    private array $categoryCache = [];
+    private int $categorySortOrderCursor = 0;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ProtocolRepository $protocolRepository,
@@ -147,6 +153,8 @@ final class BeGreenMyFilmV23Importer
         $connection->beginTransaction();
 
         try {
+            $this->categoryCache = [];
+            $this->categorySortOrderCursor = $this->currentMaxSortOrder(Category::class);
             $protocol = $this->upsertProtocol($summary);
             $categories = $this->upsertCategories($report, $summary);
             $measureBlocks = $this->upsertMeasureBlocks($report, $protocol, $summary);
@@ -231,6 +239,11 @@ final class BeGreenMyFilmV23Importer
             }
 
             $category->setName($name);
+            if ($created) {
+                $this->categorySortOrderCursor += 10;
+                $category->setSortOrder($this->categorySortOrderCursor);
+            }
+            $this->categoryCache[$this->normalizeKey($name)] = $category;
             $items[$this->normalizeKey($name)] = $category;
             $summary['categories'][$created ? 'created' : 'updated']++;
             $summary['categories']['resolved']++;
@@ -387,6 +400,7 @@ final class BeGreenMyFilmV23Importer
     private function upsertDepartments(BeGreenMyFilmV23Report $report, array &$summary): array
     {
         $items = [];
+        $nextSortOrder = $this->currentMaxSortOrder(Department::class);
         foreach ($report->jsonSerialize()['departments'] as $item) {
             $code = (string) ($item['code'] ?? '');
             $name = $this->departmentNameForCode($code, (string) ($item['name'] ?? ''));
@@ -409,6 +423,11 @@ final class BeGreenMyFilmV23Importer
 
             if ($code !== 'he' && $department->getProjectType() === null) {
                 $department->setProjectType($this->projectTypeForDepartment($code));
+            }
+
+            if ($created) {
+                $nextSortOrder += 10;
+                $department->setSortOrder($nextSortOrder);
             }
 
             $items[$code] = $department;
@@ -500,6 +519,7 @@ final class BeGreenMyFilmV23Importer
             ->setScore((int) ($measureData['score'] ?? 0))
             ->setDescription((string) ($measureData['description'] ?? ''))
             ->setSourceRow($row)
+            ->setSortOrder($measure->getSortOrder() > 0 ? $measure->getSortOrder() : $row)
             ->setImportVersion(self::IMPORT_VERSION)
             ->setImportHash($this->buildImportHash($protocol, $measureData));
 
@@ -735,15 +755,36 @@ final class BeGreenMyFilmV23Importer
             return null;
         }
 
+        $cacheKey = $this->normalizeKey($name);
+        if (isset($this->categoryCache[$cacheKey])) {
+            return $this->categoryCache[$cacheKey];
+        }
+
         $category = $this->categoryRepository->findOneBy(['name' => $name]);
         if ($category) {
+            $this->categoryCache[$cacheKey] = $category;
             return $category;
         }
 
         $category = new Category();
         $category->setName($name);
+        if ($this->categorySortOrderCursor <= 0) {
+            $this->categorySortOrderCursor = $this->currentMaxSortOrder(Category::class);
+        }
+        $this->categorySortOrderCursor += 10;
+        $category->setSortOrder($this->categorySortOrderCursor);
         $this->em->persist($category);
+        $this->categoryCache[$cacheKey] = $category;
         return $category;
+    }
+
+    private function currentMaxSortOrder(string $class): int
+    {
+        return (int) $this->em->createQueryBuilder()
+            ->select('COALESCE(MAX(i.sortOrder), 0)')
+            ->from($class, 'i')
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     private function normalizeKey(string $value): string

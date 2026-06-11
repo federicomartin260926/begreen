@@ -31,6 +31,10 @@
               <tr>
                 <th>{{ 'backend.aux.table.name'|trans }}</th>
 
+                {% if type in ['category', 'department'] %}
+                  <th class="text-center">{{ 'backend.aux.table.sort_order'|trans }}</th>
+                {% endif %}
+
                 {% if type == 'department' %}
                   <th class="text-center">{{ 'backend.aux.table.project_type'|trans }}</th>
                 {% endif %}
@@ -54,6 +58,10 @@
               {% for item in items %}
                 <tr>
                   <td>{{ item.name }}</td>
+
+                  {% if type in ['category', 'department'] %}
+                    <td class="text-center">{{ item.sortOrder }}</td>
+                  {% endif %}
 
                   {% if type == 'department' %}
                     {% set pt = item.projectType ?? '' %}

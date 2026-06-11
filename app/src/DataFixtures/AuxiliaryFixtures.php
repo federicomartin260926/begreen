@@ -137,24 +137,29 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         // Categories
         // -------------------------
         foreach ([
-            'Alojamientos',
-            'Transporte',
-            'Viajes',
-            'Energía',
-            'Catering',
-            'Materiales',
-            'Agua',
-            'Residuos',
-            'Biodiversidad',
-            'Comunicación',
-            'Consumo eficiente de recursos naturales',
-            'Contenido',
-            'Social',
-        ] as $name) {
-            $c = $upsert($manager, Category::class, ['name' => $name], function () use ($name) {
-                return (new Category())->setName($name);
+            ['name' => 'Energía', 'sortOrder' => 10],
+            ['name' => 'Alojamientos', 'sortOrder' => 20],
+            ['name' => 'Transporte', 'sortOrder' => 30],
+            ['name' => 'Consumo eficiente de recursos naturales', 'sortOrder' => 40],
+            ['name' => 'Materiales', 'sortOrder' => 50],
+            ['name' => 'Residuos', 'sortOrder' => 60],
+            ['name' => 'Catering', 'sortOrder' => 70],
+            ['name' => 'Biodiversidad', 'sortOrder' => 80],
+            ['name' => 'Comunicación', 'sortOrder' => 90],
+            ['name' => 'Contenido', 'sortOrder' => 100],
+            ['name' => 'Social', 'sortOrder' => 110],
+            ['name' => 'Viajes', 'sortOrder' => 120],
+            ['name' => 'Agua', 'sortOrder' => 130],
+        ] as $data) {
+            $c = $upsert($manager, Category::class, ['name' => $data['name']], function (?Category $entity = null) use ($data) {
+                $entity ??= new Category();
+
+                return $entity
+                    ->setName($data['name'])
+                    ->setSortOrder($data['sortOrder']);
             });
-            $translateName($c, $name);
+            $c->setSortOrder($data['sortOrder']);
+            $translateName($c, $data['name']);
         }
 
         // -------------------------

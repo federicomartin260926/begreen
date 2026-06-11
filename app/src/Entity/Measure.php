@@ -120,6 +120,9 @@ class Measure
     #[ORM\Column(type: 'integer', nullable: true)]
     private ?int $sourceRow = null;
 
+    #[ORM\Column(type: 'integer', options: ['default' => 0])]
+    private int $sortOrder = 0;
+
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $importHash = null;
 
@@ -441,6 +444,17 @@ class Measure
     public function setSourceRow(?int $sourceRow): self
     {
         $this->sourceRow = $sourceRow;
+        return $this;
+    }
+
+    public function getSortOrder(): int
+    {
+        return $this->sortOrder;
+    }
+
+    public function setSortOrder(int $sortOrder): self
+    {
+        $this->sortOrder = $sortOrder;
         return $this;
     }
 

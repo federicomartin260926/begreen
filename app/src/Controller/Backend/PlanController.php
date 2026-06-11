@@ -8,6 +8,7 @@ use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanBlockQuestionService;
 use App\Service\PlanMeasureResumeService;
+use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
@@ -43,6 +44,7 @@ class PlanController extends AbstractController
         private MeasureTaxonomyPresenter $taxonomyPresenter,
         private PlanMeasureResumeService $resumeService,
         private PlanBlockQuestionService $blockQuestionService,
+        private SustainabilityPlanMeasureOrderer $measureOrderer,
         private SustainabilityPlanCollaborationService $collaborationService,
         private SustainabilityCommitmentLevelService $commitmentLevelService
     ) {}
@@ -1215,8 +1217,9 @@ class PlanController extends AbstractController
         }
 
         $qb = $this->createVisibleMeasuresQueryBuilder($measureRepository, $protocol, $project);
+        $measures = $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
 
-        return $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
+        return $this->measureOrderer->sortVisibleMeasures($measures, $protocol->getGroupingBy());
     }
 
     #[Route('/upload-evidences', name: 'upload_evidences', methods: ['POST'])]
@@ -2141,17 +2144,11 @@ class PlanController extends AbstractController
             ->join('m.protocol', 'p')
             ->leftJoin('m.category', 'c')
             ->leftJoin('m.department', 'd')
+            ->leftJoin('m.measureBlock', 'mb')
+            ->addSelect('c', 'd', 'mb')
             ->andWhere('p = :protocol')
             ->setParameter('protocol', $protocol);
         $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
-
-        if ($protocol->getGroupingBy() === Protocol::GROUP_BY_DEPARTMENT) {
-            $qb->addOrderBy('d.name', 'ASC')
-                ->addOrderBy('m.name', 'ASC');
-        } else {
-            $qb->addOrderBy('c.name', 'ASC')
-                ->addOrderBy('m.name', 'ASC');
-        }
 
         return $qb;
     }

@@ -117,6 +117,9 @@ class AdminMeasureController extends AbstractController
                 if ($syncOk) {
                     $measure->setDepartment($measure->getPrimaryDepartment());
                     $measure->setOds($measure->getPrimaryOds());
+                    if ($measure->getSortOrder() <= 0) {
+                        $measure->setSortOrder($this->nextMeasureSortOrder($em, $measure));
+                    }
 
                     $em->flush();
 
@@ -221,6 +224,9 @@ class AdminMeasureController extends AbstractController
                 if ($syncOk) {
                     $measure->setDepartment($measure->getPrimaryDepartment());
                     $measure->setOds($measure->getPrimaryOds());
+                    if ($measure->getSortOrder() <= 0) {
+                        $measure->setSortOrder($this->nextMeasureSortOrder($em, $measure));
+                    }
 
                     $em->flush();
 
@@ -255,6 +261,48 @@ class AdminMeasureController extends AbstractController
         if ($protocolCode === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE) {
             $measure->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION);
         }
+    }
+
+    private function nextMeasureSortOrder(EntityManagerInterface $em, Measure $measure): int
+    {
+        $protocol = $measure->getProtocol();
+        if (!$protocol) {
+            return 10;
+        }
+
+        $qb = $em->createQueryBuilder()
+            ->select('COALESCE(MAX(m.sortOrder), 0)')
+            ->from(Measure::class, 'm')
+            ->andWhere('m.protocol = :protocol')
+            ->setParameter('protocol', $protocol);
+
+        if ($protocol->getGroupingBy() === Protocol::GROUP_BY_DEPARTMENT) {
+            $department = $measure->getDepartment();
+            if ($department) {
+                $qb->andWhere('m.department = :groupEntity')
+                    ->setParameter('groupEntity', $department);
+            } else {
+                $qb->andWhere('m.department IS NULL');
+            }
+        } else {
+            $category = $measure->getCategory();
+            if ($category) {
+                $qb->andWhere('m.category = :groupEntity')
+                    ->setParameter('groupEntity', $category);
+            } else {
+                $qb->andWhere('m.category IS NULL');
+            }
+        }
+
+        $measureBlock = $measure->getMeasureBlock();
+        if ($measureBlock) {
+            $qb->andWhere('m.measureBlock = :measureBlock')
+                ->setParameter('measureBlock', $measureBlock);
+        } else {
+            $qb->andWhere('m.measureBlock IS NULL');
+        }
+
+        return ((int) $qb->getQuery()->getSingleScalarResult()) + 10;
     }
 
     /**

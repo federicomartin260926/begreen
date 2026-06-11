@@ -22,7 +22,9 @@ class DepartmentRepository extends ServiceEntityRepository
      */
     public function qbForProjectType(?string $projectType): QueryBuilder
     {
-        $qb = $this->createQueryBuilder('d')->orderBy('d.name', 'ASC');
+        $qb = $this->createQueryBuilder('d')
+            ->orderBy('d.sortOrder', 'ASC')
+            ->addOrderBy('d.name', 'ASC');
 
         if ($projectType === 'rodaje' || $projectType === 'evento') {
             $qb->andWhere('d.projectType = :pt OR d.projectType IS NULL')
@@ -37,7 +39,8 @@ class DepartmentRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('d')
             ->andWhere('d.projectType = :t')
             ->setParameter('t', $type)
-            ->orderBy('d.name', 'ASC')
+            ->orderBy('d.sortOrder', 'ASC')
+            ->addOrderBy('d.name', 'ASC')
             ->getQuery()
             ->getResult();
     }

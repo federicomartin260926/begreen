@@ -270,6 +270,7 @@ backend:
     template:
       sheet_title: "Standard measure template"
       lists_sheet: "Lists"
+      order_note: "For the plan flow to work correctly, the order of measures must follow the protocol grouping and keep blocks together."
       headers:
         protocol: "Protocol"
         project_type: "Project type"
@@ -350,6 +351,7 @@ backend:
       cta: "Import"
       mime_invalid: "Please upload a valid Excel file (.xlsx or .xls)."
       summary: "Imported: %imported%. Updated: %updated%. Duplicates: %duplicates%. Errors: %errors%."
+      order_note: "Before uploading the template, make sure measures follow the protocol grouping and each block stays together."
       lang_info_title: "Spanish import with the standard measure template and optional English translations."
       lang_info_html: >
         <ul class="mb-0 ps-3">
@@ -368,6 +370,7 @@ backend:
       protocol: "Protocol"
       category: "Category"
       measure_block: "Block"
+      sort_order: "Display order"
       departments: "Departments"
       ods_items: "SDGs"
       esg: "ESG"
@@ -1651,6 +1654,7 @@ backend:
       grouping:
         category: "Category"
         department: "Department"
+      grouping_help: "For the plan flow to work correctly, organize measures by category or department and, within each group, by blocks. Keep the measures of the same block together so that follow-up questions and block skips work correctly."
   aux:
     index:
       title: "Auxiliary tables"

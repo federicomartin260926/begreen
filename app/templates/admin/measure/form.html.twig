@@ -64,6 +64,14 @@
 
             <div class="row">
                 <div class="col-md-4 mb-3">
+                    {{ form_label(form.sortOrder) }}
+                    {{ form_widget(form.sortOrder, {'attr': {'class': 'form-control', 'min': 0}}) }}
+                    {{ form_errors(form.sortOrder) }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
                     {{ form_label(form.categoryGhg) }}
                     {{ form_widget(form.categoryGhg, {'attr': {'class': 'form-select'}}) }}
                     {{ form_errors(form.categoryGhg) }}

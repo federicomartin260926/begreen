@@ -22,6 +22,9 @@ class Department
     #[ORM\Column(length:100)]
     private ?string $name = null;
 
+    #[ORM\Column(type: 'integer', options: ['default' => 0])]
+    private int $sortOrder = 0;
+
     // 'rodaje' | 'evento' | null (genérico)
     #[ORM\Column(length:20, nullable:true)]
     private ?string $projectType = null;
@@ -33,6 +36,17 @@ class Department
 
     public function getName(): ?string { return $this->name; }
     public function setName(string $name): self { $this->name = $name; return $this; }
+
+    public function getSortOrder(): int
+    {
+        return $this->sortOrder;
+    }
+
+    public function setSortOrder(int $sortOrder): self
+    {
+        $this->sortOrder = $sortOrder;
+        return $this;
+    }
 
     public function getProjectType(): ?string { return $this->projectType; }
     public function setProjectType(?string $projectType): self { $this->projectType = $projectType; return $this; }
