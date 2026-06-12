@@ -103,7 +103,7 @@ final class SustainabilityPlanMeasureOrderer
         return [
             'priority' => $sortOrder > 0 ? 0 : 1,
             'value' => $sortOrder > 0 ? $sortOrder : PHP_INT_MAX,
-            'sourceRow' => 0,
+            'sourceRow' => PHP_INT_MAX,
             'name' => $entity ? (string) $entity->getName() : '',
             'id' => (int) ($entity?->getId() ?? 0),
         ];
@@ -122,7 +122,7 @@ final class SustainabilityPlanMeasureOrderer
         return $blockRanks[$groupKey][$blockKey] ?? [
             'priority' => 1,
             'value' => PHP_INT_MAX,
-            'sourceRow' => 0,
+            'sourceRow' => PHP_INT_MAX,
             'name' => '',
             'id' => 0,
         ];
@@ -146,8 +146,8 @@ final class SustainabilityPlanMeasureOrderer
     }
 
     /**
-     * @param array{priority:int, value:int, sourceRow:int, name:string, id:int} $left
-     * @param array{priority:int, value:int, sourceRow:int, name:string, id:int} $right
+     * @param array{priority:int, value:int, sourceRow?:int, name:string, id:int} $left
+     * @param array{priority:int, value:int, sourceRow?:int, name:string, id:int} $right
      */
     private function compareSortKeys(array $left, array $right): int
     {
@@ -161,7 +161,9 @@ final class SustainabilityPlanMeasureOrderer
             return $comparison;
         }
 
-        $comparison = $left['sourceRow'] <=> $right['sourceRow'];
+        $leftSourceRow = $left['sourceRow'] ?? PHP_INT_MAX;
+        $rightSourceRow = $right['sourceRow'] ?? PHP_INT_MAX;
+        $comparison = $leftSourceRow <=> $rightSourceRow;
         if ($comparison !== 0) {
             return $comparison;
         }

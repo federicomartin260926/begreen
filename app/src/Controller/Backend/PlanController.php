@@ -236,7 +236,10 @@ class PlanController extends AbstractController
 
         $allMeasures = $qb->getQuery()->getResult();
         $catalogMeasuresTotal = count($allMeasures);
-        $measures = $this->filterMeasuresBySkippedBlocks($allMeasures, $plan);
+        $measures = $this->measureOrderer->sortVisibleMeasures(
+            $this->filterMeasuresBySkippedBlocks($allMeasures, $plan),
+            $groupingBy
+        );
 
         $total = count($measures);
         $index = $request->query->has('i')
@@ -1026,29 +1029,43 @@ class PlanController extends AbstractController
         $em->flush();
 
         if ($this->isTerminalSelectionAction($field, $value)) {
-            $pendingMeasure = $this->findFirstPendingVisibleMeasure($plan, $project, $measureRepo);
-            if ($complete) {
+            $visibleMeasures = $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepo);
+            $currentVisibleIndex = $this->findVisibleMeasureIndex($visibleMeasures, $measure);
+            if ($currentVisibleIndex === null) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
+                ], 409);
+            }
+
+            $isLastVisibleMeasure = $currentVisibleIndex >= (count($visibleMeasures) - 1);
+            if (!$isLastVisibleMeasure) {
+                $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $currentVisibleIndex + 1]);
+            } elseif ($complete) {
                 $nextUrl = $this->generateUrl('backend_plan_done');
-            } elseif ($pendingMeasure !== null) {
-                $pendingIndex = $pendingMeasure['index'] ?? null;
-                if (!is_int($pendingIndex) || $pendingIndex < 0) {
+            } else {
+                $pendingMeasure = $this->findFirstPendingVisibleMeasure($plan, $project, $measureRepo);
+                if ($pendingMeasure !== null) {
+                    $pendingIndex = $pendingMeasure['index'] ?? null;
+                    if (!is_int($pendingIndex) || $pendingIndex < 0) {
+                        return new JsonResponse([
+                            'success' => false,
+                            'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
+                        ], 409);
+                    }
+
+                    $this->addFlash(
+                        'warning',
+                        $this->pendingMeasureFlashMessage((string) ($pendingMeasure['reason'] ?? ''))
+                    );
+
+                    $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $pendingIndex]);
+                } else {
                     return new JsonResponse([
                         'success' => false,
                         'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
                     ], 409);
                 }
-
-                $this->addFlash(
-                    'warning',
-                    $this->pendingMeasureFlashMessage((string) ($pendingMeasure['reason'] ?? ''))
-                );
-
-                $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $pendingIndex]);
-            } else {
-                return new JsonResponse([
-                    'success' => false,
-                    'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
-                ], 409);
             }
         }
 
@@ -2012,6 +2029,25 @@ class PlanController extends AbstractController
                         'reason'  => 'will_implement_missing',
                     ];
                 }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int, Measure> $visibleMeasures
+     */
+    private function findVisibleMeasureIndex(array $visibleMeasures, Measure $measure): ?int
+    {
+        $measureId = $measure->getId();
+        if ($measureId === null) {
+            return null;
+        }
+
+        foreach ($visibleMeasures as $index => $visibleMeasure) {
+            if ($visibleMeasure->getId() === $measureId) {
+                return (int) $index;
             }
         }
 

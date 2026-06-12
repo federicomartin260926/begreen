@@ -35,9 +35,10 @@ export default class extends Controller {
     }
 
     async postField(triggerEl, measureId, field, value) {
-        this.clearInlineError();
+        const card = this.getMeasureCardFromElement(triggerEl, measureId);
+        this.clearInlineError(card);
 
-        const updates = this.buildUpdates(measureId, field, value);
+        const updates = this.buildUpdates(measureId, field, value, card);
         if (updates === null) {
             return;
         }
@@ -80,7 +81,7 @@ export default class extends Controller {
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : 'No se pudo guardar';
-            this.showInlineError(message);
+            this.showInlineError(message, card);
         } finally {
             if (triggerButton) {
                 triggerButton.disabled = false;
@@ -88,10 +89,11 @@ export default class extends Controller {
         }
     }
 
-    buildUpdates(measureId, field, value) {
-        const reasonInput = this.element.querySelector(`#crit-reason-${measureId}`);
+    buildUpdates(measureId, field, value, card = null) {
+        const scope = card || this.getMeasureCard(measureId) || this.element;
+        const reasonInput = scope.querySelector(`#crit-reason-${measureId}`);
         const reasonText = String(reasonInput?.value || '').trim();
-        const criticalYes = this.getSelectedValue(measureId, 'critical') === 'true';
+        const criticalYes = this.getSelectedValue(measureId, 'critical', scope) === 'true';
 
         if (field === 'criticalReason') {
             return [{ field: 'criticalReason', value }];
@@ -122,19 +124,24 @@ export default class extends Controller {
         return [{ field, value }];
     }
 
-    getMeasureCard(measureId) {
-        const btn = this.element.querySelector(`[data-measure-id="${measureId}"][data-field]`);
-        return btn?.closest('#measure-card') || this.element.querySelector('#measure-card');
+    getMeasureCardFromElement(triggerEl, measureId) {
+        return triggerEl?.closest('.measure-card') || this.getMeasureCard(measureId);
     }
 
-    getFieldButtons(measureId, field) {
-        return Array.from(this.element.querySelectorAll(
+    getMeasureCard(measureId) {
+        const btn = this.element.querySelector(`[data-measure-id="${measureId}"][data-field]`);
+        return btn?.closest('.measure-card') || this.element.querySelector('.measure-card');
+    }
+
+    getFieldButtons(measureId, field, scope = null) {
+        const root = scope || this.element;
+        return Array.from(root.querySelectorAll(
             `[data-measure-id="${measureId}"][data-field="${field}"]`
         ));
     }
 
-    getSelectedValue(measureId, field) {
-        const selected = this.getFieldButtons(measureId, field).find((btn) =>
+    getSelectedValue(measureId, field, scope = null) {
+        const selected = this.getFieldButtons(measureId, field, scope).find((btn) =>
             btn.classList.contains('btn-success') || btn.classList.contains('btn-danger')
         );
 
@@ -192,8 +199,9 @@ export default class extends Controller {
         return field === 'willImplement';
     }
 
-    showInlineError(message) {
-        const alert = this.hasErrorAlertTarget ? this.errorAlertTarget : null;
+    showInlineError(message, card = null) {
+        const alert = card?.querySelector('[data-plan-measures-target="errorAlert"]')
+            || (this.hasErrorAlertTarget ? this.errorAlertTarget : null);
         if (!alert) {
             return;
         }
@@ -205,13 +213,15 @@ export default class extends Controller {
         } catch (_) {}
     }
 
-    clearInlineError() {
-        if (!this.hasErrorAlertTarget) {
+    clearInlineError(card = null) {
+        const alert = card?.querySelector('[data-plan-measures-target="errorAlert"]')
+            || (this.hasErrorAlertTarget ? this.errorAlertTarget : null);
+        if (!alert) {
             return;
         }
 
-        this.errorAlertTarget.textContent = '';
-        this.errorAlertTarget.classList.add('d-none');
+        alert.textContent = '';
+        alert.classList.add('d-none');
     }
 
     navigateAfterSave(field, value) {

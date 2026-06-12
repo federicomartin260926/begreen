@@ -130,6 +130,87 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame(['backend.plan.flash.pending_critical_reason'], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
+    public function testUpdateSelectionAdvancesToNextVisibleMeasureWithoutWarningWhenPendingExistsEarlier(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $pendingMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($pendingMeasure, 301);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($currentMeasure, 302);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($nextMeasure, 303);
+
+        $pendingPlanMeasure = (new PlanMeasure())
+            ->setMeasure($pendingMeasure)
+            ->setIsApplicable(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($pendingPlanMeasure);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(false)
+            ->setWillImplement(null)
+            ->markAsManual();
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'willImplement',
+            'value' => 'true',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$pendingMeasure, $currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=2', (string) $data['nextUrl']);
+        self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
+    }
+
     public function testUpdateSelectionRedirectsTerminalActionToDoneWhenPlanIsComplete(): void
     {
         $controller = $this->getController();
@@ -405,7 +486,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=0', (string) $data['nextUrl']);
         self::assertCount(1, $persistedEntities);
         self::assertSame($currentPlanMeasure, $persistedEntities[0]);
     }
@@ -512,7 +593,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $query->method('getResult')->willReturn($measures);
 
         $qb = $this->createMock(QueryBuilder::class);
-        foreach (['join', 'leftJoin', 'andWhere', 'setParameter', 'addOrderBy'] as $method) {
+        foreach (['select', 'addSelect', 'from', 'join', 'innerJoin', 'leftJoin', 'where', 'andWhere', 'groupBy', 'orderBy', 'addOrderBy', 'setParameter', 'distinct'] as $method) {
             $qb->method($method)->willReturnSelf();
         }
         $qb->method('getQuery')->willReturn($query);

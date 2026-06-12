@@ -264,6 +264,22 @@ class Measure
         return $this;
     }
 
+    /**
+     * @param iterable<int, TripleBalanceAxis> $axes
+     */
+    public function setTripleBalanceAxes(iterable $axes): self
+    {
+        $this->tripleBalanceAxes = new ArrayCollection();
+
+        foreach ($axes as $axis) {
+            if ($axis instanceof TripleBalanceAxis) {
+                $this->addTripleBalanceAxis($axis);
+            }
+        }
+
+        return $this;
+    }
+
     public function removeTripleBalanceAxis(TripleBalanceAxis $axis): self
     {
         $this->tripleBalanceAxes->removeElement($axis);

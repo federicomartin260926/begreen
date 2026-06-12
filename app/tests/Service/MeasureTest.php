@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Entity\Measure;
+use App\Entity\TripleBalanceAxis;
 use PHPUnit\Framework\TestCase;
 
 final class MeasureTest extends TestCase
@@ -33,5 +34,18 @@ final class MeasureTest extends TestCase
             ->setSortOrder(30);
 
         self::assertSame(30, $measure->getSortOrder());
+    }
+
+    public function testTripleBalanceAxesCanBeSetInBulk(): void
+    {
+        $axisEnvironmental = (new TripleBalanceAxis())->setCode('ambiental')->setName('Ambiental');
+        $axisSocial = (new TripleBalanceAxis())->setCode('social')->setName('Social');
+
+        $measure = (new Measure())
+            ->setName('Medida base')
+            ->setTripleBalanceAxes([$axisEnvironmental, $axisSocial]);
+
+        self::assertCount(2, $measure->getTripleBalanceAxes());
+        self::assertSame($axisEnvironmental, $measure->getTripleBalanceAxes()->first());
     }
 }
