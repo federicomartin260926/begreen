@@ -909,6 +909,8 @@ backend:
       all_departments: "TODOS"
       category: "Categoría"
       subgroup: "Subgrupo: %name%"
+      more: "Ver más"
+      less: "Ver menos"
     q:
       apply: "¿Esta medida aplica a tu proyecto?"
       critical: "¿Consideras que es una medida crítica en tu proyecto?"

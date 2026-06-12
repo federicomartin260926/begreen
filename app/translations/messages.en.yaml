@@ -906,6 +906,8 @@ backend:
       all_departments: "ALL"
       category: "Category"
       subgroup: "Subgroup: %name%"
+      more: "Show more"
+      less: "Show less"
     q:
       apply: "Does this measure apply to your project?"
       critical: "Do you consider it a critical measure in your project?"

@@ -116,7 +116,11 @@
                                 {% if measure.description %}
                                     <div class="col-12">
                                         <div class="small text-muted">{{ 'backend.plan.measure.description'|trans }}</div>
-                                        <div>{{ measure.description }}</div>
+                                        {% include 'backend/plan/_description_toggle.html.twig' with {
+                                            description: measure.description,
+                                            toggleId: 'review-description-' ~ measure.id,
+                                            excerptLength: 200
+                                        } %}
                                     </div>
                                 {% endif %}
 

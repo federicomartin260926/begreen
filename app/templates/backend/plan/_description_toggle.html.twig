@@ -1,0 +1,38 @@
+{% set descriptionText = (description|default(''))|striptags|replace({
+    "\r": ' ',
+    "\n": ' '
+})|trim %}
+{% set excerptLength = excerptLength|default(200) %}
+
+{% if descriptionText %}
+    {% set isLong = descriptionText|length > excerptLength %}
+    {% if isLong %}
+        {% set toggleId = toggleId|default('description-toggle') %}
+        {% set excerptText = descriptionText|u.truncate(excerptLength, '…') %}
+
+        <div class="measure-description">
+            <div class="measure-description-excerpt">{{ excerptText }}</div>
+            <a class="small link-primary text-decoration-none"
+               data-bs-toggle="collapse"
+               href="#{{ toggleId }}"
+               role="button"
+               aria-expanded="false"
+               aria-controls="{{ toggleId }}">
+                {{ 'backend.plan.measure.more'|trans }}
+            </a>
+            <div class="collapse mt-2" id="{{ toggleId }}">
+                <div class="measure-description-full" style="white-space: pre-wrap;">{{ descriptionText }}</div>
+                <a class="small link-primary text-decoration-none d-inline-block mt-1"
+                   data-bs-toggle="collapse"
+                   href="#{{ toggleId }}"
+                   role="button"
+                   aria-expanded="true"
+                   aria-controls="{{ toggleId }}">
+                    {{ 'backend.plan.measure.less'|trans }}
+                </a>
+            </div>
+        </div>
+    {% else %}
+        <div class="measure-description-full" style="white-space: pre-wrap;">{{ descriptionText }}</div>
+    {% endif %}
+{% endif %}
