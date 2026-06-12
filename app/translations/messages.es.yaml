@@ -754,6 +754,7 @@ backend:
       current_label: "Valor medida actual"
     commitment:
       title: "Nivel de compromiso"
+      orientative: "Orientativo"
       planned: "Compromiso previsto"
       real: "Compromiso real"
       points_of_total: "%points% / %total% puntos"

@@ -1,0 +1,47 @@
+{% set planned = commitmentSummary.planned %}
+{% set real = commitmentSummary.implemented %}
+{% set totalPoints = commitmentSummary.totalOfficialPoints %}
+{% set plannedLabel = ('backend.plan.commitment.levels.' ~ planned.levelKey ~ '.label')|trans %}
+{% set realLabel = ('backend.plan.commitment.levels.' ~ real.levelKey ~ '.label')|trans %}
+{% set plannedProgress = 'backend.plan.commitment.points_of_total'|trans({'%points%': planned.points, '%total%': totalPoints}) %}
+{% set realProgress = 'backend.plan.commitment.points_of_total'|trans({'%points%': real.points, '%total%': totalPoints}) %}
+{% set plannedNext = planned.pointsToNextLevel is not null and planned.levelKey != 'jungle' ? 'backend.plan.commitment.next_level'|trans({'%points%': planned.pointsToNextLevel}) : null %}
+{% set realNext = real.pointsToNextLevel is not null and real.levelKey != 'jungle' ? 'backend.plan.commitment.next_level'|trans({'%points%': real.pointsToNextLevel}) : null %}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+            <div>
+                <h5 class="card-title mb-0">{{ 'backend.plan.commitment.title'|trans }}</h5>
+                <div class="text-muted small">{{ 'backend.plan.commitment.note'|trans }}</div>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle">{{ 'backend.plan.commitment.orientative'|trans }}</span>
+        </div>
+
+        <div class="d-grid gap-2">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-1 gap-lg-3">
+                <div class="fw-semibold text-nowrap">{{ 'backend.plan.commitment.planned'|trans }}</div>
+                <div class="small text-muted flex-grow-1">
+                    <span class="fw-semibold text-dark">{{ plannedLabel }}</span>
+                    · {{ plannedProgress }}
+                    · {{ planned.percentageRounded }}%
+                    {% if plannedNext %}
+                        · {{ plannedNext }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-1 gap-lg-3">
+                <div class="fw-semibold text-nowrap">{{ 'backend.plan.commitment.real'|trans }}</div>
+                <div class="small text-muted flex-grow-1">
+                    <span class="fw-semibold text-dark">{{ realLabel }}</span>
+                    · {{ realProgress }}
+                    · {{ real.percentageRounded }}%
+                    {% if realNext %}
+                        · {{ realNext }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

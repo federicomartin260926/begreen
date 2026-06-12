@@ -752,6 +752,7 @@ backend:
       current_label: "Current measure score"
     commitment:
       title: "Commitment level"
+      orientative: "Guidance"
       planned: "Planned commitment"
       real: "Real commitment"
       points_of_total: "%points% / %total% points"

@@ -49,29 +49,7 @@
     </div>
 
     {% if commitmentSummary is defined %}
-        <div class="alert alert-success small mb-4">
-            <div class="fw-semibold mb-2">{{ 'backend.plan.commitment.title'|trans }}</div>
-            <div class="row g-2">
-                {% for key, item in {
-                    'planned': commitmentSummary.planned,
-                    'real': commitmentSummary.implemented
-                } %}
-                    <div class="col-12 col-lg-6">
-                        <div class="border rounded p-3 bg-white h-100">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <strong>{{ ('backend.plan.commitment.' ~ key)|trans }}</strong>
-                                <span class="badge bg-success">{{ ('backend.plan.commitment.levels.' ~ item.levelKey ~ '.label')|trans }}</span>
-                            </div>
-                            <div class="small text-muted mt-1">{{ ('backend.plan.commitment.levels.' ~ item.levelKey ~ '.message')|trans }}</div>
-                            <div class="mt-2">{{ 'backend.plan.commitment.points_of_total'|trans({'%points%': item.points, '%total%': commitmentSummary.totalOfficialPoints}) }}</div>
-                            <div class="progress mt-2" style="height: 8px;">
-                                <div class="progress-bar bg-success" style="width: {{ item.percentageRounded }}%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
+        {% include 'backend/plan/_commitment_banner.html.twig' with { commitmentSummary: commitmentSummary } %}
     {% endif %}
 
     <div class="flex-grow-1 overflow-auto pe-1" style="min-height: 0;">
