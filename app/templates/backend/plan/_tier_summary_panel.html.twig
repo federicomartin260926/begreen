@@ -1,0 +1,25 @@
+<div class="alert {% if projectTier != 'pro' %}alert-info{% else %}alert-success{% endif %} d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div class="d-flex flex-column gap-1">
+        <div>
+            <strong>{{ 'backend.plan.tier.current'|trans }}:</strong> {{ projectTierLabel }}
+        </div>
+        <div>{{ projectTierSummary }}</div>
+        <div>
+            {% if evidenceLimit is not null %}
+                {{ 'backend.plan.tier.evidence_used'|trans({'%used%': evidenceCount, '%limit%': evidenceLimit}) }}
+            {% else %}
+                {{ 'backend.plan.tier.evidence_unlimited'|trans({'%used%': evidenceCount}) }}
+            {% endif %}
+        </div>
+    </div>
+    {% if projectTier != 'pro' %}
+        {% include 'backend/plan/_upgrade_cta.html.twig' with {
+            upgradeCta: upgradeCta,
+            project: project
+        } %}
+    {% else %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle">
+            {{ 'backend.plan.upgrade.active_title'|trans }}
+        </span>
+    {% endif %}
+</div>

@@ -54,13 +54,32 @@ export default class extends Controller {
 
       const onShown = () => {
         if (icon) { icon.classList.remove('bi-chevron-right'); icon.classList.add('bi-chevron-down'); }
-        btn.classList.remove('btn-outline-primary');
-        btn.classList.add('btn-primary');
+        if (btn.dataset.collapseStaticClass !== '1') {
+          btn.classList.remove('btn-outline-primary');
+          btn.classList.add('btn-primary');
+        }
+
+        const collapsedLabel = btn.querySelector('[data-collapse-label="collapsed"]');
+        const expandedLabel = btn.querySelector('[data-collapse-label="expanded"]');
+        if (collapsedLabel && expandedLabel) {
+          collapsedLabel.classList.add('d-none');
+          expandedLabel.classList.remove('d-none');
+        }
+
       };
       const onHidden = () => {
         if (icon) { icon.classList.remove('bi-chevron-down'); icon.classList.add('bi-chevron-right'); }
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-outline-primary');
+        if (btn.dataset.collapseStaticClass !== '1') {
+          btn.classList.remove('btn-primary');
+          btn.classList.add('btn-outline-primary');
+        }
+
+        const collapsedLabel = btn.querySelector('[data-collapse-label="collapsed"]');
+        const expandedLabel = btn.querySelector('[data-collapse-label="expanded"]');
+        if (collapsedLabel && expandedLabel) {
+          collapsedLabel.classList.remove('d-none');
+          expandedLabel.classList.add('d-none');
+        }
       };
 
       target.addEventListener('shown.bs.collapse', onShown);

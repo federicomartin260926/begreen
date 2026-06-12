@@ -8,7 +8,7 @@
 {% set plannedNext = planned.pointsToNextLevel is not null and planned.levelKey != 'jungle' ? 'backend.plan.commitment.next_level'|trans({'%points%': planned.pointsToNextLevel}) : null %}
 {% set realNext = real.pointsToNextLevel is not null and real.levelKey != 'jungle' ? 'backend.plan.commitment.next_level'|trans({'%points%': real.pointsToNextLevel}) : null %}
 
-<div class="card border-0 shadow-sm mb-4">
+<div class="card border-0 shadow-sm mb-4 bg-light">
     <div class="card-body py-3">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
             <div>

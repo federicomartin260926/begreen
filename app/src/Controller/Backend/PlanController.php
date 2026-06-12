@@ -491,6 +491,8 @@ class PlanController extends AbstractController
         PlanRepository $planRepository,
         MeasureRepository $measureRepository,
         ProtocolRepository $protocolRepository,
+        CommercialPlanRepository $commercialPlanRepository,
+        StripeProjectCheckoutService $checkoutService,
         EntityManagerInterface $em,
         MailerInterface $mailer,
         TranslatorInterface $translator
@@ -710,6 +712,8 @@ class PlanController extends AbstractController
         $uiLocale = $request->getLocale();
         $projectTierLabel = $this->featureGate->getPlanLabel($project);
         $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
+        $upgradeCta = $this->buildUpgradeCta($project, $this->featureGate->getTier($project), $availableUpgradeTargets, $commercialPlanRepository);
 
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,
@@ -720,6 +724,7 @@ class PlanController extends AbstractController
             'evidenceCount'    => $this->countProjectEvidenceFiles($plan),
             'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project),
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
+            'upgradeCta'       => $upgradeCta,
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),

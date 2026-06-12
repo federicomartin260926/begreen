@@ -1,0 +1,67 @@
+{% set panelId = panelId|default('measure-filters-panel') %}
+{% set filters = filters|default({}) %}
+
+{% set activeFilterLabels = [] %}
+
+{% if filters.category|default('') is not empty %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.category'|trans]) %}
+{% endif %}
+{% if filters.department|default('') is not empty %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.department'|trans]) %}
+{% endif %}
+{% if filters.ods|default('') is not empty %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.ods'|trans]) %}
+{% endif %}
+{% if filters.impact_area|default('') is not empty %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.impact_area'|trans]) %}
+{% endif %}
+{% if filters.triple_balance_axis|default('') is not empty %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.triple_balance'|trans]) %}
+{% endif %}
+{% if filters.scope|default('') is not empty %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.scope'|trans]) %}
+{% endif %}
+{% if filters.is_applicable|default(false) %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.only_applicable'|trans]) %}
+{% endif %}
+{% if filters.will_implement|default(false) %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.only_to_implement'|trans]) %}
+{% endif %}
+{% if filters.only_implemented|default(false) %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.only_implemented'|trans]) %}
+{% endif %}
+{% if filters.is_critical|default(false) %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.only_critical'|trans]) %}
+{% endif %}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <div class="fw-semibold">
+                    {{ 'backend.plan.filters.panel_title'|trans }}
+                </div>
+                {% if activeFilterLabels is not empty %}
+                    <div class="small text-muted">
+                        {{ 'backend.plan.filters.active_filters'|trans }}: {{ activeFilterLabels|join(', ') }}
+                    </div>
+                {% endif %}
+            </div>
+            <button
+                class="btn btn-success btn-sm text-white"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#{{ panelId }}"
+                aria-expanded="false"
+                aria-controls="{{ panelId }}"
+                data-collapse-static-class="1">
+                <span data-collapse-label="collapsed">{{ 'backend.plan.filters.panel_open'|trans }}</span>
+                <span data-collapse-label="expanded" class="d-none">{{ 'backend.plan.filters.panel_close'|trans }}</span>
+            </button>
+        </div>
+
+        <div class="collapse mt-3" id="{{ panelId }}">
+            {% include 'backend/plan/_filters.html.twig' %}
+        </div>
+    </div>
+</div>
