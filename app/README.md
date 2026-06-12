@@ -184,7 +184,8 @@ No se ha convertido el proyecto a un flujo de migraciones como parte de este san
 - En el flujo del plan, el protocolo canónico de esta fase consume solo las medidas activas definidas para el plan; las medidas legacy del mismo protocolo quedan excluidas del recorrido canónico.
 - El review/listado del plan ya expone filtros básicos por departamento, ODS, área de impacto, triple balance y alcance, usando taxonomías múltiples cuando existen.
 - El orden de las medidas cambia según la vista:
-  - en la vista operativa de creación del plan se ordenan por `categoría` o `departamento` según el `groupingBy` del protocolo, y después por nombre de medida;
+  - en la vista operativa de creación del plan se ordenan por `categoría` o `departamento` según el `groupingBy` del protocolo, después por bloque, y finalmente por `sort_order` de la medida;
+  - cuando el protocolo agrupa por departamento, la medida usa como departamento de agrupación el `measure.department` singular; si la medida no tiene departamento, cae en el grupo `Sin departamento` y queda al final del orden de departamentos;
   - en la vista tabular/review, ya con el plan creado, se ordenan por estado del plan de la medida (`rank`) y después por `nameReview` si existe, o por `name`;
   - en las exportaciones agrupadas, el agrupado se hace por la taxonomía elegida y dentro de cada grupo se ordena por nombre visible (`displayName`).
 - Las exportaciones del plan ya siguen el modelo Basic / Standard / Pro: Basic solo descarga el PDF unificado, Standard añade PDF agrupado por departamentos y Pro añade PDF/Excel agrupados por categorías, departamentos, áreas de impacto, triple balance y ODS.
