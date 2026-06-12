@@ -227,16 +227,11 @@
                     <strong>{{ 'backend.plan.features_blocked'|trans }}</strong>
                     <span>{{ 'backend.plan.features_blocked_help'|trans }}</span>
                 </div>
-                <div class="row g-3 mb-3">
-                    {% for card in commercialCards %}
-                        <div class="col-12 col-md-6 col-lg-4">
-                            <div class="border rounded p-3 h-100 bg-light">
-                                <div class="fw-semibold">{{ card.label }}</div>
-                                <div class="small text-muted">{{ card.reason }}</div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
+                {% include 'backend/plan/_locked_features_panel.html.twig' with {
+                    commercialCards: commercialCards,
+                    panelId: 'locked-features-review',
+                    panelHelp: 'backend.plan.features_blocked_help'|trans
+                } %}
             {% endif %}
 
             <div class="row g-3 mb-4">

@@ -793,6 +793,9 @@ backend:
       evidence_unlimited: "Evidencias usadas: %used% / ilimitadas"
     features_blocked: "Funciones bloqueadas"
     features_blocked_help: "El tier actual limita algunas opciones de exportación y gestión."
+    features_blocked_panel_title: "Funciones avanzadas disponibles en otros planes"
+    features_blocked_panel_open: "Ver funciones avanzadas"
+    features_blocked_panel_close: "Ocultar funciones avanzadas"
     upgrade:
       title: "Mejora tu plan"
       help: "El pago se gestiona con Stripe y la factura quedará disponible en tu proyecto."

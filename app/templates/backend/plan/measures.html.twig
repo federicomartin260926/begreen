@@ -196,16 +196,10 @@
             {% endif %}
 
             {% if commercialCards is not empty %}
-                <div class="row g-3 mb-3">
-                    {% for card in commercialCards %}
-                        <div class="col-12 col-md-6 col-lg-4">
-                            <div class="border rounded p-3 h-100 bg-light">
-                                <div class="fw-semibold">{{ card.label }}</div>
-                                <div class="small text-muted">{{ card.reason }}</div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
+                {% include 'backend/plan/_locked_features_panel.html.twig' with {
+                    commercialCards: commercialCards,
+                    panelId: 'locked-features-measures'
+                } %}
             {% endif %}
 
             {% if commitmentSummary is defined %}
