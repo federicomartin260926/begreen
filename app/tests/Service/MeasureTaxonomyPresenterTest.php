@@ -10,6 +10,9 @@ use App\Entity\Ods;
 use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
 use App\Service\MeasureTaxonomyPresenter;
+use App\Repository\DepartmentRepository;
+use Doctrine\ORM\Query;
+use Doctrine\ORM\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
 final class MeasureTaxonomyPresenterTest extends TestCase
@@ -37,6 +40,7 @@ final class MeasureTaxonomyPresenterTest extends TestCase
         self::assertSame('Producción', $presenter->departments($measure)[0]['displayName']);
         self::assertCount(1, $presenter->odsItems($measure));
         self::assertSame('12', $presenter->odsItems($measure)[0]['label']);
+        self::assertSame('12', $presenter->odsBadges($measure)[0]['badgeLabel']);
         self::assertSame([], $presenter->verificationSourcesWithPriority($measure));
         self::assertTrue($presenter->matchesDepartment($measure, 11));
         self::assertTrue($presenter->matchesOds($measure, 12));
@@ -95,6 +99,8 @@ final class MeasureTaxonomyPresenterTest extends TestCase
         self::assertCount(2, $odsItems);
         self::assertSame('12', $odsItems[0]['label']);
         self::assertSame('13', $odsItems[1]['label']);
+        self::assertSame('12', $presenter->odsBadges($measure)[0]['badgeLabel']);
+        self::assertSame('13', $presenter->odsBadges($measure)[1]['badgeLabel']);
         self::assertSame([1, 2], array_map(static fn (array $link): int => $link['priority'], $sources));
         self::assertSame('Factura / Albarán', $sources[0]['displayName']);
         self::assertSame('Foto', $sources[1]['displayName']);
@@ -104,6 +110,44 @@ final class MeasureTaxonomyPresenterTest extends TestCase
         self::assertTrue($presenter->matchesOds($measure, 32));
         self::assertTrue($presenter->matchesImpactArea($measure, 41));
         self::assertTrue($presenter->matchesTripleBalanceAxis($measure, 51));
+    }
+
+    public function testPresenterCollapsesAllDepartmentsIntoTodosBadgeWhenProjectCoverageMatches(): void
+    {
+        $departmentRepository = $this->createMock(DepartmentRepository::class);
+        $queryBuilder = $this->createMock(QueryBuilder::class);
+        $query = $this->createMock(Query::class);
+
+        $presenter = new MeasureTaxonomyPresenter($departmentRepository);
+        $measure = new Measure();
+
+        $departmentA = (new Department())->setCode('prod')->setName('Producción');
+        $departmentB = (new Department())->setCode('arte')->setName('Arte');
+        $this->setEntityId($departmentA, 21);
+        $this->setEntityId($departmentB, 22);
+
+        $measure->addDepartment($departmentA);
+        $measure->addDepartment($departmentB);
+
+        $departmentRepository->expects(self::once())
+            ->method('qbForProjectType')
+            ->with('rodaje')
+            ->willReturn($queryBuilder);
+
+        $queryBuilder->expects(self::once())
+            ->method('getQuery')
+            ->willReturn($query);
+
+        $query->expects(self::once())
+            ->method('getResult')
+            ->willReturn([$departmentA, $departmentB]);
+
+        $badges = $presenter->departmentBadges($measure, 'rodaje');
+
+        self::assertCount(1, $badges);
+        self::assertSame('TODOS', $badges[0]['displayName']);
+        self::assertStringContainsString('Producción', $badges[0]['title']);
+        self::assertStringContainsString('Arte', $badges[0]['title']);
     }
 
     private function setEntityId(object $entity, int $id): void

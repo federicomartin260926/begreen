@@ -903,6 +903,7 @@ backend:
       implementation: "Implementation"
       description: "Description"
       department: "Department"
+      all_departments: "ALL"
       category: "Category"
       subgroup: "Subgroup: %name%"
     q:

@@ -225,20 +225,26 @@
               {% endif %}
             </td>
             <td>
-              {% set departments = pm.measure ? taxonomyPresenter.departments(pm.measure) : [] %}
+              {% set departments = pm.measure ? taxonomyPresenter.departmentBadges(pm.measure, project.type|default(null)) : [] %}
               {% if departments is not empty %}
                 {% for department in departments %}
-                  <span style="display:inline-block;border:1px solid #999;border-radius:999px;padding:2px 6px;margin:0 3px 3px 0;">{{ department.displayName }}</span>
+                  <span style="display:inline-block;border:1px solid #3fc38a;background:#eaf4ea;color:#1a3d1e;border-radius:999px;padding:2px 8px;margin:0 3px 3px 0;font-size:10px;"
+                        title="{{ department.title|default(department.displayName) }}">
+                    {{ department.displayName }}
+                  </span>
                 {% endfor %}
               {% else %}
                 —
               {% endif %}
             </td>
             <td>
-              {% set odsItems = pm.measure ? taxonomyPresenter.odsItems(pm.measure) : [] %}
+              {% set odsItems = pm.measure ? taxonomyPresenter.odsBadges(pm.measure) : [] %}
               {% if odsItems is not empty %}
                 {% for ods in odsItems %}
-                  <span style="display:inline-block;border:1px solid #999;border-radius:999px;padding:2px 6px;margin:0 3px 3px 0;">{{ ods.label }}</span>
+                  <span style="display:inline-block;border:1px solid #b45309;background:#fef3c7;color:#92400e;border-radius:999px;padding:2px 8px;margin:0 3px 3px 0;font-size:10px;"
+                        title="{{ ods.title|default(ods.label) }}">
+                    {{ ods.badgeLabel|default(ods.label) }}
+                  </span>
                 {% endfor %}
               {% else %}
                 —

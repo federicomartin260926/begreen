@@ -93,7 +93,11 @@
                 <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.description'|trans }}</dt>
                 <dd class="col-md-8 col-lg-10">{{ measure.description }}</dd>
             {% endif %}
-            {% include 'backend/plan/_measure_taxonomy.html.twig' with { measure: measure, taxonomyPresenter: taxonomyPresenter } %}
+            {% include 'backend/plan/_measure_taxonomy.html.twig' with {
+                measure: measure,
+                taxonomyPresenter: taxonomyPresenter,
+                projectType: projectType|default(null)
+            } %}
         </dl>
     </div>
 

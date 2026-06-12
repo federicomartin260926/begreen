@@ -1,26 +1,27 @@
-{% import '_macros/logos.html.twig' as logos %}
 {% set showVerificationSources = showVerificationSources is defined ? showVerificationSources : true %}
+{% set projectType = projectType|default(null) %}
 
-{% set departments = taxonomyPresenter.departments(measure) %}
+{% set departments = taxonomyPresenter.departmentBadges(measure, projectType) %}
 {% if departments is not empty %}
     <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.measure.department'|trans }}</dt>
     <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
         {% for department in departments %}
-            <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
+            <span class="badge bg-success-subtle text-success-emphasis border"
+                  title="{{ department.title|default(department.displayName) }}">
+                {{ department.displayName }}
+            </span>
         {% endfor %}
     </dd>
 {% endif %}
 
-{% set odsItems = taxonomyPresenter.odsItems(measure) %}
+{% set odsItems = taxonomyPresenter.odsBadges(measure) %}
 {% if odsItems is not empty %}
     <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">ODS</dt>
     <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
         {% for ods in odsItems %}
-            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1">
-                {% if ods.code %}
-                    {{ logos.odsLogoFromCode(ods.code, ods.name, 24) }}
-                {% endif %}
-                <span>{{ ods.label }}</span>
+            <span class="badge bg-warning-subtle text-warning-emphasis border"
+                  title="{{ ods.title|default(ods.label) }}">
+                {{ ods.badgeLabel|default(ods.label) }}
             </span>
         {% endfor %}
     </dd>

@@ -906,6 +906,7 @@ backend:
       implementation: "Implementación"
       description: "Descripción"
       department: "Departamento"
+      all_departments: "TODOS"
       category: "Categoría"
       subgroup: "Subgrupo: %name%"
     q:

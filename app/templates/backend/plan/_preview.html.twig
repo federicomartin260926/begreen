@@ -152,21 +152,25 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% set departments = pm.measure ? taxonomyPresenter.departments(pm.measure) : [] %}
+                                        {% set departments = pm.measure ? taxonomyPresenter.departmentBadges(pm.measure, project.type|default(null)) : [] %}
                                         {% if departments is not empty %}
                                             {% for department in departments %}
-                                                <span class="badge bg-light text-dark border">{{ department.displayName }}</span>
+                                                <span class="badge bg-success-subtle text-success-emphasis border"
+                                                      title="{{ department.title|default(department.displayName) }}">
+                                                    {{ department.displayName }}
+                                                </span>
                                             {% endfor %}
                                         {% else %}
                                             —
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% set odsItems = pm.measure ? taxonomyPresenter.odsItems(pm.measure) : [] %}
+                                        {% set odsItems = pm.measure ? taxonomyPresenter.odsBadges(pm.measure) : [] %}
                                         {% if odsItems is not empty %}
                                             {% for ods in odsItems %}
-                                                <span class="badge bg-light text-dark border">
-                                                    {{ ods.label }}
+                                                <span class="badge bg-warning-subtle text-warning-emphasis border"
+                                                      title="{{ ods.title|default(ods.label) }}">
+                                                    {{ ods.badgeLabel|default(ods.label) }}
                                                 </span>
                                             {% endfor %}
                                         {% else %}

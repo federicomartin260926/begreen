@@ -56,7 +56,7 @@ final class SustainabilityPlanGroupingService
 
             foreach ($this->resolveGroupingLabels($measure, $grouping) as $label) {
                 $groups[$label]['label'] = $label;
-                $groups[$label]['rows'][$measure->getId() ?? spl_object_id($measure)] = $this->buildRow($planMeasure, $grouping);
+                $groups[$label]['rows'][$measure->getId() ?? spl_object_id($measure)] = $this->buildRow($planMeasure, $grouping, $project->getType());
             }
         }
 
@@ -159,7 +159,7 @@ final class SustainabilityPlanGroupingService
     /**
      * @return array<string, mixed>
      */
-    private function buildRow(PlanMeasure $planMeasure, string $grouping): array
+    private function buildRow(PlanMeasure $planMeasure, string $grouping, ?string $projectType = null): array
     {
         $measure = $planMeasure->getMeasure();
         if (!$measure instanceof Measure) {
@@ -168,11 +168,11 @@ final class SustainabilityPlanGroupingService
 
         $departments = array_map(
             static fn (array $department): string => $department['displayName'] ?: $department['name'],
-            $this->taxonomyPresenter->departments($measure)
+            $this->taxonomyPresenter->departmentBadges($measure, $projectType)
         );
         $odsItems = array_map(
-            static fn (array $ods): string => $ods['label'],
-            $this->taxonomyPresenter->odsItems($measure)
+            static fn (array $ods): string => $ods['badgeLabel'] ?? $ods['label'],
+            $this->taxonomyPresenter->odsBadges($measure)
         );
         $impactAreas = array_map(
             static fn (array $impactArea): string => $impactArea['name'],

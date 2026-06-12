@@ -12,7 +12,6 @@
             <tbody>
             {% set openId = app.request.query.get('open') %}
             {% for measure in measures %}
-                {% set rowNum = positionById[measure.id] ?? '-' %}
                 {% set collapseId = 'mrow_' ~ measure.id %}
 
                 {% set isOpen = openId and openId == measure.id %}
@@ -57,7 +56,6 @@
                         <span class="d-inline-flex align-items-center flex-nowrap">
                             <span class="d-inline-block rounded-circle me-2 {{ statusColor }}" style="width:10px;height:10px;"></span>
                             {% if showStar %}<i class="bi bi-star-fill text-warning me-1"></i>{% endif %}
-                            <span class="d-inline-block">{{ rowNum }}</span>
                         </span>
                     </td>
 
@@ -100,6 +98,7 @@
                                         {% include 'backend/plan/_measure_taxonomy.html.twig' with {
                                             measure: measure,
                                             taxonomyPresenter: taxonomyPresenter,
+                                            projectType: project.type|default(null),
                                             dtClass: 'col-md-3 col-lg-2',
                                             ddClass: 'col-md-9 col-lg-10',
                                             showVerificationSources: false

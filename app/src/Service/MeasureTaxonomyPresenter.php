@@ -3,10 +3,21 @@
 namespace App\Service;
 
 use App\Entity\Measure;
+use App\Entity\Department;
 use App\Entity\MeasureVerificationSource;
+use App\Repository\DepartmentRepository;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class MeasureTaxonomyPresenter
 {
+    private array $departmentBadgeCache = [];
+
+    public function __construct(
+        private readonly ?DepartmentRepository $departmentRepository = null,
+        private readonly ?TranslatorInterface $translator = null,
+    ) {
+    }
+
     /**
      * @return array<int, array{id:int|null, code:string|null, name:string, displayName:string}>
      */
@@ -27,6 +38,44 @@ final class MeasureTaxonomyPresenter
     }
 
     /**
+     * @return array<int, array{id:int|null, code:string|null, name:string, displayName:string, title:string}>
+     */
+    public function departmentBadges(Measure $measure, ?string $projectType = null): array
+    {
+        $departments = $measure->getResolvedDepartments();
+        if ($departments === []) {
+            return [];
+        }
+
+        if ($projectType !== null && $this->coversAllDepartments($departments, $projectType)) {
+            return [[
+                'id' => null,
+                'code' => null,
+                'name' => $this->allDepartmentsLabel(),
+                'displayName' => $this->allDepartmentsLabel(),
+                'title' => implode(', ', array_map(
+                    static fn (Department $department): string => (string) ($department->getDisplayName() ?? $department->getName() ?? ''),
+                    $departments
+                )),
+            ]];
+        }
+
+        return array_map(static function ($department): array {
+            $displayName = method_exists($department, 'getDisplayName')
+                ? (string) $department->getDisplayName()
+                : (string) ($department->getName() ?? '');
+
+            return [
+                'id' => method_exists($department, 'getId') ? $department->getId() : null,
+                'code' => method_exists($department, 'getCode') ? $department->getCode() : null,
+                'name' => (string) ($department->getName() ?? $displayName),
+                'displayName' => $displayName,
+                'title' => $displayName,
+            ];
+        }, $departments);
+    }
+
+    /**
      * @return array<int, array{id:int|null, code:string|null, name:string, label:string}>
      */
     public function odsItems(Measure $measure): array
@@ -40,6 +89,26 @@ final class MeasureTaxonomyPresenter
                 'code' => $code,
                 'name' => $name,
                 'label' => $code ?: $name,
+            ];
+        }, $measure->getResolvedOdsItems());
+    }
+
+    /**
+     * @return array<int, array{id:int|null, code:string|null, name:string, label:string, badgeLabel:string, title:string}>
+     */
+    public function odsBadges(Measure $measure): array
+    {
+        return array_map(function ($ods): array {
+            $code = method_exists($ods, 'getCode') ? (string) $ods->getCode() : '';
+            $name = (string) ($ods->getName() ?? '');
+
+            return [
+                'id' => method_exists($ods, 'getId') ? $ods->getId() : null,
+                'code' => $code !== '' ? $code : null,
+                'name' => $name,
+                'label' => $code !== '' ? $code : $name,
+                'badgeLabel' => $this->shortOdsLabel($code, $name),
+                'title' => trim(sprintf('%s %s', $code, $name)),
             ];
         }, $measure->getResolvedOdsItems());
     }
@@ -174,5 +243,73 @@ final class MeasureTaxonomyPresenter
             && $this->matchesOds($measure, $filters['ods'] ?? null)
             && $this->matchesImpactArea($measure, $filters['impact_area'] ?? null)
             && $this->matchesTripleBalanceAxis($measure, $filters['triple_balance_axis'] ?? null);
+    }
+
+    /**
+     * @param Department[] $departments
+     */
+    private function coversAllDepartments(array $departments, string $projectType): bool
+    {
+        if ($this->departmentRepository === null) {
+            return false;
+        }
+
+        $availableIds = $this->availableDepartmentIdsForProjectType($projectType);
+        if ($availableIds === []) {
+            return false;
+        }
+
+        $measureIds = [];
+        foreach ($departments as $department) {
+            if (method_exists($department, 'getId') && $department->getId() !== null) {
+                $measureIds[] = (string) $department->getId();
+            }
+        }
+
+        if ($measureIds === []) {
+            return false;
+        }
+
+        sort($measureIds);
+        sort($availableIds);
+
+        return $measureIds === $availableIds;
+    }
+
+    /**
+     * @return string[]
+     */
+    private function availableDepartmentIdsForProjectType(string $projectType): array
+    {
+        if (array_key_exists($projectType, $this->departmentBadgeCache)) {
+            return $this->departmentBadgeCache[$projectType];
+        }
+
+        $ids = [];
+        foreach ($this->departmentRepository->qbForProjectType($projectType)->getQuery()->getResult() as $department) {
+            if ($department instanceof Department && $department->getId() !== null) {
+                $ids[] = (string) $department->getId();
+            }
+        }
+
+        return $this->departmentBadgeCache[$projectType] = $ids;
+    }
+
+    private function shortOdsLabel(string $code, string $name): string
+    {
+        if (preg_match('/(\d{1,2})/', $code, $matches)) {
+            return $matches[1];
+        }
+
+        if (preg_match('/(\d{1,2})/', $name, $matches)) {
+            return $matches[1];
+        }
+
+        return $code !== '' ? $code : $name;
+    }
+
+    private function allDepartmentsLabel(): string
+    {
+        return $this->translator?->trans('backend.plan.measure.all_departments') ?? 'TODOS';
     }
 }
