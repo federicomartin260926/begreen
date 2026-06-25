@@ -45,6 +45,10 @@
                     <div class="small text-muted">
                         {{ 'backend.plan.filters.active_filters'|trans }}: {{ activeFilterLabels|join(', ') }}
                     </div>
+                {% else %}
+                    <div class="small text-muted">
+                        {{ 'backend.plan.filters.no_filters_active'|trans }}
+                    </div>
                 {% endif %}
             </div>
             <button

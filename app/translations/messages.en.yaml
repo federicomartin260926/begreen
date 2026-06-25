@@ -995,6 +995,7 @@ backend:
       panel_open: "Show filters"
       panel_close: "Hide filters"
       active_filters: "Active filters"
+      no_filters_active: "No filters applied"
       only_applicable: "Only applicable"
       only_to_implement: "Only “Will implement”"
       only_pending: "Only pending"

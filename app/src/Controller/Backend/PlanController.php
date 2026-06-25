@@ -69,7 +69,7 @@ class PlanController extends AbstractController
 
         // Si hay plan y está completo -> ir a review
         if ($plan && $plan->getStatus() === 'completo') {
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_plan_review', $this->reviewDefaultFilters());
         }
 
         // Con protocolo seleccionado -> ir a Medidas
@@ -557,16 +557,6 @@ class PlanController extends AbstractController
         $onlyImplemented  = $request->query->get('only_implemented');
         $openId           = $request->query->getInt('open', 0);
         $isCritical       = $request->query->get('is_critical');
-
-        // Por defecto (sin query string): solo "aplica" y "se implementará"
-        $hasAnyQuery = !empty($request->query->all());
-        if (!$hasAnyQuery) {
-            $isApplicable  = '1';
-            $willImplement = '1';
-        } else {
-            $isApplicable  = $request->query->get('is_applicable');
-            $willImplement = $request->query->get('will_implement');
-        }
 
         $paginationQuery = $request->query->all();
         if (!array_key_exists('is_applicable', $paginationQuery) && $isApplicable !== null && $isApplicable !== '') {
@@ -2315,6 +2305,17 @@ class PlanController extends AbstractController
                     'hoverBackgroundColor' => [$c3, $c1],
                 ]],
             ],
+        ];
+    }
+
+    /**
+     * @return array{is_applicable: string, will_implement: string}
+     */
+    private function reviewDefaultFilters(): array
+    {
+        return [
+            'is_applicable' => '1',
+            'will_implement' => '1',
         ];
     }
 

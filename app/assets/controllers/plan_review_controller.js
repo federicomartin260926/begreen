@@ -260,6 +260,45 @@ export default class extends Controller {
     return filters;
   }
 
+  buildReviewQuery(extraParams = {}) {
+    const params = new URLSearchParams(window.location.search);
+    const filterKeys = [
+      'protocol',
+      'category',
+      'department',
+      'ods',
+      'impact_area',
+      'triple_balance_axis',
+      'scope',
+      'esg',
+      'is_applicable',
+      'will_implement',
+      'pending_selection',
+      'only_implemented',
+      'is_critical',
+      'page',
+    ];
+
+    const filters = this.collectFilters();
+    filterKeys.forEach((key) => params.delete(key));
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value));
+      }
+    });
+
+    Object.entries(extraParams).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+
+    return params.toString();
+  }
+
   extractFilename(contentDisposition) {
     if (!contentDisposition) return null;
     const match = /filename\*?=(?:UTF-8'')?"?([^\";]+)/i.exec(contentDisposition);
@@ -414,9 +453,7 @@ export default class extends Controller {
       }
 
       // Mantener la medida abierta
-      const params = new URLSearchParams(window.location.search);
-      params.set('open', String(measureId));
-      window.location.search = params.toString();
+      window.location.search = this.buildReviewQuery({ open: measureId });
     } catch (err) {
       console.error(err);
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
@@ -443,9 +480,7 @@ export default class extends Controller {
       .then(r => r.json())
       .then(data => {
         if (!data?.success) throw new Error(data?.error || this.t('evidence_upload_failed'));
-        const params = new URLSearchParams(window.location.search);
-        params.set('open', String(measureId));
-        window.location.search = params.toString();
+        window.location.search = this.buildReviewQuery({ open: measureId });
       })
       .catch(err => {
         console.error(err);
@@ -473,9 +508,7 @@ export default class extends Controller {
       .then(r => r.json())
       .then(data => {
         if (!data?.success) throw new Error(data?.error || this.t('evidence_delete_error'));
-        const params = new URLSearchParams(window.location.search);
-        params.set('open', String(measureId));
-        window.location.search = params.toString();
+        window.location.search = this.buildReviewQuery({ open: measureId });
       })
       .catch(err => {
         console.error(err);

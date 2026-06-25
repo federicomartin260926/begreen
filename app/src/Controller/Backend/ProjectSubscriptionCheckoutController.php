@@ -21,6 +21,11 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 final class ProjectSubscriptionCheckoutController extends AbstractController
 {
+    private const REVIEW_DEFAULTS = [
+        'is_applicable' => '1',
+        'will_implement' => '1',
+    ];
+
     public function __construct(
         private readonly StripeProjectCheckoutService $checkoutService,
         private readonly ActiveProjectService $activeProjectService,
@@ -35,7 +40,7 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
         if (!$this->isCsrfTokenValid('project_subscription_checkout_'.$project->getId().'_'.$targetTier, (string) $request->request->get('_token'))) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.invalid_token');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
         }
 
         try {
@@ -43,15 +48,15 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
         } catch (\InvalidArgumentException) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('warning', 'backend.subscription.flash.upgrade_not_allowed');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
         } catch (PendingStripeCheckoutException) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('warning', 'backend.subscription.flash.pending_payment_exists');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
         } catch (\Throwable) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.checkout_failed');
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
         }
 
         return new RedirectResponse($checkoutUrl);
@@ -89,7 +94,7 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('backend_plan_review');
+        return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
     }
 
     #[Route('/{id}/subscription/confirm-pending', name: 'subscription_confirm_pending', methods: ['POST'])]
@@ -163,6 +168,6 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
         $this->activeProjectService->setActiveProject($project);
         $this->addFlash('warning', 'backend.subscription.flash.cancelled');
 
-        return $this->redirectToRoute('backend_plan_review');
+        return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
     }
 }

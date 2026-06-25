@@ -10,7 +10,7 @@
       <p class="lead mb-4">
         {{ 'backend.plan.done.lead'|trans({'%project%': project.name})|raw }}
       </p>
-      <a href="{{ path('backend_plan_review') }}" class="btn btn-primary text-decoration-none">{{ 'backend.plan.done.view_btn'|trans }}</a>
+      <a href="{{ path('backend_plan_review', { is_applicable: '1', will_implement: '1' }) }}" class="btn btn-primary text-decoration-none">{{ 'backend.plan.done.view_btn'|trans }}</a>
     </div>
   </div>
 </div>

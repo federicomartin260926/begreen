@@ -64,7 +64,10 @@ final class SustainabilityPlanExportController extends AbstractController
 
         if (!$this->isExportAllowed($project, $grouping, 'pdf')) {
             $this->addFlash('info', $this->translator->trans($this->blockedMessageKey($grouping, 'pdf')));
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_plan_review', [
+                'is_applicable' => '1',
+                'will_implement' => '1',
+            ]);
         }
 
         $groups = $this->groupingService->groupPlanMeasures($plan, $project, $grouping);
@@ -120,7 +123,10 @@ final class SustainabilityPlanExportController extends AbstractController
 
         if (!$this->isExportAllowed($project, $grouping, 'excel')) {
             $this->addFlash('info', $this->translator->trans($this->blockedMessageKey($grouping, 'excel')));
-            return $this->redirectToRoute('backend_plan_review');
+            return $this->redirectToRoute('backend_plan_review', [
+                'is_applicable' => '1',
+                'will_implement' => '1',
+            ]);
         }
 
         $groups = $this->groupingService->groupPlanMeasures($plan, $project, $grouping);

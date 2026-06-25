@@ -52,6 +52,17 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('i=48', $url);
     }
 
+    public function testReviewDefaultFiltersAreExplicit(): void
+    {
+        $controller = $this->getController();
+        $filters = $this->invokeReviewDefaultFilters($controller);
+
+        self::assertSame([
+            'is_applicable' => '1',
+            'will_implement' => '1',
+        ], $filters);
+    }
+
     public function testUpdateSelectionRedirectsTerminalActionToFirstPendingVisibleMeasure(): void
     {
         $controller = $this->getController();
@@ -694,6 +705,20 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $url = $reflection->invoke($controller, $planComplete, $nextIndex);
 
         return $url;
+    }
+
+    /**
+     * @return array{is_applicable: string, will_implement: string}
+     */
+    private function invokeReviewDefaultFilters(PlanController $controller): array
+    {
+        $reflection = new \ReflectionMethod($controller, 'reviewDefaultFilters');
+        $reflection->setAccessible(true);
+
+        /** @var array{is_applicable: string, will_implement: string} $filters */
+        $filters = $reflection->invoke($controller);
+
+        return $filters;
     }
 
     private function invokeIsPlanCompleteForProtocol(

@@ -998,6 +998,7 @@ backend:
       panel_open: "Ver filtros"
       panel_close: "Ocultar filtros"
       active_filters: "Filtros activos"
+      no_filters_active: "No hay filtros aplicados"
       only_applicable: "Solo aplicables"
       only_to_implement: "Solo «Se implementará»"
       only_pending: "Solo pendientes"
