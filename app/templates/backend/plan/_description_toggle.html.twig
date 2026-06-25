@@ -10,27 +10,24 @@
         {% set toggleId = toggleId|default('description-toggle') %}
         {% set excerptText = descriptionText|u.truncate(excerptLength, '…') %}
 
-        <div class="measure-description">
-            <div class="measure-description-excerpt">{{ excerptText }}</div>
-            <a class="small link-primary text-decoration-none"
-               data-bs-toggle="collapse"
-               href="#{{ toggleId }}"
-               role="button"
-               aria-expanded="false"
-               aria-controls="{{ toggleId }}">
+        <div class="measure-description"
+             data-controller="description-toggle"
+             data-more-label="{{ 'backend.plan.measure.more'|trans|e('html_attr') }}"
+             data-less-label="{{ 'backend.plan.measure.less'|trans|e('html_attr') }}">
+            <span class="measure-description-excerpt" data-description-toggle-target="excerpt">{{ excerptText }}</span>
+            <span class="measure-description-full d-none"
+                  id="{{ toggleId }}"
+                  data-description-toggle-target="full"
+                  style="white-space: pre-wrap;">{{ descriptionText }}</span>
+            <button
+                type="button"
+                class="btn btn-link p-0 small link-primary text-decoration-none align-baseline ms-1"
+                data-action="click->description-toggle#toggle"
+                data-description-toggle-target="toggle"
+                aria-controls="{{ toggleId }}"
+                aria-expanded="false">
                 {{ 'backend.plan.measure.more'|trans }}
-            </a>
-            <div class="collapse mt-2" id="{{ toggleId }}">
-                <div class="measure-description-full" style="white-space: pre-wrap;">{{ descriptionText }}</div>
-                <a class="small link-primary text-decoration-none d-inline-block mt-1"
-                   data-bs-toggle="collapse"
-                   href="#{{ toggleId }}"
-                   role="button"
-                   aria-expanded="true"
-                   aria-controls="{{ toggleId }}">
-                    {{ 'backend.plan.measure.less'|trans }}
-                </a>
-            </div>
+            </button>
         </div>
     {% else %}
         <div class="measure-description-full" style="white-space: pre-wrap;">{{ descriptionText }}</div>

@@ -119,10 +119,6 @@
                 } %}
             {% endif %}
 
-            {% if commitmentSummary is defined %}
-                {% include 'backend/plan/_commitment_banner.html.twig' with { commitmentSummary: commitmentSummary } %}
-            {% endif %}
-
             {# ---- CONTENIDO PRINCIPAL ---- #}
             {% if planComplete %}
                 {# Mostrar formulario de medidas personalizadas y Finalizar #}
@@ -163,6 +159,12 @@
                         currentBlockAnswer: currentBlockAnswer,
                         projectType: project.type|default(null)
                     } %}
+                    {% if commitmentSummary is defined %}
+                        {% include 'backend/plan/_commitment_banner.html.twig' with {
+                            commitmentSummary: commitmentSummary,
+                            showRealCommitment: false
+                        } %}
+                    {% endif %}
                 {% else %}
                     <div class="alert alert-info">{{ 'backend.plan.measures.no_items'|trans }}</div>
                 {% endif %}
@@ -201,44 +203,6 @@
                     </div>
                 </div>
             {% endif %}
-
-            {# ——— Gráficos ——— #}
-            <div class="col-12 mt-4"
-                 data-controller="plan-charts"
-                 data-plan-charts-charts-config-value='{{ planChartsConfig|json_encode|e('html_attr') }}'>
-
-                <div class="row g-4">
-                    <div class="col-12 col-lg-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="ratio ratio-16x9">
-                                    <canvas data-plan-charts-target="canvas" data-chart-key="summary"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-lg-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="ratio ratio-16x9">
-                                    <canvas data-plan-charts-target="canvas" data-chart-key="alcance"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-lg-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="ratio ratio-16x9">
-                                    <canvas data-plan-charts-target="canvas" data-chart-key="commitment"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
         </div>
     </div>

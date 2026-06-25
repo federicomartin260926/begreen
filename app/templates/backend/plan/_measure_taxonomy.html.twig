@@ -42,7 +42,23 @@
     <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">Triple balance</dt>
     <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
         {% for axis in axes %}
-            <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ axis.name }}</span>
+            {% set axisName = (axis.name|default('')|lower)|replace({
+                'á': 'a',
+                'é': 'e',
+                'í': 'i',
+                'ó': 'o',
+                'ú': 'u',
+                'ü': 'u',
+            }) %}
+            {% set axisBadgeClass = 'bg-secondary-subtle text-secondary-emphasis border' %}
+            {% if axisName == 'ambiental' %}
+                {% set axisBadgeClass = 'bg-success-subtle text-success-emphasis border' %}
+            {% elseif axisName == 'economico' %}
+                {% set axisBadgeClass = 'bg-warning-subtle text-warning-emphasis border' %}
+            {% elseif axisName == 'social' %}
+                {% set axisBadgeClass = 'bg-primary-subtle text-primary-emphasis border' %}
+            {% endif %}
+            <span class="badge rounded-pill {{ axisBadgeClass }}">{{ axis.name }}</span>
         {% endfor %}
     </dd>
 {% endif %}
@@ -51,12 +67,12 @@
     {% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
     {% if verificationLinks is not empty %}
         <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
-        <dd class="{{ ddClass|default('col-md-8 col-lg-10') }}">
-            <ol class="mb-0 ps-3">
-                {% for link in verificationLinks %}
-                    <li>{{ link.priority }}. {{ link.name }}</li>
-                {% endfor %}
-            </ol>
+        <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1 align-items-center">
+            {% for link in verificationLinks %}
+                <span class="badge bg-light text-dark border rounded-pill">
+                    {{ link.name }}
+                </span>
+            {% endfor %}
         </dd>
     {% elseif measure.verificationSources %}
         <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>

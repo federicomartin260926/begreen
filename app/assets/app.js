@@ -41,6 +41,7 @@ import PlanChartsController from './controllers/plan_charts_controller';
 import BackendController from './controllers/backend_controller.js';
 import MeasureFormController from './controllers/measure_form_controller.js';
 import MeasureBlockFilterController from './controllers/measure_block_filter_controller.js';
+import DescriptionToggleController from './controllers/description_toggle_controller.js';
 
 const application = Application.start();
 application.register('project', ProjectController);
@@ -58,6 +59,7 @@ application.register('plan-charts', PlanChartsController);
 application.register('backend', BackendController);
 application.register('measure-form', MeasureFormController);
 application.register('measure-block-filter', MeasureBlockFilterController);
+application.register('description-toggle', DescriptionToggleController);
 
 // 7) bootstrap-select (CSS estático + JS dinámico para asegurar window.bootstrap listo)
 import 'bootstrap-select/dist/css/bootstrap-select.min.css';
