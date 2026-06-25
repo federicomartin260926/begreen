@@ -559,6 +559,7 @@ class PlanController extends AbstractController
         $isCritical       = $request->query->get('is_critical');
 
         $paginationQuery = $request->query->all();
+        unset($paginationQuery['open']);
         if (!array_key_exists('is_applicable', $paginationQuery) && $isApplicable !== null && $isApplicable !== '') {
             $paginationQuery['is_applicable'] = $isApplicable;
         }

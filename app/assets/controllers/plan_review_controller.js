@@ -276,6 +276,7 @@ export default class extends Controller {
       'pending_selection',
       'only_implemented',
       'is_critical',
+      'open',
       'page',
     ];
 
