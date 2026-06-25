@@ -712,6 +712,9 @@ class PlanController extends AbstractController
             'projectTier'      => $this->featureGate->getTier($project),
             'projectTierLabel'  => $projectTierLabel,
             'projectTierSummary'=> $projectTierSummary,
+            'canUseChecklist'  => $this->featureGate->canUseFeature($project, 'sustainability_plan.checklist'),
+            'canUseResponsibles'=> $this->featureGate->canUseFeature($project, 'sustainability_plan.responsibles'),
+            'canUseInternalNotes'=> $this->featureGate->canUseFeature($project, 'sustainability_plan.internal_notes'),
             'evidenceCount'    => $this->countProjectEvidenceFiles($plan),
             'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project),
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
@@ -796,6 +799,10 @@ class PlanController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
         }
 
+        if (!$this->isReviewInlineFieldAllowed($project, $field)) {
+            return new JsonResponse(['success' => true, 'nextUrl' => null]);
+        }
+
         // Asegura Plan
         $plan = $planRepo->findOneBy(['project' => $project]);
         if (!$plan) {
@@ -819,11 +826,6 @@ class PlanController extends AbstractController
             $plan->addPlanMeasure($planMeasure);
             $planMeasure->setMeasure($measure);
             // Deja el resto en NULL hasta respuesta explícita del usuario
-        }
-
-        $proOnlyFields = ['observations', 'internalNotes', 'internal_notes', 'responsibles'];
-        if (in_array($field, $proOnlyFields, true) && !$this->featureGate->canUseFeature($project, 'sustainability_plan.public_comments')) {
-            return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
         }
 
         // --- Mutaciones por campo ---
@@ -1195,6 +1197,22 @@ class PlanController extends AbstractController
         if ($fail > 0){ $this->addFlash('danger',  'backend.plan.email.sent_fail'); }
 
         return $this->redirectToRoute('backend_plan_review', $request->query->all());
+    }
+
+    private function isReviewInlineFieldAllowed(Project $project, string $field): bool
+    {
+        $fieldFeatureMap = [
+            'verification' => 'sustainability_plan.checklist',
+            'responsibles' => 'sustainability_plan.responsibles',
+            'internalNotes' => 'sustainability_plan.internal_notes',
+            'internal_notes' => 'sustainability_plan.internal_notes',
+        ];
+
+        if (!isset($fieldFeatureMap[$field])) {
+            return true;
+        }
+
+        return $this->featureGate->canUseFeature($project, $fieldFeatureMap[$field]);
     }
 
 

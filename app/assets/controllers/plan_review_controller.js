@@ -300,6 +300,17 @@ export default class extends Controller {
     return params.toString();
   }
 
+  reloadReviewWithQuery(extraParams = {}) {
+    const nextQuery = this.buildReviewQuery(extraParams);
+    const currentQuery = window.location.search.replace(/^\?/, '');
+
+    if (nextQuery === currentQuery) {
+      window.location.reload();
+    } else {
+      window.location.search = nextQuery;
+    }
+  }
+
   extractFilename(contentDisposition) {
     if (!contentDisposition) return null;
     const match = /filename\*?=(?:UTF-8'')?"?([^\";]+)/i.exec(contentDisposition);
@@ -356,12 +367,12 @@ export default class extends Controller {
   async saveInlineEdit(event) {
     const btn = event.currentTarget;
     const measureId = btn.dataset.measureId;
+    const saveSection = btn.dataset.saveSection;
     const inlineBox = document.getElementById(`inline-edit-${measureId}`);
-    const clickedInEstado = !!btn.closest(`#inline-edit-${measureId}`);
     const canSend = (el) => el && !el.disabled && el.dataset.locked !== '1';
     const updates = [];
 
-    if (clickedInEstado && inlineBox) {
+    if (saveSection === 'state' && inlineBox) {
       // ======= BLOQUE: ESTADO EN EL PLAN =======
       const getRadioVal = (name) => {
         const el = inlineBox.querySelector(`input[name="${name}-${measureId}"]:checked`);
@@ -391,7 +402,7 @@ export default class extends Controller {
         if (valCritical === 'true') updates.push({ field: 'critical_reason', value: reasonText });
         if (valImplement !== null)  updates.push({ field: 'willImplement',   value: valImplement });
       }
-    } else {
+    } else if (saveSection === 'actions') {
       // ======= BLOQUE: ACCIONES =======
       const implementedEl   = document.getElementById(`implemented-${measureId}`);
       const verificationEl  = document.getElementById(`verification-${measureId}`);
@@ -454,7 +465,7 @@ export default class extends Controller {
       }
 
       // Mantener la medida abierta
-      window.location.search = this.buildReviewQuery({ open: measureId });
+      this.reloadReviewWithQuery({ open: measureId });
     } catch (err) {
       console.error(err);
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
@@ -481,7 +492,7 @@ export default class extends Controller {
       .then(r => r.json())
       .then(data => {
         if (!data?.success) throw new Error(data?.error || this.t('evidence_upload_failed'));
-        window.location.search = this.buildReviewQuery({ open: measureId });
+        this.reloadReviewWithQuery({ open: measureId });
       })
       .catch(err => {
         console.error(err);
@@ -509,7 +520,7 @@ export default class extends Controller {
       .then(r => r.json())
       .then(data => {
         if (!data?.success) throw new Error(data?.error || this.t('evidence_delete_error'));
-        window.location.search = this.buildReviewQuery({ open: measureId });
+        this.reloadReviewWithQuery({ open: measureId });
       })
       .catch(err => {
         console.error(err);

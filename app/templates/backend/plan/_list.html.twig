@@ -295,6 +295,7 @@
                                                 <button type="button"
                                                         class="btn btn-sm btn-primary"
                                                         data-action="click->plan-review#saveInlineEdit"
+                                                        data-save-section="state"
                                                         data-measure-id="{{ measure.id }}">
                                                     {{ 'backend.common.save_changes'|trans }}
                                                 </button>
@@ -318,14 +319,14 @@
                                         {% set canAll = is_granted('ROLE_SUPER_ADMIN') or is_granted('ROLE_ADMIN') %}
                                         {% set canVerify = canAll %}
                                         {% set canManageEvidence = canAll or is_granted('ROLE_MANAGER') %}
-                                        {% set canProFeatures = projectTier == 'pro' or is_granted('ROLE_SUPER_ADMIN') %}
+                                        {% set canUseChecklist = canUseChecklist|default(false) %}
+                                        {% set canUseResponsibles = canUseResponsibles|default(false) %}
+                                        {% set canUseInternalNotes = canUseInternalNotes|default(false) %}
                                         {% set measureCrewMembers = crewMembersByMeasure[measure.id]|default([]) %}
                                         {% set responsibleIds = [] %}
-                                        {% set responsibleLabels = [] %}
                                         {% if pm %}
                                             {% for responsible in pm.responsibleCrewMembers %}
                                                 {% set responsibleIds = responsibleIds|merge([responsible.id]) %}
-                                                {% set responsibleLabels = responsibleLabels|merge([((responsible.name ?? '') ~ ' ' ~ (responsible.lastName ?? ''))|trim]) %}
                                             {% endfor %}
                                         {% endif %}
 
@@ -347,29 +348,31 @@
                                                 {% endif %}
                                             </div>
 
-                                            {# — Verificación realizada — #}
-                                            <div class="form-check form-switch w-100 mt-2">
-                                                {% if canVerify %}
-                                                    <input
-                                                        class="form-check-input"
-                                                        type="checkbox"
-                                                        id="verification-{{ measure.id }}"
-                                                        {% if pm and pm.verification %}checked{% endif %}>
-                                                    <label class="form-check-label" for="verification-{{ measure.id }}">
-                                                        {{ 'backend.plan.review.flag_verified'|trans }}
-                                                    </label>
-                                                {% else %}
-                                                    <input
-                                                        class="form-check-input"
-                                                        type="checkbox"
-                                                        id="verification-{{ measure.id }}"
-                                                        {% if pm and pm.verification %}checked{% endif %}
-                                                        disabled data-locked="1">
-                                                    <label class="form-check-label" for="verification-{{ measure.id }}">
-                                                        {{ 'backend.plan.review.flag_verified'|trans }}
-                                                    </label>
-                                                {% endif %}
-                                            </div>
+                                            {% if canUseChecklist %}
+                                                {# — Verificación realizada — #}
+                                                <div class="form-check form-switch w-100 mt-2">
+                                                    {% if canVerify %}
+                                                        <input
+                                                            class="form-check-input"
+                                                            type="checkbox"
+                                                            id="verification-{{ measure.id }}"
+                                                            {% if pm and pm.verification %}checked{% endif %}>
+                                                        <label class="form-check-label" for="verification-{{ measure.id }}">
+                                                            {{ 'backend.plan.review.flag_verified'|trans }}
+                                                        </label>
+                                                    {% else %}
+                                                        <input
+                                                            class="form-check-input"
+                                                            type="checkbox"
+                                                            id="verification-{{ measure.id }}"
+                                                            {% if pm and pm.verification %}checked{% endif %}
+                                                            disabled data-locked="1">
+                                                        <label class="form-check-label" for="verification-{{ measure.id }}">
+                                                            {{ 'backend.plan.review.flag_verified'|trans }}
+                                                        </label>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
 
                                             {# — Acción realizada — #}
                                             <div class="w-100 mt-3">
@@ -381,36 +384,23 @@
                                                     placeholder="{{ 'backend.plan.review.action_taken_ph'|trans }}">{{ pm.actionTaken ?? '' }}</textarea>
                                             </div>
 
-                                            {# — Comentario visible — #}
+                                            {# — Incidencia / comentario visible — #}
                                             <div class="w-100 mt-3">
                                                 <label class="form-label small" for="observations-{{ measure.id }}">{{ 'backend.plan.review.public_comment'|trans }}</label>
-                                                {% if canProFeatures %}
-                                                    <textarea
-                                                        id="observations-{{ measure.id }}"
-                                                        class="form-control"
-                                                        rows="2"
-                                                        autocomplete="off"
-                                                        placeholder="{{ 'backend.plan.review.public_comment_ph'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
-                                                {% else %}
-                                                    <textarea
-                                                        id="observations-{{ measure.id }}"
-                                                        class="form-control"
-                                                        rows="2"
-                                                        autocomplete="off"
-                                                        disabled
-                                                        placeholder="{{ 'backend.plan.review.available_in_pro'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
-                                                {% endif %}
+                                                <textarea
+                                                    id="observations-{{ measure.id }}"
+                                                    class="form-control"
+                                                    rows="2"
+                                                    autocomplete="off"
+                                                    placeholder="{{ 'backend.plan.review.public_comment_ph'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
                                             </div>
 
-                                            {# — Responsables — #}
-                                            <div class="w-100 mt-3">
-                                                <label class="form-label small d-flex justify-content-between align-items-center" for="responsibles-{{ measure.id }}">
-                                                    <span>{{ 'backend.plan.review.responsibles'|trans }}</span>
-                                                    {% if not canProFeatures %}
-                                                        <span class="text-muted">{{ 'backend.plan.exports.available_in_pro'|trans }}</span>
-                                                    {% endif %}
-                                                </label>
-                                                {% if canProFeatures %}
+                                            {% if canUseResponsibles %}
+                                                {# — Responsables — #}
+                                                <div class="w-100 mt-3">
+                                                    <label class="form-label small d-flex justify-content-between align-items-center" for="responsibles-{{ measure.id }}">
+                                                        <span>{{ 'backend.plan.review.responsibles'|trans }}</span>
+                                                    </label>
                                                     <select
                                                         id="responsibles-{{ measure.id }}"
                                                         class="form-select"
@@ -425,38 +415,23 @@
                                                         {% endfor %}
                                                     </select>
                                                     <div class="form-text">{{ 'backend.plan.review.responsibles_hint'|trans }}</div>
-                                                {% else %}
-                                                    <div class="form-control-plaintext">
-                                                        {% if responsibleLabels is not empty %}
-                                                            {{ responsibleLabels|join(', ') }}
-                                                        {% else %}
-                                                            —
-                                                        {% endif %}
-                                                    </div>
-                                                {% endif %}
-                                            </div>
+                                                </div>
+                                            {% endif %}
 
-                                            {# — Notas internas — #}
-                                            <div class="w-100 mt-3">
-                                                <label class="form-label small d-flex justify-content-between align-items-center" for="internal-notes-{{ measure.id }}">
-                                                    <span>{{ 'backend.plan.review.internal_notes'|trans }}</span>
-                                                    <span class="text-muted small">{{ 'backend.plan.review.internal_notes_hint'|trans }}</span>
-                                                </label>
-                                                {% if canProFeatures %}
+                                            {% if canUseInternalNotes %}
+                                                {# — Notas internas — #}
+                                                <div class="w-100 mt-3">
+                                                    <label class="form-label small d-flex justify-content-between align-items-center" for="internal-notes-{{ measure.id }}">
+                                                        <span>{{ 'backend.plan.review.internal_notes'|trans }}</span>
+                                                        <span class="text-muted small">{{ 'backend.plan.review.internal_notes_hint'|trans }}</span>
+                                                    </label>
                                                     <textarea
                                                         id="internal-notes-{{ measure.id }}"
                                                         class="form-control"
                                                         rows="2"
                                                         placeholder="{{ 'backend.plan.review.internal_notes_ph'|trans }}">{{ pm.internalNotes ?? '' }}</textarea>
-                                                {% else %}
-                                                    <textarea
-                                                        id="internal-notes-{{ measure.id }}"
-                                                        class="form-control"
-                                                        rows="2"
-                                                        disabled
-                                                        placeholder="{{ 'backend.plan.review.available_in_pro'|trans }}">{{ pm.internalNotes ?? '' }}</textarea>
-                                                {% endif %}
-                                            </div>
+                                                </div>
+                                            {% endif %}
 
                                             {# — Evidencias — #}
                                             <div class="w-100 mt-3">
@@ -523,6 +498,7 @@
                                                     type="button"
                                                     class="btn btn-sm btn-primary"
                                                     data-action="click->plan-review#saveInlineEdit"
+                                                    data-save-section="actions"
                                                     data-measure-id="{{ measure.id }}">
                                                     {{ 'backend.common.save_changes'|trans }}
                                                 </button>

@@ -232,6 +232,7 @@ backend:
       allowed_scores_heading: "Allowed scores"
       features_heading: "Main features"
       features_info_button: "More information"
+      coming_soon: "Coming soon"
       pdf_by_departments: "Department PDF"
       pdf_by_departments_help: "Enables the department PDF and the associated export."
       advanced_exports: "Advanced exports"

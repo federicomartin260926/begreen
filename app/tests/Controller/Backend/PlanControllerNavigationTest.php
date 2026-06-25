@@ -18,6 +18,7 @@ use App\Repository\PlanRepository;
 use App\Repository\SustainabilityPlanBlockAnswerRepository;
 use App\Service\ActiveProjectService;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\ProjectFeatureGate;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
@@ -61,6 +62,64 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'is_applicable' => '1',
             'will_implement' => '1',
         ], $filters);
+    }
+
+    public function testUpdateSelectionIgnoresInternalNotesWhenFeatureIsUnavailable(): void
+    {
+        [$controller, $project, $plan, $measure, $planMeasure, $measureRepository, $planRepository, $planMeasureRepository, $blockAnswerRepository, $activeProjectService] = $this->buildInternalNotesScenario(false);
+
+        $entityManager = $this->createEntityManagerMockForIgnoredSelection();
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+            'field' => 'internal_notes',
+            'value' => 'updated private note',
+        ]);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertArrayHasKey('nextUrl', $data);
+        self::assertNull($data['nextUrl']);
+        self::assertSame('original note', $planMeasure->getInternalNotes());
+    }
+
+    public function testUpdateSelectionPersistsInternalNotesWhenFeatureIsAvailable(): void
+    {
+        [$controller, $project, $plan, $measure, $planMeasure, $measureRepository, $planRepository, $planMeasureRepository, $blockAnswerRepository, $activeProjectService] = $this->buildInternalNotesScenario(true);
+
+        $entityManager = $this->createEntityManagerMock($planMeasure);
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+            'field' => 'internal_notes',
+            'value' => 'updated private note',
+        ]);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame('updated private note', $planMeasure->getInternalNotes());
     }
 
     public function testUpdateSelectionRedirectsTerminalActionToFirstPendingVisibleMeasure(): void
@@ -675,6 +734,93 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $entityManager->expects(self::exactly(2))->method('flush');
 
         return $entityManager;
+    }
+
+    private function createEntityManagerMockForIgnoredSelection(): EntityManagerInterface
+    {
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::never())->method('flush');
+
+        return $entityManager;
+    }
+
+    /**
+     * @return array{
+     *     0: PlanController,
+     *     1: Project,
+     *     2: Plan,
+     *     3: Measure,
+     *     4: PlanMeasure,
+     *     5: MeasureRepository,
+     *     6: PlanRepository,
+     *     7: PlanMeasureRepository,
+     *     8: SustainabilityPlanBlockAnswerRepository,
+     *     9: ActiveProjectService
+     * }
+     */
+    private function buildInternalNotesScenario(bool $featureEnabled): array
+    {
+        self::bootKernel();
+
+        $basicPlan = $this->makeCommercialPlan('basic', [
+            'features' => array_replace(
+                $this->defaultCommercialPlanDefinition('basic')['features'],
+                [
+                    'sustainability_plan.internal_notes' => $featureEnabled,
+                ]
+            ),
+        ]);
+        $featureGate = $this->makeProjectFeatureGate([$basicPlan]);
+        self::getContainer()->set(ProjectFeatureGate::class, $featureGate);
+
+        $this->setAdminToken();
+        /** @var PlanController $controller */
+        $controller = self::getContainer()->get(PlanController::class);
+        $controller->setContainer(self::getContainer());
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($measure, 91);
+
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure($measure)
+            ->setInternalNotes('original note')
+            ->markAsManual();
+        $plan->addPlanMeasure($planMeasure);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$measure], $measure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($measure, $planMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+
+        return [
+            $controller,
+            $project,
+            $plan,
+            $measure,
+            $planMeasure,
+            $measureRepository,
+            $planRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+        ];
     }
 
     /**

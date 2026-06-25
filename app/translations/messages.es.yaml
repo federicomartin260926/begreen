@@ -234,6 +234,7 @@ backend:
       allowed_scores_heading: "Puntuaciones permitidas"
       features_heading: "Funciones principales"
       features_info_button: "Más información"
+      coming_soon: "Próximamente"
       pdf_by_departments: "PDF por departamentos"
       pdf_by_departments_help: "Activa el PDF por departamentos y el export asociado."
       advanced_exports: "Exportaciones avanzadas"
