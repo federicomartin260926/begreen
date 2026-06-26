@@ -253,11 +253,13 @@
             <td>
               {% set sources = pm.measure ? taxonomyPresenter.verificationSourcesWithPriority(pm.measure) : [] %}
               {% if sources is not empty %}
-                <ol style="margin:0 0 0 18px;padding:0;">
+                <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
                   {% for link in sources %}
-                    <li>{{ link.priority }}. {{ link.name }}</li>
+                    <span style="display:inline-block;border:1px solid #999;border-radius:999px;padding:2px 8px;font-size:10px;">
+                      {{ link.displayName|default(link.name) }}
+                    </span>
                   {% endfor %}
-                </ol>
+                </div>
               {% else %}
                 {{ pm.measure.verificationSources|default('—') }}
               {% endif %}

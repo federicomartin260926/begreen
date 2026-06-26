@@ -70,7 +70,7 @@
         <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1 align-items-center">
             {% for link in verificationLinks %}
                 <span class="badge bg-light text-dark border rounded-pill">
-                    {{ link.name }}
+                    {{ link.displayName|default(link.name) }}
                 </span>
             {% endfor %}
         </dd>

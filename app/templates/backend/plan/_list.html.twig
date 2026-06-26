@@ -128,15 +128,14 @@
                                 {% if verificationLinks is not empty %}
                                     <div class="col-12">
                                         <div class="small text-muted">{{ 'backend.plan.review.verification_sources'|trans }}</div>
-                                        <ol class="mb-0 ps-3">
+                                        <div class="d-flex flex-wrap gap-1 align-items-center">
                                             {% for link in verificationLinks %}
                                                 {% set source = link.verificationSource %}
-                                                <li>
-                                                    {{ link.priority }}.
+                                                <span class="badge bg-light text-dark border rounded-pill">
                                                     {{ source ? source.name : '—' }}
-                                                </li>
+                                                </span>
                                             {% endfor %}
-                                        </ol>
+                                        </div>
                                     </div>
                                 {% elseif measure.verificationSources %}
                                     <div class="col-12">

@@ -158,11 +158,13 @@
                                     <td>
                                         {% set sources = pm.measure ? taxonomyPresenter.verificationSourcesWithPriority(pm.measure) : [] %}
                                         {% if sources is not empty %}
-                                            <ol class="mb-0 ps-3">
+                                            <div class="d-flex flex-wrap gap-1 align-items-center">
                                                 {% for link in sources %}
-                                                    <li>{{ link.priority }}. {{ link.name }}</li>
+                                                    <span class="badge bg-light text-dark border rounded-pill">
+                                                        {{ link.displayName|default(link.name) }}
+                                                    </span>
                                                 {% endfor %}
-                                            </ol>
+                                            </div>
                                         {% else %}
                                             {{ pm.measure and pm.measure.verificationSources ? pm.measure.verificationSources : '—' }}
                                         {% endif %}
