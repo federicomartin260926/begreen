@@ -29,9 +29,9 @@ PHP_PROD := $(COMPOSE_PROD) exec php
 
 .PHONY: \
 	help \
-	up up-build down restart ps logs shell php console composer-install assets-install assets-build cache-clear schema-dump schema-update fixtures test doctor prepare-private-storage \
+	up up-build down restart ps logs shell php console composer-install assets-install assets-build cache-clear schema-dump schema-update fixtures db-dump-fixtures test doctor prepare-private-storage \
 	dev-pull dev-update dev-update-build dev-reset-fixtures \
-	up-prod up-prod-build prod-up down-prod restart-prod prod-restart ps-prod logs-prod prod-logs shell-prod php-prod console-prod prod-console composer-install-prod assets-install-prod assets-build-prod cache-clear-prod prod-cache-clear schema-dump-prod schema-update-prod prod-schema-update prepare-private-storage-prod \
+	up-prod up-prod-build prod-up down-prod restart-prod prod-restart ps-prod logs-prod prod-logs shell-prod php-prod console-prod prod-console composer-install-prod assets-install-prod assets-build-prod cache-clear-prod prod-cache-clear schema-dump-prod schema-update-prod prod-schema-update prepare-private-storage-prod db-backup-prod db-import-prod \
 	prod-pull deploy-prod deploy-prod-build deploy-prod-full
 
 # =============================================================================
@@ -64,6 +64,7 @@ help:
 	@echo "  make schema-dump                Muestra SQL de schema:update en dev"
 	@echo "  make schema-update              Aplica doctrine:schema:update --force en dev"
 	@echo "  make fixtures                   Recarga fixtures dev"
+	@echo "  make db-dump-fixtures           Crea dump local de la BD dev actual en backups/"
 	@echo "  make test                       Ejecuta PHPUnit dev"
 	@echo "  make doctor                     Diagnóstico rápido dev"
 	@echo ""
@@ -87,6 +88,8 @@ help:
 	@echo "  make cache-clear-prod           Limpia cache prod"
 	@echo "  make schema-dump-prod           Muestra SQL de schema:update en prod"
 	@echo "  make schema-update-prod         Aplica doctrine:schema:update --force en prod"
+	@echo "  make db-backup-prod             Crea backup SQL de la BD prod actual en backups/"
+	@echo "  make db-import-prod DUMP=...    Importa un dump SQL en prod, creando backup previo"
 	@echo ""
 	@echo "Entornos usados:"
 	@echo "  DEV  -> app/.env + app/.env.local"
@@ -151,6 +154,15 @@ schema-update:
 
 fixtures:
 	$(PHP_DEV) php bin/console doctrine:fixtures:load --no-interaction
+
+db-dump-fixtures:
+	@mkdir -p backups
+	@DUMP="backups/begreen_clean_fixtures_$$(date +%Y%m%d_%H%M%S).sql"; \
+	echo "Creating dev DB dump: $$DUMP"; \
+	$(COMPOSE_DEV) exec -T db sh -lc 'mariadb-dump -h 127.0.0.1 -u"$$MARIADB_USER" -p"$$MARIADB_PASSWORD" "$$MARIADB_DATABASE" --single-transaction --routines --triggers --events' > "$$DUMP"; \
+	if [ ! -s "$$DUMP" ]; then echo "ERROR: dump vacío: $$DUMP"; rm -f "$$DUMP"; exit 1; fi; \
+	ls -lh "$$DUMP"; \
+	tail -5 "$$DUMP"
 
 test:
 	$(PHP_DEV) ./vendor/bin/phpunit
@@ -258,6 +270,23 @@ schema-update-prod:
 
 prod-schema-update:
 	$(PHP_PROD) php bin/console doctrine:schema:update --dump-sql --env=prod
+
+db-backup-prod:
+	@mkdir -p backups
+	@BACKUP="backups/begreen_prod_backup_$$(date +%Y%m%d_%H%M%S).sql"; \
+	echo "Creating prod DB backup: $$BACKUP"; \
+	$(COMPOSE_PROD) exec -T db sh -lc 'mariadb-dump -h 127.0.0.1 -u"$$MARIADB_USER" -p"$$MARIADB_PASSWORD" "$$MARIADB_DATABASE" --single-transaction --routines --triggers --events' > "$$BACKUP"; \
+	if [ ! -s "$$BACKUP" ]; then echo "ERROR: backup vacío: $$BACKUP"; rm -f "$$BACKUP"; exit 1; fi; \
+	ls -lh "$$BACKUP"; \
+	tail -5 "$$BACKUP"
+
+db-import-prod:
+	@if [ -z "$(DUMP)" ]; then echo "ERROR: usa make db-import-prod DUMP=backups/archivo.sql"; exit 1; fi
+	@if [ ! -s "$(DUMP)" ]; then echo "ERROR: dump no existe o está vacío: $(DUMP)"; exit 1; fi
+	@$(MAKE) db-backup-prod
+	@echo "Importing dump into prod DB: $(DUMP)"
+	@cat "$(DUMP)" | $(COMPOSE_PROD) exec -T db sh -lc 'mariadb -h 127.0.0.1 -u"$$MARIADB_USER" -p"$$MARIADB_PASSWORD" "$$MARIADB_DATABASE"'
+	@echo "Import completed: $(DUMP)"
 
 prepare-private-storage-prod:
 	$(COMPOSE_PROD) exec -u root php sh -lc 'mkdir -p /app/var/private/stripe-invoices && chown -R www-data:www-data /app/var/private && chmod -R u+rwX,g+rwX /app/var/private'
