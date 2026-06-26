@@ -903,8 +903,8 @@ backend:
       no_items: "No measures available."
       mandatory_warning: "This measure is mandatory. You must select “Applies” and “Will be implemented” to continue."
       critical_reason_required: "You must write a reason when the measure is critical."
-    progress_applicable: "Measure %current% of %total% applicable"
-    progress_included: "%total% included in your plan"
+    progress_applicable: "Measure %current% of %total%"
+    progress_applicable_details: " · %total% applicable"
     category:
       done: "You’ve finished all measures for <strong>%prev%</strong>!"
       next: "Let’s continue with the category <strong>%next%</strong>"

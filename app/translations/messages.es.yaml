@@ -906,8 +906,8 @@ backend:
       no_items: "No hay medidas disponibles."
       mandatory_warning: "Esta medida es obligatoria. Debes marcar «Aplica» y «Se implementará» para continuar."
       critical_reason_required: "Debes escribir un motivo cuando la medida es crítica."
-    progress_applicable: "Medida %current% de %total% aplicables"
-    progress_included: "%total% incluidas en tu plan"
+    progress_applicable: "Medida %current% de %total%"
+    progress_applicable_details: " · %total% aplicables"
     category:
       done: "¡Ya has terminado todas las medidas de <strong>%prev%</strong>!"
       next: "Vamos a continuar con la categoría <strong>%next%</strong>"
