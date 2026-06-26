@@ -4,8 +4,11 @@ namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\PlanController;
 use App\Entity\CommercialPlan;
+use App\Entity\Plan;
 use App\Entity\ProjectSubscription;
+use App\Entity\Protocol;
 use App\Repository\CommercialPlanRepository;
+use App\Repository\MeasureRepository;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -25,12 +28,14 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         $result = $this->invokeBuildUpgradeCta(
             $controller,
             $project,
+            $this->makePlanWithProtocol(),
             ProjectSubscription::TIER_BASIC,
             [
                 ProjectSubscription::TIER_STANDARD => ['priceId' => 'price_standard'],
                 ProjectSubscription::TIER_PRO => ['priceId' => 'price_pro'],
             ],
-            $this->makeCommercialPlanRepository($plans)
+            $this->makeCommercialPlanRepository($plans),
+            $this->makeMeasureRepository()
         );
 
         self::assertSame('modal', $result['mode']);
@@ -38,6 +43,8 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         self::assertCount(2, $result['options']);
         self::assertSame(ProjectSubscription::TIER_STANDARD, $result['options'][0]['targetTier']);
         self::assertSame(ProjectSubscription::TIER_PRO, $result['options'][1]['targetTier']);
+        self::assertSame(100, $result['options'][0]['measureCount']);
+        self::assertSame(200, $result['options'][1]['measureCount']);
     }
 
     public function testStandardProjectShowsSingleDirectOption(): void
@@ -52,11 +59,13 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         $result = $this->invokeBuildUpgradeCta(
             $controller,
             $project,
+            $this->makePlanWithProtocol(),
             ProjectSubscription::TIER_STANDARD,
             [
                 ProjectSubscription::TIER_PRO => ['priceId' => 'price_upgrade', 'amountCents' => 10000],
             ],
-            $this->makeCommercialPlanRepository($plans)
+            $this->makeCommercialPlanRepository($plans),
+            $this->makeMeasureRepository()
         );
 
         self::assertSame('single', $result['mode']);
@@ -65,6 +74,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         self::assertSame('Pro', $result['options'][0]['name']);
         self::assertStringContainsString('Actualizar a Pro', $result['options'][0]['ctaLabel']);
         self::assertStringContainsString('100,00 €', $result['options'][0]['ctaLabel']);
+        self::assertSame(200, $result['options'][0]['measureCount']);
     }
 
     public function testProProjectShowsNoUpgradeCta(): void
@@ -75,9 +85,11 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         $result = $this->invokeBuildUpgradeCta(
             $controller,
             $project,
+            $this->makePlanWithProtocol(),
             ProjectSubscription::TIER_PRO,
             [],
-            $this->makeCommercialPlanRepository($this->makeDefaultCommercialPlans())
+            $this->makeCommercialPlanRepository($this->makeDefaultCommercialPlans()),
+            $this->makeMeasureRepository()
         );
 
         self::assertSame('none', $result['mode']);
@@ -97,12 +109,14 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         $result = $this->invokeBuildUpgradeCta(
             $controller,
             $project,
+            $this->makePlanWithProtocol(),
             ProjectSubscription::TIER_BASIC,
             [
                 ProjectSubscription::TIER_STANDARD => ['priceId' => null],
                 ProjectSubscription::TIER_PRO => ['priceId' => 'price_pro'],
             ],
-            $this->makeCommercialPlanRepository($plans)
+            $this->makeCommercialPlanRepository($plans),
+            $this->makeMeasureRepository()
         );
 
         self::assertSame('single', $result['mode']);
@@ -135,18 +149,52 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         return $repository;
     }
 
+    private function makeMeasureRepository(): MeasureRepository
+    {
+        $repository = $this->createMock(MeasureRepository::class);
+        $repository->method('countCatalogMeasuresForProtocol')->willReturnCallback(
+            static function (Protocol $protocol, array $allowedScores): int {
+                if ($protocol->getCode() !== 'be-green-my-film') {
+                    return 0;
+                }
+
+                sort($allowedScores);
+
+                if ($allowedScores === [3, 4, 5]) {
+                    return 100;
+                }
+
+                if ($allowedScores === [1, 2, 3, 4, 5]) {
+                    return 200;
+                }
+
+                return 50;
+            }
+        );
+
+        return $repository;
+    }
+
+    private function makePlanWithProtocol(): Plan
+    {
+        return (new Plan())
+            ->setProtocol((new Protocol())->setCode('be-green-my-film'));
+    }
+
     private function invokeBuildUpgradeCta(
         PlanController $controller,
         \App\Entity\Project $project,
+        Plan $plan,
         string $projectTier,
         array $availableUpgradeTargets,
-        CommercialPlanRepository $commercialPlanRepository
+        CommercialPlanRepository $commercialPlanRepository,
+        MeasureRepository $measureRepository
     ): array {
         $reflection = new \ReflectionMethod($controller, 'buildUpgradeCta');
         $reflection->setAccessible(true);
 
         /** @var array $result */
-        $result = $reflection->invoke($controller, $project, $projectTier, $availableUpgradeTargets, $commercialPlanRepository);
+        $result = $reflection->invoke($controller, $project, $plan, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
 
         return $result;
     }

@@ -57,6 +57,11 @@
                                             {% for score in option.allowedScores %}
                                                 <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ score }}</span>
                                             {% endfor %}
+                                            {% if option.measureCount is not null %}
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                    {{ 'backend.plan.upgrade.measure_count'|trans({'%count%': option.measureCount}) }}
+                                                </span>
+                                            {% endif %}
                                         </div>
                                     {% endif %}
 

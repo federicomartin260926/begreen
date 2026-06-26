@@ -255,6 +255,31 @@ class MeasureRepository extends ServiceEntityRepository
     }
 
     /**
+     * @param int[] $allowedScores
+     */
+    public function countCatalogMeasuresForProtocol(Protocol $protocol, array $allowedScores): int
+    {
+        $qb = $this->createQueryBuilder('m')
+            ->select('COUNT(m.id)')
+            ->innerJoin('m.protocol', 'p')
+            ->andWhere('p = :protocol')
+            ->setParameter('protocol', $protocol);
+
+        if ($protocol->getCode() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE) {
+            $qb->andWhere('m.importVersion = :catalogImportVersion')
+                ->setParameter('catalogImportVersion', PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION);
+
+            $normalizedScores = array_values(array_unique(array_map(static fn (mixed $score): int => (int) $score, $allowedScores)));
+            if ($normalizedScores !== []) {
+                $qb->andWhere($qb->expr()->in('m.score', ':catalogAllowedScores'))
+                    ->setParameter('catalogAllowedScores', $normalizedScores);
+            }
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
      * @return Measure[]
      */
     public function findAllForExport(): array

@@ -386,7 +386,7 @@ class PlanController extends AbstractController
         $projectTierLabel = $this->featureGate->getPlanLabel($project);
         $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
-        $upgradeCta = $this->buildUpgradeCta($project, $projectTier, $availableUpgradeTargets, $commercialPlanRepository);
+        $upgradeCta = $this->buildUpgradeCta($project, $plan, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
 
         // ===== Render =====
         return $this->render('backend/plan/measures.html.twig', [
@@ -704,7 +704,7 @@ class PlanController extends AbstractController
         $projectTierLabel = $this->featureGate->getPlanLabel($project);
         $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
-        $upgradeCta = $this->buildUpgradeCta($project, $this->featureGate->getTier($project), $availableUpgradeTargets, $commercialPlanRepository);
+        $upgradeCta = $this->buildUpgradeCta($project, $plan, $this->featureGate->getTier($project), $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
 
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,
@@ -2385,7 +2385,7 @@ class PlanController extends AbstractController
      *     }>
      * }
      */
-    private function buildUpgradeCta(Project $project, string $projectTier, array $availableUpgradeTargets, CommercialPlanRepository $commercialPlanRepository): array
+    private function buildUpgradeCta(Project $project, Plan $plan, string $projectTier, array $availableUpgradeTargets, CommercialPlanRepository $commercialPlanRepository, MeasureRepository $measureRepository): array
     {
         if ($projectTier === ProjectSubscription::TIER_PRO) {
             return [
@@ -2402,6 +2402,7 @@ class PlanController extends AbstractController
             default => [],
         };
 
+        $protocol = $plan->getProtocol();
         $options = [];
         foreach ($candidateTiers as $targetTier) {
             $targetData = $availableUpgradeTargets[$targetTier] ?? null;
@@ -2409,27 +2410,31 @@ class PlanController extends AbstractController
                 continue;
             }
 
-            $plan = $commercialPlanRepository->findActiveByCode($targetTier);
-            if (!$plan instanceof CommercialPlan) {
+            $commercialPlan = $commercialPlanRepository->findActiveByCode($targetTier);
+            if (!$commercialPlan instanceof CommercialPlan) {
                 continue;
             }
 
             $displayAmountCents = isset($targetData['amountCents']) && is_int($targetData['amountCents'])
                 ? $targetData['amountCents']
-                : $plan->getPriceAmount();
-            $priceLabel = $this->formatPlanPrice($displayAmountCents, $plan->getPriceCurrency());
+                : $commercialPlan->getPriceAmount();
+            $priceLabel = $this->formatPlanPrice($displayAmountCents, $commercialPlan->getPriceCurrency());
+            $measureCount = $protocol instanceof Protocol
+                ? $measureRepository->countCatalogMeasuresForProtocol($protocol, $commercialPlan->getAllowedScores())
+                : null;
             $options[] = [
                 'targetTier' => $targetTier,
-                'name' => $plan->getName(),
-                'description' => $plan->getDescription(),
+                'name' => $commercialPlan->getName(),
+                'description' => $commercialPlan->getDescription(),
                 'priceAmount' => $displayAmountCents,
-                'priceCurrency' => $plan->getPriceCurrency(),
+                'priceCurrency' => $commercialPlan->getPriceCurrency(),
                 'priceLabel' => $priceLabel,
                 'ctaLabel' => $this->t->trans('backend.plan.upgrade.upgrade_to', [
-                    '%name%' => $plan->getName(),
+                    '%name%' => $commercialPlan->getName(),
                     '%price%' => $priceLabel,
                 ]),
-                'allowedScores' => $plan->getAllowedScores(),
+                'allowedScores' => $commercialPlan->getAllowedScores(),
+                'measureCount' => $measureCount,
             ];
         }
 

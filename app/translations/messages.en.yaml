@@ -800,6 +800,7 @@ backend:
       open_selector: "Upgrade plan"
       select_title: "Choose your plan"
       upgrade_to: "Upgrade to %name% — %price% + VAT"
+      measure_count: "%count% measures"
       price_id_missing: "Stripe Price ID not configured"
       to_standard: "Upgrade to Standard — €99 + VAT"
       to_pro: "Upgrade to Pro — €199 + VAT"
