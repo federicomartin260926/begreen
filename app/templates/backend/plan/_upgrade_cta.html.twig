@@ -26,7 +26,7 @@
 
 {% if upgradeCta.mode == 'modal' %}
     <div class="modal fade" id="planUpgradeModal" tabindex="-1" aria-labelledby="planUpgradeModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
             <div class="modal-content">
                 <div class="modal-header">
                     <div>
@@ -36,19 +36,19 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
+                    <div class="row row-cols-1 row-cols-md-2 g-3">
                         {% for option in upgradeCta.options %}
-                            <div class="col-12 {% if upgradeCta.options|length > 1 %}col-md-6{% endif %}">
+                            <div class="col">
                                 <div class="border rounded p-3 h-100 bg-light">
-                                    <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
-                                        <div>
+                                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-2 gap-sm-3 mb-2">
+                                        <div class="flex-grow-1 min-w-0">
                                             <div class="fw-semibold">{{ option.name }}</div>
                                             {% if option.description %}
                                                 <div class="small text-muted">{{ option.description }}</div>
                                             {% endif %}
                                         </div>
-                                        <div class="text-end">
-                                            <div class="fw-semibold text-nowrap">{{ option.priceLabel }} <span class="small text-muted">+ IVA</span></div>
+                                        <div class="text-start text-sm-end w-100 w-sm-auto">
+                                            <div class="fw-semibold">{{ option.priceLabel }} <span class="small text-muted">+ IVA</span></div>
                                         </div>
                                     </div>
 

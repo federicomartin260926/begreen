@@ -265,6 +265,32 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
     }
 }
 
+@media (max-width: 767.98px) {
+    .plan-page-header-action,
+    .plan-page-header-action .btn {
+        width: 100%;
+    }
+
+    .plan-page-meta > div {
+        min-width: 0;
+    }
+
+    .measure-action-group {
+        flex-wrap: wrap;
+    }
+
+    .measure-action-group .btn {
+        flex: 1 1 calc(50% - 0.75rem);
+        min-width: 0;
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    .measure-action-group .btn.w-100 {
+        flex-basis: 100%;
+    }
+}
+
 .measure-table--compact {
     th,
     td {

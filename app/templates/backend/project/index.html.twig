@@ -26,7 +26,7 @@
             data-controller="project-list"
             data-project-list-target="form">
         <div class="row g-2 align-items-end">
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-2">
             <input type="text"
                 name="name" id="f-name"
                 class="form-control"
@@ -34,7 +34,7 @@
                 placeholder="{{ 'backend.projects.filters.name'|trans }}">
           </div>
 
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-2">
             <select
                 class="selectpicker"
                 name="type"
@@ -49,29 +49,29 @@
             </select>
           </div>
 
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-2">
             <input type="text" name="country" id="f-country" class="form-control"
                    value="{{ filters.country|default('') }}" placeholder="{{ 'backend.projects.filters.country'|trans }}">
           </div>
 
           {% if is_admin %}
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-2">
             <input type="text" name="owner" id="f-owner" class="form-control"
                    value="{{ filters.owner|default('') }}" placeholder="{{ 'backend.projects.filters.owner'|trans }}">
           </div>
           {% endif %}
 
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-2">
             <input type="date" title="{{ 'backend.projects.filters.from'|trans }}" name="date_from" id="f-from" class="form-control"
                    value="{{ filters.date_from|default('') }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-2">
             <input type="date" title="{{ 'backend.projects.filters.to'|trans }}" name="date_to" id="f-to" class="form-control"
                    value="{{ filters.date_to|default('') }}">
           </div>
 
-          <div class="col-md-100 text-end">
-            <div class="d-flex gap-2">
+          <div class="col-12 col-md-auto ms-md-auto">
+            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
               <button type="submit" class="btn btn-primary">
                 <i class="bi bi-search"></i> {{ 'backend.projects.actions.search'|trans }}
               </button>

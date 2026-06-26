@@ -1,0 +1,76 @@
+{% set selectorTitle = 'backend.projects.select.title'|trans %}
+{% set selectorHelp = 'backend.projects.select.help'|trans %}
+
+{% if variant|default('header') == 'mobile' %}
+    <div class="dropdown my-2">
+        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center align-items-center w-100"
+           href="#"
+           role="button"
+           data-bs-toggle="dropdown"
+           aria-expanded="false"
+           title="{{ selectorTitle }}">
+            <i class="bi bi-pin-angle-fill fs-4"></i>
+        </a>
+        <div class="dropdown-menu dropdown-menu-end shadow p-3"
+             style="min-width: min(18rem, calc(100vw - 1rem)); max-width: calc(100vw - 1rem); max-height: 60vh; overflow:auto;">
+            <div class="small text-muted mb-2">{{ selectorTitle }}</div>
+            {% if userProjects|length > 1 %}
+                {% for projectItem in userProjects %}
+                    <a class="dropdown-item text-decoration-none text-break {% if activeProject and projectItem.id == activeProject.id %}bg-light text-dark border{% endif %}"
+                       href="{{ path('backend_project_select_project', { id: projectItem.id, '_locale': app.request.locale }) }}">
+                        <div>{{ projectItem.name }}</div>
+                        {% if activeProject and projectItem.id == activeProject.id %}
+                            <div class="small">{{ 'backend.projects.active_project'|trans }}</div>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+            {% elseif activeProject %}
+                <div class="dropdown-item-text text-break">
+                    <div>{{ activeProject.name }}</div>
+                    <div class="small text-muted">{{ 'backend.projects.active_project'|trans }}</div>
+                </div>
+            {% else %}
+                <div class="dropdown-item-text text-muted">{{ selectorHelp }}</div>
+            {% endif %}
+        </div>
+    </div>
+{% else %}
+    {% if userProjects|length > 1 %}
+        <div id="projects_select" class="me-1 d-flex align-items-center min-w-0">
+            <span
+                class="me-2 flex-shrink-0"
+                data-bs-toggle="popover"
+                data-bs-trigger="hover"
+                data-bs-title="{{ selectorTitle }}"
+                data-bs-content="{{ selectorHelp }}">
+                <i class="bi bi-question-circle"></i>
+            </span>
+            <form method="post"
+                action="{{ path('backend_project_select_project', {'id': 'PROJECT_ID', '_locale': app.request.locale}) }}"
+                class="mb-0">
+                <select name="project_id"
+                        class="selectpicker"
+                        data-live-search="{% if userProjects|length > 5 %}true{% else %}false{% endif %}"
+                        data-width="260px"
+                        data-style="btn-outline-secondary btn-sm"
+                        title="{{ 'backend.projects.select.placeholder'|trans }}"
+                        onchange="this.form.action=this.form.action.replace('PROJECT_ID', this.value); this.form.submit();">
+                    {% for p in userProjects %}
+                    <option value="{{ p.id }}" {% if activeProject and p.id == activeProject.id %}selected{% endif %}>
+                        {{ p.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <div class="vr mx-3 d-none d-md-block" style="height: 30px;"></div>
+    {% elseif userProjects|length == 1 and activeProject %}
+        <div class="ms-4 small text-muted d-flex align-items-center min-w-0">
+            <i class="bi bi-pin-angle"></i>
+            <span class="ms-1 text-truncate">{{ 'backend.projects.active_project'|trans }}: <strong>{{ activeProject.name|slice(0, 15) }}{% if activeProject.name|length > 15 %}...{% endif %}</strong></span>
+        </div>
+
+        <div class="vr mx-3 d-none d-md-block" style="height: 30px;"></div>
+    {% endif %}
+{% endif %}

@@ -116,47 +116,48 @@
                         <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="{{ adminExpanded ? 'true' : 'false' }}">
                             <i class="bi bi-shield-lock fs-4"></i>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow text-center">
+                        <ul class="dropdown-menu dropdown-menu-end shadow text-start">
                             <li>
-                                <a class="dropdown-item text-decoration-none small {% if app.request.attributes.get('_route') starts with 'admin_users' %}fw-bold{% endif %}" href="{{ path('admin_users_index', {'_locale': app.request.locale}) }}">
-                                    <i class="bi bi-person-fill me-1"></i> {{ 'backend.menu.users'|trans }}
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_users_index', {'_locale': app.request.locale}) }}">
+                                    {{ 'backend.menu.users'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none small {% if app.request.attributes.get('_route') starts with 'admin_measures' %}fw-bold{% endif %}" href="{{ path('admin_measures_index', {'_locale': app.request.locale}) }}">
-                                    <i class="bi bi-list-check me-1"></i> {{ 'backend.menu.measures'|trans }}
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_measures_index', {'_locale': app.request.locale}) }}">
+                                    {{ 'backend.menu.measures'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none small {% if app.request.attributes.get('_route') starts with 'admin_emission_activity' %}fw-bold{% endif %}" href="{{ path('admin_emission_activity_index', {'_locale': app.request.locale}) }}">
-                                    <i class="bi bi-cloud-haze2-fill me-1"></i> {{ 'backend.menu.factors'|trans }}
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_emission_activity_index', {'_locale': app.request.locale}) }}">
+                                    {{ 'backend.menu.factors'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none small {% if app.request.attributes.get('_route') starts with 'admin_auxiliary' %}fw-bold{% endif %}" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}">
-                                    <i class="bi bi-table me-1"></i> {{ 'backend.menu.aux_tables'|trans }}
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}">
+                                    {{ 'backend.menu.aux_tables'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none small
-                                    {% if app.request.attributes.get('_route') starts with 'admin_cms' or app.request.attributes.get('_route') starts with 'admin_logo' %}fw-bold{% endif %}" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}">
-                                    <i class="bi bi-layout-text-window-reverse me-1"></i> {{ 'backend.menu.cms'|trans }}
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}">
+                                    {{ 'backend.menu.cms'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none small {% if app.request.attributes.get('_route') starts with 'admin_commercial_plans' %}fw-bold{% endif %}" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}">
-                                    <i class="bi bi-currency-euro me-1"></i> {{ 'backend.menu.commercial_plans'|trans }}
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}">
+                                    {{ 'backend.menu.commercial_plans'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none small {% if app.request.attributes.get('_route') starts with 'backend_communication' %}fw-bold{% endif %}" href="{{ path('admin_communication_index', {'_locale': app.request.locale}) }}">
-                                    <i class="bi bi-file-earmark-text me-1"></i> {{ 'backend.menu.communication'|trans }}
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_communication_index', {'_locale': app.request.locale}) }}">
+                                    {{ 'backend.menu.communication'|trans }}
                                 </a>
                             </li>
                         </ul>
                     </div>
 
                     {% endif %}
+
+                    {% include 'backend/_project_selector.html.twig' with { variant: 'mobile' } %}
 
                     <div class="dropdown my-2">
                         <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -198,9 +199,9 @@
 
         </aside>
 
-        <div class="flex-grow-1 d-flex flex-column">
+        <div class="flex-grow-1 d-flex flex-column" style="min-width: 0;">
             {# Header #}
-            <header class="d-flex align-items-center justify-content-between border-bottom bg-white px-4 sticky-top shadow-sm" style="height: 60px; z-index: 100;">
+            <header class="d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom bg-white px-4 sticky-top shadow-sm" style="height: 60px; z-index: 100; min-width: 0;">
                 <button class="btn d-md-none me-2"
                         id="toggleSidebar"
                         type="button"
@@ -217,8 +218,7 @@
                     <i class="bi bi-list"></i>
                 </button>
 
-                <nav aria-label="breadcrumb" class="me-auto">
-
+                <nav aria-label="breadcrumb" class="me-auto min-w-0 d-none d-md-block">
                     <ol class="breadcrumb mb-0">
                         {% block breadcrumb %}
                         <li class="breadcrumb-item">
@@ -231,46 +231,10 @@
 
                 {% set activeProject = activeProject ?? null %}
 
-                <div class="d-flex align-items-center">
-
-                    {% if userProjects|length > 1 %}
-                        <div id="projects_select" class="me-1 d-flex align-items-center">
-                            <span
-                                class="me-2"
-                                data-bs-toggle="popover"
-                                data-bs-trigger="hover"
-                                data-bs-title="{{ 'backend.projects.select.title'|trans }}"
-                                data-bs-content="{{ 'backend.projects.select.help'|trans }}">
-                                <i class="bi bi-question-circle"></i>
-                            </span>
-                            <form method="post"
-                                action="{{ path('backend_project_select_project', {'id': 'PROJECT_ID', '_locale': app.request.locale}) }}"
-                                class="mb-0">
-                                <select name="project_id"
-                                        class="selectpicker"
-                                        data-live-search="{% if userProjects|length > 5 %}true{% else %}false{% endif %}"
-                                        data-width="260px"
-                                        data-style="btn-outline-secondary btn-sm"
-                                        title="{{ 'backend.projects.select.placeholder'|trans }}"
-                                        onchange="this.form.action=this.form.action.replace('PROJECT_ID', this.value); this.form.submit();">
-                                    {% for p in userProjects %}
-                                    <option value="{{ p.id }}" {% if activeProject and p.id == activeProject.id %}selected{% endif %}>
-                                        {{ p.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </form>
-                        </div>
-
-                        <div class="vr mx-3" style="height: 30px;"></div>
-                    {% elseif userProjects|length == 1 and activeProject %}
-
-                        <div class="ms-4 small text-muted">
-                            <i class="bi bi-pin-angle"></i> {{ 'backend.projects.active_project'|trans }}: <strong>{{ activeProject.name|slice(0, 15) }}{% if activeProject.name|length > 15 %}...{% endif %}</strong>
-                        </div>
-
-                        <div class="vr mx-3" style="height: 30px;"></div>
-                    {% endif %}
+                <div class="d-flex align-items-center flex-wrap gap-2 min-w-0">
+                    <div class="d-none d-md-flex align-items-center min-w-0">
+                        {% include 'backend/_project_selector.html.twig' with { variant: 'header' } %}
+                    </div>
 
                     {# Selector de idioma #}
                     {% set currentRoute = app.request.attributes.get('_route') %}
@@ -298,7 +262,7 @@
                     {# /Selector de idioma #}
 
                     {# === Menú usuario #}
-                    <div class="vr mx-3" style="height: 30px;"></div>
+                    <div class="vr mx-3 d-none d-md-block" style="height: 30px;"></div>
                     <div id="menu_login" class="dropdown">
                         <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle me-1"></i>
@@ -375,8 +339,7 @@
 
     {# Footer #}
     <footer id="Footer_be" class="clearfix w-100 flex-shrink-0" role="contentinfo">
-      <div class="container"><div class="row text-center text-md-start"><br></div></div>
-      <div class="footer_copy bg-white py-4 mt-3">
+      <div class="footer_copy bg-white py-4">
         <div class="container">
           <div class="text-center">
             <img src="{{ asset('build/images/logos-kit-digital-transparent.png') }}" alt="Kit Digital" class="img-fluid" style="max-width: 100%; height: auto;" />
