@@ -71,7 +71,8 @@ export default class extends Controller {
 
             this.setSelectedButtonState(measureId, field, value);
             if (field === 'criticalReason' || field === 'critical' || field === 'isApplicable') {
-                this.syncMeasureState(measureId);
+                const sectionToScroll = this.syncMeasureState(measureId);
+                this.scrollToSection(sectionToScroll);
             }
 
             if (lastResponse?.nextUrl) {
@@ -151,24 +152,40 @@ export default class extends Controller {
     syncMeasureState(measureId) {
         const card = this.getMeasureCard(measureId);
         if (!card) {
-            return;
+            return null;
         }
 
         const applicable = this.getSelectedValue(measureId, 'isApplicable');
         const critical = this.getSelectedValue(measureId, 'critical');
 
-        this.toggleSection(card, 'critical', applicable === 'true');
-        this.toggleSection(card, 'critical-reason', critical === 'true');
-        this.toggleSection(card, 'implement', applicable === 'true' && critical !== null);
+        const criticalVisible = this.toggleSection(card, 'critical', applicable === 'true');
+        const criticalReasonVisible = this.toggleSection(card, 'critical-reason', critical === 'true');
+        const implementVisible = this.toggleSection(card, 'implement', applicable === 'true' && critical !== null);
+
+        if (criticalVisible) {
+            return card.querySelector('[data-plan-measures-section="critical"]');
+        }
+
+        if (criticalReasonVisible) {
+            return card.querySelector('[data-plan-measures-section="critical-reason"]');
+        }
+
+        if (implementVisible) {
+            return card.querySelector('[data-plan-measures-section="implement"]');
+        }
+
+        return null;
     }
 
     toggleSection(card, section, visible) {
         const el = card.querySelector(`[data-plan-measures-section="${section}"]`);
         if (!el) {
-            return;
+            return false;
         }
 
+        const wasHidden = el.classList.contains('d-none');
         el.classList.toggle('d-none', !visible);
+        return visible && wasHidden;
     }
 
     setSelectedButtonState(measureId, field, value) {
@@ -222,6 +239,22 @@ export default class extends Controller {
 
         alert.textContent = '';
         alert.classList.add('d-none');
+    }
+
+    scrollToSection(sectionElement) {
+        if (!sectionElement || sectionElement.classList.contains('d-none')) {
+            return;
+        }
+
+        window.requestAnimationFrame(() => {
+            try {
+                sectionElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest',
+                });
+            } catch (_) {}
+        });
     }
 
     navigateAfterSave(field, value) {
