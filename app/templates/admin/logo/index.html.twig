@@ -10,9 +10,7 @@
 {% endblock %}
 
 {% block body %}
-<div class="container my-4">
-  <div class="row justify-content-center">
-    <div class="col-12 bg-white p-4 rounded shadow">
+<div class="container-fluid px-0 backend-admin-shell">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h2">{{ 'backend.logo.index.h1'|trans }}</h1>
         <a href="{{ path('admin_logo_new') }}" class="btn btn-primary">
@@ -83,7 +81,5 @@
           <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
         </a>
       </div>
-    </div>
-  </div>
 </div>
 {% endblock %}

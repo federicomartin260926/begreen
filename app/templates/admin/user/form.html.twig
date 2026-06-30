@@ -13,9 +13,7 @@
 {% endblock %}
 
 {% block body %}
-<div class="container my-4">
-  <div class="row justify-content-center">
-    <div class="col-12 bg-white p-4 rounded shadow">
+<div class="container-fluid px-0 backend-admin-shell">
       <h2 class="mb-5">{{ edit ? 'backend.admin.users.title_edit'|trans : 'backend.admin.users.title_new'|trans }}</h2>
 
       {{ form_start(form) }}
@@ -210,7 +208,5 @@
         <span></span>
       </div>
 
-    </div>
-  </div>
 </div>
 {% endblock %}
