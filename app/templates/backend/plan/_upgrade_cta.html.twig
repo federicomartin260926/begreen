@@ -1,10 +1,11 @@
 {% if upgradeCta.mode == 'modal' %}
+    {% set upgradeModalId = upgradeCta.modalId|default('planUpgradeModal') %}
     <button
         type="button"
         class="btn btn-primary btn-sm"
         data-bs-toggle="modal"
-        data-bs-target="#planUpgradeModal">
-        {{ upgradeCta.label }}
+        data-bs-target="#{{ upgradeModalId }}">
+        {{ upgradeCta.buttonLabel|default(upgradeCta.label) }}
     </button>
 {% elseif upgradeCta.mode == 'single' %}
     {% set upgradeOption = upgradeCta.options|first %}
@@ -25,12 +26,12 @@
 {% endif %}
 
 {% if upgradeCta.mode == 'modal' %}
-    <div class="modal fade" id="planUpgradeModal" tabindex="-1" aria-labelledby="planUpgradeModalLabel" aria-hidden="true">
+    <div class="modal fade" id="{{ upgradeModalId }}" tabindex="-1" aria-labelledby="{{ upgradeModalId }}Label" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
             <div class="modal-content">
                 <div class="modal-header">
                     <div>
-                        <h5 class="modal-title mb-1" id="planUpgradeModalLabel">{{ upgradeCta.title }}</h5>
+                        <h5 class="modal-title mb-1" id="{{ upgradeModalId }}Label">{{ upgradeCta.title }}</h5>
                         <div class="small text-muted">{{ 'backend.plan.upgrade.help'|trans }}</div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
@@ -57,7 +58,7 @@
                                             {% for score in option.allowedScores %}
                                                 <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ score }}</span>
                                             {% endfor %}
-                                            {% if option.measureCount is not null %}
+                                            {% if option.measureCount is defined and option.measureCount is not null %}
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle">
                                                     {{ 'backend.plan.upgrade.measure_count'|trans({'%count%': option.measureCount}) }}
                                                 </span>
