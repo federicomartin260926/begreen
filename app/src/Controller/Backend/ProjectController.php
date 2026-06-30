@@ -4,7 +4,7 @@ namespace App\Controller\Backend;
 
 use App\Entity\{Department, EmissionActivity, EmissionRecord, Plan, Position, Project, CrewMember, ProjectMembership, ProjectPhaseDate, User};
 use App\Form\{ CrewMemberImportType, ProjectType, CrewMemberType, CrewMemberCollectionType };
-use App\Repository\{ ProjectBillingDocumentRepository, ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository };
+use App\Repository\{ ProjectBillingDocumentRepository, ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository, EmissionRecordRepository, PlanRepository };
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Entity\ProjectSubscription;
@@ -42,6 +42,8 @@ class ProjectController extends AbstractController
     #[Route('/', name: 'index')]
     public function index(
         ProjectRepository $projectRepository,
+        PlanRepository $planRepository,
+        EmissionRecordRepository $emissionRecordRepository,
         ActiveProjectService $activeProjectService,
         Request $request
     ): Response {
@@ -130,10 +132,104 @@ class ProjectController extends AbstractController
             ->getQuery()
             ->getResult();
 
+        $dashboardProjects = [];
+        $tierCounts = [
+            ProjectSubscription::TIER_BASIC => 0,
+            ProjectSubscription::TIER_STANDARD => 0,
+            ProjectSubscription::TIER_PRO => 0,
+        ];
+        $planCounts = [
+            'completo' => 0,
+            'incompleto' => 0,
+            'sin_plan' => 0,
+        ];
+        $emissionsTotal = 0;
+        $billingDocumentsTotal = 0;
+
+        foreach ($projects as $project) {
+            $projectTierCode = $this->featureGate->getTier($project);
+            if (!isset($tierCounts[$projectTierCode])) {
+                $tierCounts[$projectTierCode] = 0;
+            }
+            $tierCounts[$projectTierCode]++;
+
+            $plan = $planRepository->findOneBy(['project' => $project]);
+            $projectPlanStatus = $plan?->getStatus();
+            if ($projectPlanStatus === null) {
+                $planCounts['sin_plan']++;
+            } elseif (isset($planCounts[$projectPlanStatus])) {
+                $planCounts[$projectPlanStatus]++;
+            }
+
+            $projectEmissionCount = (int) $emissionRecordRepository->count(['project' => $project]);
+            $projectEmissionSum = (float) $emissionRecordRepository->createQueryBuilder('er')
+                ->select('COALESCE(SUM(er.emission), 0)')
+                ->andWhere('er.project = :project')
+                ->setParameter('project', $project)
+                ->getQuery()
+                ->getSingleScalarResult();
+            $projectBillingDocumentCount = (int) $this->billingDocumentRepository->count(['project' => $project]);
+            $emissionsTotal += $projectEmissionSum;
+            $billingDocumentsTotal += $projectBillingDocumentCount;
+
+            $dashboardProjects[] = $this->buildDashboardProjectRow(
+                project: $project,
+                plan: $plan,
+                projectTierCode: $projectTierCode,
+                emissionCount: $projectEmissionCount,
+                emissionSum: $projectEmissionSum,
+                billingDocumentCount: $projectBillingDocumentCount,
+                isActive: $activeProject && $activeProject->getId() === $project->getId(),
+            );
+        }
+
+        $activePlan = null;
+        $activeProjectEmissionCount = 0;
+        $activeProjectEmissionSum = 0.0;
+        $activeProjectBillingDocumentCount = 0;
+        if ($activeProject) {
+            $activePlan = $planRepository->findOneBy(['project' => $activeProject]);
+            $activeProjectEmissionCount = (int) $emissionRecordRepository->count(['project' => $activeProject]);
+            $activeProjectEmissionSum = (float) $emissionRecordRepository->createQueryBuilder('er')
+                ->select('COALESCE(SUM(er.emission), 0)')
+                ->andWhere('er.project = :project')
+                ->setParameter('project', $activeProject)
+                ->getQuery()
+                ->getSingleScalarResult();
+            $activeProjectBillingDocumentCount = (int) $this->billingDocumentRepository->count(['project' => $activeProject]);
+        }
+
+        $activeFilters = array_filter([
+            $name,
+            $type,
+            $country,
+            $owner,
+            $dateFrom,
+            $dateTo,
+        ], static fn($value) => $value !== '' && $value !== null);
+
         return $this->render('backend/project/index.html.twig', [
             'projects'      => $projects,
-            'activeProject' => $activeProject,
-            'featureGate'   => $this->featureGate,
+            'dashboardProjects' => $dashboardProjects,
+            'dashboardSummary' => [
+                'totalProjects' => $total,
+                'pageProjects' => count($projects),
+                'activeProject' => $activeProject,
+                'activeProjectTierLabel' => $activeProject ? $this->featureGate->getPlanLabel($activeProject) : null,
+                'activeProjectTierCode' => $activeProject ? $this->featureGate->getTier($activeProject) : null,
+                'activeProjectPlanStatus' => $activePlan?->getStatus(),
+                'activeProjectPlanStatusLabel' => $activePlan ? $this->t->trans('backend.plan.status.' . $activePlan->getStatus()) : null,
+                'activeProjectPlanMeasures' => $activePlan ? $activePlan->getPlanMeasures()->count() : 0,
+                'activeProjectEmissionCount' => $activeProjectEmissionCount,
+                'activeProjectEmissionSum' => $activeProjectEmissionSum,
+                'activeProjectBillingDocuments' => $activeProjectBillingDocumentCount,
+                'tiers' => $tierCounts,
+                'plans' => $planCounts,
+                'emissionsTotal' => $emissionsTotal,
+                'billingDocumentsTotal' => $billingDocumentsTotal,
+                'activeFilters' => count($activeFilters),
+                'hasActiveFilters' => count($activeFilters) > 0,
+            ],
             'filters'       => [
                 'name'      => $name,
                 'type'      => $type,
@@ -146,6 +242,147 @@ class ProjectController extends AbstractController
             'currentPage'  => $page,
             'totalPages'   => max(1, (int) ceil($total / $perPage)),
         ]);
+    }
+
+    private function buildDashboardProjectRow(
+        Project $project,
+        ?Plan $plan,
+        string $projectTierCode,
+        int $emissionCount,
+        float $emissionSum,
+        int $billingDocumentCount,
+        bool $isActive
+    ): array {
+        $planStatus = $plan?->getStatus();
+        $planLabel = $planStatus !== null
+            ? $this->t->trans('backend.plan.status.' . $planStatus)
+            : 'Pendiente';
+
+        $planClass = match ($planStatus) {
+            'completo' => 'bg-success',
+            'incompleto' => 'bg-warning text-dark',
+            default => 'bg-light text-muted border',
+        };
+
+        return [
+            'id' => $project->getId(),
+            'name' => $project->getName(),
+            'typeKey' => $project->getType(),
+            'typeLabel' => $this->translateProjectType($project->getType() ?? ''),
+            'country' => $project->getCountry(),
+            'ownerLabel' => $this->formatProjectOwner($project),
+            'tierCode' => $projectTierCode,
+            'tierLabel' => $this->featureGate->getPlanLabel($project),
+            'tierDescription' => $this->featureGate->getPlanDescription($project),
+            'isActive' => $isActive,
+            'createdAt' => $project->getCreatedAt(),
+            'plan' => [
+                'exists' => $plan !== null,
+                'status' => $planStatus,
+                'label' => $planLabel,
+                'class' => $planClass,
+                'measureCount' => $plan?->getPlanMeasures()->count() ?? 0,
+                'statusChangedAt' => $plan?->getStatusChangedAt(),
+            ],
+            'emissionCount' => $emissionCount,
+            'emissionSum' => $emissionSum,
+            'billingDocumentCount' => $billingDocumentCount,
+            'phases' => [
+                [
+                    'code' => '01',
+                    'label' => 'Plan sostenibilidad',
+                    'stateLabel' => $planLabel,
+                    'stateClass' => $planClass,
+                    'icon' => $plan ? 'bi-patch-check-fill' : 'bi-hourglass-split',
+                    'note' => $plan ? ($plan?->getPlanMeasures()->count() . ' medidas') : 'Pendiente',
+                    'isReal' => $plan !== null,
+                ],
+                [
+                    'code' => '02',
+                    'label' => 'Cartelería',
+                    'stateLabel' => 'Pendiente',
+                    'stateClass' => 'bg-light text-muted border',
+                    'icon' => 'bi-download',
+                    'note' => 'Pendiente de definición',
+                    'isReal' => false,
+                ],
+                [
+                    'code' => '03',
+                    'label' => 'Huella carbono',
+                    'stateLabel' => $emissionCount > 0
+                        ? number_format($emissionSum, 2, ',', '.') . ' kgCO2e'
+                        : 'Pendiente',
+                    'stateClass' => $emissionCount > 0
+                        ? 'bg-info text-dark'
+                        : 'bg-light text-muted border',
+                    'icon' => 'bi-cloud-arrow-up-fill',
+                    'note' => $emissionCount > 0
+                        ? $emissionCount . ' registros'
+                        : 'Sin registros de emisiones',
+                    'isReal' => $emissionCount > 0,
+                ],
+                [
+                    'code' => '04',
+                    'label' => 'Informe final',
+                    'stateLabel' => 'Pendiente',
+                    'stateClass' => 'bg-light text-muted border',
+                    'icon' => 'bi-file-earmark-text',
+                    'note' => 'Pendiente de definición',
+                    'isReal' => false,
+                ],
+                [
+                    'code' => '05',
+                    'label' => 'Compensación',
+                    'stateLabel' => 'Pendiente',
+                    'stateClass' => 'bg-light text-muted border',
+                    'icon' => 'bi-tree',
+                    'note' => 'Pendiente de definición',
+                    'isReal' => false,
+                ],
+                [
+                    'code' => '06',
+                    'label' => 'Certificación',
+                    'stateLabel' => 'Pendiente',
+                    'stateClass' => 'bg-light text-muted border',
+                    'icon' => 'bi-award',
+                    'note' => 'Pendiente de definición',
+                    'isReal' => false,
+                ],
+            ],
+        ];
+    }
+
+    private function translateProjectType(string $type): string
+    {
+        return match ($type) {
+            'rodaje' => $this->t->trans('backend.aux.project_type.filming'),
+            'evento' => $this->t->trans('backend.aux.project_type.event'),
+            default => $this->t->trans('backend.aux.project_type.generic'),
+        };
+    }
+
+    private function formatProjectOwner(Project $project): string
+    {
+        $owner = $project->getUser();
+        if (!$owner) {
+            return '—';
+        }
+
+        $parts = array_filter([
+            trim((string) $owner->getName()),
+            trim((string) $owner->getSurnames()),
+        ]);
+        $name = trim(implode(' ', $parts));
+
+        if ($name === '') {
+            $name = $owner->getEmail() ?? '—';
+        }
+
+        if ($owner->getEmail()) {
+            $name .= ' (' . $owner->getEmail() . ')';
+        }
+
+        return $name;
     }
 
     #[Route('/new', name: 'new')]

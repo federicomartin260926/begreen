@@ -192,14 +192,14 @@ backend:
     admin: "Administración"
     users: "Usuarios"
     measures: "Medidas"
-    factors: "Factores de emisión"
+    factors: "Factores emisión"
     aux_tables: "Tablas auxiliares"
     cms: "CMS"
     communication: "Comunicaciones"
     commercial_plans: "Planes comerciales"
     projects: "Proyectos"
-    sustainability_plan: "Plan de sostenibilidad"
-    emissions: "Emisiones de CO₂"
+    sustainability_plan: "Plan sostenibilidad"
+    emissions: "Emisiones CO₂"
     frontend: "Frontend"
   commercial_plans:
     list:

@@ -8,276 +8,459 @@
 {% endblock %}
 
 {% block body %}
-<div class="container my-4">
-  <div class="row justify-content-center">
-    <div class="col-12 bg-white p-4 rounded shadow">
+{% set totalProjects = dashboardSummary.totalProjects|default(0) %}
+{% set completedProjects = dashboardSummary.plans.completo|default(0) %}
+{% set inProgressProjects = dashboardSummary.plans.incompleto|default(0) %}
+{% set notStartedProjects = dashboardSummary.plans.sin_plan|default(0) %}
+{% set phaseDonePct = totalProjects > 0 ? ((completedProjects * 100) / totalProjects)|round(0) : 0 %}
+{% set donutBase = 280 %}
+{% set donutCompleted = totalProjects > 0 ? (completedProjects / totalProjects * donutBase)|round(0) : 0 %}
+{% set donutInProgress = totalProjects > 0 ? (inProgressProjects / totalProjects * donutBase)|round(0) : 0 %}
+{% set donutPending = donutBase - donutCompleted - donutInProgress %}
+{% set chartProjects = dashboardProjects|slice(0, 5) %}
+{% set chartBarsMax = 1 %}
+{% for project in chartProjects %}
+    {% set chartBarsMax = max(chartBarsMax, project.emissionSum|default(0)) %}
+{% endfor %}
+{% set demoCompensationSeries = [2, 3, 4, 6, 8, 11] %}
+{% set demoCompensationMax = 1 %}
+{% for point in demoCompensationSeries %}
+    {% set demoCompensationMax = max(demoCompensationMax, point) %}
+{% endfor %}
 
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">{{ 'backend.projects.list.h2'|trans }}</h2>
-        <a href="{{ path('backend_project_new') }}" class="btn btn-success text-decoration-none">
-          {{ 'backend.projects.actions.new'|trans }}
-        </a>
-      </div>
+<div class="backend-project-dashboard container-fluid px-0">
+    <div class="backend-dashboard-shell">
+        <div class="backend-dashboard-hero mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div class="min-w-0">
+                    <h1 class="h3 mb-2">{{ 'backend.projects.list.h2'|trans }}</h1>
+                </div>
 
-      {# ---- FILTROS ---- #}
-      <form method="get"
-            id="projects-filters-form"
-            class="w-100 mb-4"
-            data-controller="project-list"
-            data-project-list-target="form">
-        <div class="row g-2 align-items-end">
-          <div class="col-12 col-sm-6 col-md-2">
-            <input type="text"
-                name="name" id="f-name"
-                class="form-control"
-                value="{{ filters.name|default('') }}"
-                placeholder="{{ 'backend.projects.filters.name'|trans }}">
-          </div>
-
-          <div class="col-12 col-sm-6 col-md-2">
-            <select
-                class="selectpicker"
-                name="type"
-                id="f-type"
-                data-style="form-select border"
-                data-width="100%"
-                data-live-search="true"
-                data-none-selected-text="{{ 'backend.projects.filters.all'|trans }}">
-                <option value="">{{ 'backend.projects.filters.all'|trans }}</option>
-                <option value="rodaje" {{ filters.type == 'rodaje' ? 'selected' : '' }}>{{ 'backend.aux.project_type.filming'|trans }}</option>
-                <option value="evento" {{ filters.type == 'evento' ? 'selected' : '' }}>{{ 'backend.aux.project_type.event'|trans }}</option>
-            </select>
-          </div>
-
-          <div class="col-12 col-sm-6 col-md-2">
-            <input type="text" name="country" id="f-country" class="form-control"
-                   value="{{ filters.country|default('') }}" placeholder="{{ 'backend.projects.filters.country'|trans }}">
-          </div>
-
-          {% if is_admin %}
-          <div class="col-12 col-sm-6 col-md-2">
-            <input type="text" name="owner" id="f-owner" class="form-control"
-                   value="{{ filters.owner|default('') }}" placeholder="{{ 'backend.projects.filters.owner'|trans }}">
-          </div>
-          {% endif %}
-
-          <div class="col-12 col-sm-6 col-md-2">
-            <input type="date" title="{{ 'backend.projects.filters.from'|trans }}" name="date_from" id="f-from" class="form-control"
-                   value="{{ filters.date_from|default('') }}">
-          </div>
-          <div class="col-12 col-sm-6 col-md-2">
-            <input type="date" title="{{ 'backend.projects.filters.to'|trans }}" name="date_to" id="f-to" class="form-control"
-                   value="{{ filters.date_to|default('') }}">
-          </div>
-
-          <div class="col-12 col-md-auto ms-md-auto">
-            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
-              <button type="submit" class="btn btn-primary">
-                <i class="bi bi-search"></i> {{ 'backend.projects.actions.search'|trans }}
-              </button>
-              <a href="{{ path('backend_project_index') }}"
-                 id="reset-filters"
-                 class="btn btn-outline-secondary"
-                 title="{{ 'backend.projects.filters.reset'|trans }}">
-                 <i class="bi bi-x-circle"></i> {{ 'backend.projects.filters.reset'|trans }}
-              </a>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ path('backend_project_new') }}" class="btn btn-success text-decoration-none backend-new-project-btn">
+                        <i class="bi bi-plus-lg me-1"></i>{{ 'backend.projects.actions.new'|trans }}
+                    </a>
+                </div>
             </div>
-          </div>
-        </div>
-      </form>
-
-      {% if projects is empty %}
-        <div class="alert alert-info">{{ 'backend.projects.list.empty'|trans }}</div>
-      {% else %}
-        <div class="table-responsive" data-project-list-target="list">
-          <table id="projects-table" class="table table-hover green_table_1">
-            <thead>
-              <tr>
-                <th>{{ 'backend.projects.table.name'|trans }}</th>
-                <th class="text-center">{{ 'backend.projects.table.type'|trans }}</th>
-                <th class="text-center">{{ 'backend.projects.table.country'|trans }}</th>
-                <th class="text-center">Tier</th>
-                {% if is_admin %}
-                  <th class="text-center">{{ 'backend.projects.table.billing'|trans }}</th>
-                  <th class="text-left">{{ 'backend.projects.table.owner'|trans }}</th>
-                {% endif %}
-                <th class="text-center">{{ 'backend.projects.table.created_at'|trans }}</th>
-                {% if projects|length > 1 %}
-                  <th class="text-center">{{ 'backend.projects.table.active'|trans }}</th>
-                {% endif %}
-                <th class="text-center">{{ 'backend.projects.table.actions'|trans }}</th>
-              </tr>
-            </thead>
-            <tbody>
-            {% for project in projects %}
-              {% set activeRowStyle = activeProject and project.id == activeProject.id ? 'background-color: #efefef;' : '' %}
-              <tr>
-                <td style="{{ activeRowStyle }}">{{ project.name }}</td>
-                <td class="text-center" style="{{ activeRowStyle }}">
-                  {% if project.type == 'rodaje' %}{{ 'backend.aux.project_type.filming'|trans }}
-                  {% elseif project.type == 'evento' %}{{ 'backend.aux.project_type.event'|trans }}
-                  {% else %}{{ 'backend.aux.project_type.generic'|trans }}{% endif %}
-                </td>
-                <td class="text-center" style="{{ activeRowStyle }}">{{ project.country }}</td>
-                <td class="text-center" style="{{ activeRowStyle }}">
-                  {% set tier = project.subscription ? project.subscription.tier : 'basic' %}
-                  <span class="badge {% if tier == 'pro' %}bg-success{% elseif tier == 'standard' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                    {{ featureGate.getPlanLabel(project) }}
-                  </span>
-                </td>
-
-                {% if is_admin %}
-                  <td class="text-center" style="{{ activeRowStyle }}">
-                    {% set subscription = project.subscription %}
-                    {% if subscription %}
-                      <div class="d-flex flex-column gap-1 small">
-                        <span class="badge {% if subscription.status == 'active' %}bg-success{% elseif subscription.status == 'pending_payment' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                          {{ ('backend.subscription.status.' ~ subscription.status)|trans }}
-                        </span>
-                        <span class="text-muted text-nowrap">
-                          {% if subscription.paidAmountCents is not null %}
-                            {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
-                          {% else %}
-                            —
-                          {% endif %}
-                          ·
-                          {% if subscription.paidAt %}
-                            {{ subscription.paidAt|date('d/m/Y H:i') }}
-                          {% elseif subscription.lastPaymentStatus %}
-                            {{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}
-                          {% else %}
-                            —
-                          {% endif %}
-                        </span>
-                        <span class="text-muted">
-                          {% if subscription.stripeHostedInvoiceUrl or subscription.stripeInvoicePdfUrl %}
-                            {{ 'backend.billing.project.invoice_available'|trans }}
-                          {% else %}
-                            {{ 'backend.billing.project.no_invoice_yet'|trans }}
-                          {% endif %}
-                        </span>
-                      </div>
-                    {% else %}
-                      <span class="text-muted">—</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-left" style="{{ activeRowStyle }}">
-                    {% if project.user %}
-                        {{ (project.user.name|default('')) ~ (project.user.surnames ? ' ' ~ project.user.surnames : '') ~ (project.user.email ? ' (' ~ project.user.email ~ ')' : '') }}
-                    {% else %}
-                        <span class="text-muted">—</span>
-                    {% endif %}
-                  </td>
-                {% endif %}
-                <td class="text-center" data-order="{{ project.createdAt ? 'A' ~ project.createdAt|date('U') : '' }}" style="{{ activeRowStyle }}">
-                  {{ project.createdAt ? project.createdAt|date('d/m/Y') : '' }}
-                </td>
-
-                {% if projects|length > 1 %}
-                  <td class="text-center" style="{{ activeRowStyle }}">
-                    {% if activeProject and project.id == activeProject.id %}
-                      <i class="bi bi-check-lg text-success" title="{{ 'backend.projects.table.active'|trans }}"></i>
-                    {% endif %}
-                  </td>
-                {% endif %}
-
-                <td class="text-center text-nowrap" style="{{ activeRowStyle }}">
-                  <div class="d-inline-flex align-items-center gap-1 flex-nowrap">
-                    <a
-                      href="{{ path('backend_project_edit', {id: project.id}) }}"
-                      data-bs-toggle="popover"
-                      data-bs-trigger="hover"
-                      data-bs-content="{{ 'backend.common.edit'|trans }}"
-                      class="btn">
-                      <i class="bi bi-pencil-square"></i>
-                    </a>
-
-                    <a
-                      href="{{ path('backend_project_clone', {id: project.id}) }}"
-                      data-bs-toggle="popover"
-                      data-bs-trigger="hover"
-                      data-bs-content="{{ 'backend.projects.actions.clone'|trans }}"
-                      class="btn">
-                      <i class="bi bi-files"></i>
-                    </a>
-
-                    {% if project.subscription %}
-                      <a
-                        href="{{ path('backend_project_billing', {id: project.id, from: 'index'}) }}"
-                        data-bs-toggle="popover"
-                        data-bs-trigger="hover"
-                        aria-label="{{ 'backend.billing.project.manage'|trans }}"
-                        data-bs-content="{{ 'backend.billing.project.manage'|trans }}"
-                        class="btn">
-                        <i class="bi bi-receipt"></i>
-                      </a>
-                    {% endif %}
-
-                    <form
-                      method="post"
-                      action="{{ path('backend_project_select_project', {id: project.id}) }}"
-                      class="d-inline-flex"
-                      data-bs-toggle="popover"
-                      data-bs-trigger="hover"
-                      data-bs-content="{{ 'backend.projects.actions.select'|trans }}">
-                      <button class="btn" title="{{ 'backend.projects.actions.select'|trans }}">
-                        <i class="bi bi-check2-square"></i>
-                      </button>
-                    </form>
-
-                    <form
-                      method="post"
-                      action="{{ path('backend_project_delete', {id: project.id}) }}"
-                      class="d-inline-flex"
-                      data-bs-toggle="popover"
-                      data-bs-trigger="hover"
-                      data-bs-content="{{ 'backend.common.delete'|trans }}"
-                      onsubmit="return confirm('{{ 'backend.common.confirm'|trans }}');">
-                      <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ project.id) }}">
-                      <button class="btn"><i class="bi bi-trash"></i></button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-            </tbody>
-          </table>
         </div>
 
-        {% if totalPages > 1 %}
-          {% set q = app.request.query.all %}
-          <nav aria-label="{{ 'backend.projects.pagination'|trans }}" class="mt-3">
-            <ul class="pagination justify-content-center">
+        <div class="backend-chart-strip mb-4">
+            <div class="card dashboard-panel border-0 shadow-sm backend-chart-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div class="backend-chart-title">Fases completadas</div>
+                        <span class="badge bg-light text-dark border">{{ phaseDonePct }}%</span>
+                    </div>
 
-              {# Prev #}
-              {% set prevPage = currentPage - 1 %}
-              <li class="page-item {{ currentPage == 1 ? 'disabled' : '' }}">
-                <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': prevPage < 1 ? 1 : prevPage})) }}" tabindex="-1" aria-disabled="{{ currentPage == 1 ? 'true' : 'false' }}">
-                  &laquo;
+                    <div class="backend-donut-wrap">
+                        <div class="backend-donut" style="--completed: {{ donutCompleted }}; --in-progress: {{ donutInProgress }}; --pending: {{ donutPending }};">
+                            <div class="backend-donut__center">
+                                <div class="backend-donut__value">{{ phaseDonePct }}%</div>
+                                <div class="backend-donut__label">completadas</div>
+                            </div>
+                        </div>
+
+                        <div class="backend-donut-legend">
+                            <div class="backend-donut-legend__item">
+                                <span class="backend-dot bg-success"></span>
+                                <span>Hechas</span>
+                                <strong>{{ completedProjects }}</strong>
+                            </div>
+                            <div class="backend-donut-legend__item">
+                                <span class="backend-dot bg-warning"></span>
+                                <span>En curso</span>
+                                <strong>{{ inProgressProjects }}</strong>
+                            </div>
+                            <div class="backend-donut-legend__item">
+                                <span class="backend-dot bg-light border"></span>
+                                <span>Sin iniciar</span>
+                                <strong>{{ notStartedProjects }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card dashboard-panel border-0 shadow-sm backend-chart-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div class="backend-chart-title">CO₂ por proyecto</div>
+                        <span class="badge bg-light text-dark border">kgCO2e</span>
+                    </div>
+
+                    <svg viewBox="0 0 360 180" class="backend-chart-svg" role="img" aria-label="CO2 por proyecto">
+                        <line x1="36" y1="18" x2="36" y2="148" class="backend-chart-axis"></line>
+                        <line x1="36" y1="148" x2="342" y2="148" class="backend-chart-axis"></line>
+
+                        {% if chartProjects is empty %}
+                            <text x="189" y="88" text-anchor="middle" class="backend-chart-empty">Sin datos de emisiones</text>
+                        {% else %}
+                            {% set barGap = 14 %}
+                            {% set barWidth = (240 / chartProjects|length)|round(0) %}
+                            {% set cursor = 58 %}
+                            {% for project in chartProjects %}
+                                {% set barHeight = chartBarsMax > 0 ? ((project.emissionSum|default(0) / chartBarsMax) * 92)|round(0) : 0 %}
+                                <rect x="{{ cursor }}" y="{{ 148 - barHeight }}" width="{{ barWidth }}" height="{{ barHeight }}" rx="4"
+                                      class="{% if loop.index is even %}backend-bar backend-bar--soft{% else %}backend-bar{% endif %}"></rect>
+                                <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 164 }}" text-anchor="middle" class="backend-chart-xlabel">
+                                    {{ project.name|length > 9 ? project.name|slice(0, 9) ~ '…' : project.name }}
+                                </text>
+                                <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 138 - barHeight }}" text-anchor="middle" class="backend-chart-bar-value">
+                                    {{ project.emissionSum|number_format(1, ',', '.') }}
+                                </text>
+                                {% set cursor = cursor + barWidth + barGap %}
+                            {% endfor %}
+                        {% endif %}
+                    </svg>
+                </div>
+            </div>
+
+            <div class="card dashboard-panel border-0 shadow-sm backend-chart-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div class="backend-chart-title">CO₂ compensado — 2026</div>
+                        <span class="badge bg-light text-dark border">Demo</span>
+                    </div>
+
+                    <svg viewBox="0 0 360 180" class="backend-chart-svg" role="img" aria-label="CO2 compensado 2026">
+                        <line x1="34" y1="18" x2="34" y2="148" class="backend-chart-axis"></line>
+                        <line x1="34" y1="148" x2="342" y2="148" class="backend-chart-axis"></line>
+
+                        {% set linePoints = '' %}
+                        {% set step = demoCompensationSeries|length > 1 ? (280 / (demoCompensationSeries|length - 1)) : 0 %}
+                        {% for point in demoCompensationSeries %}
+                            {% set x = 46 + (loop.index0 * step) %}
+                            {% set y = 138 - ((point / demoCompensationMax) * 88)|round(0) %}
+                            {% set linePoints = linePoints ~ x|round(0) ~ ',' ~ y ~ ' ' %}
+                            <circle cx="{{ x|round(0) }}" cy="{{ y }}" r="4" class="backend-line-dot"></circle>
+                            <text x="{{ x|round(0) }}" y="166" text-anchor="middle" class="backend-chart-xlabel">
+                                {{ ['ene','feb','mar','abr','may','jun'][loop.index0] }}
+                            </text>
+                        {% endfor %}
+                        <polyline points="{{ linePoints|trim }}" class="backend-line-path"></polyline>
+                        <text x="188" y="30" text-anchor="middle" class="backend-chart-line-title">12.1 t acumuladas</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 backend-legend-row">
+            <div class="backend-legend small">
+                <span class="backend-legend__group-label">Plan</span>
+                <span class="backend-legend__item"><span class="backend-node backend-node--basic">B</span> Basic</span>
+                <span class="backend-legend__item"><span class="backend-node backend-node--standard">S</span> Standard</span>
+                <span class="backend-legend__item"><span class="backend-node backend-node--pro">P</span> Pro</span>
+                <span class="backend-legend__separator" aria-hidden="true">|</span>
+                <span class="backend-legend__group-label">Estado</span>
+                <span class="backend-legend__item"><span class="backend-state-dot backend-state-dot--success"></span> Completada</span>
+                <span class="backend-legend__item"><span class="backend-state-dot backend-state-dot--pending"></span> En curso</span>
+                <span class="backend-legend__item"><span class="backend-state-dot backend-state-dot--demo"></span> Sin iniciar</span>
+            </div>
+            <div class="backend-legend-actions">
+                <button type="button"
+                        class="btn btn-outline-secondary backend-filters-toggle"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#projectsFilters"
+                        aria-expanded="{{ dashboardSummary.hasActiveFilters ? 'true' : 'false' }}"
+                        aria-controls="projectsFilters">
+                    <i class="bi bi-funnel me-1"></i> Filtros
+                    {% if dashboardSummary.activeFilters > 0 %}
+                        <span class="badge bg-dark ms-2">{{ dashboardSummary.activeFilters }}</span>
+                    {% endif %}
+                </button>
+            </div>
+        </div>
+
+        <div class="collapse {% if dashboardSummary.hasActiveFilters %}show{% endif %}" id="projectsFilters">
+            <div class="card dashboard-panel border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <form method="get"
+                          id="projects-filters-form"
+                          class="w-100"
+                          data-controller="project-list"
+                          data-project-list-target="form">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-sm-6 col-lg-2">
+                                <input type="text" name="name" id="f-name" class="form-control" value="{{ filters.name|default('') }}" placeholder="{{ 'backend.projects.filters.name'|trans }}">
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-2">
+                                <select class="selectpicker"
+                                        name="type"
+                                        id="f-type"
+                                        data-style="form-select border"
+                                        data-width="100%"
+                                        data-live-search="true"
+                                        data-none-selected-text="{{ 'backend.projects.filters.all'|trans }}">
+                                    <option value="">{{ 'backend.projects.filters.all'|trans }}</option>
+                                    <option value="rodaje" {{ filters.type == 'rodaje' ? 'selected' : '' }}>{{ 'backend.aux.project_type.filming'|trans }}</option>
+                                    <option value="evento" {{ filters.type == 'evento' ? 'selected' : '' }}>{{ 'backend.aux.project_type.event'|trans }}</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-2">
+                                <input type="text" name="country" id="f-country" class="form-control" value="{{ filters.country|default('') }}" placeholder="{{ 'backend.projects.filters.country'|trans }}">
+                            </div>
+                            {% if is_admin %}
+                                <div class="col-12 col-sm-6 col-lg-2">
+                                    <input type="text" name="owner" id="f-owner" class="form-control" value="{{ filters.owner|default('') }}" placeholder="{{ 'backend.projects.filters.owner'|trans }}">
+                                </div>
+                            {% endif %}
+                            <div class="col-12 col-sm-6 col-lg-2">
+                                <input type="date" name="date_from" id="f-from" class="form-control" value="{{ filters.date_from|default('') }}" title="{{ 'backend.projects.filters.from'|trans }}">
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-2">
+                                <input type="date" name="date_to" id="f-to" class="form-control" value="{{ filters.date_to|default('') }}" title="{{ 'backend.projects.filters.to'|trans }}">
+                            </div>
+                            <div class="col-12 col-md-auto ms-md-auto">
+                                <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-search"></i> {{ 'backend.projects.actions.search'|trans }}
+                                    </button>
+                                    <a href="{{ path('backend_project_index') }}" id="reset-filters" class="btn btn-outline-secondary" title="{{ 'backend.projects.filters.reset'|trans }}">
+                                        <i class="bi bi-x-circle"></i> {{ 'backend.projects.filters.reset'|trans }}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="card dashboard-panel border-0 shadow-sm mb-3 backend-table-card">
+            <div class="card-body px-0 pt-3">
+                {% if dashboardProjects is empty %}
+                    <div class="px-3 px-md-4 pb-3">
+                        <div class="alert alert-light border mb-0">
+                            No hay proyectos accesibles con los filtros actuales.
+                            <a href="{{ path('backend_project_new') }}" class="alert-link text-decoration-none">Crear el primer proyecto</a>.
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="table-responsive dashboard-table-wrap">
+                        <table class="table align-middle mb-0 dashboard-project-table">
+                            <thead>
+                                <tr>
+                                    <th class="dashboard-th-project">Proyecto</th>
+                                    <th class="text-center">01</th>
+                                    <th class="text-center">02</th>
+                                    <th class="text-center">03</th>
+                                    <th class="text-center">04</th>
+                                    <th class="text-center">05</th>
+                                    <th class="text-center">06</th>
+                                    <th class="text-center dashboard-th-actions">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in dashboardProjects %}
+                                    {% set projectTierBadge = project.tierCode == 'pro' ? 'bg-success' : (project.tierCode == 'standard' ? 'bg-warning text-dark' : 'bg-secondary') %}
+                                    <tr class="{% if project.isActive %}dashboard-project-row--active{% endif %}">
+                                        <td class="dashboard-project-cell">
+                                            <div class="d-flex flex-column gap-1">
+                                                <div class="d-flex align-items-start justify-content-between gap-3">
+                                                    <div class="min-w-0">
+                                                        <a href="{{ path('backend_project_edit', {id: project.id}) }}" class="fw-semibold text-decoration-none text-truncate d-inline-block dashboard-project-link">
+                                                            {{ project.name }}
+                                                        </a>
+                                                    <div class="small text-muted text-truncate">
+                                                        {{ project.typeLabel }} · {{ project.country }}
+                                                        {% if is_admin and project.ownerLabel != '—' %}
+                                                            · {{ project.ownerLabel }}
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+
+                                                    {% if project.isActive %}
+                                                        <span class="badge bg-primary align-self-start">Activo</span>
+                                                    {% endif %}
+                                                </div>
+
+                                                <div class="d-flex flex-wrap align-items-center gap-2 dashboard-project-meta">
+                                                    <span class="badge {{ projectTierBadge }}">{{ project.tierCode|upper }}</span>
+                                                    <span class="badge {{ project.plan.class }}">
+                                                        {{ project.plan.label }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {% for phase in project.phases %}
+                                            {% if phase.code == '01' %}
+                                                {% set nodeClass = project.plan.status == 'completo' ? 'backend-node--success' : (project.plan.status == 'incompleto' ? 'backend-node--warning' : 'backend-node--pending') %}
+                                                {% set nodeIcon = project.plan.status == 'completo' ? 'bi-check-lg' : 'bi-hourglass-split' %}
+                                                {% set nodeLabel = project.plan.status == 'completo' ? 'OK' : (project.plan.status == 'incompleto' ? '···' : '—') %}
+                                            {% elseif phase.code == '03' %}
+                                                {% set nodeClass = project.emissionCount > 0 ? 'backend-node--info' : 'backend-node--pending' %}
+                                                {% set nodeIcon = project.emissionCount > 0 ? 'bi-cloud-check' : 'bi-cloud-arrow-up' %}
+                                                {% set nodeLabel = project.emissionCount > 0 ? project.emissionSum|number_format(1, ',', '.') : '—' %}
+                                            {% else %}
+                                                {% set nodeClass = 'backend-node--pending' %}
+                                                {% set nodeIcon = 'bi-dash-lg' %}
+                                                {% set nodeLabel = '—' %}
+                                            {% endif %}
+
+                                            <td class="dashboard-phase-cell text-center">
+                                                <div class="backend-phase-tile">
+                                                    <div class="backend-phase-node {{ nodeClass }}">
+                                                        <i class="bi {{ nodeIcon }}"></i>
+                                                    </div>
+                                                    <div class="backend-phase-tile__state">{{ nodeLabel }}</div>
+                                                </div>
+                                            </td>
+                                        {% endfor %}
+
+                                        <td class="text-center dashboard-actions-cell">
+                                            <div class="dropdown">
+                                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    ...
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                                    <li>
+                                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_edit', {id: project.id}) }}">
+                                                            <i class="bi bi-box-arrow-up-right me-2"></i>Abrir
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_edit', {id: project.id}) }}">
+                                                            <i class="bi bi-pencil-square me-2"></i>Editar
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_edit_crew', {id: project.id}) }}">
+                                                            <i class="bi bi-people me-2"></i>Equipo
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_billing', {id: project.id, from: 'index'}) }}">
+                                                            <i class="bi bi-receipt me-2"></i>Facturación
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        {% if project.isActive %}
+                                                            <a class="dropdown-item text-decoration-none" href="{{ path('backend_plan_index', {'_locale': app.request.locale}) }}">
+                                                                <i class="bi bi-pie-chart me-2"></i>Plan
+                                                            </a>
+                                                        {% else %}
+                                                            <button class="dropdown-item text-muted" type="button" disabled>
+                                                                <i class="bi bi-pie-chart me-2"></i>Plan
+                                                            </button>
+                                                        {% endif %}
+                                                    </li>
+                                                    <li>
+                                                        {% if not project.isActive %}
+                                                            <form method="post" action="{{ path('backend_project_select_project', {id: project.id}) }}" class="m-0">
+                                                                <input type="hidden" name="_token" value="{{ csrf_token('select_project' ~ project.id) }}">
+                                                                <button type="submit" class="dropdown-item text-decoration-none">
+                                                                    <i class="bi bi-check2-square me-2"></i>Seleccionar activo
+                                                                </button>
+                                                            </form>
+                                                        {% else %}
+                                                            <button class="dropdown-item text-success" type="button" disabled>
+                                                                <i class="bi bi-check2-square me-2"></i>Activo
+                                                            </button>
+                                                        {% endif %}
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_clone', {id: project.id}) }}">
+                                                            <i class="bi bi-files me-2"></i>Duplicar
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <form method="post"
+                                                              action="{{ path('backend_project_delete', {id: project.id}) }}"
+                                                              class="m-0"
+                                                              onsubmit="return confirm('{{ 'backend.common.confirm'|trans|e('js') }}');">
+                                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ project.id) }}">
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="bi bi-trash me-2"></i>{{ 'backend.common.delete'|trans }}
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+            {% if totalPages > 1 %}
+                {% set q = app.request.query.all %}
+                <nav aria-label="{{ 'backend.projects.pagination'|trans }}">
+                    <ul class="pagination mb-0">
+                        {% set prevPage = currentPage - 1 %}
+                        <li class="page-item {{ currentPage == 1 ? 'disabled' : '' }}">
+                            <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': prevPage < 1 ? 1 : prevPage})) }}" tabindex="-1" aria-disabled="{{ currentPage == 1 ? 'true' : 'false' }}">&laquo;</a>
+                        </li>
+
+                        {% set startPage = currentPage - 2 %}
+                        {% set endPage = currentPage + 2 %}
+                        {% if startPage < 1 %}
+                            {% set endPage = endPage + (1 - startPage) %}
+                            {% set startPage = 1 %}
+                        {% endif %}
+                        {% if endPage > totalPages %}
+                            {% set startPage = startPage - (endPage - totalPages) %}
+                            {% set endPage = totalPages %}
+                        {% endif %}
+                        {% if startPage < 1 %}
+                            {% set startPage = 1 %}
+                        {% endif %}
+
+                        {% if startPage > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': 1})) }}">1</a>
+                            </li>
+                            {% if startPage > 2 %}
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% for p in startPage..endPage %}
+                            <li class="page-item {{ p == currentPage ? 'active' : '' }}">
+                                <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': p})) }}">{{ p }}</a>
+                            </li>
+                        {% endfor %}
+
+                        {% if endPage < totalPages %}
+                            {% if endPage < totalPages - 1 %}
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                            {% endif %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': totalPages})) }}">{{ totalPages }}</a>
+                            </li>
+                        {% endif %}
+
+                        {% set nextPage = currentPage + 1 %}
+                        <li class="page-item {{ currentPage == totalPages ? 'disabled' : '' }}">
+                            <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': nextPage > totalPages ? totalPages : nextPage})) }}">&raquo;</a>
+                        </li>
+                    </ul>
+                </nav>
+            {% endif %}
+
+            <div class="backend-cta-new-project">
+                <a href="{{ path('backend_project_new') }}"
+                   class="project-dashboard-create-row text-decoration-none"
+                   aria-label="{{ 'backend.projects.actions.new'|trans }}">
+                    <span class="project-dashboard-create-row__icon" aria-hidden="true">
+                        <i class="bi bi-plus-lg"></i>
+                    </span>
+                    <span class="project-dashboard-create-row__content">
+                        <span class="project-dashboard-create-row__label">Crear nuevo proyecto</span>
+                        <span class="project-dashboard-create-row__hint">Añade un proyecto nuevo al dashboard</span>
+                    </span>
+                    <span class="project-dashboard-create-row__chevron" aria-hidden="true">
+                        <i class="bi bi-arrow-right"></i>
+                    </span>
                 </a>
-              </li>
-
-              {# Números #}
-              {% for p in 1..totalPages %}
-                <li class="page-item {{ p == currentPage ? 'active' : '' }}">
-                  <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': p})) }}">{{ p }}</a>
-                </li>
-              {% endfor %}
-
-              {# Next #}
-              {% set nextPage = currentPage + 1 %}
-              <li class="page-item {{ currentPage == totalPages ? 'disabled' : '' }}">
-                <a class="page-link" href="{{ path('backend_project_index', q|merge({'page': nextPage > totalPages ? totalPages : nextPage})) }}">
-                  &raquo;
-                </a>
-              </li>
-
-            </ul>
-          </nav>
-        {% endif %}
-
-      {% endif %}
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}

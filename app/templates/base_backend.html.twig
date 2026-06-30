@@ -13,19 +13,90 @@
     {% block stylesheets %}{% endblock %}
     {{ encore_entry_link_tags('app') }}
 </head>
-<body class="d-flex flex-column min-vh-100">
+{% set activeProject = activeProject ?? null %}
+
+<body class="backend-shell d-flex flex-column min-vh-100">
     <div class="d-flex flex-grow-1">
         {# Menú izquierdo #}
         <aside id="sidebar"
             data-controller="sidebar"
             data-sidebar-target="sidebar"
-            class="border-end bg-white d-none d-md-block position-relative position-md-relative transition-width"
-            style="width: 100%; min-width: 65px; max-width: 250px; z-index: 1050;">
+            class="backend-sidebar border-end d-none d-md-flex flex-column position-relative position-md-relative transition-width"
+            style="width: 260px; min-width: 260px; max-width: 260px; z-index: 1050;">
 
-            <div class="text-center py-3 d-none d-md-block">
-                <a class="navbar-brand" href="{{ path('home', {'_locale': app.request.locale}) }}">
-                    <img src="{{ asset('build/images/logo.svg') }}" alt="Logo" class="img-fluid" style="max-height: 40px;">
+            <div class="backend-sidebar__brand d-flex align-items-center gap-3 py-3 px-3">
+                <a class="navbar-brand d-inline-flex align-items-center justify-content-center flex-shrink-0 m-0" href="{{ path('home', {'_locale': app.request.locale}) }}">
+                    <img src="{{ asset('build/images/logo-white.svg') }}" alt="Logo" class="img-fluid backend-sidebar__brand-logo d-none d-md-inline-block" style="max-height: 42px;">
+                    <span class="backend-sidebar__brand-mark d-inline-flex d-md-none align-items-center justify-content-center">B</span>
                 </a>
+                <div class="backend-sidebar__brand-copy min-w-0">
+                    <div class="backend-sidebar__brand-title text-uppercase fw-bold">Be green my friend</div>
+                    <div class="backend-sidebar__brand-subtitle text-white-50 small">Plataforma de sostenibilidad</div>
+                </div>
+            </div>
+
+            <div class="backend-sidebar__account d-none d-md-block px-3 pb-3">
+                <div class="backend-sidebar__account-card rounded-4 p-3">
+                    <div class="d-flex align-items-center gap-3 min-w-0">
+                        <div class="backend-sidebar__avatar rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
+                            {{ app.user.name|default(app.user.email|default('U'))|slice(0, 1)|upper }}
+                        </div>
+                        <div class="min-w-0 backend-sidebar__identity">
+                            <div class="fw-semibold text-white text-truncate backend-sidebar__identity-name">
+                                {{ (app.user.name|default('') ~ ' ' ~ app.user.surnames|default(''))|trim|default(app.user.email|default('Usuario')) }}
+                            </div>
+                            <div class="small text-white-50 backend-sidebar__identity-email">
+                                {{ app.user.email|default('') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="backend-sidebar__account-meta small text-white-50 mt-3">
+                        <div class="backend-sidebar__meta-row">
+                            <span>{{ 'backend.menu.projects'|trans }}</span>
+                            <strong class="text-white">{{ userProjects|length }}</strong>
+                        </div>
+                        <div class="backend-sidebar__meta-row">
+                            <span>Miembro desde</span>
+                            <strong class="text-white">
+                                {{ app.user.createdAt ? app.user.createdAt|date('d/m/Y') : '—' }}
+                            </strong>
+                        </div>
+                        {% if activeProject and is_granted('PROJECT_VIEW', activeProject) %}
+                            <a
+                                href="{{ path('backend_project_edit', { id: activeProject.id, '_locale': app.request.locale }) }}"
+                                title="{{ activeProject.name }}"
+                                class="backend-sidebar__meta-row backend-sidebar__meta-row--link text-decoration-none">
+                                <span>Proyecto activo</span>
+                                <strong class="text-white text-truncate text-end">
+                                    {{ activeProject.name }}
+                                </strong>
+                            </a>
+                        {% else %}
+                            <div class="backend-sidebar__meta-row">
+                                <span>Proyecto activo</span>
+                                <strong class="text-white text-truncate text-end">
+                                    {{ activeProject ? activeProject.name : 'Sin asignar' }}
+                                </strong>
+                            </div>
+                        {% endif %}
+                        {% if activeProject and is_granted('PROJECT_VIEW', activeProject) %}
+                            {% set planSidebarHref = path('backend_project_billing', { id: activeProject.id, '_locale': app.request.locale }) %}
+                            <a
+                                href="{{ planSidebarHref }}"
+                                title="Ver facturación del proyecto activo"
+                                class="backend-sidebar__meta-row backend-sidebar__meta-row--link text-decoration-none">
+                                <span>Plan</span>
+                                <strong class="text-white">{{ activeProject.subscription ? activeProject.subscription.tier|capitalize : 'Basic' }}</strong>
+                            </a>
+                        {% elseif activeProject %}
+                            <div class="backend-sidebar__meta-row">
+                                <span>Plan</span>
+                                <strong class="text-white">{{ activeProject.subscription ? activeProject.subscription.tier|capitalize : 'Basic' }}</strong>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
 
             {% set adminExpanded =
@@ -40,10 +111,10 @@
             %}
 
             {# VERSIÓN COMPLETA (pantallas md y mayores) #}
-            <nav class="nav flex-column p-3 d-none d-md-block">
+            <nav class="nav flex-column px-3 pb-3 pt-1 d-none d-md-flex">
                 <div class="">
                     {% if 'ROLE_SUPER_ADMIN' in app.user.roles %}
-                    <div class="my-2 admin-desktop-section">
+                    <div class="my-2 admin-desktop-section backend-sidebar__section">
                         <a class="nav-link d-flex align-items-start text-decoration-none"
                             data-bs-toggle="collapse"
                             href="#adminCollapse"
@@ -194,6 +265,15 @@
                             <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_communication_index', {'_locale': app.request.locale}) }}">{{ 'backend.menu.communication'|trans }}</a></li>
                         </ul>
                     </div>
+
+                    <div class="dropdown my-2">
+                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-box-arrow-right fs-4"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('app_logout', {'_locale': app.request.locale}) }}">{{ 'auth.logout'|trans }}</a></li>
+                        </ul>
+                    </div>
                 </div>
             </nav>
 
@@ -201,7 +281,7 @@
 
         <div class="flex-grow-1 d-flex flex-column" style="min-width: 0;">
             {# Header #}
-            <header class="d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom bg-white px-4 sticky-top shadow-sm" style="height: 60px; z-index: 100; min-width: 0;">
+            <header class="backend-topbar d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom bg-white px-4 sticky-top shadow-sm" style="height: 60px; z-index: 100; min-width: 0;">
                 <button class="btn d-md-none me-2"
                         id="toggleSidebar"
                         type="button"
@@ -310,7 +390,7 @@
                 {% endif %}
             </header>
 
-            <main id="{{ app.request.attributes.get('_route') }}" class="p-4 bg_green_1 flex-grow-1">
+            <main id="{{ app.request.attributes.get('_route') }}" class="backend-main p-4 flex-grow-1">
                 <section
                     data-controller="backend"
                     data-backend-flash-offset-value="80"
