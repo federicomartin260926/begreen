@@ -3,10 +3,13 @@
 namespace App\Controller\Backend;
 
 use App\Entity\CommercialPlan;
+use App\Entity\Plan;
 use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
 use App\Repository\CommercialPlanRepository;
+use App\Repository\MeasureRepository;
+use App\Repository\PlanRepository;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
@@ -33,6 +36,8 @@ final class ProjectBillingController extends AbstractController
         private readonly StripeInvoiceStorageService $invoiceStorageService,
         private readonly StripeProjectCheckoutService $checkoutService,
         private readonly CommercialPlanRepository $commercialPlanRepository,
+        private readonly PlanRepository $planRepository,
+        private readonly MeasureRepository $measureRepository,
         private readonly TranslatorInterface $translator,
         private readonly EntityManagerInterface $entityManager,
     ) {
@@ -46,12 +51,14 @@ final class ProjectBillingController extends AbstractController
         $this->activeProjectService->setActiveProject($project);
 
         $subscription = $project->getSubscription();
+        $plan = $this->planRepository->findOneBy(['project' => $project]);
         $availableUpgradeTargets = $this->checkoutService->getAvailableUpgradeTargets($project);
         $hasPendingUpgrade = $subscription
             && $subscription->getTargetTier() !== null
             && $subscription->getStripeCheckoutSessionId() !== null;
         $canVerify = $hasPendingUpgrade;
         $upgradeCta = $this->buildUpgradeCta($project, $availableUpgradeTargets, $this->commercialPlanRepository);
+        $upgradeCta = $this->attachMeasureCounts($upgradeCta, $plan);
         $showUpgradeCta = $subscription === null || $subscription->getStatus() === ProjectSubscription::STATUS_CANCELLED;
         $pendingUpgrade = $this->buildPendingUpgrade($subscription, $upgradeCta);
         $origin = $this->resolveOrigin($request);
@@ -337,6 +344,23 @@ final class ProjectBillingController extends AbstractController
             'sessionId' => $subscription->getStripeCheckoutSessionId(),
             'status' => $subscription->getLastPaymentStatus() ?? 'checkout_created',
         ];
+    }
+
+    private function attachMeasureCounts(array $upgradeCta, ?Plan $plan): array
+    {
+        $protocol = $plan?->getProtocol();
+        if (!$protocol) {
+            return $upgradeCta;
+        }
+
+        foreach ($upgradeCta['options'] ?? [] as $index => $option) {
+            $upgradeCta['options'][$index]['measureCount'] = $this->measureRepository->countCatalogMeasuresForProtocol(
+                $protocol,
+                $option['allowedScores'] ?? []
+            );
+        }
+
+        return $upgradeCta;
     }
 
     private function resolveProjectTier(Project $project): string

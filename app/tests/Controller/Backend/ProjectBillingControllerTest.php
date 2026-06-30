@@ -9,6 +9,8 @@ use App\Entity\ProjectMembership;
 use App\Entity\ProjectSubscription;
 use App\Entity\User;
 use App\Repository\CommercialPlanRepository;
+use App\Repository\MeasureRepository;
+use App\Repository\PlanRepository;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Service\ActiveProjectService;
 use App\Service\StripeProjectCheckoutService;
@@ -622,6 +624,8 @@ final class ProjectBillingControllerTest extends KernelTestCase
                 return $plans[strtolower(trim($code))] ?? null;
             }
         );
+        $planRepository = self::getContainer()->get(PlanRepository::class);
+        $measureRepository = self::getContainer()->get(MeasureRepository::class);
 
         $checkoutService = new StripeProjectCheckoutService(
             new \Stripe\StripeClient('sk_test_dummy'),
@@ -640,6 +644,8 @@ final class ProjectBillingControllerTest extends KernelTestCase
             $invoiceStorage,
             $checkoutService,
             $commercialPlanRepository,
+            $planRepository,
+            $measureRepository,
             self::getContainer()->get('translator'),
             $entityManager
         );
