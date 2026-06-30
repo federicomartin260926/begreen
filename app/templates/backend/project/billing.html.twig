@@ -187,7 +187,7 @@
                     <div class="border rounded p-3 h-100 bg-light">
                       <div class="small text-muted">{{ 'backend.billing.project.invoice_status'|trans }}</div>
                       <div class="fw-semibold">
-                        {% if hasLocalCopy or document.hostedInvoiceUrl %}
+                        {% if hasLocalCopy %}
                           {{ 'backend.billing.project.invoice_available'|trans }}
                         {% else %}
                           {{ 'backend.billing.project.no_invoice_yet'|trans }}
@@ -365,6 +365,63 @@
           {{ 'backend.plan.upgrade.active_title'|trans }}
         </span>
       {% endif %}
+    </div>
+  {% endif %}
+
+  {% if showUpgradeCta and upgradeCta.mode == 'modal' %}
+    <div class="modal fade" id="projectBillingUpgradeModal" tabindex="-1" aria-labelledby="projectBillingUpgradeModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <h5 class="modal-title mb-1" id="projectBillingUpgradeModalLabel">{{ upgradeCta.title }}</h5>
+              <div class="small text-muted">{{ 'backend.plan.upgrade.help'|trans }}</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row row-cols-1 row-cols-md-2 g-3">
+              {% for option in upgradeCta.options %}
+                <div class="col">
+                  <div class="border rounded p-3 h-100 bg-light">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-2 gap-sm-3 mb-2">
+                      <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold">{{ option.name }}</div>
+                        {% if option.description %}
+                          <div class="small text-muted">{{ option.description }}</div>
+                        {% endif %}
+                      </div>
+                      <div class="text-start text-sm-end w-100 w-sm-auto">
+                        <div class="fw-semibold">{{ option.priceLabel }} <span class="small text-muted">+ IVA</span></div>
+                      </div>
+                    </div>
+
+                    {% if option.allowedScores is not empty %}
+                      <div class="d-flex flex-wrap gap-1 mb-3">
+                        {% for score in option.allowedScores %}
+                          <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ score }}</span>
+                        {% endfor %}
+                        {% if option.measureCount is defined and option.measureCount is not null %}
+                          <span class="badge bg-success-subtle text-success border border-success-subtle">
+                            {{ 'backend.plan.upgrade.measure_count'|trans({'%count%': option.measureCount}) }}
+                          </span>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+
+                    <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: option.targetTier}) }}">
+                      <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ option.targetTier) }}">
+                      <button type="submit" class="btn btn-primary w-100">
+                        {{ option.ctaLabel }}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   {% endif %}
 </div>

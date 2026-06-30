@@ -84,7 +84,7 @@
                             {% set planSidebarHref = path('backend_project_billing', { id: activeProject.id, '_locale': app.request.locale }) %}
                             <a
                                 href="{{ planSidebarHref }}"
-                                title="Ver facturación del proyecto activo"
+                                title="Abrir facturación del proyecto activo"
                                 class="backend-sidebar__meta-row backend-sidebar__meta-row--link text-decoration-none">
                                 <span>Plan</span>
                                 <strong class="text-white">{{ activeProject.subscription ? activeProject.subscription.tier|capitalize : 'Basic' }}</strong>
