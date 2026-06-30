@@ -284,27 +284,40 @@
                                         </td>
 
                                         {% for phase in project.phases %}
-                                            {% if phase.code == '01' %}
-                                                {% set nodeClass = project.plan.status == 'completo' ? 'backend-node--success' : (project.plan.status == 'incompleto' ? 'backend-node--warning' : 'backend-node--pending') %}
-                                                {% set nodeIcon = project.plan.status == 'completo' ? 'bi-check-lg' : 'bi-hourglass-split' %}
-                                                {% set nodeLabel = project.plan.status == 'completo' ? 'OK' : (project.plan.status == 'incompleto' ? '···' : '—') %}
-                                            {% elseif phase.code == '03' %}
-                                                {% set nodeClass = project.emissionCount > 0 ? 'backend-node--info' : 'backend-node--pending' %}
-                                                {% set nodeIcon = project.emissionCount > 0 ? 'bi-cloud-check' : 'bi-cloud-arrow-up' %}
-                                                {% set nodeLabel = project.emissionCount > 0 ? project.emissionSum|number_format(1, ',', '.') : '—' %}
-                                            {% else %}
-                                                {% set nodeClass = 'backend-node--pending' %}
-                                                {% set nodeIcon = 'bi-dash-lg' %}
-                                                {% set nodeLabel = '—' %}
+                                            {% set phaseHref = null %}
+                                            {% if project.isActive and phase.code == '01' %}
+                                                {% set phaseHref = path('backend_plan_index', {'_locale': app.request.locale}) %}
+                                            {% elseif project.isActive and phase.code == '03' %}
+                                                {% set phaseHref = path('backend_emission_index', {'_locale': app.request.locale}) %}
                                             {% endif %}
 
                                             <td class="dashboard-phase-cell text-center">
-                                                <div class="backend-phase-tile">
-                                                    <div class="backend-phase-node {{ nodeClass }}">
-                                                        <i class="bi {{ nodeIcon }}"></i>
+                                                {% if phaseHref %}
+                                                    <a href="{{ phaseHref }}"
+                                                       title="{{ phase.title }}"
+                                                       aria-label="{{ phase.title }}"
+                                                       class="backend-phase-tile backend-phase-tile--link text-decoration-none">
+                                                        <div class="backend-phase-node {{ phase.stateClass }}">
+                                                            <i class="bi {{ phase.icon }}"></i>
+                                                        </div>
+                                                        <div class="backend-phase-tile__state">{{ phase.stateLabel }}</div>
+                                                        {% if phase.note is not empty %}
+                                                            <div class="backend-phase-tile__note">{{ phase.note }}</div>
+                                                        {% endif %}
+                                                    </a>
+                                                {% else %}
+                                                    <div title="{{ phase.title }}"
+                                                         aria-label="{{ phase.title }}"
+                                                         class="backend-phase-tile">
+                                                        <div class="backend-phase-node {{ phase.stateClass }}">
+                                                            <i class="bi {{ phase.icon }}"></i>
+                                                        </div>
+                                                        <div class="backend-phase-tile__state">{{ phase.stateLabel }}</div>
+                                                        {% if phase.note is not empty %}
+                                                            <div class="backend-phase-tile__note">{{ phase.note }}</div>
+                                                        {% endif %}
                                                     </div>
-                                                    <div class="backend-phase-tile__state">{{ nodeLabel }}</div>
-                                                </div>
+                                                {% endif %}
                                             </td>
                                         {% endfor %}
 

@@ -257,12 +257,34 @@ class ProjectController extends AbstractController
         $planLabel = $planStatus !== null
             ? $this->t->trans('backend.plan.status.' . $planStatus)
             : 'Pendiente';
+        $planPhaseLabel = match ($planStatus) {
+            'completo' => 'OK',
+            'incompleto' => 'En curso',
+            default => 'Pendiente',
+        };
+        $planPhaseTitleLabel = match ($planStatus) {
+            'completo' => 'Completo',
+            'incompleto' => 'En curso',
+            default => 'Pendiente',
+        };
+        $planPhaseNote = match ($planStatus) {
+            'completo' => 'Completo',
+            'incompleto' => 'En curso',
+            default => 'Sin plan',
+        };
 
         $planClass = match ($planStatus) {
             'completo' => 'bg-success',
             'incompleto' => 'bg-warning text-dark',
             default => 'bg-light text-muted border',
         };
+
+        $emissionPhaseLabel = $emissionCount > 0
+            ? number_format($emissionSum, 1, ',', '.')
+            : '—';
+        $emissionPhaseNote = $emissionCount > 0
+            ? 'kgCO₂e'
+            : 'Sin registros';
 
         return [
             'id' => $project->getId(),
@@ -291,61 +313,71 @@ class ProjectController extends AbstractController
                 [
                     'code' => '01',
                     'label' => 'Plan sostenibilidad',
-                    'stateLabel' => $planLabel,
+                    'stateLabel' => $planPhaseLabel,
                     'stateClass' => $planClass,
-                    'icon' => $plan ? 'bi-patch-check-fill' : 'bi-hourglass-split',
-                    'note' => $plan ? ($plan?->getPlanMeasures()->count() . ' medidas') : 'Pendiente',
+                    'icon' => $plan?->getStatus() === 'completo'
+                        ? 'bi-check-lg'
+                        : ($plan ? 'bi-hourglass-split' : 'bi-dash-lg'),
+                    'note' => $planPhaseNote,
+                    'title' => '01 · Plan de sostenibilidad · ' . $planPhaseTitleLabel,
                     'isReal' => $plan !== null,
                 ],
+                // TODO: Implementar estado real de Cartelería cuando exista módulo funcional.
                 [
                     'code' => '02',
                     'label' => 'Cartelería',
                     'stateLabel' => 'Pendiente',
                     'stateClass' => 'bg-light text-muted border',
                     'icon' => 'bi-download',
-                    'note' => 'Pendiente de definición',
+                    'note' => 'Pendiente de desarrollo',
+                    'title' => '02 · Cartelería · Pendiente de desarrollo',
                     'isReal' => false,
                 ],
                 [
                     'code' => '03',
                     'label' => 'Huella carbono',
-                    'stateLabel' => $emissionCount > 0
-                        ? number_format($emissionSum, 2, ',', '.') . ' kgCO2e'
-                        : 'Pendiente',
+                    'stateLabel' => $emissionPhaseLabel,
                     'stateClass' => $emissionCount > 0
                         ? 'bg-info text-dark'
                         : 'bg-light text-muted border',
                     'icon' => 'bi-cloud-arrow-up-fill',
-                    'note' => $emissionCount > 0
-                        ? $emissionCount . ' registros'
-                        : 'Sin registros de emisiones',
+                    'note' => $emissionPhaseNote,
+                    'title' => '03 · Huella de carbono · ' . ($emissionCount > 0
+                        ? 'En curso · ' . $emissionPhaseLabel . ' ' . $emissionPhaseNote
+                        : 'Pendiente · Sin registros'),
                     'isReal' => $emissionCount > 0,
                 ],
+                // TODO: Implementar estado real de Informe final cuando exista generación/cierre de informe.
                 [
                     'code' => '04',
                     'label' => 'Informe final',
                     'stateLabel' => 'Pendiente',
                     'stateClass' => 'bg-light text-muted border',
                     'icon' => 'bi-file-earmark-text',
-                    'note' => 'Pendiente de definición',
+                    'note' => 'Pendiente de desarrollo',
+                    'title' => '04 · Informe final · Pendiente de desarrollo',
                     'isReal' => false,
                 ],
+                // TODO: Implementar estado real de Compensación cuando exista flujo de compensación.
                 [
                     'code' => '05',
                     'label' => 'Compensación',
                     'stateLabel' => 'Pendiente',
                     'stateClass' => 'bg-light text-muted border',
                     'icon' => 'bi-tree',
-                    'note' => 'Pendiente de definición',
+                    'note' => 'Pendiente de desarrollo',
+                    'title' => '05 · Compensación · Pendiente de desarrollo',
                     'isReal' => false,
                 ],
+                // TODO: Implementar estado real de Certificación cuando exista flujo/cierre de certificación.
                 [
                     'code' => '06',
                     'label' => 'Certificación',
                     'stateLabel' => 'Pendiente',
                     'stateClass' => 'bg-light text-muted border',
                     'icon' => 'bi-award',
-                    'note' => 'Pendiente de definición',
+                    'note' => 'Pendiente de desarrollo',
+                    'title' => '06 · Certificación · Pendiente de desarrollo',
                     'isReal' => false,
                 ],
             ],

@@ -580,6 +580,24 @@ $dark: #212121;
     flex-direction: column;
     align-items: center;
     gap: .22rem;
+    color: inherit;
+}
+
+.backend-phase-tile--link {
+    border-radius: .75rem;
+    padding: .15rem .2rem;
+    transition: transform .16s ease, color .16s ease, background-color .16s ease;
+}
+
+.backend-phase-tile--link:hover,
+.backend-phase-tile--link:focus-visible {
+    background: rgba(94, 207, 122, 0.08);
+    transform: translateY(-1px);
+}
+
+.backend-phase-tile--link:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(94, 207, 122, 0.18);
 }
 
 .backend-phase-node {
@@ -632,6 +650,13 @@ $dark: #212121;
     font-weight: 700;
     color: #8a9a8c;
     min-height: 1rem;
+}
+
+.backend-phase-tile__note {
+    font-size: .58rem;
+    line-height: 1.1;
+    color: #9cad9f;
+    min-height: .75rem;
 }
 
 .dashboard-actions-cell {
