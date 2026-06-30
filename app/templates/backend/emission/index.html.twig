@@ -12,7 +12,7 @@
 
 {% block body %}
 <div
-    class="container my-4"
+    class="container-fluid px-0 backend-client-shell"
     data-controller="emission"
     data-emission-i18n-value='{{ {
         "backend.emission.chart.title.by_activity": "backend.emission.chart.title.by_activity"|trans,
@@ -23,8 +23,7 @@
         "backend.emission.chart.unit.kgco2e": "backend.emission.chart.unit.kgco2e"|trans
         }|json_encode|e('html_attr') }}'
     data-emission-chart-data-value='{{ chartDataByCategory|json_encode|e('html_attr') }}'>
-    <div class="row justify-content-center">
-        <div class="col-12 bg-white p-4 rounded shadow">
+    <div class="backend-client-content">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="">
                     {{ 'backend.emission.index.heading'|trans }}
@@ -181,7 +180,6 @@
                 </div>
 
             {% endif %}
-        </div>
     </div>
 </div>
 

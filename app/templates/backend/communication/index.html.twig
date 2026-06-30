@@ -11,9 +11,8 @@
 
 {% block body %}
 
-    <div class="container my-4">
-        <div class="row justify-content-center">
-            <div class="col-12 bg-white p-4 rounded shadow">
+    <div class="container-fluid px-0 backend-client-shell">
+        <div class="backend-client-content">
                 <h2 class="mb-4">{{ 'backend.communication.available_documents'|trans }}</h2>
                 {% if files is empty %}
                     <p>{{ 'backend.communication.no_documents'|trans }}</p>
@@ -59,7 +58,6 @@
                         </tbody>
                     </table>
                 {% endif %}
-            </div>
         </div>
     </div>
 

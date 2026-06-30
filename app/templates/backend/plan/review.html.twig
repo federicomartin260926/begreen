@@ -9,7 +9,7 @@
 
 {% block body %}
 <div
-    class="container my-4"
+    class="container-fluid px-0 backend-client-shell"
     data-controller="plan-review"
     data-plan-review-i18n-value="{{ {
         'loading_preview':               'backend.plan.review.stimulus.loading_preview'|trans,
@@ -39,8 +39,7 @@
         'evidence_oversized_list_intro': 'backend.plan.review.stimulus.evidence_oversized_list_intro'|trans,
         'critical_reason_required_html': 'backend.plan.review.stimulus.critical_reason_required_html'|trans|raw
     }|json_encode|e('html_attr') }}">
-    <div class="row justify-content-center">
-        <div class="col-12 bg-white p-4 rounded shadow">
+    <div class="backend-client-content">
             <h2 class="mb-4">
                 {{ 'backend.plan.h2'|trans({'%project%': project.name})|raw }}
                 <span>
@@ -303,7 +302,6 @@
                     </div>
                 </div>
             </div>
-        </div>
     </div>
 
     {# MODAL vista previa #}

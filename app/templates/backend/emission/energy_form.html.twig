@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block body %}
-<<div class="container my-4"
+<<div class="container-fluid px-0 backend-client-shell"
      data-controller="energy-form"
      data-energy-form-calculation-details-value="{{ record.calculationDetails|default('{}')|e('html_attr') }}"
      data-energy-form-i18n-value='{{ {
@@ -24,8 +24,7 @@
        jsonMalformed:            "backend.emission.energy_js.json_malformed"|trans,
        noForm:                   "backend.emission.energy_js.no_form"|trans
      }|json_encode|e("html_attr") }}'>
-  <div class="row justify-content-center">
-    <div class="col-12 bg-white p-4 rounded shadow">
+  <div class="backend-client-content">
       <h2>{{ edit ? 'backend.emission.energy_form.heading_edit'|trans : 'backend.emission.energy_form.heading_new'|trans }}</h2>
 
       <div class="mb-4 d-grid bg_green_3 rounded p-3"
@@ -118,7 +117,6 @@
         </div>
 
       {{ form_end(form) }}
-    </div>
   </div>
 
   {# TEMPLATES #}
