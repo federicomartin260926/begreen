@@ -17,7 +17,7 @@
 {% set donutCompleted = totalProjects > 0 ? (completedProjects / totalProjects * donutBase)|round(0) : 0 %}
 {% set donutInProgress = totalProjects > 0 ? (inProgressProjects / totalProjects * donutBase)|round(0) : 0 %}
 {% set donutPending = donutBase - donutCompleted - donutInProgress %}
-{% set chartProjects = dashboardProjects|slice(0, 5) %}
+{% set chartProjects = dashboardTopEmissionProjects|default([]) %}
 {% set chartBarsMax = 1 %}
 {% for project in chartProjects %}
     {% set chartBarsMax = max(chartBarsMax, project.emissionSum|default(0)) %}
@@ -63,7 +63,7 @@
                         <div class="backend-donut-legend">
                             <div class="backend-donut-legend__item">
                                 <span class="backend-dot bg-success"></span>
-                                <span>Hechas</span>
+                                <span>Completada</span>
                                 <strong>{{ completedProjects }}</strong>
                             </div>
                             <div class="backend-donut-legend__item">
@@ -100,14 +100,17 @@
                             {% set cursor = 58 %}
                             {% for project in chartProjects %}
                                 {% set barHeight = chartBarsMax > 0 ? ((project.emissionSum|default(0) / chartBarsMax) * 92)|round(0) : 0 %}
-                                <rect x="{{ cursor }}" y="{{ 148 - barHeight }}" width="{{ barWidth }}" height="{{ barHeight }}" rx="4"
-                                      class="{% if loop.index is even %}backend-bar backend-bar--soft{% else %}backend-bar{% endif %}"></rect>
-                                <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 164 }}" text-anchor="middle" class="backend-chart-xlabel">
-                                    {{ project.name|length > 9 ? project.name|slice(0, 9) ~ '…' : project.name }}
-                                </text>
-                                <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 138 - barHeight }}" text-anchor="middle" class="backend-chart-bar-value">
-                                    {{ project.emissionSum|number_format(1, ',', '.') }}
-                                </text>
+                                <g>
+                                    <title>{{ project.name }} · {{ project.emissionSum|number_format(1, ',', '.') }} kgCO₂e</title>
+                                    <rect x="{{ cursor }}" y="{{ 148 - barHeight }}" width="{{ barWidth }}" height="{{ barHeight }}" rx="4"
+                                          class="{% if loop.index is even %}backend-bar backend-bar--soft{% else %}backend-bar{% endif %}"></rect>
+                                    <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 164 }}" text-anchor="middle" class="backend-chart-xlabel">
+                                        {{ project.name|length > 9 ? project.name|slice(0, 9) ~ '…' : project.name }}
+                                    </text>
+                                    <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 138 - barHeight }}" text-anchor="middle" class="backend-chart-bar-value">
+                                        {{ project.emissionSum|number_format(1, ',', '.') }}
+                                    </text>
+                                </g>
                                 {% set cursor = cursor + barWidth + barGap %}
                             {% endfor %}
                         {% endif %}

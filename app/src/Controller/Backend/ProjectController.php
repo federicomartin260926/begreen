@@ -113,7 +113,7 @@ class ProjectController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Página actual
+        // Lista filtrada completa para métricas y paginado consistente
         $query = $qb->select('DISTINCT p');
 
         if ($activeProject?->getId()) {
@@ -126,13 +126,8 @@ class ProjectController extends AbstractController
             $query->orderBy('p.name', 'ASC');
         }
 
-        $projects = $query
-            ->setFirstResult($offset)
-            ->setMaxResults($perPage)
-            ->getQuery()
-            ->getResult();
-
         $dashboardProjects = [];
+        $dashboardProjectsForChart = [];
         $tierCounts = [
             ProjectSubscription::TIER_BASIC => 0,
             ProjectSubscription::TIER_STANDARD => 0,
@@ -146,7 +141,11 @@ class ProjectController extends AbstractController
         $emissionsTotal = 0;
         $billingDocumentsTotal = 0;
 
-        foreach ($projects as $project) {
+        $filteredProjects = (clone $query)
+            ->getQuery()
+            ->getResult();
+
+        foreach ($filteredProjects as $project) {
             $projectTierCode = $this->featureGate->getTier($project);
             if (!isset($tierCounts[$projectTierCode])) {
                 $tierCounts[$projectTierCode] = 0;
@@ -183,6 +182,19 @@ class ProjectController extends AbstractController
             );
         }
 
+        $dashboardProjectsForChart = $dashboardProjects;
+        usort($dashboardProjectsForChart, static function (array $left, array $right): int {
+            $emissionCompare = $right['emissionSum'] <=> $left['emissionSum'];
+            if ($emissionCompare !== 0) {
+                return $emissionCompare;
+            }
+
+            return strcmp((string) $left['name'], (string) $right['name']);
+        });
+        $dashboardProjectsForChart = array_slice($dashboardProjectsForChart, 0, 5);
+
+        $dashboardProjects = array_slice($dashboardProjects, $offset, $perPage);
+
         $activePlan = null;
         $activeProjectEmissionCount = 0;
         $activeProjectEmissionSum = 0.0;
@@ -209,11 +221,12 @@ class ProjectController extends AbstractController
         ], static fn($value) => $value !== '' && $value !== null);
 
         return $this->render('backend/project/index.html.twig', [
-            'projects'      => $projects,
+            'projects'      => $dashboardProjects,
             'dashboardProjects' => $dashboardProjects,
+            'dashboardTopEmissionProjects' => $dashboardProjectsForChart,
             'dashboardSummary' => [
                 'totalProjects' => $total,
-                'pageProjects' => count($projects),
+                'pageProjects' => count($dashboardProjects),
                 'activeProject' => $activeProject,
                 'activeProjectTierLabel' => $activeProject ? $this->featureGate->getPlanLabel($activeProject) : null,
                 'activeProjectTierCode' => $activeProject ? $this->featureGate->getTier($activeProject) : null,
