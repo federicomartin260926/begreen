@@ -159,9 +159,17 @@
                         projectType: project.type|default(null)
                     } %}
                     {% if commitmentSummary is defined %}
-                        {% include 'backend/plan/_commitment_banner.html.twig' with {
-                            commitmentSummary: commitmentSummary,
-                            showRealCommitment: false
+                        {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
+                            variant: 'full',
+                            title: 'backend.plan.commitment.planned'|trans,
+                            note: 'backend.plan.commitment.note'|trans,
+                            totalPoints: commitmentSummary.totalOfficialPoints,
+                            items: [
+                                {
+                                    label: 'backend.plan.commitment.planned'|trans,
+                                    block: commitmentSummary.planned
+                                }
+                            ]
                         } %}
                     {% endif %}
                 {% else %}

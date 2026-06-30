@@ -775,6 +775,13 @@ backend:
         jungle:
           label: "Jungle"
           message: "Excellent level of sustainable commitment."
+      growth_footer:
+        stages:
+          seed: "Sprout"
+          plant: "Plant"
+          tree: "Tree"
+          forest: "Forest"
+          jungle: "Jungle"
     actions:
       view: "Preview"
       download: "Download"

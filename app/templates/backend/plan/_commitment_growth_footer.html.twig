@@ -1,0 +1,214 @@
+{% set items = items|default([]) %}
+{% set variant = variant|default('full') %}
+{% set title = title|default('backend.plan.commitment.title'|trans) %}
+{% set note = note|default('backend.plan.commitment.note'|trans) %}
+{% set totalPoints = totalPoints|default(0) %}
+{% set stages = [
+    { key: 'seed', label: 'backend.plan.commitment.growth_footer.stages.seed'|trans },
+    { key: 'plant', label: 'backend.plan.commitment.growth_footer.stages.plant'|trans },
+    { key: 'tree', label: 'backend.plan.commitment.growth_footer.stages.tree'|trans },
+    { key: 'forest', label: 'backend.plan.commitment.growth_footer.stages.forest'|trans },
+    { key: 'jungle', label: 'backend.plan.commitment.growth_footer.stages.jungle'|trans }
+] %}
+{% set stageOrder = {
+    'seed': 0,
+    'plant': 1,
+    'tree': 2,
+    'forest': 3,
+    'jungle': 4
+} %}
+
+{% if variant == 'compact' %}
+    {% set item = items|first %}
+    {% set block = item.block ?? null %}
+    {% if block %}
+        {% set levelKey = block.levelKey|default('seed') %}
+        {% set progress = block.percentageRounded|default(0) %}
+        {% set progress = progress < 0 ? 0 : (progress > 100 ? 100 : progress) %}
+        {% set levelLabel = ('backend.plan.commitment.growth_footer.stages.' ~ levelKey)|trans %}
+        {% if levelKey == 'seed' %}
+            {% set levelLabel = levelLabel ~ ' / ' ~ ('backend.plan.commitment.levels.seed.label'|trans) %}
+        {% endif %}
+        {% set pointsText = 'backend.plan.commitment.points_of_total'|trans({'%points%': block.points|default(0), '%total%': totalPoints}) %}
+        {% set nextLevelText = block.pointsToNextLevel is not null and levelKey != 'jungle'
+            ? 'backend.plan.commitment.next_level'|trans({'%points%': block.pointsToNextLevel})
+            : null %}
+
+        <div class="commitment-growth-footer commitment-growth-footer--compact mb-3">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2">
+                <div class="flex-grow-1">
+                    <div class="commitment-growth-footer__eyebrow">{{ title }}</div>
+                    <div class="commitment-growth-footer__compact-line">
+                        <span class="commitment-growth-footer__level-title">{{ levelLabel }}</span>
+                        <span class="commitment-growth-footer__separator">·</span>
+                        <span class="commitment-growth-footer__points">{{ pointsText }}</span>
+                    </div>
+                    {% if nextLevelText %}
+                        <div class="commitment-growth-footer__compact-meta">{{ nextLevelText }}</div>
+                    {% endif %}
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="commitment-growth-footer__compact-badge badge bg-light text-success border border-success-subtle">{{ progress }}%</div>
+                </div>
+            </div>
+
+            <div class="commitment-growth-footer__compact-track mt-2" aria-hidden="true">
+                <div class="commitment-growth-footer__track"></div>
+                <div class="commitment-growth-footer__track-fill" style="width: {{ progress }}%;"></div>
+            </div>
+        </div>
+    {% endif %}
+{% else %}
+    <div class="commitment-growth-footer commitment-growth-footer--full mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-3">
+            <div>
+                <div class="commitment-growth-footer__eyebrow">{{ title }}</div>
+                <div class="commitment-growth-footer__note">{{ note }}</div>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle">{{ 'backend.plan.commitment.orientative'|trans }}</span>
+        </div>
+
+        <div class="commitment-growth-footer__items">
+            {% for item in items %}
+                {% set block = item.block ?? null %}
+                {% if block %}
+                    {% set levelKey = block.levelKey|default('seed') %}
+                    {% set progress = block.percentageRounded|default(0) %}
+                    {% set progress = progress < 0 ? 0 : (progress > 100 ? 100 : progress) %}
+                    {% set currentStageIndex = stageOrder[levelKey]|default(0) %}
+                    {% set levelLabel = ('backend.plan.commitment.growth_footer.stages.' ~ levelKey)|trans %}
+                    {% if levelKey == 'seed' %}
+                        {% set levelLabel = levelLabel ~ ' / ' ~ ('backend.plan.commitment.levels.seed.label'|trans) %}
+                    {% endif %}
+                    {% set pointsText = 'backend.plan.commitment.points_of_total'|trans({'%points%': block.points|default(0), '%total%': totalPoints}) %}
+                    {% set nextLevelText = block.pointsToNextLevel is not null and levelKey != 'jungle'
+                        ? 'backend.plan.commitment.next_level'|trans({'%points%': block.pointsToNextLevel})
+                        : null %}
+
+                    <section class="commitment-growth-footer__panel {% if items|length > 1 %}commitment-growth-footer__panel--stacked{% endif %}"
+                             style="--commitment-stage-index: {{ currentStageIndex }}; --commitment-stage-center: calc(({{ currentStageIndex }} * 20%) + 10%);">
+                        <span class="commitment-growth-footer__state-band" aria-hidden="true"></span>
+
+                        <div class="commitment-growth-footer__desktop">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 commitment-growth-footer__header">
+                                <div class="commitment-growth-footer__headline">
+                                    <span class="commitment-growth-footer__item-label">{{ item.label|default('backend.plan.commitment.planned'|trans) }}</span>
+                                    <span class="commitment-growth-footer__separator">·</span>
+                                    <span class="commitment-growth-footer__level-title">{{ levelLabel }}</span>
+                                    <span class="commitment-growth-footer__separator">·</span>
+                                    <span class="commitment-growth-footer__points">{{ pointsText }}</span>
+                                </div>
+                                <div class="commitment-growth-footer__pct badge bg-light text-success border border-success-subtle">{{ progress }}%</div>
+                            </div>
+
+                            {% if nextLevelText %}
+                                <div class="commitment-growth-footer__meta">{{ nextLevelText }}</div>
+                            {% endif %}
+
+                            <div class="commitment-growth-footer__track-wrap mt-3">
+                                <div class="commitment-growth-footer__track-inner">
+                                    <div class="commitment-growth-footer__track"></div>
+                                    <div class="commitment-growth-footer__track-fill" style="width: {{ progress }}%;"></div>
+
+                                    <div class="commitment-growth-footer__track-marker" style="left: {{ progress }}%;">
+                                        <span class="commitment-growth-footer__track-badge">{{ block.points|default(0) }} pts</span>
+                                        <span class="commitment-growth-footer__track-connector" aria-hidden="true"></span>
+                                        <span class="commitment-growth-footer__track-pin"></span>
+                                    </div>
+
+                                    <div class="commitment-growth-footer__stages">
+                                        {% for stage in stages %}
+                                            {% set stageIndex = stageOrder[stage.key]|default(0) %}
+                                            <div class="commitment-growth-footer__stage
+                                                {% if stageIndex < currentStageIndex %}is-complete{% endif %}
+                                                {% if stage.key == levelKey %}is-current{% endif %}
+                                                {% if stageIndex > currentStageIndex %}is-upcoming{% endif %}">
+                                                <span class="commitment-growth-footer__stage-figure">
+                                                    <span class="commitment-growth-footer__stage-icon commitment-growth-footer__stage-icon--{{ stage.key }}">
+                                                    {% if stage.key == 'seed' %}
+                                                        <img
+                                                            class="commitment-growth-footer__stage-image commitment-growth-footer__stage-image--seed"
+                                                            src="{{ asset('images/commitment/commitment-brote.png') }}"
+                                                            alt="{{ stage.label }}"
+                                                            title="{{ stage.label }}"
+                                                            loading="lazy"
+                                                            decoding="async">
+                                                    {% elseif stage.key == 'plant' %}
+                                                        <img
+                                                            class="commitment-growth-footer__stage-image commitment-growth-footer__stage-image--plant"
+                                                            src="{{ asset('images/commitment/commitment-planta.png') }}"
+                                                            alt="{{ stage.label }}"
+                                                            title="{{ stage.label }}"
+                                                            loading="lazy"
+                                                            decoding="async">
+                                                    {% elseif stage.key == 'tree' %}
+                                                        <img
+                                                            class="commitment-growth-footer__stage-image commitment-growth-footer__stage-image--tree"
+                                                            src="{{ asset('images/commitment/commitment-arbol.png') }}"
+                                                            alt="{{ stage.label }}"
+                                                            title="{{ stage.label }}"
+                                                            loading="lazy"
+                                                            decoding="async">
+                                                    {% elseif stage.key == 'forest' %}
+                                                        <img
+                                                            class="commitment-growth-footer__stage-image commitment-growth-footer__stage-image--forest"
+                                                            src="{{ asset('images/commitment/commitment-bosque.png') }}"
+                                                            alt="{{ stage.label }}"
+                                                            title="{{ stage.label }}"
+                                                            loading="lazy"
+                                                            decoding="async">
+                                                    {% else %}
+                                                        <img
+                                                            class="commitment-growth-footer__stage-image commitment-growth-footer__stage-image--jungle"
+                                                            src="{{ asset('images/commitment/commitment-selva.png') }}"
+                                                            alt="{{ stage.label }}"
+                                                            title="{{ stage.label }}"
+                                                            loading="lazy"
+                                                            decoding="async">
+                                                    {% endif %}
+                                                    </span>
+                                                </span>
+                                                <span class="commitment-growth-footer__stage-label">{{ stage.label }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="commitment-growth-footer__mobile mt-3">
+                            <div class="commitment-growth-footer__bottom-headline">
+                                <span class="commitment-growth-footer__item-label">{{ item.label|default('backend.plan.commitment.planned'|trans) }}</span>
+                                <span class="commitment-growth-footer__separator">·</span>
+                                <span class="commitment-growth-footer__level-title">{{ levelLabel }}</span>
+                                <span class="commitment-growth-footer__separator">·</span>
+                                <span class="commitment-growth-footer__points">{{ pointsText }}</span>
+                                <span class="commitment-growth-footer__pct badge bg-light text-success border border-success-subtle">{{ progress }}%</span>
+                            </div>
+
+                            {% if nextLevelText %}
+                                <div class="commitment-growth-footer__mobile-meta">{{ nextLevelText }}</div>
+                            {% endif %}
+
+                            <div class="commitment-growth-footer__mobile-bar" role="presentation" aria-hidden="true">
+                                <span class="commitment-growth-footer__mobile-bar-fill" style="width: {{ progress }}%;"></span>
+                            </div>
+
+                            <div class="commitment-growth-footer__mobile-stages" aria-hidden="true">
+                                {% for stage in stages %}
+                                    {% set stageIndex = stageOrder[stage.key]|default(0) %}
+                                    <span class="commitment-growth-footer__mobile-stage
+                                        {% if stageIndex < currentStageIndex %}is-complete{% endif %}
+                                        {% if stage.key == levelKey %}is-current{% endif %}
+                                        {% if stageIndex > currentStageIndex %}is-upcoming{% endif %}">
+                                        {{ stage.label }}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </section>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}

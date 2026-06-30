@@ -777,6 +777,13 @@ backend:
         jungle:
           label: "Selva"
           message: "Excelente nivel de compromiso sostenible."
+      growth_footer:
+        stages:
+          seed: "Brote"
+          plant: "Planta"
+          tree: "Árbol"
+          forest: "Bosque"
+          jungle: "Selva"
     actions:
       view: "Vista"
       download: "Descargar"
