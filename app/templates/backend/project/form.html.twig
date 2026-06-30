@@ -11,34 +11,39 @@
 {% endblock %}
 
 {% block body %}
-<div class="container my-4">
-  <div class="row justify-content-center">
-    <div class="col-12 bg-white p-4 rounded shadow">
-      <h2 class="mb-5">{{ edit ? 'backend.projects.form.h2_edit'|trans : 'backend.projects.form.h2_new'|trans }}</h2>
+<div class="container-fluid px-0 backend-client-shell">
+  <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h2 class="mb-1">{{ edit ? 'backend.projects.form.h2_edit'|trans : 'backend.projects.form.h2_new'|trans }}</h2>
+      {% if edit %}
+        <div class="text-muted">{{ project.name }}</div>
+      {% endif %}
+    </div>
+  </div>
 
-      {{ form_start(form, {
-        attr: {
-            'data-controller': 'project',
-            'data-project-target': 'form',
-            'data-action': 'submit->project#validateFormBeforeSubmit',
-            'data-project-index-value': form.phaseDates|length,
+  {{ form_start(form, {
+    attr: {
+        'data-controller': 'project',
+        'data-project-target': 'form',
+        'data-action': 'submit->project#validateFormBeforeSubmit',
+        'data-project-index-value': form.phaseDates|length,
 
-            'data-project-label-pre-event-value': 'backend.projects.phases.pre_event'|trans,
-            'data-project-label-pre-filming-value': 'backend.projects.phases.pre_filming'|trans,
-            'data-project-label-post-event-value': 'backend.projects.phases.post_event'|trans,
-            'data-project-label-post-filming-value': 'backend.projects.phases.post_filming'|trans,
-            'data-project-label-activity-value': 'backend.projects.phases.activity'|trans,
+        'data-project-label-pre-event-value': 'backend.projects.phases.pre_event'|trans,
+        'data-project-label-pre-filming-value': 'backend.projects.phases.pre_filming'|trans,
+        'data-project-label-post-event-value': 'backend.projects.phases.post_event'|trans,
+        'data-project-label-post-filming-value': 'backend.projects.phases.post_filming'|trans,
+        'data-project-label-activity-value': 'backend.projects.phases.activity'|trans,
 
-            'data-project-error-missing-dates-value': 'backend.projects.form.error_missing_dates'|trans,
-            'data-project-log-prototype-missing-value': 'backend.projects.form.log_prototype_missing'|trans,
-            'data-project-log-cannot-insert-value': 'backend.projects.form.log_cannot_insert'|trans
-        }
-      }) }}
+        'data-project-error-missing-dates-value': 'backend.projects.form.error_missing_dates'|trans,
+        'data-project-log-prototype-missing-value': 'backend.projects.form.log_prototype_missing'|trans,
+        'data-project-log-cannot-insert-value': 'backend.projects.form.log_cannot_insert'|trans
+    }
+  }) }}
 
-        {{ form_errors(form) }}
+    {{ form_errors(form) }}
 
-        {# ========= DATOS DEL PROYECTO ========= #}
-        <fieldset class="border rounded p-3 mb-4">
+    {# ========= DATOS DEL PROYECTO ========= #}
+    <fieldset class="border rounded p-3 mb-4">
             <legend class="float-none w-auto px-2 fw-semibold">{{ 'backend.projects.form.fs_project'|trans }}</legend>
 
             {# Nombre (fila completa) #}
@@ -450,14 +455,11 @@
           </button>
         </div>
 
-      {{ form_end(form) }}
-
-      {% if form.phaseDates.vars.prototype is defined %}
-        <div id="phase-prototype"
-             data-project-prototype="{{ include('backend/project/_phase_prototype.html.twig', { prototype: form.phaseDates.vars.prototype })|e('html_attr') }}"
-             hidden></div>
-      {% endif %}
-    </div>
-  </div>
+    {% if form.phaseDates.vars.prototype is defined %}
+    <div id="phase-prototype"
+         data-project-prototype="{{ include('backend/project/_phase_prototype.html.twig', { prototype: form.phaseDates.vars.prototype })|e('html_attr') }}"
+         hidden></div>
+    {% endif %}
+  {{ form_end(form) }}
 </div>
 {% endblock %}

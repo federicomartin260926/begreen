@@ -16,138 +16,139 @@
 {% endblock %}
 
 {% block body %}
-<div class="container my-4">
-    <div class="row justify-content-center">
-        <div class="col-12 bg-white p-4 rounded shadow">
-            <h2 class="mb-4">
+<div class="container-fluid px-0 backend-client-shell">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">
                 {{ 'backend.projects.crew.h2'|trans({'%project%': project.name}) }}
             </h2>
-
-            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importCrewModal">
-                    <i class="bi bi-upload"></i> {{ 'backend.projects.crew.import_btn'|trans }}
-                </button>
-            </div>
-
-            {{ form_start(form) }}
-                {{ form_errors(form) }}
-
-                <div data-controller="crew"
-                     data-crew-allow-add-value="true"
-                     data-crew-allow-delete-value="true"
-                     data-crew-prototype-name-value="__crew__"
-                     data-crew-i18n-placeholder-position-value="{{ 'backend.projects.crew.placeholder.position'|trans }}"
-                     data-crew-i18n-network-error-value="{{ 'backend.common.network_error'|trans }}">
-
-                    <div data-crew-target="container">
-                        {% for crewForm in form.crewMembers %}
-                            <div class="card mb-3 p-3 border bg_green_1">
-                                <div class="row">
-                                    <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                        {{ form_label(crewForm.name, 'backend.projects.crew.form.name'|trans) }}
-                                        {{ form_widget(crewForm.name) }}
-                                        {{ form_errors(crewForm.name) }}
-                                    </div>
-                                    <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                        {{ form_label(crewForm.lastName, 'backend.projects.crew.form.last_name'|trans) }}
-                                        {{ form_widget(crewForm.lastName) }}
-                                        {{ form_errors(crewForm.lastName) }}
-                                    </div>
-                                    <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                        {{ form_label(crewForm.email, 'backend.projects.crew.form.email'|trans) }}
-                                        {{ form_widget(crewForm.email) }}
-                                        {{ form_errors(crewForm.email) }}
-                                    </div>
-                                    <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                        {{ form_label(crewForm.phone, 'backend.projects.crew.form.phone'|trans) }}
-                                        {{ form_widget(crewForm.phone) }}
-                                        {{ form_errors(crewForm.phone) }}
-                                    </div>
-                                    <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                        {{ form_label(crewForm.department, 'backend.projects.crew.form.department'|trans) }}
-                                        {{ form_widget(crewForm.department) }}
-                                        {{ form_errors(crewForm.department) }}
-                                    </div>
-                                    <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                        {{ form_label(crewForm.position, 'backend.projects.crew.form.position'|trans) }}
-                                        {{ form_widget(crewForm.position, {
-                                            attr: {
-                                                'data-crew-target': 'position',
-                                                'data-current-value': crewForm.vars.data.position ? crewForm.vars.data.position.id : ''
-                                            }
-                                        }) }}
-                                        {{ form_errors(crewForm.position) }}
-                                    </div>
-                                </div>
-
-                                <div class="text-end mt-2">
-                                    <button type="button"
-                                            class="btn btn-sm btn-primary w-auto"
-                                            data-action="crew#remove">
-                                        {{ 'backend.projects.crew.form.remove_member'|trans }}
-                                    </button>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-
-                    <template data-crew-target="prototype">
-                        <div class="card mb-3 p-3 border">
-                            <div class="row">
-                                <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                    {{ form_row(form.crewMembers.vars.prototype.name, { label: 'backend.projects.crew.form.name'|trans }) }}
-                                </div>
-                                <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                    {{ form_row(form.crewMembers.vars.prototype.lastName, { label: 'backend.projects.crew.form.last_name'|trans }) }}
-                                </div>
-                                <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                    {{ form_row(form.crewMembers.vars.prototype.email, { label: 'backend.projects.crew.form.email'|trans }) }}
-                                </div>
-                                <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                    {{ form_row(form.crewMembers.vars.prototype.phone, { label: 'backend.projects.crew.form.phone'|trans }) }}
-                                </div>
-                                <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                    {{ form_row(form.crewMembers.vars.prototype.department, { label: 'backend.projects.crew.form.department'|trans }) }}
-                                </div>
-                                <div class="col-12 col-md-6 col-lg-3 form-label-over">
-                                    {{ form_row(form.crewMembers.vars.prototype.position, {
-                                        label: 'backend.projects.crew.form.position'|trans,
-                                        attr: {
-                                            'data-crew-target': 'position',
-                                            'data-current-value': ''
-                                        }
-                                    }) }}
-                                </div>
-                            </div>
-                            <div class="text-end mt-2">
-                                <button type="button"
-                                        class="btn btn-sm btn-primary w-auto"
-                                        data-action="crew#remove">
-                                    {{ 'backend.projects.crew.form.remove_member'|trans }}
-                                </button>
-                            </div>
-                        </div>
-                    </template>
-
-                    <button type="button"
-                            class="btn btn-primary mt-2"
-                            data-action="crew#add">
-                        + {{ 'backend.projects.crew.form.add_member'|trans }}
-                    </button>
-                </div>
-
-                <hr>
-                <div class="d-flex justify-content-between mt-4">
-                    <a href="{{ path('backend_project_edit', {id: project.id}) }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
-                    </a>
-                    <button class="btn btn-primary">
-                        <i class="bi bi-save"></i> {{ 'backend.common.save'|trans }}
-                    </button>
-                </div>
-            {{ form_end(form) }}
+            <div class="text-muted">{{ project.name }}</div>
         </div>
     </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importCrewModal">
+            <i class="bi bi-upload"></i> {{ 'backend.projects.crew.import_btn'|trans }}
+        </button>
+    </div>
+
+    {{ form_start(form) }}
+        {{ form_errors(form) }}
+
+        <div data-controller="crew"
+             data-crew-allow-add-value="true"
+             data-crew-allow-delete-value="true"
+             data-crew-prototype-name-value="__crew__"
+             data-crew-i18n-placeholder-position-value="{{ 'backend.projects.crew.placeholder.position'|trans }}"
+             data-crew-i18n-network-error-value="{{ 'backend.common.network_error'|trans }}">
+
+            <div data-crew-target="container">
+                {% for crewForm in form.crewMembers %}
+                    <div class="card mb-3 p-3 border bg_green_1">
+                        <div class="row">
+                            <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                                {{ form_label(crewForm.name, 'backend.projects.crew.form.name'|trans) }}
+                                {{ form_widget(crewForm.name) }}
+                                {{ form_errors(crewForm.name) }}
+                            </div>
+                            <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                                {{ form_label(crewForm.lastName, 'backend.projects.crew.form.last_name'|trans) }}
+                                {{ form_widget(crewForm.lastName) }}
+                                {{ form_errors(crewForm.lastName) }}
+                            </div>
+                            <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                                {{ form_label(crewForm.email, 'backend.projects.crew.form.email'|trans) }}
+                                {{ form_widget(crewForm.email) }}
+                                {{ form_errors(crewForm.email) }}
+                            </div>
+                            <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                                {{ form_label(crewForm.phone, 'backend.projects.crew.form.phone'|trans) }}
+                                {{ form_widget(crewForm.phone) }}
+                                {{ form_errors(crewForm.phone) }}
+                            </div>
+                            <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                                {{ form_label(crewForm.department, 'backend.projects.crew.form.department'|trans) }}
+                                {{ form_widget(crewForm.department) }}
+                                {{ form_errors(crewForm.department) }}
+                            </div>
+                            <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                                {{ form_label(crewForm.position, 'backend.projects.crew.form.position'|trans) }}
+                                {{ form_widget(crewForm.position, {
+                                    attr: {
+                                        'data-crew-target': 'position',
+                                        'data-current-value': crewForm.vars.data.position ? crewForm.vars.data.position.id : ''
+                                    }
+                                }) }}
+                                {{ form_errors(crewForm.position) }}
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-2">
+                            <button type="button"
+                                    class="btn btn-sm btn-primary w-auto"
+                                    data-action="crew#remove">
+                                {{ 'backend.projects.crew.form.remove_member'|trans }}
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <template data-crew-target="prototype">
+                <div class="card mb-3 p-3 border">
+                    <div class="row">
+                        <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                            {{ form_row(form.crewMembers.vars.prototype.name, { label: 'backend.projects.crew.form.name'|trans }) }}
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                            {{ form_row(form.crewMembers.vars.prototype.lastName, { label: 'backend.projects.crew.form.last_name'|trans }) }}
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                            {{ form_row(form.crewMembers.vars.prototype.email, { label: 'backend.projects.crew.form.email'|trans }) }}
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                            {{ form_row(form.crewMembers.vars.prototype.phone, { label: 'backend.projects.crew.form.phone'|trans }) }}
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                            {{ form_row(form.crewMembers.vars.prototype.department, { label: 'backend.projects.crew.form.department'|trans }) }}
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 form-label-over">
+                            {{ form_row(form.crewMembers.vars.prototype.position, {
+                                label: 'backend.projects.crew.form.position'|trans,
+                                attr: {
+                                    'data-crew-target': 'position',
+                                    'data-current-value': ''
+                                }
+                            }) }}
+                        </div>
+                    </div>
+                    <div class="text-end mt-2">
+                        <button type="button"
+                                class="btn btn-sm btn-primary w-auto"
+                                data-action="crew#remove">
+                            {{ 'backend.projects.crew.form.remove_member'|trans }}
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+            <button type="button"
+                    class="btn btn-primary mt-2"
+                    data-action="crew#add">
+                + {{ 'backend.projects.crew.form.add_member'|trans }}
+            </button>
+        </div>
+
+        <hr>
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{{ path('backend_project_edit', {id: project.id}) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+            </a>
+            <button class="btn btn-primary">
+                <i class="bi bi-save"></i> {{ 'backend.common.save'|trans }}
+            </button>
+        </div>
+    {{ form_end(form) }}
 </div>
 
 {# Modal para carga desde Excel #}
