@@ -188,6 +188,11 @@ class PlanController extends AbstractController
         $groupingBy   = $protocol->getGroupingBy(); // 'category' | 'department'
         $isDept       = ($groupingBy === Protocol::GROUP_BY_DEPARTMENT);
         $groupNullLbl = $isDept ? 'Sin departamento' : 'Sin categoría';
+        $onlyPendingMode = $request->query->getBoolean('only_pending');
+        $navigationQuery = $request->query->all();
+        unset($navigationQuery['i']);
+        $clearOnlyPendingQuery = $navigationQuery;
+        unset($clearOnlyPendingQuery['only_pending']);
 
         // POST: guardar texto y actualizar estado a completo/incompleto
         if ($request->isMethod('POST')) {
@@ -226,17 +231,26 @@ class PlanController extends AbstractController
         $qb = $this->createVisibleMeasuresQueryBuilder($measureRepository, $protocol, $project);
 
         $allMeasures = $qb->getQuery()->getResult();
-        $catalogMeasuresTotal = count($allMeasures);
-        $measures = $this->measureOrderer->sortVisibleMeasures(
+        $allVisibleMeasures = $this->measureOrderer->sortVisibleMeasures(
             $this->filterMeasuresBySkippedBlocks($allMeasures, $plan),
             $groupingBy
         );
+        $pendingItems = $onlyPendingMode
+            ? $this->planCompletionService->getPendingVisibleMeasures($plan, $project, $measureRepository)
+            : [];
+        $measures = $onlyPendingMode
+            ? array_values(array_map(
+                static fn (array $pending): Measure => $pending['measure'],
+                $pendingItems
+            ))
+            : $allVisibleMeasures;
 
         $total = count($measures);
         $index = $request->query->has('i')
-            ? max(0, min($total - 1, $request->query->getInt('i', 0)))
-            : $this->resumeService->resolveIndex($measures, $plan->getPlanMeasures());
+            ? max(0, min(max($total - 1, 0), $request->query->getInt('i', 0)))
+            : ($onlyPendingMode ? 0 : $this->resumeService->resolveIndex($measures, $plan->getPlanMeasures()));
         $currentMeasure = $measures[$index] ?? null;
+        $catalogMeasuresTotal = $onlyPendingMode ? $total : count($allMeasures);
 
         // ===== START mensajes de "cambios de grupo" (categoría/departamento) =====
         $session   = $request->getSession();
@@ -506,13 +520,20 @@ class PlanController extends AbstractController
         // Permiso de acceso al plan
         $this->denyAccessUnlessGranted(PlanVoter::VIEW, $plan);
 
+        $previousStatus = $plan->getStatus();
         $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
         $em->flush();
 
         // Debe estar completo
         if ($plan->getStatus() !== 'completo') {
             $this->addFlash('info', 'backend.plan.errors.not_complete');
-            return $this->redirectToRoute('backend_plan_measures');
+
+            $redirectParams = [];
+            if ($previousStatus === 'completo') {
+                $redirectParams['only_pending'] = '1';
+            }
+
+            return $this->redirectToRoute('backend_plan_measures', $redirectParams);
         }
 
         // Protocolos válidos para el tipo
@@ -727,6 +748,9 @@ class PlanController extends AbstractController
             'perPage'          => $perPage,
             'positionById'     => $positionById,
             'paginationQuery'  => $paginationQuery,
+            'onlyPendingMode'  => $onlyPendingMode,
+            'navigationQuery'  => $navigationQuery,
+            'clearOnlyPendingQuery' => $clearOnlyPendingQuery,
             'filters'          => [
                 'protocol'          => $protocol,
                 'category'          => $category,

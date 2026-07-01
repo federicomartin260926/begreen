@@ -118,6 +118,18 @@
                 } %}
             {% endif %}
 
+            {% if onlyPendingMode %}
+                <div class="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+                    <div>
+                        {{ 'backend.plan.measures.only_pending_notice'|trans }}
+                    </div>
+                    <a class="btn btn-sm btn-outline-secondary"
+                       href="{{ path('backend_plan_measures', clearOnlyPendingQuery) }}">
+                        {{ 'backend.plan.measures.only_pending_show_all'|trans }}
+                    </a>
+                </div>
+            {% endif %}
+
             {# ---- CONTENIDO PRINCIPAL ---- #}
             {% if planComplete %}
                 {# Mostrar formulario de medidas personalizadas y Finalizar #}
@@ -168,13 +180,13 @@
                                 {% set nextEnabled = hasNext and canGoNext %}
 
                                 <a class="btn btn-outline-secondary text-decoration-none {% if not hasPrev %}disabled{% endif %}"
-                                   href="{% if hasPrev %}{{ path('backend_plan_measures', { i: index - 1 }) }}{% else %}#{% endif %}"
+                                   href="{% if hasPrev %}{{ path('backend_plan_measures', navigationQuery|merge({ i: index - 1 })) }}{% else %}#{% endif %}"
                                    {% if not hasPrev %}tabindex="-1" aria-disabled="true"{% endif %}>
                                     <i class="bi bi-chevron-left"></i> {{ 'backend.common.prev'|trans }}
                                 </a>
 
                                 <a class="btn btn-outline-secondary text-decoration-none {% if not nextEnabled %}disabled{% endif %}"
-                                   href="{% if nextEnabled %}{{ path('backend_plan_measures', { i: index + 1 }) }}{% else %}#{% endif %}"
+                                   href="{% if nextEnabled %}{{ path('backend_plan_measures', navigationQuery|merge({ i: index + 1 })) }}{% else %}#{% endif %}"
                                    {% if not nextEnabled %}tabindex="-1" aria-disabled="true"{% endif %}>
                                     {{ 'backend.common.next'|trans }} <i class="bi bi-chevron-right"></i>
                                 </a>

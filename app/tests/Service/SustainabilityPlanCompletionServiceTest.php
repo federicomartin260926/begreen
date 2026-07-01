@@ -3,11 +3,13 @@
 namespace App\Tests\Service;
 
 use App\Entity\Measure;
+use App\Entity\MeasureBlock;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Protocol;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Repository\MeasureRepository;
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\ProjectFeatureGate;
@@ -83,6 +85,47 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
         self::assertSame('completo', $plan->getStatus());
     }
 
+    public function testGetPendingVisibleMeasuresReturnsOnlyPendingMeasuresAndSkipsBlockSkippedOnes(): void
+    {
+        $service = $this->createService([
+            $completeMeasure = $this->createMeasure(401, 5, 'Medida A'),
+            $pendingMeasure = $this->createMeasure(402, 3, 'Medida B'),
+            $secondPendingMeasure = $this->createMeasure(404, 3, 'Medida C'),
+            $skippedMeasure = $this->createMeasure(403, 3, 'Medida D', $this->createMeasureBlock(901)),
+        ]);
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $plan = $this->createPlan($project);
+
+        $plan->addPlanMeasure($this->createPlanMeasure($completeMeasure, true, false, true));
+
+        $pendingPlanMeasure = $this->createPlanMeasure($pendingMeasure, null, null, null);
+        $plan->addPlanMeasure($pendingPlanMeasure);
+
+        $secondPendingPlanMeasure = $this->createPlanMeasure($secondPendingMeasure, true, null, null);
+        $plan->addPlanMeasure($secondPendingPlanMeasure);
+
+        $blockAnswer = (new SustainabilityPlanBlockAnswer())
+            ->setSustainabilityPlan($plan)
+            ->setMeasureBlock($skippedMeasure->getMeasureBlock())
+            ->setApplies(false)
+            ->setAnsweredAt(new \DateTimeImmutable());
+        $this->setEntityId($blockAnswer, 801);
+        $plan->addBlockAnswer($blockAnswer);
+
+        $skippedPlanMeasure = $this->createPlanMeasure($skippedMeasure, null, null, null)
+            ->markAsBlockSkipped($blockAnswer);
+        $plan->addPlanMeasure($skippedPlanMeasure);
+
+        $pending = $service->getPendingVisibleMeasures($plan, $project);
+
+        self::assertCount(2, $pending);
+        self::assertSame($pendingMeasure->getId(), $pending[0]['measure']->getId());
+        self::assertSame('applicability_missing', $pending[0]['reason']);
+        self::assertSame($secondPendingMeasure->getId(), $pending[1]['measure']->getId());
+        self::assertSame('critical_missing', $pending[1]['reason']);
+    }
+
     /**
      * @param Measure[] $measures
      */
@@ -149,7 +192,7 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
             ->setProtocol($protocol);
     }
 
-    private function createMeasure(int $id, int $score): Measure
+    private function createMeasure(int $id, int $score, string $name = 'Medida'): Measure
     {
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
@@ -161,10 +204,29 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
         $measure = (new Measure())
             ->setProtocol($protocol)
             ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
-            ->setScore($score);
+            ->setScore($score)
+            ->setName($name);
         $this->setEntityId($measure, $id);
 
         return $measure;
+    }
+
+    private function createMeasureBlock(int $id): MeasureBlock
+    {
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $block = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('block-' . $id)
+            ->setName('Bloque ' . $id);
+        $this->setEntityId($block, $id);
+
+        return $block;
     }
 
     private function createPlanMeasure(Measure $measure, ?bool $applicable, ?bool $critical, ?bool $willImplement): PlanMeasure

@@ -38,6 +38,14 @@ final class SustainabilityPlanCompletionService
     }
 
     /**
+     * @return array<int, array{measure: Measure, index: int, reason: string}>
+     */
+    public function getPendingVisibleMeasures(Plan $plan, Project $project, ?MeasureRepository $measureRepository = null): array
+    {
+        return $this->collectPendingVisibleMeasures($plan, $project, $measureRepository);
+    }
+
+    /**
      * @return array<int, Measure>
      */
     public function getVisibleMeasures(Plan $plan, Project $project, ?MeasureRepository $measureRepository = null): array
@@ -62,61 +70,7 @@ final class SustainabilityPlanCompletionService
      */
     public function findFirstPendingVisibleMeasure(Plan $plan, Project $project, ?MeasureRepository $measureRepository = null): ?array
     {
-        $protocol = $plan->getProtocol();
-        if (!$protocol instanceof Protocol) {
-            return null;
-        }
-
-        foreach ($this->getVisibleMeasures($plan, $project, $measureRepository) as $index => $measure) {
-            $planMeasure = $this->findPlanMeasureForMeasure($plan, $measure);
-            if (!$planMeasure instanceof PlanMeasure) {
-                return [
-                    'measure' => $measure,
-                    'index' => (int) $index,
-                    'reason' => 'missing_plan_measure',
-                ];
-            }
-
-            if ($planMeasure->getApplicabilitySource() === 'block_skip') {
-                continue;
-            }
-
-            if ($planMeasure->isApplicable() === null) {
-                return [
-                    'measure' => $measure,
-                    'index' => (int) $index,
-                    'reason' => 'applicability_missing',
-                ];
-            }
-
-            if ($planMeasure->isApplicable() === true) {
-                if ($planMeasure->isCritical() === null) {
-                    return [
-                        'measure' => $measure,
-                        'index' => (int) $index,
-                        'reason' => 'critical_missing',
-                    ];
-                }
-
-                if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
-                    return [
-                        'measure' => $measure,
-                        'index' => (int) $index,
-                        'reason' => 'critical_reason_missing',
-                    ];
-                }
-
-                if ($planMeasure->willImplement() === null) {
-                    return [
-                        'measure' => $measure,
-                        'index' => (int) $index,
-                        'reason' => 'will_implement_missing',
-                    ];
-                }
-            }
-        }
-
-        return null;
+        return $this->collectPendingVisibleMeasures($plan, $project, $measureRepository)[0] ?? null;
     }
 
     /**
@@ -141,6 +95,73 @@ final class SustainabilityPlanCompletionService
     private function hasCriticalReason(PlanMeasure $planMeasure): bool
     {
         return trim((string) ($planMeasure->getCriticalReason() ?? '')) !== '';
+    }
+
+    /**
+     * @return array<int, array{measure: Measure, index: int, reason: string}>
+     */
+    private function collectPendingVisibleMeasures(Plan $plan, Project $project, ?MeasureRepository $measureRepository = null): array
+    {
+        $protocol = $plan->getProtocol();
+        if (!$protocol instanceof Protocol) {
+            return [];
+        }
+
+        $pending = [];
+        foreach ($this->getVisibleMeasures($plan, $project, $measureRepository) as $index => $measure) {
+            $planMeasure = $this->findPlanMeasureForMeasure($plan, $measure);
+            if (!$planMeasure instanceof PlanMeasure) {
+                $pending[] = [
+                    'measure' => $measure,
+                    'index' => (int) $index,
+                    'reason' => 'missing_plan_measure',
+                ];
+                continue;
+            }
+
+            if ($planMeasure->getApplicabilitySource() === 'block_skip') {
+                continue;
+            }
+
+            if ($planMeasure->isApplicable() === null) {
+                $pending[] = [
+                    'measure' => $measure,
+                    'index' => (int) $index,
+                    'reason' => 'applicability_missing',
+                ];
+                continue;
+            }
+
+            if ($planMeasure->isApplicable() === true) {
+                if ($planMeasure->isCritical() === null) {
+                    $pending[] = [
+                        'measure' => $measure,
+                        'index' => (int) $index,
+                        'reason' => 'critical_missing',
+                    ];
+                    continue;
+                }
+
+                if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
+                    $pending[] = [
+                        'measure' => $measure,
+                        'index' => (int) $index,
+                        'reason' => 'critical_reason_missing',
+                    ];
+                    continue;
+                }
+
+                if ($planMeasure->willImplement() === null) {
+                    $pending[] = [
+                        'measure' => $measure,
+                        'index' => (int) $index,
+                        'reason' => 'will_implement_missing',
+                    ];
+                }
+            }
+        }
+
+        return $pending;
     }
 
     private function findPlanMeasureForMeasure(Plan $plan, Measure $measure): ?PlanMeasure

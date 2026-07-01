@@ -26,6 +26,7 @@ use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -62,6 +63,78 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'is_applicable' => '1',
             'will_implement' => '1',
         ], $filters);
+    }
+
+    public function testReviewRedirectsToMeasuresWithOnlyPendingFilterWhenUpgradeBreaksCompleteness(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol)
+            ->setStatus('completo');
+
+        $completedMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida completa');
+        $this->setEntityId($completedMeasure, 901);
+
+        $pendingMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(3)
+            ->setName('Medida pendiente');
+        $this->setEntityId($pendingMeasure, 902);
+
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure($completedMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(false)
+            ->setWillImplement(true)
+            ->markAsManual();
+        $plan->addPlanMeasure($planMeasure);
+
+        $request = $this->createRequest();
+        $measureRepository = $this->createMeasureRepositoryMock([$completedMeasure, $pendingMeasure], $completedMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $protocolRepository = $this->createMock(\App\Repository\ProtocolRepository::class);
+        $commercialPlanRepository = $this->createMock(\App\Repository\CommercialPlanRepository::class);
+        $checkoutService = $this->newStripeCheckoutServiceStub();
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('flush');
+        $mailer = $this->createMock(\Symfony\Component\Mailer\MailerInterface::class);
+        $translator = $this->createMock(\Symfony\Contracts\Translation\TranslatorInterface::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+
+        $response = $controller->review(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $protocolRepository,
+            $commercialPlanRepository,
+            $checkoutService,
+            $entityManager,
+            $mailer,
+            $translator
+        );
+
+        self::assertInstanceOf(Response::class, $response);
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/plan/measures', (string) $response->headers->get('Location'));
+        self::assertStringContainsString('only_pending=1', (string) $response->headers->get('Location'));
     }
 
     public function testUpdateSelectionIgnoresInternalNotesWhenFeatureIsUnavailable(): void
@@ -868,6 +941,45 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $filters = $reflection->invoke($controller);
 
         return $filters;
+    }
+
+    private function newStripeCheckoutServiceStub(): \App\Service\StripeProjectCheckoutService
+    {
+        $reflection = new \ReflectionClass(\App\Service\StripeProjectCheckoutService::class);
+        /** @var \App\Service\StripeProjectCheckoutService $service */
+        $service = $reflection->newInstanceWithoutConstructor();
+
+        return $service;
+    }
+
+    private function invokeReview(
+        PlanController $controller,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        PlanRepository $planRepository,
+        MeasureRepository $measureRepository,
+        \App\Repository\ProtocolRepository $protocolRepository,
+        \App\Repository\CommercialPlanRepository $commercialPlanRepository,
+        \App\Service\StripeProjectCheckoutService $checkoutService,
+        EntityManagerInterface $entityManager,
+        \Symfony\Component\Mailer\MailerInterface $mailer,
+        \Symfony\Contracts\Translation\TranslatorInterface $translator
+    ): Response {
+        /** @var Response $response */
+        $response = $controller->review(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $protocolRepository,
+            $commercialPlanRepository,
+            $checkoutService,
+            $entityManager,
+            $mailer,
+            $translator
+        );
+
+        return $response;
     }
 
     private function invokeIsPlanCompleteForProtocol(
