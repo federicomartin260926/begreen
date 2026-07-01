@@ -5,6 +5,11 @@ namespace App\Tests\Controller\Backend;
 use App\Controller\Backend\ProjectSubscriptionCheckoutController;
 use App\Controller\SecurityController;
 use App\Entity\CommercialPlan;
+use App\Entity\Measure;
+use App\Entity\MeasureBlock;
+use App\Entity\Plan;
+use App\Entity\PlanMeasure;
+use App\Entity\Protocol;
 use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
@@ -76,6 +81,48 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
         self::assertSame('pi_success_1', $project->getSubscription()?->getStripePaymentIntentId());
+    }
+
+    public function testSuccessRouteRedirectsToOnlyPendingWhenUpgradeBreaksCompleteness(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+
+        $project = $this->createProject(52, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO, 'cs_success_pending');
+        $measureBasic = $this->createMeasure(701, 5);
+        $measurePending = $this->createMeasure(702, 3);
+        $plan = $this->createPlan($project, $measureBasic, $measurePending);
+
+        $client = $this->createFakeStripeClient();
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_success_pending',
+            'payment_status' => 'paid',
+            'amount_total' => 10000,
+            'currency' => 'eur',
+            'payment_intent' => (object) ['id' => 'pi_success_pending'],
+            'metadata' => (object) [
+                'project_id' => '52',
+                'target_tier' => ProjectSubscription::TIER_PRO,
+                'commercial_plan_code' => 'pro',
+            ],
+        ];
+        $service = $this->createCheckoutService($client, $this->makeDefaultCommercialPlans(), true, [$measureBasic, $measurePending], $plan);
+
+        $activeProjectService = $this->createMock(ActiveProjectService::class);
+        $activeProjectService->expects(self::once())
+            ->method('setActiveProject')
+            ->with($project);
+
+        $controller = new ProjectSubscriptionCheckoutController($service, $activeProjectService);
+        $controller->setContainer($container);
+        $this->setAdminToken();
+
+        $request = $this->createRequest(['session_id' => 'cs_success_pending']);
+        $response = $controller->success($project, $request);
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertStringContainsString('/backend/plan/measures', $response->getTargetUrl());
+        self::assertStringContainsString('only_pending=1', $response->getTargetUrl());
     }
 
     public function testConfirmPendingRouteUsesStoredSessionId(): void
@@ -180,16 +227,20 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend', $response->getTargetUrl());
     }
 
-    private function createCheckoutService(FakeStripeClient $client, array $plans, bool $expectFlush = false): StripeProjectCheckoutService
+    private function createCheckoutService(FakeStripeClient $client, array $plans, bool $expectFlush = false, ?array $measures = null, ?Plan $plan = null): StripeProjectCheckoutService
     {
         $gate = $this->makeProjectFeatureGate($plans);
         $planRepository = $this->createMock(CommercialPlanRepository::class);
         $projectPlanRepository = $this->createMock(PlanRepository::class);
-        $projectPlanRepository->method('findOneBy')->willReturn(null);
+        $projectPlanRepository->method('findOneBy')->willReturnCallback(
+            static function (array $criteria) use ($plan): ?Plan {
+                return ($plan instanceof Plan && ($criteria['project'] ?? null) === $plan->getProject()) ? $plan : null;
+            }
+        );
         $indexedPlans = [];
-        foreach ($plans as $plan) {
-            if ($plan instanceof CommercialPlan) {
-                $indexedPlans[strtolower(trim($plan->getCode()))] = $plan;
+        foreach ($plans as $commercialPlan) {
+            if ($commercialPlan instanceof CommercialPlan) {
+                $indexedPlans[strtolower(trim($commercialPlan->getCode()))] = $commercialPlan;
             }
         }
         $planRepository->method('findActiveByCode')->willReturnCallback(
@@ -211,7 +262,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $invoiceStorage->method('upsertFromStripeCheckout')->willReturn(new ProjectBillingDocument());
 
         $completionService = new SustainabilityPlanCompletionService(
-            $this->createMock(MeasureRepository::class),
+            $this->createMeasureRepositoryMock($measures ?? []),
             new PlanMeasureCatalogResolver($gate),
             new SustainabilityPlanMeasureOrderer(),
         );
@@ -228,6 +279,26 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
             'https://example.test/backend/project/{PROJECT_ID}/subscription/cancel?session_id={CHECKOUT_SESSION_ID}',
             $completionService,
         );
+    }
+
+    /**
+     * @param array<int, Measure> $measures
+     */
+    private function createMeasureRepositoryMock(array $measures): MeasureRepository
+    {
+        $query = $this->createMock(\Doctrine\ORM\Query::class);
+        $query->method('getResult')->willReturn($measures);
+
+        $qb = $this->createMock(\Doctrine\ORM\QueryBuilder::class);
+        foreach (['join', 'leftJoin', 'addSelect', 'andWhere', 'setParameter'] as $method) {
+            $qb->method($method)->willReturnSelf();
+        }
+        $qb->method('getQuery')->willReturn($query);
+
+        $repository = $this->createMock(MeasureRepository::class);
+        $repository->method('createQueryBuilder')->willReturn($qb);
+
+        return $repository;
     }
 
     private function createFakeStripeClient(): FakeStripeClient
@@ -257,6 +328,52 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $project->setSubscription($subscription);
 
         return $project;
+    }
+
+    private function createPlan(Project $project, Measure ...$measures): Plan
+    {
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol)
+            ->setStatus('completo');
+
+        foreach ($measures as $index => $measure) {
+            $planMeasure = (new PlanMeasure())
+                ->setMeasure($measure)
+                ->setIsApplicable($index === 0 ? true : null)
+                ->setIsCritical($index === 0 ? false : null)
+                ->setWillImplement($index === 0 ? true : null)
+                ->markAsManual();
+            $plan->addPlanMeasure($planMeasure);
+        }
+
+        return $plan;
+    }
+
+    private function createMeasure(int $id, int $score): Measure
+    {
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore($score);
+        $this->setEntityId($measure, $id);
+
+        return $measure;
     }
 
     private function setAdminToken(): void

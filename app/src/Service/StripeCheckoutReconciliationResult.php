@@ -16,6 +16,7 @@ final class StripeCheckoutReconciliationResult
     private function __construct(
         public readonly string $status,
         public readonly ?ProjectSubscription $subscription = null,
+        private readonly bool $planBecameIncompleteAfterUpgrade = false,
     ) {
     }
 
@@ -24,14 +25,14 @@ final class StripeCheckoutReconciliationResult
         return new self(self::STATUS_NOTHING_TO_CONFIRM);
     }
 
-    public static function confirmed(ProjectSubscription $subscription): self
+    public static function confirmed(ProjectSubscription $subscription, bool $planBecameIncompleteAfterUpgrade = false): self
     {
-        return new self(self::STATUS_CONFIRMED, $subscription);
+        return new self(self::STATUS_CONFIRMED, $subscription, $planBecameIncompleteAfterUpgrade);
     }
 
-    public static function alreadyConfirmed(ProjectSubscription $subscription): self
+    public static function alreadyConfirmed(ProjectSubscription $subscription, bool $planBecameIncompleteAfterUpgrade = false): self
     {
-        return new self(self::STATUS_ALREADY_CONFIRMED, $subscription);
+        return new self(self::STATUS_ALREADY_CONFIRMED, $subscription, $planBecameIncompleteAfterUpgrade);
     }
 
     public static function pending(ProjectSubscription $subscription): self
@@ -52,5 +53,10 @@ final class StripeCheckoutReconciliationResult
     public function isConfirmed(): bool
     {
         return in_array($this->status, [self::STATUS_CONFIRMED, self::STATUS_ALREADY_CONFIRMED], true);
+    }
+
+    public function planBecameIncompleteAfterUpgrade(): bool
+    {
+        return $this->planBecameIncompleteAfterUpgrade;
     }
 }

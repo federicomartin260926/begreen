@@ -84,6 +84,10 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
             } else {
                 $this->addFlash('info', 'backend.subscription.flash.success_received');
             }
+
+            if ($reconciliation->planBecameIncompleteAfterUpgrade()) {
+                return $this->redirectToRoute('backend_plan_measures', ['only_pending' => '1']);
+            }
         } else {
             if ($subscription && $subscription->getStatus() === ProjectSubscription::STATUS_ACTIVE && $subscription->getTier() !== ProjectSubscription::TIER_BASIC) {
                 $this->addFlash('success', 'backend.subscription.flash.success_confirmed');

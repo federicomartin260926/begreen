@@ -132,11 +132,12 @@ final class StripeProjectCheckoutService
             && $storedSessionId !== null
             && $storedSessionId === $checkoutSessionId
         ) {
+            $planBecameIncompleteAfterUpgrade = $this->syncPlanCompletionAndDetectIncomplete($project);
             $this->fillMissingStripeReferences($subscription, $session, $invoice);
             $this->upsertBillingDocument($subscription, $session, $invoice);
             $this->entityManager->flush();
 
-            return StripeCheckoutReconciliationResult::alreadyConfirmed($subscription);
+            return StripeCheckoutReconciliationResult::alreadyConfirmed($subscription, $planBecameIncompleteAfterUpgrade);
         }
 
         $paymentStatus = $this->normalizeString($session->payment_status ?? null) ?? 'unknown';
@@ -177,16 +178,13 @@ final class StripeProjectCheckoutService
             ->setPaidAt(new \DateTimeImmutable())
             ->setTargetTier(null);
 
-        $plan = $this->planRepository->findOneBy(['project' => $project]);
-        if ($plan instanceof Plan) {
-            $this->planCompletionService->syncStatus($plan, $project);
-        }
+        $planBecameIncompleteAfterUpgrade = $this->syncPlanCompletionAndDetectIncomplete($project);
 
         $this->upsertBillingDocument($subscription, $session, $invoice);
 
         $this->entityManager->flush();
 
-        return StripeCheckoutReconciliationResult::confirmed($subscription);
+        return StripeCheckoutReconciliationResult::confirmed($subscription, $planBecameIncompleteAfterUpgrade);
     }
 
     public function canUpgrade(Project|string $projectOrTier, string $targetTier): bool
@@ -398,6 +396,19 @@ final class StripeProjectCheckoutService
         }
 
         return null;
+    }
+
+    private function syncPlanCompletionAndDetectIncomplete(Project $project): bool
+    {
+        $plan = $this->planRepository->findOneBy(['project' => $project]);
+        if (!$plan instanceof Plan) {
+            return false;
+        }
+
+        $previousStatus = $plan->getStatus();
+        $this->planCompletionService->syncStatus($plan, $project);
+
+        return $previousStatus === 'completo' && $plan->getStatus() === 'incompleto';
     }
 
     private function fillMissingStripeReferences(ProjectSubscription $subscription, object $session, array|object|null $invoice = null): void

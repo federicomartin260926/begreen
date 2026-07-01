@@ -460,16 +460,96 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame('https://invoice.test/refetch/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
     }
 
-    private function createService(FakeStripeClient $stripeClient, array $plans, bool $expectFlush = false, ?StripeInvoiceStorageService $invoiceStorage = null): StripeProjectCheckoutService
+    public function testPaidPendingCheckoutFlagsPlanWhenUpgradeMakesItIncomplete(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_paid_upgrade_pending',
+            'payment_status' => 'paid',
+            'amount_total' => 10000,
+            'currency' => 'eur',
+            'payment_intent' => (object) ['id' => 'pi_paid_upgrade_pending'],
+            'metadata' => (object) [
+                'project_id' => '42',
+                'target_tier' => ProjectSubscription::TIER_PRO,
+                'commercial_plan_code' => 'pro',
+            ],
+        ];
+
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['pro']->setStripePriceId('price_pro_full');
+        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
+
+        $basicMeasure = $this->createMeasure(101, 5);
+        $pendingMeasure = $this->createMeasure(102, 3);
+        $project = $this->createProject(ProjectSubscription::TIER_STANDARD, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_PRO, 'cs_paid_upgrade_pending', 42);
+        $plan = $this->createPlan($project, [
+            $basicMeasure,
+        ], [
+            $this->createPlanMeasure(true, false, true),
+        ]);
+
+        $service = $this->createService($client, $plans, true, null, $plan, [$basicMeasure, $pendingMeasure]);
+        $result = $service->reconcilePendingCheckout($project, 'cs_paid_upgrade_pending');
+
+        self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
+        self::assertTrue($result->planBecameIncompleteAfterUpgrade());
+        self::assertSame('incompleto', $plan->getStatus());
+    }
+
+    public function testPaidPendingCheckoutDoesNotFlagPlanWhenUpgradeKeepsItComplete(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $client->checkout->sessions->retrieveReturn = (object) [
+            'id' => 'cs_paid_upgrade_complete',
+            'payment_status' => 'paid',
+            'amount_total' => 10000,
+            'currency' => 'eur',
+            'payment_intent' => (object) ['id' => 'pi_paid_upgrade_complete'],
+            'metadata' => (object) [
+                'project_id' => '42',
+                'target_tier' => ProjectSubscription::TIER_PRO,
+                'commercial_plan_code' => 'pro',
+            ],
+        ];
+
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['pro']->setStripePriceId('price_pro_full');
+        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
+
+        $basicMeasure = $this->createMeasure(201, 5);
+        $pendingMeasure = $this->createMeasure(202, 3);
+        $project = $this->createProject(ProjectSubscription::TIER_STANDARD, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_PRO, 'cs_paid_upgrade_complete', 42);
+        $plan = $this->createPlan($project, [
+            $basicMeasure,
+            $pendingMeasure,
+        ], [
+            $this->createPlanMeasure(true, false, true),
+            $this->createPlanMeasure(true, false, true),
+        ]);
+
+        $service = $this->createService($client, $plans, true, null, $plan, [$basicMeasure, $pendingMeasure]);
+        $result = $service->reconcilePendingCheckout($project, 'cs_paid_upgrade_complete');
+
+        self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
+        self::assertFalse($result->planBecameIncompleteAfterUpgrade());
+        self::assertSame('completo', $plan->getStatus());
+    }
+
+    private function createService(FakeStripeClient $stripeClient, array $plans, bool $expectFlush = false, ?StripeInvoiceStorageService $invoiceStorage = null, ?\App\Entity\Plan $plan = null, ?array $measures = null): StripeProjectCheckoutService
     {
         $gate = $this->makeProjectFeatureGate($plans);
         $planRepository = $this->createMock(CommercialPlanRepository::class);
         $projectPlanRepository = $this->createMock(PlanRepository::class);
-        $projectPlanRepository->method('findOneBy')->willReturn(null);
+        $projectPlanRepository->method('findOneBy')->willReturnCallback(
+            static function (array $criteria) use ($plan): ?\App\Entity\Plan {
+                return ($plan instanceof \App\Entity\Plan && ($criteria['project'] ?? null) === $plan->getProject()) ? $plan : null;
+            }
+        );
         $indexedPlans = [];
-        foreach ($plans as $plan) {
-            if ($plan instanceof \App\Entity\CommercialPlan) {
-                $indexedPlans[strtolower($plan->getCode())] = $plan;
+        foreach ($plans as $commercialPlan) {
+            if ($commercialPlan instanceof \App\Entity\CommercialPlan) {
+                $indexedPlans[strtolower($commercialPlan->getCode())] = $commercialPlan;
             }
         }
         $planRepository->method('findActiveByCode')->willReturnCallback(
@@ -492,7 +572,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         }
 
         $completionService = new SustainabilityPlanCompletionService(
-            $this->createMock(MeasureRepository::class),
+            $this->createMeasureRepositoryMock($measures ?? []),
             new PlanMeasureCatalogResolver($gate),
             new SustainabilityPlanMeasureOrderer(),
         );
@@ -509,6 +589,80 @@ final class StripeProjectCheckoutServiceTest extends TestCase
             'https://example.test/cancel?session_id={CHECKOUT_SESSION_ID}',
             $completionService,
         );
+    }
+
+    /**
+     * @param array<int, \App\Entity\Measure> $measures
+     */
+    private function createMeasureRepositoryMock(array $measures): MeasureRepository
+    {
+        $query = $this->createMock(\Doctrine\ORM\Query::class);
+        $query->method('getResult')->willReturn($measures);
+
+        $qb = $this->createMock(\Doctrine\ORM\QueryBuilder::class);
+        foreach (['join', 'leftJoin', 'addSelect', 'andWhere', 'setParameter'] as $method) {
+            $qb->method($method)->willReturnSelf();
+        }
+        $qb->method('getQuery')->willReturn($query);
+
+        $repository = $this->createMock(MeasureRepository::class);
+        $repository->method('createQueryBuilder')->willReturn($qb);
+
+        return $repository;
+    }
+
+    /**
+     * @param array<int, \App\Entity\PlanMeasure>|null $planMeasures
+     */
+    private function createPlan(\App\Entity\Project $project, array $measures = [], ?array $planMeasures = null): \App\Entity\Plan
+    {
+        $protocol = (new \App\Entity\Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(\App\Entity\Protocol::TYPE_RODAJE)
+            ->setGroupingBy(\App\Entity\Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new \App\Entity\Plan())
+            ->setProject($project)
+            ->setUser(new \App\Entity\User())
+            ->setProtocol($protocol)
+            ->setStatus('completo');
+
+        foreach ($measures as $index => $measure) {
+            $planMeasure = $planMeasures[$index] ?? $this->createPlanMeasure(true, false, true);
+            $planMeasure->setMeasure($measure);
+            $plan->addPlanMeasure($planMeasure);
+        }
+
+        return $plan;
+    }
+
+    private function createPlanMeasure(?bool $applicable, ?bool $critical, ?bool $willImplement): \App\Entity\PlanMeasure
+    {
+        return (new \App\Entity\PlanMeasure())
+            ->setIsApplicable($applicable)
+            ->setIsCritical($critical)
+            ->setWillImplement($willImplement)
+            ->markAsManual();
+    }
+
+    private function createMeasure(int $id, int $score): \App\Entity\Measure
+    {
+        $protocol = (new \App\Entity\Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(\App\Entity\Protocol::TYPE_RODAJE)
+            ->setGroupingBy(\App\Entity\Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $measure = (new \App\Entity\Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore($score);
+        $this->setEntityId($measure, $id);
+
+        return $measure;
     }
 
     private function createFakeStripeClient(string $sessionId = 'cs_test_default'): FakeStripeClient

@@ -409,6 +409,9 @@ class PlanController extends AbstractController
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
+            'onlyPendingMode'  => $onlyPendingMode,
+            'navigationQuery'  => $navigationQuery,
+            'clearOnlyPendingQuery' => $clearOnlyPendingQuery,
 
             // navegación y medida actual
             'index'            => $index,
@@ -748,9 +751,6 @@ class PlanController extends AbstractController
             'perPage'          => $perPage,
             'positionById'     => $positionById,
             'paginationQuery'  => $paginationQuery,
-            'onlyPendingMode'  => $onlyPendingMode,
-            'navigationQuery'  => $navigationQuery,
-            'clearOnlyPendingQuery' => $clearOnlyPendingQuery,
             'filters'          => [
                 'protocol'          => $protocol,
                 'category'          => $category,
