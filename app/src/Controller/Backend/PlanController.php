@@ -799,6 +799,7 @@ class PlanController extends AbstractController
 
         // ⛔ Permiso mínimo para acceder al proyecto
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+        $onlyPendingMode = $request->request->getBoolean('only_pending') || $request->query->getBoolean('only_pending');
 
         $measureId = $request->request->get('measureId');
         $field     = $request->request->get('field');
@@ -885,7 +886,10 @@ class PlanController extends AbstractController
                 $this->blockQuestionService->applyAnswer($plan, $block, $applies, $user instanceof User ? $user : null, $blockMeasures);
 
                 if ($applies) {
-                    $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $currentIndex]);
+                    $nextUrl = $this->appendOnlyPendingModeToMeasuresUrl(
+                        $this->generateUrl('backend_plan_measures', ['i' => $currentIndex]),
+                        $onlyPendingMode
+                    );
                 } else {
                     $visibleMeasuresAfter = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
                     $nextVisibleMeasureIndex = null;
@@ -906,7 +910,10 @@ class PlanController extends AbstractController
                     }
 
                     if ($nextVisibleMeasureIndex !== null) {
-                        $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $nextVisibleMeasureIndex]);
+                        $nextUrl = $this->appendOnlyPendingModeToMeasuresUrl(
+                            $this->generateUrl('backend_plan_measures', ['i' => $nextVisibleMeasureIndex]),
+                            $onlyPendingMode
+                        );
                     } elseif ($this->planCompletionService->isComplete($plan, $project, $measureRepo)) {
                         $nextUrl = $this->generateUrl('backend_plan_done');
                     } else {
@@ -1054,7 +1061,10 @@ class PlanController extends AbstractController
 
             $isLastVisibleMeasure = $currentVisibleIndex >= (count($visibleMeasures) - 1);
             if (!$isLastVisibleMeasure) {
-                $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $currentVisibleIndex + 1]);
+                $nextUrl = $this->appendOnlyPendingModeToMeasuresUrl(
+                    $this->generateUrl('backend_plan_measures', ['i' => $currentVisibleIndex + 1]),
+                    $onlyPendingMode
+                );
             } elseif ($complete) {
                 $nextUrl = $this->generateUrl('backend_plan_done');
             } else {
@@ -1073,7 +1083,10 @@ class PlanController extends AbstractController
                         $this->pendingMeasureFlashMessage((string) ($pendingMeasure['reason'] ?? ''))
                     );
 
-                    $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $pendingIndex]);
+                    $nextUrl = $this->appendOnlyPendingModeToMeasuresUrl(
+                        $this->generateUrl('backend_plan_measures', ['i' => $pendingIndex]),
+                        $onlyPendingMode
+                    );
                 } else {
                     return new JsonResponse([
                         'success' => false,
@@ -2094,6 +2107,15 @@ class PlanController extends AbstractController
         }
 
         return $this->generateUrl('backend_plan_measures', ['i' => $nextIndex]);
+    }
+
+    private function appendOnlyPendingModeToMeasuresUrl(string $url, bool $onlyPendingMode): string
+    {
+        if (!$onlyPendingMode || str_contains($url, 'only_pending=')) {
+            return $url;
+        }
+
+        return $url . (str_contains($url, '?') ? '&' : '?') . 'only_pending=1';
     }
 
     private function findBlockAnswer(Plan $plan, ?MeasureBlock $block): ?SustainabilityPlanBlockAnswer
