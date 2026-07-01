@@ -158,6 +158,42 @@
                         currentBlockAnswer: currentBlockAnswer,
                         projectType: project.type|default(null)
                     } %}
+
+                    {% if not planComplete %}
+                        {# ——— Navegación medida a medida ——— #}
+                        <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center gap-3 mb-3">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% set hasPrev = index > 0 %}
+                                {% set hasNext = total > 0 and (index + 1) < total %}
+                                {% set nextEnabled = hasNext and canGoNext %}
+
+                                <a class="btn btn-outline-secondary text-decoration-none {% if not hasPrev %}disabled{% endif %}"
+                                   href="{% if hasPrev %}{{ path('backend_plan_measures', { i: index - 1 }) }}{% else %}#{% endif %}"
+                                   {% if not hasPrev %}tabindex="-1" aria-disabled="true"{% endif %}>
+                                    <i class="bi bi-chevron-left"></i> {{ 'backend.common.prev'|trans }}
+                                </a>
+
+                                <a class="btn btn-outline-secondary text-decoration-none {% if not nextEnabled %}disabled{% endif %}"
+                                   href="{% if nextEnabled %}{{ path('backend_plan_measures', { i: index + 1 }) }}{% else %}#{% endif %}"
+                                   {% if not nextEnabled %}tabindex="-1" aria-disabled="true"{% endif %}>
+                                    {{ 'backend.common.next'|trans }} <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </div>
+
+                            <div class="align-self-stretch align-self-md-auto ms-md-auto text-muted text-start text-md-end">
+                                {% if total > 0 %}
+                                    {% set progressTotal = catalogMeasuresTotal|default(total) %}
+                                    {{ 'backend.plan.progress_applicable'|trans({'%current%': index + 1, '%total%': progressTotal}) }}
+                                    {% if progressTotal > total %}
+                                        {{ 'backend.plan.progress_applicable_details'|trans({'%total%': total}) }}
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+
                     {% if commitmentSummary is defined %}
                         {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
                             variant: 'full',
@@ -175,41 +211,6 @@
                 {% else %}
                     <div class="alert alert-info">{{ 'backend.plan.measures.no_items'|trans }}</div>
                 {% endif %}
-            {% endif %}
-
-            {% if not planComplete %}
-                {# ——— Navegación medida a medida ——— #}
-                <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center gap-3 mb-3">
-                    <div class="d-flex flex-wrap gap-2">
-                        {% set hasPrev = index > 0 %}
-                        {% set hasNext = total > 0 and (index + 1) < total %}
-                        {% set nextEnabled = hasNext and canGoNext %}
-
-                        <a class="btn btn-outline-secondary text-decoration-none {% if not hasPrev %}disabled{% endif %}"
-                           href="{% if hasPrev %}{{ path('backend_plan_measures', { i: index - 1 }) }}{% else %}#{% endif %}"
-                           {% if not hasPrev %}tabindex="-1" aria-disabled="true"{% endif %}>
-                            <i class="bi bi-chevron-left"></i> {{ 'backend.common.prev'|trans }}
-                        </a>
-
-                        <a class="btn btn-outline-secondary text-decoration-none {% if not nextEnabled %}disabled{% endif %}"
-                           href="{% if nextEnabled %}{{ path('backend_plan_measures', { i: index + 1 }) }}{% else %}#{% endif %}"
-                           {% if not nextEnabled %}tabindex="-1" aria-disabled="true"{% endif %}>
-                            {{ 'backend.common.next'|trans }} <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </div>
-
-                    <div class="align-self-stretch align-self-md-auto ms-md-auto text-muted text-start text-md-end">
-                        {% if total > 0 %}
-                            {% set progressTotal = catalogMeasuresTotal|default(total) %}
-                            {{ 'backend.plan.progress_applicable'|trans({'%current%': index + 1, '%total%': progressTotal}) }}
-                            {% if progressTotal > total %}
-                                {{ 'backend.plan.progress_applicable_details'|trans({'%total%': total}) }}
-                            {% endif %}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </div>
-                </div>
             {% endif %}
 
     </div>
