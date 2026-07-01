@@ -277,7 +277,6 @@ export default class extends Controller {
       'only_implemented',
       'is_critical',
       'open',
-      'page',
     ];
 
     const filters = this.collectFilters();

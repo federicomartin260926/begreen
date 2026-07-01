@@ -4,8 +4,16 @@ namespace App\Tests\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Repository\CommercialPlanRepository;
+use App\Repository\MeasureRepository;
+use App\Repository\PlanRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\ProjectSubscriptionRepository;
+use App\Service\CommercialPlanResolver;
+use App\Service\PlanMeasureCatalogResolver;
+use App\Service\ProjectFeatureGate;
+use App\Service\SustainabilityPlanCompletionService;
+use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\StripeProjectWebhookService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -182,6 +190,12 @@ final class StripeProjectWebhookServiceTest extends TestCase
             $entityManager,
             $subscriptionRepository,
             $projectRepository,
+            $this->createMock(PlanRepository::class),
+            new SustainabilityPlanCompletionService(
+                $this->createMock(MeasureRepository::class),
+                new PlanMeasureCatalogResolver($this->createFeatureGate()),
+                new SustainabilityPlanMeasureOrderer(),
+            ),
             'whsec_test',
         );
 
@@ -210,8 +224,25 @@ final class StripeProjectWebhookServiceTest extends TestCase
             $entityManager,
             $subscriptionRepository,
             $projectRepository,
+            $this->createMock(PlanRepository::class),
+            new SustainabilityPlanCompletionService(
+                $this->createMock(MeasureRepository::class),
+                new PlanMeasureCatalogResolver($this->createFeatureGate()),
+                new SustainabilityPlanMeasureOrderer(),
+            ),
             'whsec_test',
         );
+    }
+
+    private function createFeatureGate(): ProjectFeatureGate
+    {
+        $commercialPlanRepository = $this->createMock(CommercialPlanRepository::class);
+        $commercialPlanRepository->method('findActiveByCode')->willReturnCallback(static fn (string $code) => null);
+
+        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
+        $subscriptionRepository->method('findOneByProject')->willReturn(null);
+
+        return new ProjectFeatureGate(new CommercialPlanResolver($commercialPlanRepository, $subscriptionRepository));
     }
 
     private function createSubscription(string $tier, string $status): ProjectSubscription

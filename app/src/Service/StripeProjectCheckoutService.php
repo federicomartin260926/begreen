@@ -4,10 +4,12 @@ namespace App\Service;
 
 use App\Exception\PendingStripeCheckoutException;
 use App\Entity\CommercialPlan;
+use App\Entity\Plan;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\User;
 use App\Repository\CommercialPlanRepository;
+use App\Repository\PlanRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Stripe\StripeClient;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -24,11 +26,13 @@ final class StripeProjectCheckoutService
         private readonly StripeClient $stripeClient,
         private readonly ProjectFeatureGate $featureGate,
         private readonly CommercialPlanRepository $commercialPlanRepository,
+        private readonly PlanRepository $planRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly StripeInvoiceStorageService $invoiceStorageService,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly ?string $successUrlTemplate,
         private readonly ?string $cancelUrlTemplate,
+        private readonly SustainabilityPlanCompletionService $planCompletionService,
     ) {
     }
 
@@ -172,6 +176,11 @@ final class StripeProjectCheckoutService
             ->setLastPaymentStatus($paymentStatus)
             ->setPaidAt(new \DateTimeImmutable())
             ->setTargetTier(null);
+
+        $plan = $this->planRepository->findOneBy(['project' => $project]);
+        if ($plan instanceof Plan) {
+            $this->planCompletionService->syncStatus($plan, $project);
+        }
 
         $this->upsertBillingDocument($subscription, $session, $invoice);
 

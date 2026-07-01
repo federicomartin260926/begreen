@@ -133,6 +133,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setName('Be Green My Film')
             ->setType(Protocol::TYPE_RODAJE)
             ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+        $this->setEntityId($protocol, 1);
 
         $plan = (new Plan())
             ->setProject($project)
@@ -211,6 +213,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setName('Be Green My Film')
             ->setType(Protocol::TYPE_RODAJE)
             ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
 
         $plan = (new Plan())
             ->setProject($project)

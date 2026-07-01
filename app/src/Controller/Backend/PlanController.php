@@ -7,6 +7,7 @@ use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository,
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanBlockQuestionService;
+use App\Service\SustainabilityPlanCompletionService;
 use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\SustainabilityPlanCollaborationService;
@@ -44,6 +45,7 @@ class PlanController extends AbstractController
         private MeasureTaxonomyPresenter $taxonomyPresenter,
         private PlanMeasureResumeService $resumeService,
         private PlanBlockQuestionService $blockQuestionService,
+        private SustainabilityPlanCompletionService $planCompletionService,
         private SustainabilityPlanMeasureOrderer $measureOrderer,
         private SustainabilityPlanCollaborationService $collaborationService,
         private SustainabilityCommitmentLevelService $commitmentLevelService
@@ -196,9 +198,7 @@ class PlanController extends AbstractController
                 $this->addFlash('info', 'backend.plan.complete.custom_measures_locked');
             }
 
-            $planComplete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepository);
-            $plan->setStatus($planComplete ? 'completo' : 'incompleto');
-            $plan->setStatusChangedAt(new \DateTimeImmutable());
+            $planComplete = $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
             $em->flush();
 
             $this->addFlash(
@@ -214,21 +214,12 @@ class PlanController extends AbstractController
         }
 
         // Si ya está completo, dirige a done (resumen)
-        $planComplete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepository);
+        $planComplete = $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
         if ($planComplete) {
-            // Mantén el status sincronizado
-            if ($plan->getStatus() !== 'completo') {
-                $plan->setStatus('completo');
-                $plan->setStatusChangedAt(new \DateTimeImmutable());
-                $em->flush();
-            }
+            $em->flush();
             return $this->redirectToRoute('backend_plan_done');
         } else {
-            if ($plan->getStatus() !== 'incompleto') {
-                $plan->setStatus('incompleto');
-                $plan->setStatusChangedAt(new \DateTimeImmutable());
-                $em->flush();
-            }
+            $em->flush();
         }
 
         // ===== Medidas del protocolo seleccionado (ORDER BY dinámico: categoría o departamento) =====
@@ -514,6 +505,9 @@ class PlanController extends AbstractController
 
         // Permiso de acceso al plan
         $this->denyAccessUnlessGranted(PlanVoter::VIEW, $plan);
+
+        $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
+        $em->flush();
 
         // Debe estar completo
         if ($plan->getStatus() !== 'completo') {
@@ -842,7 +836,7 @@ class PlanController extends AbstractController
                     return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
                 }
 
-                $visibleMeasuresBefore = $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepo);
+                $visibleMeasuresBefore = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
                 $visibleIndexByMeasureId = [];
                 foreach ($visibleMeasuresBefore as $visibleIndex => $visibleMeasure) {
                     $visibleMeasureId = $visibleMeasure->getId();
@@ -869,7 +863,7 @@ class PlanController extends AbstractController
                 if ($applies) {
                     $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $currentIndex]);
                 } else {
-                    $visibleMeasuresAfter = $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepo);
+                    $visibleMeasuresAfter = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
                     $nextVisibleMeasureIndex = null;
 
                     foreach ($visibleMeasuresAfter as $visibleIndex => $visibleMeasure) {
@@ -889,7 +883,7 @@ class PlanController extends AbstractController
 
                     if ($nextVisibleMeasureIndex !== null) {
                         $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $nextVisibleMeasureIndex]);
-                    } elseif ($this->isPlanCompleteForProtocol($plan, $project, $measureRepo)) {
+                    } elseif ($this->planCompletionService->isComplete($plan, $project, $measureRepo)) {
                         $nextUrl = $this->generateUrl('backend_plan_done');
                     } else {
                         return new JsonResponse([
@@ -1021,14 +1015,12 @@ class PlanController extends AbstractController
         $em->flush();
 
         // Estado del plan
-        $complete = $this->isPlanCompleteForProtocol($plan, $project, $measureRepo);
-        $plan->setStatus($complete ? 'completo' : 'incompleto');
-        $plan->setStatusChangedAt(new \DateTimeImmutable());
+        $complete = $this->planCompletionService->syncStatus($plan, $project, $measureRepo);
         $em->flush();
 
         if ($this->isTerminalSelectionAction($field, $value)) {
-            $visibleMeasures = $this->getVisibleMeasuresForProtocol($plan, $project, $measureRepo);
-            $currentVisibleIndex = $this->findVisibleMeasureIndex($visibleMeasures, $measure);
+            $visibleMeasures = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
+            $currentVisibleIndex = $this->planCompletionService->findVisibleMeasureIndex($visibleMeasures, $measure);
             if ($currentVisibleIndex === null) {
                 return new JsonResponse([
                     'success' => false,
@@ -1042,7 +1034,7 @@ class PlanController extends AbstractController
             } elseif ($complete) {
                 $nextUrl = $this->generateUrl('backend_plan_done');
             } else {
-                $pendingMeasure = $this->findFirstPendingVisibleMeasure($plan, $project, $measureRepo);
+                $pendingMeasure = $this->planCompletionService->findFirstPendingVisibleMeasure($plan, $project, $measureRepo);
                 if ($pendingMeasure !== null) {
                     $pendingIndex = $pendingMeasure['index'] ?? null;
                     if (!is_int($pendingIndex) || $pendingIndex < 0) {
@@ -1226,7 +1218,7 @@ class PlanController extends AbstractController
         Project $project,
         MeasureRepository $measureRepository
     ): bool {
-        return !$this->hasPendingVisibleMeasures($plan, $project, $measureRepository);
+        return $this->planCompletionService->isComplete($plan, $project, $measureRepository);
     }
 
     private function hasPendingVisibleMeasures(
@@ -1234,7 +1226,7 @@ class PlanController extends AbstractController
         Project $project,
         MeasureRepository $measureRepository
     ): bool {
-        return $this->findFirstPendingVisibleMeasure($plan, $project, $measureRepository) !== null;
+        return $this->planCompletionService->findFirstPendingVisibleMeasure($plan, $project, $measureRepository) !== null;
     }
 
     /**
@@ -1242,15 +1234,7 @@ class PlanController extends AbstractController
      */
     private function getVisibleMeasuresForProtocol(Plan $plan, Project $project, MeasureRepository $measureRepository): array
     {
-        $protocol = $plan->getProtocol();
-        if (!$protocol) {
-            return [];
-        }
-
-        $qb = $this->createVisibleMeasuresQueryBuilder($measureRepository, $protocol, $project);
-        $measures = $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
-
-        return $this->measureOrderer->sortVisibleMeasures($measures, $protocol->getGroupingBy());
+        return $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepository);
     }
 
     #[Route('/upload-evidences', name: 'upload_evidences', methods: ['POST'])]
@@ -1992,61 +1976,7 @@ class PlanController extends AbstractController
         Project $project,
         MeasureRepository $measureRepository
     ): ?array {
-        $protocol = $plan->getProtocol();
-        if (!$protocol) {
-            return null;
-        }
-
-        foreach ($this->getVisibleMeasuresForProtocol($plan, $project, $measureRepository) as $index => $measure) {
-            $planMeasure = $this->findPlanMeasureForMeasure($plan, $measure);
-            if (!$planMeasure instanceof PlanMeasure) {
-                return [
-                    'measure' => $measure,
-                    'index'   => (int) $index,
-                    'reason'  => 'missing_plan_measure',
-                ];
-            }
-
-            if ($planMeasure->getApplicabilitySource() === 'block_skip') {
-                continue;
-            }
-
-            if ($planMeasure->isApplicable() === null) {
-                return [
-                    'measure' => $measure,
-                    'index'   => (int) $index,
-                    'reason'  => 'applicability_missing',
-                ];
-            }
-
-            if ($planMeasure->isApplicable() === true) {
-                if ($planMeasure->isCritical() === null) {
-                    return [
-                        'measure' => $measure,
-                        'index'   => (int) $index,
-                        'reason'  => 'critical_missing',
-                    ];
-                }
-
-                if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
-                    return [
-                        'measure' => $measure,
-                        'index'   => (int) $index,
-                        'reason'  => 'critical_reason_missing',
-                    ];
-                }
-
-                if ($planMeasure->willImplement() === null) {
-                    return [
-                        'measure' => $measure,
-                        'index'   => (int) $index,
-                        'reason'  => 'will_implement_missing',
-                    ];
-                }
-            }
-        }
-
-        return null;
+        return $this->planCompletionService->findFirstPendingVisibleMeasure($plan, $project, $measureRepository);
     }
 
     /**
@@ -2054,18 +1984,7 @@ class PlanController extends AbstractController
      */
     private function findVisibleMeasureIndex(array $visibleMeasures, Measure $measure): ?int
     {
-        $measureId = $measure->getId();
-        if ($measureId === null) {
-            return null;
-        }
-
-        foreach ($visibleMeasures as $index => $visibleMeasure) {
-            if ($visibleMeasure->getId() === $measureId) {
-                return (int) $index;
-            }
-        }
-
-        return null;
+        return $this->planCompletionService->findVisibleMeasureIndex($visibleMeasures, $measure);
     }
 
     /**

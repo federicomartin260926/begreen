@@ -4,6 +4,8 @@ namespace App\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Entity\Plan;
+use App\Repository\PlanRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\ProjectSubscriptionRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -15,6 +17,8 @@ final class StripeProjectWebhookService
         private readonly EntityManagerInterface $entityManager,
         private readonly ProjectSubscriptionRepository $subscriptionRepository,
         private readonly ProjectRepository $projectRepository,
+        private readonly PlanRepository $planRepository,
+        private readonly SustainabilityPlanCompletionService $planCompletionService,
         private readonly string $webhookSecret,
     ) {
     }
@@ -59,6 +63,11 @@ final class StripeProjectWebhookService
             ->setLastPaymentStatus('paid')
             ->setPaidAt(new \DateTimeImmutable())
             ->setTargetTier(null);
+
+        $plan = $this->planRepository->findOneBy(['project' => $subscription->getProject()]);
+        if ($plan instanceof Plan && $subscription->getProject() instanceof Project) {
+            $this->planCompletionService->syncStatus($plan, $subscription->getProject());
+        }
 
         $this->entityManager->flush();
     }

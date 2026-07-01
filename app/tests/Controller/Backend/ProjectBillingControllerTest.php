@@ -624,18 +624,21 @@ final class ProjectBillingControllerTest extends KernelTestCase
                 return $plans[strtolower(trim($code))] ?? null;
             }
         );
-        $planRepository = self::getContainer()->get(PlanRepository::class);
+        $planRepository = $this->createMock(PlanRepository::class);
+        $planRepository->method('findOneBy')->willReturn(null);
         $measureRepository = self::getContainer()->get(MeasureRepository::class);
 
         $checkoutService = new StripeProjectCheckoutService(
             new \Stripe\StripeClient('sk_test_dummy'),
             $this->makeProjectFeatureGate($plans),
             $commercialPlanRepository,
+            $planRepository,
             $this->createMock(EntityManagerInterface::class),
             $this->createMock(StripeInvoiceStorageService::class),
             $this->createMock(\Symfony\Component\Routing\Generator\UrlGeneratorInterface::class),
             null,
-            null
+            null,
+            self::getContainer()->get(\App\Service\SustainabilityPlanCompletionService::class)
         );
 
         return new ProjectBillingController(

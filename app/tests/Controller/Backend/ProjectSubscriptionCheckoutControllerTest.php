@@ -10,7 +10,13 @@ use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
 use App\Entity\User;
 use App\Repository\CommercialPlanRepository;
+use App\Repository\MeasureRepository;
+use App\Repository\PlanRepository;
 use App\Service\ActiveProjectService;
+use App\Service\PlanMeasureCatalogResolver;
+use App\Service\ProjectFeatureGate;
+use App\Service\SustainabilityPlanCompletionService;
+use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\StripeInvoiceStorageService;
 use App\Service\StripeProjectCheckoutService;
 use App\Tests\Support\CommercialPlanTestHelpers;
@@ -178,6 +184,8 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
     {
         $gate = $this->makeProjectFeatureGate($plans);
         $planRepository = $this->createMock(CommercialPlanRepository::class);
+        $projectPlanRepository = $this->createMock(PlanRepository::class);
+        $projectPlanRepository->method('findOneBy')->willReturn(null);
         $indexedPlans = [];
         foreach ($plans as $plan) {
             if ($plan instanceof CommercialPlan) {
@@ -202,15 +210,23 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $invoiceStorage ??= $this->createMock(StripeInvoiceStorageService::class);
         $invoiceStorage->method('upsertFromStripeCheckout')->willReturn(new ProjectBillingDocument());
 
+        $completionService = new SustainabilityPlanCompletionService(
+            $this->createMock(MeasureRepository::class),
+            new PlanMeasureCatalogResolver($gate),
+            new SustainabilityPlanMeasureOrderer(),
+        );
+
         return new StripeProjectCheckoutService(
             $client,
             $gate,
             $planRepository,
+            $projectPlanRepository,
             $entityManager,
             $invoiceStorage,
             $urlGenerator,
             'https://example.test/backend/project/{PROJECT_ID}/subscription/success?session_id={CHECKOUT_SESSION_ID}',
             'https://example.test/backend/project/{PROJECT_ID}/subscription/cancel?session_id={CHECKOUT_SESSION_ID}',
+            $completionService,
         );
     }
 
