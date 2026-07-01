@@ -24,6 +24,7 @@ services:
       - app_var:/app/var:ro
       - app_uploads:/app/public/uploads:ro
       - app_build:/app/public/build:ro
+      - ./public/images:/app/public/images:ro
 
   db:
     ports: []
