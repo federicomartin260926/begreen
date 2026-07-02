@@ -1111,7 +1111,7 @@ class PlanController extends AbstractController
 
                 $currentPendingIndex = $terminalPendingIndexByMeasureId[(int) $currentMeasureId];
                 $pendingItemsAfter = $this->planCompletionService->getPendingVisibleMeasures($plan, $project, $measureRepo);
-                $nextPendingIndex = $this->resolveNextPendingMeasureIndex($terminalPendingItemsBefore, $pendingItemsAfter, $currentPendingIndex);
+                $nextPendingIndex = $this->resolveNextPendingSubsetIndex($pendingItemsAfter, $currentPendingIndex);
 
                 if ($nextPendingIndex !== null) {
                     $this->addFlash(
@@ -2254,6 +2254,18 @@ class PlanController extends AbstractController
         }
 
         return null;
+    }
+
+    /**
+     * @param array<int, array{measure: Measure, index: int, reason: string}> $pendingItemsAfter
+     */
+    private function resolveNextPendingSubsetIndex(array $pendingItemsAfter, int $currentPendingIndex): ?int
+    {
+        if ($pendingItemsAfter === []) {
+            return null;
+        }
+
+        return $currentPendingIndex < count($pendingItemsAfter) ? $currentPendingIndex : null;
     }
 
     private function findBlockAnswer(Plan $plan, ?MeasureBlock $block): ?SustainabilityPlanBlockAnswer

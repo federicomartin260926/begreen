@@ -354,6 +354,106 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringNotContainsString('only_pending=1', (string) $data['nextUrl']);
     }
 
+    public function testUpdateSelectionUsesReindexedOnlyPendingSubsetNavigation(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $measures = [];
+        $currentMeasure = null;
+        $currentPlanMeasure = null;
+
+        for ($i = 1; $i <= 50; $i++) {
+            $measure = (new Measure())
+                ->setProtocol($protocol)
+                ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+                ->setScore(5)
+                ->setName(sprintf('A%02d complete', $i));
+            $this->setEntityId($measure, $i);
+            $measures[] = $measure;
+
+            $planMeasure = (new PlanMeasure())
+                ->setMeasure($measure)
+                ->setIsApplicable(true)
+                ->setIsCritical(false)
+                ->setWillImplement(true)
+                ->markAsManual();
+            $plan->addPlanMeasure($planMeasure);
+        }
+
+        for ($i = 1; $i <= 50; $i++) {
+            $measure = (new Measure())
+                ->setProtocol($protocol)
+                ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+                ->setScore(5)
+                ->setName(sprintf('B%02d pending', $i));
+            $this->setEntityId($measure, 100 + $i);
+            $measures[] = $measure;
+
+            $planMeasure = (new PlanMeasure())
+                ->setMeasure($measure)
+                ->setIsApplicable(true)
+                ->setIsCritical(false)
+                ->setWillImplement(null)
+                ->markAsManual();
+            $plan->addPlanMeasure($planMeasure);
+
+            if ($i === 2) {
+                $currentMeasure = $measure;
+                $currentPlanMeasure = $planMeasure;
+            }
+        }
+
+        self::assertInstanceOf(Measure::class, $currentMeasure);
+        self::assertInstanceOf(PlanMeasure::class, $currentPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'willImplement',
+            'value' => 'true',
+            'only_pending' => '1',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock($measures, $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('only_pending=1', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertStringNotContainsString('i=25', (string) $data['nextUrl']);
+    }
+
     public function testUpdateSelectionAdvancesToNextVisibleMeasureWithoutWarningWhenPendingExistsEarlier(): void
     {
         $controller = $this->getController();
