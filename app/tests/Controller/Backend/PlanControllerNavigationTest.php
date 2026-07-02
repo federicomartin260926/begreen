@@ -600,6 +600,212 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertNull($currentPlanMeasure->getCriticalReason());
     }
 
+    public function testBlockQuestionYesInOnlyPendingModeKeepsFilterAndUsesPendingSubsetIndex(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $completedMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('A completa');
+        $this->setEntityId($completedMeasure, 350);
+
+        $block = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('animals')
+            ->setName('Animales en el rodaje')
+            ->setHasScreeningQuestion(true)
+            ->setScreeningQuestion('¿Se va a rodar con animales?');
+        $this->setEntityId($block, 351);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setMeasureBlock($block)
+            ->setScore(5)
+            ->setName('B pendiente');
+        $this->setEntityId($currentMeasure, 352);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('C pendiente');
+        $this->setEntityId($nextMeasure, 353);
+
+        $completedPlanMeasure = (new PlanMeasure())
+            ->setMeasure($completedMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(false)
+            ->setWillImplement(true)
+            ->markAsManual();
+        $plan->addPlanMeasure($completedPlanMeasure);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(null)
+            ->setWillImplement(null)
+            ->markAsManual();
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'blockQuestion',
+            'value' => 'true',
+            'only_pending' => '1',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$completedMeasure, $currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $persistedEntities = [];
+        $entityManager = $this->createEntityManagerMockForBlockQuestion($persistedEntities);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=0', (string) $data['nextUrl']);
+        self::assertStringContainsString('only_pending=1', (string) $data['nextUrl']);
+    }
+
+    public function testBlockQuestionNoInOnlyPendingModeKeepsFilterAndUsesPendingSubsetIndex(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $completedMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('A completa');
+        $this->setEntityId($completedMeasure, 360);
+
+        $block = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('animals')
+            ->setName('Animales en el rodaje')
+            ->setHasScreeningQuestion(true)
+            ->setScreeningQuestion('¿Se va a rodar con animales?');
+        $this->setEntityId($block, 361);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setMeasureBlock($block)
+            ->setScore(5)
+            ->setName('B pendiente');
+        $this->setEntityId($currentMeasure, 362);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('C pendiente');
+        $this->setEntityId($nextMeasure, 363);
+
+        $completedPlanMeasure = (new PlanMeasure())
+            ->setMeasure($completedMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(false)
+            ->setWillImplement(true)
+            ->markAsManual();
+        $plan->addPlanMeasure($completedPlanMeasure);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(null)
+            ->setWillImplement(null)
+            ->markAsManual();
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'blockQuestion',
+            'value' => 'false',
+            'only_pending' => '1',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$completedMeasure, $currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $persistedEntities = [];
+        $entityManager = $this->createEntityManagerMockForBlockQuestion($persistedEntities);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=0', (string) $data['nextUrl']);
+        self::assertStringContainsString('only_pending=1', (string) $data['nextUrl']);
+    }
+
     public function testBlockQuestionNoSkipsBlockAndReturnsFirstVisibleMeasureAfterBlock(): void
     {
         $controller = $this->getController();
