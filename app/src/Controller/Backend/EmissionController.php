@@ -94,6 +94,7 @@ class EmissionController extends AbstractController
 
         // VM por categoría (estable por ID)
         $categoriesVM = []; // [id => ['id','name','records'=>[],'chart'=>[]]]
+        $allChart = [];
         foreach ($allCategories as $cat) {
             $categoriesVM[$cat->getId()] = [
                 'id'      => $cat->getId(),
@@ -111,6 +112,7 @@ class EmissionController extends AbstractController
 
             $categoriesVM[$catId]['records'][] = $record;
             $categoriesVM[$catId]['chart'][$actName] = ($categoriesVM[$catId]['chart'][$actName] ?? 0) + $record->getEmission();
+            $allChart[$actName] = ($allChart[$actName] ?? 0) + $record->getEmission();
         }
 
         // IDs canónicos por nombre ES base (no depende del listener)
@@ -119,16 +121,121 @@ class EmissionController extends AbstractController
         $tripsId     = $this->findCategoryIdByNameEs($em, 'Viajes');
 
         $selectedCategoryId = $request->query->getInt('categoryId', 0);
+        if ($selectedCategoryId > 0 && !isset($categoriesVM[$selectedCategoryId])) {
+            $selectedCategoryId = 0;
+        }
+
+        $selectedCategory = $selectedCategoryId > 0 ? $categoriesVM[$selectedCategoryId] : null;
+        $selectedCategoryName = $selectedCategory['name'] ?? $t->trans('backend.emission.index.all_categories');
+        $selectedCategoryRecordsAll = $selectedCategory['records'] ?? $records;
+        $selectedCategoryChartKey = $selectedCategory['name'] ?? 'all';
+        $selectedCategoryCount = count($selectedCategoryRecordsAll);
+        $selectedCategoryTotalEmission = array_reduce(
+            $selectedCategoryRecordsAll,
+            static fn (float $carry, EmissionRecord $record): float => $carry + (float) $record->getEmission(),
+            0.0
+        );
+
+        $perPage = 10;
+        $currentPage = max(1, $request->query->getInt('page', 1));
+        $totalPages = max(1, (int) ceil($selectedCategoryCount / $perPage));
+        $currentPage = min($currentPage, $totalPages);
+        $offset = ($currentPage - 1) * $perPage;
+        $selectedCategoryRecords = array_slice($selectedCategoryRecordsAll, $offset, $perPage);
+        $paginationQuery = $selectedCategoryId > 0 ? ['categoryId' => $selectedCategoryId] : [];
+
+        $allCategoryItem = [
+            'id' => 0,
+            'name' => $t->trans('backend.emission.index.all_categories'),
+            'count' => count($records),
+            'records' => $records,
+            'active' => $selectedCategoryId === 0,
+            'empty' => $records === [],
+            'url' => $this->generateUrl('backend_emission_index'),
+            'icon' => 'bi-grid-3x3-gap',
+        ];
+
+        $categoriesNavigation = [$allCategoryItem];
+        $nonEmptyCategories = [];
+        $emptyCategories = [];
+
+        foreach ($categoriesVM as $category) {
+            $recordCount = count($category['records']);
+            $item = [
+                'id' => $category['id'],
+                'name' => $category['name'],
+                'count' => $recordCount,
+                'records' => $category['records'],
+                'active' => $selectedCategoryId === $category['id'],
+                'empty' => $recordCount === 0,
+                'url' => $this->generateUrl('backend_emission_index', ['categoryId' => $category['id']]),
+                'icon' => 'bi-folder2-open',
+            ];
+
+            if ($item['empty']) {
+                $emptyCategories[] = $item;
+            } else {
+                $nonEmptyCategories[] = $item;
+            }
+        }
+
+        $categoriesNavigation = array_merge($categoriesNavigation, $nonEmptyCategories, $emptyCategories);
+
+        $newRecordUrl = $selectedCategoryId > 0
+            ? (
+                $selectedCategoryId === $energyId
+                    ? $this->generateUrl('backend_emission_new_energy', $currentPage > 1 ? ['page' => $currentPage] : [])
+                    : ($selectedCategoryId === $transportId || $selectedCategoryId === $tripsId
+                        ? $this->generateUrl(
+                            'backend_emission_new_transport',
+                            array_filter([
+                                'category' => $selectedCategoryId,
+                                'page' => $currentPage > 1 ? $currentPage : null,
+                            ], static fn ($value): bool => $value !== null)
+                        )
+                        : $this->generateUrl(
+                            'backend_emission_new',
+                            array_filter([
+                                'category' => $selectedCategoryId,
+                                'page' => $currentPage > 1 ? $currentPage : null,
+                            ], static fn ($value): bool => $value !== null)
+                        ))
+            )
+            : $this->generateUrl('backend_emission_landing');
 
         return $this->render('backend/emission/index.html.twig', [
             'project'             => $project,
-            'categoriesVM'        => array_values($categoriesVM),
-            'chartDataByCategory' => array_column($categoriesVM, 'chart', 'name'),
+            'categoriesNavigation' => $categoriesNavigation,
+            'chartDataByCategory' => array_merge(
+                array_column($categoriesVM, 'chart', 'name'),
+                ['all' => $allChart]
+            ),
             'energyId'            => $energyId,
             'transportId'         => $transportId,
             'tripsId'             => $tripsId,
-            'selectedCategoryId'  => $selectedCategoryId, // 👈
+            'selectedCategoryId'   => $selectedCategoryId,
+            'selectedCategoryName' => $selectedCategoryName,
+            'selectedCategoryCount'=> $selectedCategoryCount,
+            'selectedCategoryChartKey' => $selectedCategoryChartKey,
+            'selectedCategoryRecords' => $selectedCategoryRecords,
+            'selectedCategoryTotalEmission' => $selectedCategoryTotalEmission,
+            'currentPage'          => $currentPage,
+            'totalPages'           => $totalPages,
+            'paginationQuery'      => $paginationQuery,
+            'perPage'              => $perPage,
+            'newRecordUrl'         => $newRecordUrl,
+            'hasCategories'        => $categoriesVM !== [],
         ]);
+    }
+
+    private function buildEmissionIndexQuery(Request $request, ?int $categoryId = null): array
+    {
+        $query = $request->query->all();
+        if ($categoryId !== null) {
+            $query['categoryId'] = $categoryId;
+        }
+
+        return array_filter($query, static fn ($value): bool => $value !== null && $value !== '');
     }
 
     private function findCategoryIdByNameEs(EntityManagerInterface $em, string $nameEs): ?int
@@ -196,7 +303,7 @@ class EmissionController extends AbstractController
                 $this->addFlash('success', $t->trans('backend.emission.flash.created'));
 
                 $categoryId = $activity->getCategory()->getId();
-                return $this->redirectToRoute('backend_emission_index', ['categoryId' => $categoryId]);
+                return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
             }
         }
 
@@ -256,7 +363,7 @@ class EmissionController extends AbstractController
                 $this->addFlash('success', $t->trans('backend.emission.flash.updated'));
 
                 $categoryId = $activity->getCategory()->getId();
-                return $this->redirectToRoute('backend_emission_index', ['categoryId' => $categoryId]);
+                return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
             }
         }
 
@@ -332,7 +439,7 @@ class EmissionController extends AbstractController
                     $this->addFlash('success', $t->trans('backend.emission.flash.created'));
 
                     $categoryId = $activity->getCategory()->getId();
-                    return $this->redirectToRoute('backend_emission_index', ['categoryId' => $categoryId]);
+                    return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
                 }
             }
         }
@@ -404,7 +511,7 @@ class EmissionController extends AbstractController
                     $this->addFlash('success', $t->trans('backend.emission.flash.updated'));
 
                     $categoryId = $activity->getCategory()->getId();
-                    return $this->redirectToRoute('backend_emission_index', ['categoryId' => $categoryId]);
+                    return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
                 }
             }
         }
@@ -479,7 +586,7 @@ class EmissionController extends AbstractController
                 $this->addFlash('success', $t->trans('backend.emission.flash.created'));
 
                 $categoryId = $activity->getCategory()->getId();
-                return $this->redirectToRoute('backend_emission_index', ['categoryId' => $categoryId]);
+                return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
             }
         } elseif ($form->isSubmitted() && !$activity) {
             $this->addFlash('danger', $t->trans('backend.emission.errors.activity_required'));
@@ -548,7 +655,7 @@ class EmissionController extends AbstractController
                 $this->addFlash('success', $t->trans('backend.emission.flash.updated'));
 
                 $categoryId = $activity->getCategory()->getId();
-                return $this->redirectToRoute('backend_emission_index', ['categoryId' => $categoryId]);
+                return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
             }
         } elseif ($form->isSubmitted() && !$activity) {
             $this->addFlash('danger', $t->trans('backend.emission.errors.activity_required'));
@@ -642,10 +749,7 @@ class EmissionController extends AbstractController
             ]));
         }
 
-        return $this->redirectToRoute('backend_emission_index', [
-            'phase'    => $record->getPhase()?->getId(),
-            'category' => $category?->getName() ?? 'Alojamientos',
-        ]);
+        return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $category?->getId()));
     }
 
     #[Route('/by-subcategory', name: 'backend_emission_by_subcategory', methods: ['GET'])]

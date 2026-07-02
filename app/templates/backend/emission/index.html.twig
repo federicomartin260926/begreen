@@ -11,6 +11,7 @@
 {% endblock %}
 
 {% block body %}
+{% set currentQuery = app.request.query.all %}
 <div
     class="container-fluid px-0 backend-client-shell"
     data-controller="emission"
@@ -52,50 +53,62 @@
                 <i class="bi bi-file-earmark-pdf me-2"></i> {{ 'backend.emission.index.reports_btn'|trans }}
             </button>
 
-            {% if categoriesVM is empty %}
+            {% if not hasCategories %}
                 <div class="alert alert-info">{{ 'backend.emission.index.no_categories'|trans }}</div>
             {% else %}
-                <ul class="nav nav-tabs mb-3" id="categoryTabs" role="tablist">
-                    {% for cat in categoriesVM %}
-                        {% set isActive = (selectedCategoryId and cat.id == selectedCategoryId) or (not selectedCategoryId and loop.first) %}
-                        <li class="nav-item" role="presentation">
-                        <button
-                            class="nav-link {{ isActive ? 'active' : '' }}"
-                            id="tab-{{ loop.index }}"
-                            data-bs-toggle="tab"
-                            data-bs-target="#cat-{{ loop.index }}"
-                            data-category-id="{{ cat.id }}"
-                            type="button"
-                            role="tab">
-                            {{ cat.name }} <span class="badge bg-secondary">{{ cat.records|length }}</span>
-                        </button>
-                        </li>
-                    {% endfor %}
-                </ul>
-
-                <div class="tab-content">
-                    {% for cat in categoriesVM %}
-                        {% set isActive = (selectedCategoryId and cat.id == selectedCategoryId) or (not selectedCategoryId and loop.first) %}
-                        <div class="tab-pane fade {{ isActive ? 'show active' : '' }}" id="cat-{{ loop.index }}" role="tabpanel">
-                            <div class="d-flex justify-content-end mb-3">
-                                <a href="{{
-                                    cat.id == energyId
-                                    ? path('backend_emission_new_energy')
-                                    : (cat.id in [transportId, tripsId]
-                                        ? path('backend_emission_new_transport', {'category': cat.id})
-                                        : path('backend_emission_new', {'category': cat.id}))
-                                }}"
-                                class="btn btn-sm btn-success shadow-sm px-4 py-1 d-inline-flex align-items-center gap-1 text-decoration-none">
-                                <i class="bi bi-plus-circle-fill fs-5"></i>
-                                <span class="fw-semibold">{{ 'backend.emission.index.new_record'|trans }}</span>
-                                </a>
+                <div class="emissions-layout">
+                    <aside class="emissions-category-panel card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                                <h3 class="h6 mb-0">{{ 'backend.emission.index.categories_title'|trans }}</h3>
+                                <span class="badge text-bg-light border text-success-emphasis">
+                                    {{ selectedCategoryCount }}
+                                </span>
                             </div>
 
-                        {% if cat.records is empty %}
-                            <div class="alert alert-light">{{ 'backend.emission.index.no_records'|trans }}</div>
+                            <div class="emissions-category-list">
+                                {% for category in categoriesNavigation %}
+                                    <a
+                                        href="{{ category.url }}"
+                                        class="emissions-category-item {{ category.active ? 'emissions-category-item--active' : '' }} {{ category.empty ? 'emissions-category-item--empty' : '' }}"
+                                        aria-current="{{ category.active ? 'true' : 'false' }}"
+                                    >
+                                        <span class="emissions-category-item__label">
+                                            <i class="bi {{ category.icon }}"></i>
+                                            <span class="emissions-category-item__text">{{ category.name }}</span>
+                                        </span>
+                                        <span class="badge rounded-pill {{ category.active ? 'text-bg-success' : 'text-bg-secondary' }}">
+                                            {{ category.count }}
+                                        </span>
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </aside>
+
+                    <section class="emissions-records-panel">
+                        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
+                            <div>
+                                <h3 class="h5 mb-1">{{ selectedCategoryName }}</h3>
+                                <div class="text-muted small">
+                                    {{ 'backend.emission.index.records_count'|trans({'%count%': selectedCategoryCount}) }}
+                                </div>
+                            </div>
+
+                            <a
+                                href="{{ newRecordUrl }}"
+                                class="btn btn-sm btn-success shadow-sm px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none"
+                            >
+                                <i class="bi bi-plus-circle-fill fs-5"></i>
+                                <span class="fw-semibold">{{ 'backend.emission.index.new_record'|trans }}</span>
+                            </a>
+                        </div>
+
+                        {% if selectedCategoryRecords is empty %}
+                            <div class="alert alert-light mb-0">{{ 'backend.emission.index.no_records'|trans }}</div>
                         {% else %}
-                            <div class="table-responsive">
-                                <table class="table table-hover green_table_1 align-middle">
+                            <div class="table-responsive emissions-table-wrapper">
+                                <table class="table table-hover green_table_1 align-middle mb-0">
                                     <thead>
                                     <tr>
                                         <th>{{ 'backend.emission.index.th.activity'|trans }}</th>
@@ -108,75 +121,133 @@
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {% set total = 0 %}
-                                    {% for record in cat.records %}
-                                        {% set total = total + record.emission %}
-                                        <tr>
-                                        <td>
-                                            {{ record.activity.name }}
-                                            {% if record.activity.subcategory %}
-                                            <span class="text-muted">
-                                                ({{ ('backend.emission.subcat.' ~ record.activity.subcategory)|trans }})
-                                            </span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ project.getPhaseLabel(record.phase.phase)|trans }}</td>
-                                        <td>{{ record.activity.unit }}</td>
-                                        <td>{{ record.amount }}</td>
-                                        <td>{{ record.emission|number_format(2, ',', '.') }}</td>
-                                        <td>{{ record.registeredAt|date('d/m/Y') }}</td>
-                                        <td>
-                                            <a href="{{
-                                            cat.id == energyId
-                                                ? path('backend_emission_edit_energy', { id: record.id })
-                                                : (cat.id in [transportId, tripsId]
-                                                    ? path('backend_emission_edit_transport', { id: record.id })
-                                                    : path('backend_emission_edit', { id: record.id }))
-                                            }}"
-                                            data-bs-toggle="popover"
-                                            data-bs-trigger="hover"
-                                            data-bs-placement="right"
-                                            data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                            class="btn">
-                                            <i class="bi bi-pencil"></i>
-                                            </a>
+                                    {% for record in selectedCategoryRecords %}
+                                        <tr class="emissions-record-row">
+                                            <td>
+                                                {{ record.activity.name }}
+                                                {% if record.activity.subcategory %}
+                                                    <span class="text-muted">
+                                                        ({{ ('backend.emission.subcat.' ~ record.activity.subcategory)|trans }})
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ project.getPhaseLabel(record.phase.phase)|trans }}</td>
+                                            <td>{{ record.activity.unit }}</td>
+                                            <td>{{ record.amount }}</td>
+                                            <td>{{ record.emission|number_format(2, ',', '.') }}</td>
+                                            <td>{{ record.registeredAt|date('d/m/Y') }}</td>
+                                            <td class="text-nowrap">
+                                                <a
+                                                    href="{{
+                                                        record.activity.category.id == energyId
+                                                            ? path('backend_emission_edit_energy', { id: record.id }|merge(currentQuery))
+                                                            : (record.activity.category.id in [transportId, tripsId]
+                                                                ? path('backend_emission_edit_transport', { id: record.id }|merge(currentQuery))
+                                                                : path('backend_emission_edit', { id: record.id }|merge(currentQuery)))
+                                                    }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
 
-                                            <form
-                                            action="{{ path('backend_emission_delete', { id: record.id }) }}"
-                                            method="post"
-                                            data-bs-toggle="popover"
-                                            data-bs-trigger="hover"
-                                            data-bs-placement="right"
-                                            data-bs-content="{{ 'backend.common.delete'|trans }}"
-                                            class="d-inline"
-                                            onsubmit="return confirm('{{ 'backend.common.confirm_delete'|trans }}');">
-                                            <input type="hidden" name="categoryId" value="{{ cat.id }}">
-                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
-                                            <button class="btn"><i class="bi bi-trash"></i></button>
-                                            </form>
-                                        </td>
+                                                <form
+                                                    action="{{ path('backend_emission_delete', { id: record.id }|merge(currentQuery)) }}"
+                                                    method="post"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.common.delete'|trans }}"
+                                                    class="d-inline"
+                                                    onsubmit="return confirm('{{ 'backend.common.confirm_delete'|trans|e('js') }}');"
+                                                >
+                                                    <input type="hidden" name="categoryId" value="{{ record.activity.category.id }}">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
+                                                    <button class="btn btn-sm btn-outline-danger" type="submit">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
                                         </tr>
                                     {% endfor %}
                                     </tbody>
                                     <tfoot class="fw-bold">
                                     <tr>
                                         <td colspan="4">{{ 'backend.emission.index.total'|trans }}</td>
-                                        <td>{{ total|number_format(2, ',', '.') }}</td>
+                                        <td>{{ selectedCategoryTotalEmission|number_format(2, ',', '.') }}</td>
                                         <td colspan="2"></td>
                                     </tr>
                                     </tfoot>
                                 </table>
                             </div>
 
+                            {% if totalPages > 1 %}
+                                <nav class="d-flex justify-content-center mt-4 emissions-pagination" aria-label="{{ 'backend.pagination.title'|trans }}">
+                                    <ul class="pagination mb-0 flex-nowrap">
+                                        <li class="page-item {{ currentPage == 1 ? 'disabled' : '' }}">
+                                            <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': currentPage - 1})) }}" tabindex="-1">
+                                                &laquo; {{ 'backend.pagination.previous'|trans }}
+                                            </a>
+                                        </li>
+
+                                        {% set startPage = currentPage - 2 %}
+                                        {% set endPage = currentPage + 2 %}
+                                        {% if startPage < 1 %}
+                                            {% set endPage = endPage + (1 - startPage) %}
+                                            {% set startPage = 1 %}
+                                        {% endif %}
+                                        {% if endPage > totalPages %}
+                                            {% set startPage = startPage - (endPage - totalPages) %}
+                                            {% set endPage = totalPages %}
+                                            {% if startPage < 1 %}
+                                                {% set startPage = 1 %}
+                                            {% endif %}
+                                        {% endif %}
+
+                                        {% if startPage > 1 %}
+                                            <li class="page-item">
+                                                <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': 1})) }}">1</a>
+                                            </li>
+                                            {% if startPage > 2 %}
+                                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                                            {% endif %}
+                                        {% endif %}
+
+                                        {% for p in startPage..endPage %}
+                                            <li class="page-item {{ p == currentPage ? 'active' : '' }}">
+                                                <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': p})) }}">{{ p }}</a>
+                                            </li>
+                                        {% endfor %}
+
+                                        {% if endPage < totalPages %}
+                                            {% if endPage < totalPages - 1 %}
+                                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                                            {% endif %}
+                                            <li class="page-item">
+                                                <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': totalPages})) }}">{{ totalPages }}</a>
+                                            </li>
+                                        {% endif %}
+
+                                        <li class="page-item {{ currentPage == totalPages ? 'disabled' : '' }}">
+                                            <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': currentPage + 1})) }}">
+                                                {{ 'backend.pagination.next'|trans }} &raquo;
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            {% endif %}
+
                             <canvas
-                            data-emission-target="chart"
-                            data-chart-category="{{ cat.name }}"
-                            height="100"
-                            class="mt-4">
+                                data-emission-target="chart"
+                                data-chart-category="{{ selectedCategoryChartKey }}"
+                                height="100"
+                                class="mt-4 emissions-chart">
                             </canvas>
                         {% endif %}
-                        </div>
-                    {% endfor %}
+                    </section>
                 </div>
 
             {% endif %}

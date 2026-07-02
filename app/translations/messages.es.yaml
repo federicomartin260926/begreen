@@ -186,6 +186,7 @@ backend:
   breadcrumb:
     home: "Inicio"
   pagination:
+    title: "Paginación"
     previous: "Previo"
     next: "Siguiente"
   menu:
@@ -1285,9 +1286,12 @@ backend:
       breadcrumb: "Emisiones de CO₂"
       heading: "Emisiones de CO₂:"
       reports_btn: "Reportes PDF"
+      categories_title: "Categorías"
+      all_categories: "Todas"
+      records_count: "%count% registros"
       no_categories: "Aún no hay categorías definidas."
       new_record: "Nuevo registro"
-      no_records: "No hay registros para esta categoría."
+      no_records: "No hay registros para mostrar."
       th:
         activity: "Actividad"
         phase: "Fase"
