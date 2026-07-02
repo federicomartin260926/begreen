@@ -1114,18 +1114,10 @@ class PlanController extends AbstractController
                 $nextPendingIndex = $this->resolveNextPendingSubsetIndex($pendingItemsAfter, $currentPendingIndex);
 
                 if ($nextPendingIndex !== null) {
-                    $this->addFlash(
-                        'warning',
-                        $this->pendingMeasureFlashMessage((string) ($pendingItemsAfter[$nextPendingIndex]['reason'] ?? ''))
-                    );
                     $nextUrl = $this->buildMeasuresNavigationUrl($nextPendingIndex, true);
                 } elseif ($complete) {
                     $nextUrl = $this->generateUrl('backend_plan_done');
                 } elseif ($pendingItemsAfter !== []) {
-                    $this->addFlash(
-                        'warning',
-                        $this->pendingMeasureFlashMessage((string) ($pendingItemsAfter[0]['reason'] ?? ''))
-                    );
                     $nextUrl = $this->buildMeasuresNavigationUrl(0, true);
                 } else {
                     return new JsonResponse([

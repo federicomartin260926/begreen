@@ -274,7 +274,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=0', (string) $data['nextUrl']);
         self::assertStringContainsString('only_pending=1', (string) $data['nextUrl']);
-        self::assertSame(['backend.plan.flash.pending_critical_reason'], $request->getSession()->getFlashBag()->peek('warning'));
+        self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
     public function testUpdateSelectionDoesNotAppendOnlyPendingWhenFilterIsInactive(): void
@@ -801,6 +801,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=0', (string) $data['nextUrl']);
         self::assertStringContainsString('only_pending=1', (string) $data['nextUrl']);
+        self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
     public function testBlockQuestionNoInOnlyPendingModeKeepsFilterAndUsesPendingSubsetIndex(): void
@@ -904,6 +905,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=0', (string) $data['nextUrl']);
         self::assertStringContainsString('only_pending=1', (string) $data['nextUrl']);
+        self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
     public function testBlockQuestionNoSkipsBlockAndReturnsFirstVisibleMeasureAfterBlock(): void
