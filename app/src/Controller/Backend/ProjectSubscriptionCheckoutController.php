@@ -86,7 +86,13 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
             }
 
             if ($reconciliation->planBecameIncompleteAfterUpgrade()) {
-                return $this->redirectToRoute('backend_plan_measures', ['only_pending' => '1']);
+                $redirectParams = [];
+                $pendingIndex = $reconciliation->firstPendingVisibleMeasureIndex();
+                if ($pendingIndex !== null) {
+                    $redirectParams['i'] = $pendingIndex;
+                }
+
+                return $this->redirectToRoute('backend_plan_measures', $redirectParams);
             }
         } else {
             if ($subscription && $subscription->getStatus() === ProjectSubscription::STATUS_ACTIVE && $subscription->getTier() !== ProjectSubscription::TIER_BASIC) {

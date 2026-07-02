@@ -17,6 +17,7 @@ final class StripeCheckoutReconciliationResult
         public readonly string $status,
         public readonly ?ProjectSubscription $subscription = null,
         private readonly bool $planBecameIncompleteAfterUpgrade = false,
+        private readonly ?int $firstPendingVisibleMeasureIndex = null,
     ) {
     }
 
@@ -25,14 +26,32 @@ final class StripeCheckoutReconciliationResult
         return new self(self::STATUS_NOTHING_TO_CONFIRM);
     }
 
-    public static function confirmed(ProjectSubscription $subscription, bool $planBecameIncompleteAfterUpgrade = false): self
+    public static function confirmed(
+        ProjectSubscription $subscription,
+        bool $planBecameIncompleteAfterUpgrade = false,
+        ?int $firstPendingVisibleMeasureIndex = null
+    ): self
     {
-        return new self(self::STATUS_CONFIRMED, $subscription, $planBecameIncompleteAfterUpgrade);
+        return new self(
+            self::STATUS_CONFIRMED,
+            $subscription,
+            $planBecameIncompleteAfterUpgrade,
+            $firstPendingVisibleMeasureIndex
+        );
     }
 
-    public static function alreadyConfirmed(ProjectSubscription $subscription, bool $planBecameIncompleteAfterUpgrade = false): self
+    public static function alreadyConfirmed(
+        ProjectSubscription $subscription,
+        bool $planBecameIncompleteAfterUpgrade = false,
+        ?int $firstPendingVisibleMeasureIndex = null
+    ): self
     {
-        return new self(self::STATUS_ALREADY_CONFIRMED, $subscription, $planBecameIncompleteAfterUpgrade);
+        return new self(
+            self::STATUS_ALREADY_CONFIRMED,
+            $subscription,
+            $planBecameIncompleteAfterUpgrade,
+            $firstPendingVisibleMeasureIndex
+        );
     }
 
     public static function pending(ProjectSubscription $subscription): self
@@ -58,5 +77,10 @@ final class StripeCheckoutReconciliationResult
     public function planBecameIncompleteAfterUpgrade(): bool
     {
         return $this->planBecameIncompleteAfterUpgrade;
+    }
+
+    public function firstPendingVisibleMeasureIndex(): ?int
+    {
+        return $this->firstPendingVisibleMeasureIndex;
     }
 }

@@ -133,11 +133,18 @@ final class StripeProjectCheckoutService
             && $storedSessionId === $checkoutSessionId
         ) {
             $planBecameIncompleteAfterUpgrade = $this->syncPlanCompletionAndDetectIncomplete($project);
+            $firstPendingVisibleMeasureIndex = $planBecameIncompleteAfterUpgrade
+                ? $this->resolveFirstPendingVisibleMeasureIndex($project)
+                : null;
             $this->fillMissingStripeReferences($subscription, $session, $invoice);
             $this->upsertBillingDocument($subscription, $session, $invoice);
             $this->entityManager->flush();
 
-            return StripeCheckoutReconciliationResult::alreadyConfirmed($subscription, $planBecameIncompleteAfterUpgrade);
+            return StripeCheckoutReconciliationResult::alreadyConfirmed(
+                $subscription,
+                $planBecameIncompleteAfterUpgrade,
+                $firstPendingVisibleMeasureIndex
+            );
         }
 
         $paymentStatus = $this->normalizeString($session->payment_status ?? null) ?? 'unknown';
@@ -179,12 +186,19 @@ final class StripeProjectCheckoutService
             ->setTargetTier(null);
 
         $planBecameIncompleteAfterUpgrade = $this->syncPlanCompletionAndDetectIncomplete($project);
+        $firstPendingVisibleMeasureIndex = $planBecameIncompleteAfterUpgrade
+            ? $this->resolveFirstPendingVisibleMeasureIndex($project)
+            : null;
 
         $this->upsertBillingDocument($subscription, $session, $invoice);
 
         $this->entityManager->flush();
 
-        return StripeCheckoutReconciliationResult::confirmed($subscription, $planBecameIncompleteAfterUpgrade);
+        return StripeCheckoutReconciliationResult::confirmed(
+            $subscription,
+            $planBecameIncompleteAfterUpgrade,
+            $firstPendingVisibleMeasureIndex
+        );
     }
 
     public function canUpgrade(Project|string $projectOrTier, string $targetTier): bool
@@ -409,6 +423,22 @@ final class StripeProjectCheckoutService
         $this->planCompletionService->syncStatus($plan, $project);
 
         return $previousStatus === 'completo' && $plan->getStatus() === 'incompleto';
+    }
+
+    private function resolveFirstPendingVisibleMeasureIndex(Project $project): ?int
+    {
+        $plan = $this->planRepository->findOneBy(['project' => $project]);
+        if (!$plan instanceof Plan) {
+            return null;
+        }
+
+        $pendingMeasure = $this->planCompletionService->findFirstPendingVisibleMeasure($plan, $project);
+        if (!is_array($pendingMeasure)) {
+            return null;
+        }
+
+        $index = $pendingMeasure['index'] ?? null;
+        return is_int($index) ? $index : null;
     }
 
     private function fillMissingStripeReferences(ProjectSubscription $subscription, object $session, array|object|null $invoice = null): void

@@ -83,7 +83,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         self::assertSame('pi_success_1', $project->getSubscription()?->getStripePaymentIntentId());
     }
 
-    public function testSuccessRouteRedirectsToOnlyPendingWhenUpgradeBreaksCompleteness(): void
+    public function testSuccessRouteRedirectsToFirstPendingMeasureWhenUpgradeBreaksCompleteness(): void
     {
         self::bootKernel();
         $container = self::getContainer();
@@ -122,7 +122,8 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
 
         self::assertInstanceOf(RedirectResponse::class, $response);
         self::assertStringContainsString('/backend/plan/measures', $response->getTargetUrl());
-        self::assertStringContainsString('only_pending=1', $response->getTargetUrl());
+        self::assertStringContainsString('i=1', $response->getTargetUrl());
+        self::assertStringNotContainsString('only_pending=1', $response->getTargetUrl());
     }
 
     public function testConfirmPendingRouteUsesStoredSessionId(): void

@@ -118,18 +118,6 @@
                 } %}
             {% endif %}
 
-            {% if onlyPendingMode %}
-                <div class="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
-                    <div>
-                        {{ 'backend.plan.measures.only_pending_notice'|trans }}
-                    </div>
-                    <a class="btn btn-sm btn-outline-secondary"
-                       href="{{ path('backend_plan_measures', clearOnlyPendingQuery) }}">
-                        {{ 'backend.plan.measures.only_pending_show_all'|trans }}
-                    </a>
-                </div>
-            {% endif %}
-
             {# ---- CONTENIDO PRINCIPAL ---- #}
             {% if planComplete %}
                 {# Mostrar formulario de medidas personalizadas y Finalizar #}
@@ -137,7 +125,7 @@
                     <h4 class="mb-3">{{ 'backend.plan.complete.title'|trans }}</h4>
                     <p class="text-muted">{{ 'backend.plan.complete.help'|trans }}</p>
 
-                    <form action="{{ path('backend_plan_measures', app.request.query.all) }}" method="post" class="d-grid gap-3">
+                    <form action="{{ path('backend_plan_measures', navigationQuery) }}" method="post" class="d-grid gap-3">
                         {% if projectTier == 'pro' %}
                             <div>
                                 <textarea

@@ -51,26 +51,15 @@ export default class extends Controller {
         }
 
         try {
-            const onlyPendingMode = new URLSearchParams(window.location.search).get('only_pending') === '1';
             let lastResponse = null;
             for (const update of updates) {
-                const payload = new URLSearchParams({
-                    measureId: String(measureId),
-                    field: String(update.field),
-                    value: String(update.value),
-                });
-
-                if (onlyPendingMode) {
-                    payload.set('only_pending', '1');
-                }
-
                 const res = await fetch('/index.php/backend/plan/update-selection', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: payload.toString()
+                    body: `measureId=${encodeURIComponent(measureId)}&field=${encodeURIComponent(update.field)}&value=${encodeURIComponent(update.value)}`
                 });
 
                 const data = await res.json().catch(() => ({}));
