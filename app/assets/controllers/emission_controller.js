@@ -200,6 +200,7 @@ export default class extends Controller {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             layout: {
                 padding: { top: 0 }
             },

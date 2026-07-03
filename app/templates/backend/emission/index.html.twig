@@ -70,7 +70,7 @@
                                 {% for category in categoriesNavigation %}
                                     <a
                                         href="{{ category.url }}"
-                                        class="emissions-category-item {{ category.active ? 'emissions-category-item--active' : '' }} {{ category.empty ? 'emissions-category-item--empty' : '' }}"
+                                        class="emissions-category-item {{ category.active ? 'emissions-category-item--active' : '' }} {{ hasAnyEmissionRecords and category.empty ? 'emissions-category-item--empty' : '' }}"
                                         aria-current="{{ category.active ? 'true' : 'false' }}"
                                     >
                                         <span class="emissions-category-item__label">
@@ -87,7 +87,7 @@
                     </aside>
 
                     <section class="emissions-records-panel">
-                        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
+                        <div class="emissions-records-header d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
                             <div>
                                 <h3 class="h5 mb-1">{{ selectedCategoryName }}</h3>
                                 <div class="text-muted small">
@@ -97,7 +97,7 @@
 
                             <a
                                 href="{{ newRecordUrl }}"
-                                class="btn btn-sm btn-success shadow-sm px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none"
+                                class="btn btn-sm btn-success shadow-sm px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none emissions-new-record-btn"
                             >
                                 <i class="bi bi-plus-circle-fill fs-5"></i>
                                 <span class="fw-semibold">{{ 'backend.emission.index.new_record'|trans }}</span>
@@ -188,8 +188,14 @@
                                 <nav class="d-flex justify-content-center mt-4 emissions-pagination" aria-label="{{ 'backend.pagination.title'|trans }}">
                                     <ul class="pagination mb-0 flex-nowrap">
                                         <li class="page-item {{ currentPage == 1 ? 'disabled' : '' }}">
-                                            <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': currentPage - 1})) }}" tabindex="-1">
-                                                &laquo; {{ 'backend.pagination.previous'|trans }}
+                                            <a
+                                                class="page-link text-decoration-none"
+                                                href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': currentPage - 1})) }}"
+                                                tabindex="-1"
+                                                aria-label="{{ 'backend.pagination.previous'|trans }}"
+                                            >
+                                                <span class="pagination-label pagination-label--desktop">&laquo; {{ 'backend.pagination.previous'|trans }}</span>
+                                                <span class="pagination-label pagination-label--mobile" aria-hidden="true">‹</span>
                                             </a>
                                         </li>
 
@@ -232,20 +238,26 @@
                                         {% endif %}
 
                                         <li class="page-item {{ currentPage == totalPages ? 'disabled' : '' }}">
-                                            <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': currentPage + 1})) }}">
-                                                {{ 'backend.pagination.next'|trans }} &raquo;
+                                            <a
+                                                class="page-link text-decoration-none"
+                                                href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': currentPage + 1})) }}"
+                                                aria-label="{{ 'backend.pagination.next'|trans }}"
+                                            >
+                                                <span class="pagination-label pagination-label--desktop">{{ 'backend.pagination.next'|trans }} &raquo;</span>
+                                                <span class="pagination-label pagination-label--mobile" aria-hidden="true">›</span>
                                             </a>
                                         </li>
                                     </ul>
                                 </nav>
                             {% endif %}
 
-                            <canvas
-                                data-emission-target="chart"
-                                data-chart-category="{{ selectedCategoryChartKey }}"
-                                height="100"
-                                class="mt-4 emissions-chart">
-                            </canvas>
+                            <div class="emissions-chart-wrapper mt-4">
+                                <canvas
+                                    data-emission-target="chart"
+                                    data-chart-category="{{ selectedCategoryChartKey }}"
+                                    class="emissions-chart">
+                                </canvas>
+                            </div>
                         {% endif %}
                     </section>
                 </div>

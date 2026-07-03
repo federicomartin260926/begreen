@@ -1278,7 +1278,6 @@ backend:
       heading: "CO₂ emissions:"
       reports_btn: "PDF reports"
       categories_title: "Categories"
-      all_categories: "All"
       records_count: "%count% records"
       no_categories: "No categories defined yet."
       new_record: "New record"

@@ -29,17 +29,8 @@ final class EmissionControllerTest extends KernelTestCase
 
         $response = $this->renderIndex($payload['project'], $payload['records'], $payload['categories'], []);
 
-        self::assertSame(200, $response->getStatusCode());
-        $content = (string) $response->getContent();
-
-        self::assertStringContainsString('emissions-layout', $content);
-        self::assertStringContainsString('emissions-category-panel', $content);
-        self::assertStringContainsString('emissions-records-panel', $content);
-        self::assertStringContainsString('data-chart-category="all"', $content);
-        self::assertStringContainsString('emissions-pagination', $content);
-        self::assertSame(10, substr_count($content, 'emissions-record-row'));
-        self::assertStringContainsString('54,60', $content);
-        self::assertStringContainsString('page=2', $content);
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/backend/emission/records?categoryId=1', $response->headers->get('Location'));
     }
 
     public function testIndexKeepsCategoryPagingAndFullCategoryTotal(): void
@@ -59,6 +50,30 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('27,60', $content);
         self::assertStringContainsString('/backend/emission/new-energy?page=2', $content);
         self::assertStringContainsString('categoryId=1', $content);
+        self::assertStringContainsString('data-emission-target="chart"', $content);
+        self::assertStringContainsString('data-chart-category="Energía"', $content);
+        self::assertStringContainsString('emissions-chart', $content);
+        self::assertStringNotContainsString('Todas', $content);
+    }
+
+    public function testIndexShowsCategoriesNormallyWhenThereAreNoRecords(): void
+    {
+        $payload = $this->buildPayload();
+
+        $response = $this->renderIndex($payload['project'], [], $payload['categories'], [
+            'categoryId' => 1,
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        $content = (string) $response->getContent();
+
+        self::assertStringContainsString('emissions-category-panel', $content);
+        self::assertStringContainsString('Energía', $content);
+        self::assertStringContainsString('Transporte', $content);
+        self::assertStringContainsString('Residuos', $content);
+        self::assertStringContainsString('Agua', $content);
+        self::assertStringNotContainsString('emissions-category-item--empty', $content);
+        self::assertStringNotContainsString('Todas', $content);
     }
 
     private function renderIndex(Project $project, array $records, array $categories, array $query): \Symfony\Component\HttpFoundation\Response
@@ -106,9 +121,11 @@ final class EmissionControllerTest extends KernelTestCase
         $energy = (new Category())->setName('Energía');
         $transport = (new Category())->setName('Transporte');
         $empty = (new Category())->setName('Residuos');
+        $generic = (new Category())->setName('Agua');
         $this->setEntityId($energy, 1);
         $this->setEntityId($transport, 2);
         $this->setEntityId($empty, 3);
+        $this->setEntityId($generic, 4);
 
         $energyActivity = (new EmissionActivity())
             ->setName('Electricidad')
@@ -158,7 +175,7 @@ final class EmissionControllerTest extends KernelTestCase
 
         return [
             'project' => $project,
-            'categories' => [$energy, $transport, $empty],
+            'categories' => [$energy, $transport, $empty, $generic],
             'records' => $records,
         ];
     }

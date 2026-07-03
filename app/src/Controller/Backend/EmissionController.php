@@ -91,44 +91,54 @@ class EmissionController extends AbstractController
 
         $records = $recordRepository->findByProjectOrderByPhaseAndDate($project);
         $allCategories = $categoryRepository->findAll();
-
-        // VM por categoría (estable por ID)
-        $categoriesVM = []; // [id => ['id','name','records'=>[],'chart'=>[]]]
-        $allChart = [];
-        foreach ($allCategories as $cat) {
-            $categoriesVM[$cat->getId()] = [
-                'id'      => $cat->getId(),
-                'name'    => $cat->getName(), // ya sale traducido según listener/UI
-                'records' => [],
-                'chart'   => [],
-            ];
-        }
-
-        foreach ($records as $record) {
-            $activity = $record->getActivity();
-            $cat      = $activity->getCategory();
-            $catId    = $cat->getId();
-            $actName  = $activity->getName();
-
-            $categoriesVM[$catId]['records'][] = $record;
-            $categoriesVM[$catId]['chart'][$actName] = ($categoriesVM[$catId]['chart'][$actName] ?? 0) + $record->getEmission();
-            $allChart[$actName] = ($allChart[$actName] ?? 0) + $record->getEmission();
-        }
+        $categoryData = $this->buildEmissionCategoryData($records, $allCategories, $em);
+        $categoriesVM = $categoryData['categoriesVM'];
+        $allChart = $categoryData['allChart'];
+        $categoriesNavigation = $categoryData['categoriesNavigation'];
+        $hasAnyEmissionRecords = $records !== [];
 
         // IDs canónicos por nombre ES base (no depende del listener)
-        $energyId    = $this->findCategoryIdByNameEs($em, 'Energía');
-        $transportId = $this->findCategoryIdByNameEs($em, 'Transporte');
-        $tripsId     = $this->findCategoryIdByNameEs($em, 'Viajes');
+        $energyId    = $categoryData['energyId'];
+        $transportId = $categoryData['transportId'];
+        $tripsId     = $categoryData['tripsId'];
 
-        $selectedCategoryId = $request->query->getInt('categoryId', 0);
-        if ($selectedCategoryId > 0 && !isset($categoriesVM[$selectedCategoryId])) {
-            $selectedCategoryId = 0;
+        if ($categoriesNavigation === []) {
+            return $this->render('backend/emission/index.html.twig', [
+                'project'             => $project,
+                'categoriesNavigation' => [],
+                'chartDataByCategory' => ['all' => $allChart],
+                'energyId'            => $energyId,
+                'transportId'         => $transportId,
+                'tripsId'             => $tripsId,
+                'selectedCategoryId'   => 0,
+                'selectedCategoryName' => '',
+                'selectedCategoryCount'=> 0,
+                'selectedCategoryChartKey' => 'all',
+                'selectedCategoryRecords' => [],
+                'selectedCategoryTotalEmission' => 0.0,
+                'currentPage'          => 1,
+                'totalPages'           => 1,
+                'paginationQuery'      => [],
+                'perPage'              => 10,
+                'newRecordUrl'         => '#',
+                'hasCategories'        => false,
+                'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
+            ]);
         }
 
-        $selectedCategory = $selectedCategoryId > 0 ? $categoriesVM[$selectedCategoryId] : null;
-        $selectedCategoryName = $selectedCategory['name'] ?? $t->trans('backend.emission.index.all_categories');
-        $selectedCategoryRecordsAll = $selectedCategory['records'] ?? $records;
-        $selectedCategoryChartKey = $selectedCategory['name'] ?? 'all';
+        $selectedCategoryId = $request->query->getInt('categoryId', 0);
+        if ($selectedCategoryId <= 0 || !isset($categoriesVM[$selectedCategoryId])) {
+            $defaultCategory = $categoriesNavigation[0];
+
+            return $this->redirectToRoute('backend_emission_index', [
+                'categoryId' => $defaultCategory['id'],
+            ]);
+        }
+
+        $selectedCategory = $categoriesVM[$selectedCategoryId];
+        $selectedCategoryName = $selectedCategory['name'];
+        $selectedCategoryRecordsAll = $selectedCategory['records'];
+        $selectedCategoryChartKey = $selectedCategory['name'];
         $selectedCategoryCount = count($selectedCategoryRecordsAll);
         $selectedCategoryTotalEmission = array_reduce(
             $selectedCategoryRecordsAll,
@@ -142,66 +152,14 @@ class EmissionController extends AbstractController
         $currentPage = min($currentPage, $totalPages);
         $offset = ($currentPage - 1) * $perPage;
         $selectedCategoryRecords = array_slice($selectedCategoryRecordsAll, $offset, $perPage);
-        $paginationQuery = $selectedCategoryId > 0 ? ['categoryId' => $selectedCategoryId] : [];
+        $paginationQuery = ['categoryId' => $selectedCategoryId];
 
-        $allCategoryItem = [
-            'id' => 0,
-            'name' => $t->trans('backend.emission.index.all_categories'),
-            'count' => count($records),
-            'records' => $records,
-            'active' => $selectedCategoryId === 0,
-            'empty' => $records === [],
-            'url' => $this->generateUrl('backend_emission_index'),
-            'icon' => 'bi-grid-3x3-gap',
-        ];
-
-        $categoriesNavigation = [$allCategoryItem];
-        $nonEmptyCategories = [];
-        $emptyCategories = [];
-
-        foreach ($categoriesVM as $category) {
-            $recordCount = count($category['records']);
-            $item = [
-                'id' => $category['id'],
-                'name' => $category['name'],
-                'count' => $recordCount,
-                'records' => $category['records'],
-                'active' => $selectedCategoryId === $category['id'],
-                'empty' => $recordCount === 0,
-                'url' => $this->generateUrl('backend_emission_index', ['categoryId' => $category['id']]),
-                'icon' => 'bi-folder2-open',
-            ];
-
-            if ($item['empty']) {
-                $emptyCategories[] = $item;
-            } else {
-                $nonEmptyCategories[] = $item;
-            }
+        foreach ($categoriesNavigation as &$category) {
+            $category['active'] = $category['id'] === $selectedCategoryId;
         }
+        unset($category);
 
-        $categoriesNavigation = array_merge($categoriesNavigation, $nonEmptyCategories, $emptyCategories);
-
-        $newRecordUrl = $selectedCategoryId > 0
-            ? (
-                $selectedCategoryId === $energyId
-                    ? $this->generateUrl('backend_emission_new_energy', $currentPage > 1 ? ['page' => $currentPage] : [])
-                    : ($selectedCategoryId === $transportId || $selectedCategoryId === $tripsId
-                        ? $this->generateUrl(
-                            'backend_emission_new_transport',
-                            array_filter([
-                                'category' => $selectedCategoryId,
-                                'page' => $currentPage > 1 ? $currentPage : null,
-                            ], static fn ($value): bool => $value !== null)
-                        )
-                        : $this->generateUrl(
-                            'backend_emission_new',
-                            array_filter([
-                                'category' => $selectedCategoryId,
-                                'page' => $currentPage > 1 ? $currentPage : null,
-                            ], static fn ($value): bool => $value !== null)
-                        ))
-            )
-            : $this->generateUrl('backend_emission_landing');
+        $newRecordUrl = $this->buildEmissionCreateUrl($selectedCategoryId, $energyId, $transportId, $tripsId, $currentPage > 1 ? $currentPage : null);
 
         return $this->render('backend/emission/index.html.twig', [
             'project'             => $project,
@@ -225,6 +183,7 @@ class EmissionController extends AbstractController
             'perPage'              => $perPage,
             'newRecordUrl'         => $newRecordUrl,
             'hasCategories'        => $categoriesVM !== [],
+            'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
         ]);
     }
 
@@ -236,6 +195,111 @@ class EmissionController extends AbstractController
         }
 
         return array_filter($query, static fn ($value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * @param array<int, EmissionRecord> $records
+     * @param array<int, Category> $allCategories
+     *
+     * @return array{
+     *     categoriesVM: array<int, array{id:int,name:string,records:array<int, EmissionRecord>,chart:array<string, float>}>,
+     *     categoriesNavigation: array<int, array{id:int,name:string,count:int,records:array<int, EmissionRecord>,active:bool,empty:bool,url:string,createUrl:?string,icon:string}>,
+     *     allChart: array<string, float>,
+     *     energyId: ?int,
+     *     transportId: ?int,
+     *     tripsId: ?int
+     * }
+     */
+    private function buildEmissionCategoryData(array $records, array $allCategories, EntityManagerInterface $em): array
+    {
+        $categoriesVM = [];
+        $allChart = [];
+
+        foreach ($allCategories as $cat) {
+            $categoriesVM[$cat->getId()] = [
+                'id'      => $cat->getId(),
+                'name'    => $cat->getName(),
+                'records' => [],
+                'chart'   => [],
+            ];
+        }
+
+        foreach ($records as $record) {
+            $activity = $record->getActivity();
+            if (!$activity || !$activity->getCategory()) {
+                continue;
+            }
+
+            $cat      = $activity->getCategory();
+            $catId    = $cat->getId();
+            $actName  = $activity->getName();
+
+            if (!isset($categoriesVM[$catId])) {
+                continue;
+            }
+
+            $categoriesVM[$catId]['records'][] = $record;
+            $categoriesVM[$catId]['chart'][$actName] = ($categoriesVM[$catId]['chart'][$actName] ?? 0) + $record->getEmission();
+            $allChart[$actName] = ($allChart[$actName] ?? 0) + $record->getEmission();
+        }
+
+        $energyId    = $this->findCategoryIdByNameEs($em, 'Energía');
+        $transportId = $this->findCategoryIdByNameEs($em, 'Transporte');
+        $tripsId     = $this->findCategoryIdByNameEs($em, 'Viajes');
+
+        $nonEmptyCategories = [];
+        $emptyCategories = [];
+        foreach ($categoriesVM as $category) {
+            $recordCount = count($category['records']);
+            $item = [
+                'id' => $category['id'],
+                'name' => $category['name'],
+                'count' => $recordCount,
+                'records' => $category['records'],
+                'active' => false,
+                'empty' => $recordCount === 0,
+                'url' => $this->generateUrl('backend_emission_index', ['categoryId' => $category['id']]),
+                'createUrl' => $this->buildEmissionCreateUrl($category['id'], $energyId, $transportId, $tripsId),
+                'icon' => 'bi-folder2-open',
+            ];
+
+            if ($item['empty']) {
+                $emptyCategories[] = $item;
+            } else {
+                $nonEmptyCategories[] = $item;
+            }
+        }
+
+        return [
+            'categoriesVM' => $categoriesVM,
+            'categoriesNavigation' => array_merge($nonEmptyCategories, $emptyCategories),
+            'allChart' => $allChart,
+            'energyId' => $energyId,
+            'transportId' => $transportId,
+            'tripsId' => $tripsId,
+        ];
+    }
+
+    private function buildEmissionCreateUrl(
+        int $categoryId,
+        ?int $energyId,
+        ?int $transportId,
+        ?int $tripsId,
+        ?int $page = null
+    ): string {
+        $params = array_filter([
+            'page' => $page,
+        ], static fn ($value): bool => $value !== null);
+
+        if ($energyId !== null && $categoryId === $energyId) {
+            return $this->generateUrl('backend_emission_new_energy', $params);
+        }
+
+        if (($transportId !== null && $categoryId === $transportId) || ($tripsId !== null && $categoryId === $tripsId)) {
+            return $this->generateUrl('backend_emission_new_transport', $params + ['category' => $categoryId]);
+        }
+
+        return $this->generateUrl('backend_emission_new', $params + ['category' => $categoryId]);
     }
 
     private function findCategoryIdByNameEs(EntityManagerInterface $em, string $nameEs): ?int

@@ -230,6 +230,9 @@ $dark: #212121;
     display: flex;
     align-items: flex-start;
     gap: 1.25rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .emissions-category-panel {
@@ -242,6 +245,9 @@ $dark: #212121;
 .emissions-records-panel {
     flex: 1 1 auto;
     min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .emissions-category-list {
@@ -311,6 +317,46 @@ $dark: #212121;
 .emissions-table-wrapper {
     border-radius: 1rem;
     background: #fff;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.emissions-table-wrapper table {
+    min-width: 720px;
+}
+
+.emissions-select-card {
+    border-radius: 1rem;
+}
+
+.emissions-select-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: .9rem;
+    background: rgba(0, 110, 86, .08);
+    color: #006e56;
+    font-size: 1.15rem;
+    flex: 0 0 auto;
+}
+
+.emissions-chart-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    height: 532px;
+    min-height: 420px;
+}
+
+.emissions-chart {
+    display: block;
+    width: 100% !important;
+    max-width: 100%;
+    height: 100% !important;
 }
 
 .emissions-pagination .page-link {
@@ -328,6 +374,10 @@ $dark: #212121;
     color: rgba(0, 110, 86, .45);
 }
 
+.pagination-label--mobile {
+    display: none;
+}
+
 @media (max-width: 991.98px) {
     .emissions-layout {
         flex-direction: column;
@@ -337,6 +387,124 @@ $dark: #212121;
         flex: 1 1 auto;
         max-width: none;
         width: 100%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .backend-main {
+        padding: 1rem !important;
+        overflow-x: clip;
+    }
+
+    .backend-client-shell,
+    .backend-client-content {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .emissions-layout {
+        gap: .75rem;
+    }
+
+    .emissions-category-panel {
+        padding-inline: .25rem;
+    }
+
+    .emissions-category-panel .card-body {
+        padding: .75rem;
+    }
+
+    .emissions-category-list {
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: .25rem;
+        gap: .5rem;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .emissions-category-item {
+        flex: 0 0 auto;
+        min-width: 9rem;
+        max-width: 13rem;
+        white-space: nowrap;
+        padding: .7rem .8rem;
+    }
+
+    .emissions-category-item__text {
+        -webkit-line-clamp: 1;
+    }
+
+    .emissions-records-header {
+        align-items: stretch !important;
+    }
+
+    .emissions-new-record-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .emissions-table-wrapper {
+        margin-inline: -0.25rem;
+        border-radius: .75rem;
+    }
+
+    .emissions-pagination {
+        flex-wrap: wrap;
+    }
+
+    .emissions-pagination .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: .25rem;
+    }
+
+    .emissions-pagination .page-link {
+        padding-inline: .7rem;
+    }
+
+    .emissions-chart-wrapper {
+        height: 340px;
+        min-height: 320px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .emissions-pagination {
+        justify-content: center;
+    }
+
+    .emissions-pagination .pagination {
+        flex-wrap: nowrap;
+        gap: .2rem;
+        max-width: 100%;
+    }
+
+    .emissions-pagination .page-link {
+        min-width: 2rem;
+        padding: .35rem .5rem;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .pagination-label--desktop {
+        display: none;
+    }
+
+    .pagination-label--mobile {
+        display: inline;
+    }
+
+    .emissions-category-item {
+        min-width: 8.5rem;
+        max-width: 11rem;
+    }
+
+    .emissions-chart-wrapper {
+        height: 320px;
+        min-height: 280px;
     }
 }
 
