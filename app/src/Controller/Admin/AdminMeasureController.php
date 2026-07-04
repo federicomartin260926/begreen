@@ -68,7 +68,7 @@ class AdminMeasureController extends AbstractController
         $measure = new Measure();
 
         $locales = ['en']; // añade más si procede
-        $fields  = ['name','nameReview','description','implementation','departmentActionText'];
+        $fields  = ['name','nameReview','questionText','description','implementation','departmentActionText'];
 
         $form = $this->createForm(MeasureType::class, $measure, [
             'locales'             => array_merge(['es'], $locales),
@@ -153,7 +153,7 @@ class AdminMeasureController extends AbstractController
         }
 
         $locales = ['en']; // añade más si procede
-        $fields  = ['name','nameReview','description','implementation','departmentActionText'];
+        $fields  = ['name','nameReview','questionText','description','implementation','departmentActionText'];
 
         /** @var \Gedmo\Translatable\Entity\Repository\TranslationRepository $tr */
         $tr = $em->getRepository(Translation::class);

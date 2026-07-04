@@ -181,12 +181,14 @@ final class MeasureTemplateImporter
 
         $name = trim((string) ($rowData['name'] ?? ''));
         $nameReview = trim((string) ($rowData['nameReview'] ?? '')) ?: null;
+        $questionText = trim((string) ($rowData['questionText'] ?? '')) ?: null;
         $description = trim((string) ($rowData['description'] ?? '')) ?: null;
         $implementation = trim((string) ($rowData['implementation'] ?? '')) ?: null;
         $score = (int) ($rowData['score'] ?? 0);
         $mandatory = $this->parseMandatory((string) ($rowData['mandatory'] ?? ''));
         $nameEn = trim((string) ($rowData['nameEn'] ?? '')) ?: null;
         $nameReviewEn = trim((string) ($rowData['nameReviewEn'] ?? '')) ?: null;
+        $questionTextEn = trim((string) ($rowData['questionTextEn'] ?? '')) ?: null;
         $descriptionEn = trim((string) ($rowData['descriptionEn'] ?? '')) ?: null;
         $implementationEn = trim((string) ($rowData['implementationEn'] ?? '')) ?: null;
         $verificationSourcesEn = trim((string) ($rowData['verificationSourcesEn'] ?? '')) ?: null;
@@ -211,6 +213,7 @@ final class MeasureTemplateImporter
             ->setProtocol($protocol)
             ->setName($name)
             ->setNameReview($nameReview)
+            ->setQuestionText($questionText)
             ->setDescription($description)
             ->setImplementation($implementation)
             ->setCategory($category)
@@ -231,6 +234,7 @@ final class MeasureTemplateImporter
                 'categoryGhg' => $categoryGhg?->getName(),
                 'name' => $name,
                 'nameReview' => $nameReview,
+                'questionText' => $questionText,
                 'description' => $description,
                 'implementation' => $implementation,
                 'score' => $score,
@@ -244,6 +248,7 @@ final class MeasureTemplateImporter
                 'verificationSources' => array_map(static fn (array $item): string => sprintf('%d:%s', $item['priority'], $item['source']->getCode()), $verificationSources),
                 'nameEn' => $nameEn,
                 'nameReviewEn' => $nameReviewEn,
+                'questionTextEn' => $questionTextEn,
                 'descriptionEn' => $descriptionEn,
                 'implementationEn' => $implementationEn,
                 'verificationSourcesEn' => $verificationSourcesEn,
@@ -287,6 +292,7 @@ final class MeasureTemplateImporter
             $measure,
             $nameEn,
             $nameReviewEn,
+            $questionTextEn,
             $descriptionEn,
             $implementationEn,
             $verificationSourcesEn,
@@ -717,6 +723,7 @@ final class MeasureTemplateImporter
         Measure $measure,
         ?string $nameEn,
         ?string $nameReviewEn,
+        ?string $questionTextEn,
         ?string $descriptionEn,
         ?string $implementationEn,
         ?string $verificationSourcesEn,
@@ -728,6 +735,7 @@ final class MeasureTemplateImporter
         $translations = [
             'name' => $nameEn,
             'nameReview' => $nameReviewEn,
+            'questionText' => $questionTextEn,
             'description' => $descriptionEn,
             'implementation' => $implementationEn,
             'verificationSources' => $verificationSourcesEn,

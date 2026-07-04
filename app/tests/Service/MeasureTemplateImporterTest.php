@@ -217,6 +217,7 @@ final class MeasureTemplateImporterTest extends TestCase
             'categoryGhg' => 'Emisiones indirectas de GEI debido al transporte',
             'name' => 'Reducir consumo de combustible',
             'nameReview' => 'Se redujo el consumo de combustible',
+            'questionText' => '¿Realizarás un inventario?',
             'description' => 'Descripción Peach',
             'implementation' => 'Impl Peach',
             'score' => 5,
@@ -234,6 +235,7 @@ final class MeasureTemplateImporterTest extends TestCase
             ],
             'nameEn' => '',
             'nameReviewEn' => '',
+            'questionTextEn' => '',
             'descriptionEn' => '',
             'implementationEn' => '',
             'verificationSourcesEn' => '',
@@ -247,6 +249,7 @@ final class MeasureTemplateImporterTest extends TestCase
             'categoryGhg' => 'Emisiones indirectas de GEI debido al transporte',
             'name' => 'Reducir consumo energético',
             'nameReview' => 'Se redujo el consumo energético',
+            'questionText' => '¿Registrarás el consumo?',
             'description' => 'Descripción Green Film',
             'implementation' => 'Impl Green',
             'score' => 4,
@@ -264,6 +267,7 @@ final class MeasureTemplateImporterTest extends TestCase
             ],
             'nameEn' => '',
             'nameReviewEn' => '',
+            'questionTextEn' => '',
             'descriptionEn' => '',
             'implementationEn' => '',
             'verificationSourcesEn' => '',
@@ -282,6 +286,7 @@ final class MeasureTemplateImporterTest extends TestCase
         self::assertCount(2, $persistedMeasures[0]->getResolvedTripleBalanceAxes());
         self::assertCount(3, $persistedMeasures[0]->getResolvedVerificationSourceLinks());
         self::assertSame(1, $persistedMeasures[0]->getResolvedVerificationSourceLinks()[0]->getPriority());
+        self::assertSame('¿Realizarás un inventario?', $persistedMeasures[0]->getQuestionText());
         self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia', $persistedMeasures[0]->getVerificationSourcesSummary());
         self::assertSame('v23', $persistedMeasures[0]->getImportVersion());
         self::assertSame(70, $category->getSortOrder());

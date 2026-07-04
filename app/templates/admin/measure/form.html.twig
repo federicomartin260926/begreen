@@ -124,6 +124,11 @@
                                 {{ form_widget(form.nameReview, {'attr': {'class': 'form-control'}}) }}
                                 {{ form_errors(form.nameReview) }}
                             </div>
+                            <div class="col-md-12 mb-3">
+                                {{ form_label(form.questionText) }}
+                                {{ form_widget(form.questionText, {'attr': {'class': 'form-control', 'rows': 4}}) }}
+                                {{ form_errors(form.questionText) }}
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -157,6 +162,11 @@
                                 {{ form_label(form.nameReview_en) }}
                                 {{ form_widget(form.nameReview_en, {'attr': {'class': 'form-control'}}) }}
                                 {{ form_errors(form.nameReview_en) }}
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                {{ form_label(form.questionText_en) }}
+                                {{ form_widget(form.questionText_en, {'attr': {'class': 'form-control', 'rows': 4}}) }}
+                                {{ form_errors(form.questionText_en) }}
                             </div>
                         </div>
 

@@ -80,7 +80,7 @@
                         {% for row in group.rows %}
                             <tr>
                                 <td>
-                                    <div>{{ row.displayName }}</div>
+                                    <div>{{ row.measureTitle|default(row.displayName) }}</div>
                                     {% if row.statusLabel is defined and row.statusLabel %}
                                         <div class="taxonomy-line muted">{{ row.statusLabel }}</div>
                                     {% endif %}

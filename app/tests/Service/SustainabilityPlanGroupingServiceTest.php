@@ -50,6 +50,7 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
         $postGroup = $this->findGroup($groups, 'Postproducción');
 
         self::assertSame(['Medida A', 'Medida B'], array_column($productionGroup['rows'], 'displayName'));
+        self::assertSame(['Medida A', 'Medida B'], array_column($productionGroup['rows'], 'measureTitle'));
         self::assertSame(['Medida A'], array_column($postGroup['rows'], 'displayName'));
     }
 

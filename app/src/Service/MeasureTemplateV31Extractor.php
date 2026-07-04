@@ -13,15 +13,17 @@ final class MeasureTemplateV31Extractor
     private const ENVIRONMENTAL_IMPACT_COLUMNS = ['A', 'B', 'C', 'D', 'E', 'F'];
     private const MEASURE_COLUMNS = [
         'category' => 'G',
-        'measure' => 'H',
-        'department_action_text' => 'I',
-        'points' => 'J',
-        'description' => 'BN',
+        'question' => 'H',
+        'implementation' => 'I',
+        'measure' => 'J',
+        'department_action_text' => 'K',
+        'points' => 'L',
+        'description' => 'BP',
     ];
-    private const DEPARTMENT_COLUMNS = ['K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF'];
-    private const VERIFICATION_SOURCE_COLUMNS = ['AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN', 'AO', 'AP', 'AQ', 'AR', 'AS'];
-    private const ODS_COLUMNS = ['AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ'];
-    private const TRIPLE_BALANCE_COLUMNS = ['BK', 'BL', 'BM'];
+    private const DEPARTMENT_COLUMNS = ['M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH'];
+    private const VERIFICATION_SOURCE_COLUMNS = ['AI', 'AJ', 'AK', 'AL', 'AM', 'AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'AT', 'AU'];
+    private const ODS_COLUMNS = ['AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK', 'BL'];
+    private const TRIPLE_BALANCE_COLUMNS = ['BM', 'BN', 'BO'];
 
     public function extractFile(string $path): array
     {
@@ -60,6 +62,8 @@ final class MeasureTemplateV31Extractor
             $row = $this->readRow($sheet, $rowNumber);
 
             $category = $this->clean((string) ($row[self::MEASURE_COLUMNS['category']] ?? ''));
+            $question = $this->clean((string) ($row[self::MEASURE_COLUMNS['question']] ?? ''));
+            $implementation = $this->clean((string) ($row[self::MEASURE_COLUMNS['implementation']] ?? ''));
             $measure = $this->clean((string) ($row[self::MEASURE_COLUMNS['measure']] ?? ''));
             $actionText = $this->clean((string) ($row[self::MEASURE_COLUMNS['department_action_text']] ?? ''));
             $pointsRaw = $this->clean((string) ($row[self::MEASURE_COLUMNS['points']] ?? ''));
@@ -151,6 +155,8 @@ final class MeasureTemplateV31Extractor
                 'protocol' => 'Be Green My Film',
                 'project_type' => 'rodaje',
                 'category' => $category,
+                'question' => $question,
+                'implementation' => $implementation,
                 'block' => $currentBlock,
                 'measure' => $measure,
                 'department_action_text' => $actionText,
@@ -211,7 +217,14 @@ final class MeasureTemplateV31Extractor
     {
         return array_merge(
             self::ENVIRONMENTAL_IMPACT_COLUMNS,
-            [self::MEASURE_COLUMNS['category'], self::MEASURE_COLUMNS['measure'], self::MEASURE_COLUMNS['department_action_text'], self::MEASURE_COLUMNS['points']],
+            [
+                self::MEASURE_COLUMNS['category'],
+                self::MEASURE_COLUMNS['question'],
+                self::MEASURE_COLUMNS['implementation'],
+                self::MEASURE_COLUMNS['measure'],
+                self::MEASURE_COLUMNS['department_action_text'],
+                self::MEASURE_COLUMNS['points'],
+            ],
             self::DEPARTMENT_COLUMNS,
             self::VERIFICATION_SOURCE_COLUMNS,
             self::ODS_COLUMNS,

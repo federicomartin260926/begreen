@@ -205,10 +205,10 @@
         {% for pm in measures %}
           <tr>
             <td>
-              {% if useDepartmentActionText|default(false) %}
+                {% if useDepartmentActionText|default(false) %}
                 {{ pm.measure.departmentActionDisplayName }}
               {% else %}
-                {{ pm.measure.displayNameForReview }}
+                {{ pm.measure.name }}
               {% endif %}
             </td>
             <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>

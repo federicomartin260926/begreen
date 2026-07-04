@@ -42,6 +42,10 @@ class Measure
 
     #[Gedmo\Translatable]
     #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $questionText = null;
+
+    #[Gedmo\Translatable]
+    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $description = null;
 
     #[ORM\ManyToOne]
@@ -146,6 +150,9 @@ class Measure
 
     public function getNameReview(): ?string { return $this->nameReview; }
     public function setNameReview(?string $nameReview): static { $this->nameReview = $nameReview; return $this; }
+
+    public function getQuestionText(): ?string { return $this->questionText; }
+    public function setQuestionText(?string $questionText): static { $this->questionText = $questionText; return $this; }
 
     /**
      * Conveniencia: devuelve pasado si existe, si no el nombre original.

@@ -115,7 +115,7 @@
                         <tbody>
                             {% for pm in measures %}
                                 <tr>
-                                    <td>{{ pm.measure.displayNameForReview }}</td>
+                                    <td>{{ pm.measure.name }}</td>
                                     <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
                                     <td>{{ pm.willImplement ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
                                     {% if plan.status == 'completo' %}

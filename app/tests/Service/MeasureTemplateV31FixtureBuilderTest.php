@@ -31,6 +31,8 @@ final class MeasureTemplateV31FixtureBuilderTest extends TestCase
                     'category' => 'ENERGÍA',
                     'block' => 'Inventario y planificación',
                     'measure' => 'Medida de prueba',
+                    'question' => 'Pregunta de prueba',
+                    'implementation' => 'Implementación de prueba',
                     'department_action_text' => 'Texto de acción',
                     'points' => 3,
                     'description' => 'Descripción de prueba',
@@ -50,13 +52,17 @@ final class MeasureTemplateV31FixtureBuilderTest extends TestCase
 
         $sheet = $spreadsheet->getSheetByName('Plantilla estándar de medidas') ?? $spreadsheet->getActiveSheet();
 
-        self::assertSame('Implementación', (string) $sheet->getCell('M1')->getValue());
-        self::assertSame('Acción por departamento', (string) $sheet->getCell('N1')->getValue());
+        self::assertSame('Pregunta (futuro)', (string) $sheet->getCell('L1')->getValue());
+        self::assertSame('Descripción', (string) $sheet->getCell('M1')->getValue());
+        self::assertSame('Implementación', (string) $sheet->getCell('N1')->getValue());
+        self::assertSame('Acción por departamento', (string) $sheet->getCell('O1')->getValue());
         self::assertSame('Acción por departamento EN (opcional)', (string) $sheet->getCell($sheet->getHighestColumn() . '1')->getValue());
 
         $report = $parser->parseSpreadsheet($spreadsheet);
 
         self::assertCount(1, $report->getRows());
+        self::assertSame('Pregunta de prueba', $report->getRows()[0]['questionText']);
+        self::assertSame('Implementación de prueba', $report->getRows()[0]['nameReview']);
         self::assertSame('Texto de acción', $report->getRows()[0]['departmentActionText']);
         self::assertSame('Medida de prueba', $report->getRows()[0]['name']);
         $departments = array_map('trim', explode(';', (string) $report->getRows()[0]['departments']));
@@ -94,6 +100,8 @@ final class MeasureTemplateV31FixtureBuilderTest extends TestCase
                     'category' => 'ENERGÍA',
                     'block' => 'Bloque A',
                     'measure' => 'Medida tardía',
+                    'question' => '',
+                    'implementation' => '',
                     'department_action_text' => '',
                     'points' => 1,
                     'description' => '',
@@ -112,6 +120,8 @@ final class MeasureTemplateV31FixtureBuilderTest extends TestCase
                     'category' => 'ENERGÍA',
                     'block' => 'Bloque A',
                     'measure' => 'Medida temprana',
+                    'question' => '',
+                    'implementation' => '',
                     'department_action_text' => '',
                     'points' => 2,
                     'description' => '',

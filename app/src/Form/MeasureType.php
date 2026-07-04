@@ -42,7 +42,7 @@ class MeasureType extends AbstractType
         $projectType          = $options['projectType'] ?? null;
         $locales              = $options['locales'] ?? ['es','en'];
         $defaultLocale        = $options['default_locale'] ?? 'es';
-        $translatableFields   = $options['translatable_fields'] ?? ['name','nameReview','description','implementation','departmentActionText'];
+        $translatableFields   = $options['translatable_fields'] ?? ['name','nameReview','questionText','description','implementation','departmentActionText'];
         $existingTranslations = $options['translations'] ?? [];
         $measure              = $builder->getData();
         $verificationLinks    = $measure instanceof Measure ? $measure->getResolvedVerificationSourceLinks() : [];
@@ -96,6 +96,11 @@ class MeasureType extends AbstractType
                 'required' => false,
                 'attr'     => ['placeholder' => 'backend.measures.form.name_review_ph'],
             ])
+            ->add('questionText', TextareaType::class, [
+                'label'    => 'backend.measures.form.question_text',
+                'required' => false,
+                'attr'     => ['rows' => 4],
+            ])
             ->add('description', TextareaType::class, [
                 'label'    => 'backend.measures.form.description',
                 'required' => false,
@@ -135,6 +140,17 @@ class MeasureType extends AbstractType
                         'class'       => 'form-control',
                         'placeholder' => 'backend.measures.form.name_review_ph',
                     ],
+                ]);
+            }
+
+            // questionText_{loc}
+            if (in_array('questionText', $translatableFields, true)) {
+                $builder->add('questionText_' . $loc, TextareaType::class, [
+                    'label'    => 'backend.measures.form.question_text',
+                    'mapped'   => false,
+                    'required' => false,
+                    'data'     => $existingTranslations[$loc]['questionText'] ?? null,
+                    'attr'     => ['class' => 'form-control', 'rows' => 4],
                 ]);
             }
 
@@ -319,8 +335,8 @@ class MeasureType extends AbstractType
             'projectType'         => null,       // 'rodaje' | 'evento' | null
             'locales'             => ['es','en'],
             'default_locale'      => 'es',
-            // Añadimos nameReview, implementation y departmentActionText para tabs i18n
-            'translatable_fields' => ['name','nameReview','description','implementation','departmentActionText'],
+            // Añadimos nameReview, questionText, implementation y departmentActionText para tabs i18n
+            'translatable_fields' => ['name','nameReview','questionText','description','implementation','departmentActionText'],
             'translations'        => [],
         ]);
     }
