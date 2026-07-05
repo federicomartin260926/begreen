@@ -161,7 +161,7 @@
 
                     {% if not planComplete %}
                         {# ——— Navegación medida a medida ——— #}
-                        <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center gap-3 mb-3">
+                        <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center gap-3 mb-1">
                             <div class="d-flex flex-wrap gap-2">
                                 {% set hasPrev = index > 0 %}
                                 {% set hasNext = total > 0 and (index + 1) < total %}
@@ -195,6 +195,7 @@
                     {% if commitmentSummary is defined %}
                         {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
                             variant: 'full',
+                            showHeader: false,
                             title: 'backend.plan.commitment.planned'|trans,
                             note: 'backend.plan.commitment.note'|trans,
                             totalPoints: commitmentSummary.totalOfficialPoints,

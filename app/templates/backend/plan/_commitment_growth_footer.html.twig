@@ -3,6 +3,7 @@
 {% set title = title|default('backend.plan.commitment.title'|trans) %}
 {% set note = note|default('backend.plan.commitment.note'|trans) %}
 {% set totalPoints = totalPoints|default(0) %}
+{% set showHeader = showHeader is defined ? showHeader : true %}
 {% set stages = [
     { key: 'seed', label: 'backend.plan.commitment.growth_footer.stages.seed'|trans },
     { key: 'plant', label: 'backend.plan.commitment.growth_footer.stages.plant'|trans },
@@ -60,13 +61,15 @@
     {% endif %}
 {% else %}
     <div class="commitment-growth-footer commitment-growth-footer--full mb-4">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-3">
-            <div>
-                <div class="commitment-growth-footer__eyebrow">{{ title }}</div>
-                <div class="commitment-growth-footer__note">{{ note }}</div>
+        {% if showHeader %}
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-3">
+                <div>
+                    <div class="commitment-growth-footer__eyebrow">{{ title }}</div>
+                    <div class="commitment-growth-footer__note">{{ note }}</div>
+                </div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">{{ 'backend.plan.commitment.orientative'|trans }}</span>
             </div>
-            <span class="badge bg-success-subtle text-success border border-success-subtle">{{ 'backend.plan.commitment.orientative'|trans }}</span>
-        </div>
+        {% endif %}
 
         <div class="commitment-growth-footer__items">
             {% for item in items %}
@@ -152,7 +155,7 @@
                                                     {% elseif stage.key == 'forest' %}
                                                         <img
                                                             class="commitment-growth-footer__stage-image commitment-growth-footer__stage-image--forest"
-                                                            src="{{ asset('images/commitment/commitment-bosque.png') }}"
+                                                            src="{{ asset('images/commitment/commitment-bosque-v4.png') }}"
                                                             alt="{{ stage.label }}"
                                                             title="{{ stage.label }}"
                                                             loading="lazy"
@@ -160,7 +163,7 @@
                                                     {% else %}
                                                         <img
                                                             class="commitment-growth-footer__stage-image commitment-growth-footer__stage-image--jungle"
-                                                            src="{{ asset('images/commitment/commitment-selva.png') }}"
+                                                            src="{{ asset('images/commitment/commitment-selva-v4.png') }}"
                                                             alt="{{ stage.label }}"
                                                             title="{{ stage.label }}"
                                                             loading="lazy"

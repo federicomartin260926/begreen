@@ -1,5 +1,5 @@
 {# Se espera: measure y planMeasures #}
-<div class="measure-card mb-4 bg_green_1 shadow" id="measure-card">
+<div class="measure-card mb-3 bg_green_1 shadow" id="measure-card">
     {# Aviso de cambio de grupo (categoría/departamento) #}
     {% if groupChanged == 'si' and prevGroupName and nextGroupName %}
     {% set isDept = (groupingBy == 'department') %}
@@ -37,6 +37,7 @@
     {% set cat = measure.category ?? null %}
     {% set catName = cat ? cat.name : (nextCategoryName ?? prevCategoryName ?? null) %}
     {% set catIcon = catName ? (categoryIcons[catName]|default('bi-info-circle')) : 'bi-info-circle' %}
+    {% set departments = taxonomyPresenter.departmentBadges(measure, projectType|default(null)) %}
 
     {% if measureBlock and measureBlock.hasScreeningQuestion and blockAnswer is null %}
         <div class="alert alert-warning mb-4">
@@ -70,7 +71,7 @@
         role="alert"
         data-plan-measures-target="errorAlert"></div>
 
-    <div class="d-flex flex-wrap align-items-center gap-1 gap-sm-2 mb-2">
+    <div class="measure-card__meta d-flex flex-wrap align-items-center gap-2 gap-sm-3 mb-3">
         <span class="badge bg-light border text-dark text-wrap" style="max-width: 100%;">
             <i class="bi {{ catIcon }}"></i>
             {{ catName ?? '—' }}
@@ -80,10 +81,15 @@
                 {{ 'backend.plan.measure.subgroup'|trans({'%name%': measureBlock.name}) }}
             </span>
         {% endif %}
+        {% for department in departments %}
+            <span class="badge bg-success-subtle text-success-emphasis border text-wrap" style="max-width: 100%;" title="{{ department.title|default(department.displayName) }}">
+                {{ department.displayName }}
+            </span>
+        {% endfor %}
     </div>
-    <h5 class="fw-bold">{{ measure.questionText ?: measure.name }}</h5>
+    <h5 class="fw-semibold mb-2">{{ measure.questionText ?: measure.name }}</h5>
 
-    <div class="measure-details bg-white shadow-sm">
+    <div class="measure-details bg-white shadow-sm rounded-3 p-3">
         <dl class="row mb-0">
             {% if measure.implementation %}
                 <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.implementation'|trans }}</dt>
@@ -102,7 +108,10 @@
             {% include 'backend/plan/_measure_taxonomy.html.twig' with {
                 measure: measure,
                 taxonomyPresenter: taxonomyPresenter,
-                projectType: projectType|default(null)
+                projectType: projectType|default(null),
+                showDepartments: false,
+                showOds: false,
+                showVerificationSources: false
             } %}
         </dl>
     </div>
@@ -135,7 +144,7 @@
         {% if not (measureBlock and measureBlock.hasScreeningQuestion and blockAnswer is null) %}
             {# 1) ¿Quieres incluirla? #}
             <div class="text-center mb-2">{{ 'backend.plan.q.include_in_plan'|trans }}</div>
-            <div class="measure-action-group d-flex justify-content-center gap-3 mb-3">
+            <div class="measure-action-group d-flex justify-content-center gap-3">
                 <button
                     type="button"
                     class="btn {% if decision == 'true' %}btn-success{% else %}btn-outline-success{% endif %} px-4"
@@ -225,7 +234,7 @@
             <div
                 data-plan-measures-section="critical-continue"
                 class="{% if critical is not same as(true) %}d-none{% endif %}">
-                <div class="d-flex justify-content-center mb-3">
+                <div class="d-flex justify-content-center">
                     <button
                         type="button"
                         class="btn btn-success px-4"

@@ -3,6 +3,7 @@ import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
     static targets = ['actionBtn', 'criticalReason', 'categoryAlert', 'errorAlert'];
+    static scrollOffset = 96;
 
     connect() {
         this.currentIndex = Number(this.element.dataset.currentIndex || '0');
@@ -12,14 +13,11 @@ export default class extends Controller {
 
         // --- Scroll al aviso de cambio de categoría, si existe ---
         if (this.hasCategoryAlertTarget) {
-            // Espera un tick por si hay reflow inicial
-            requestAnimationFrame(() => {
-                try {
-                    this.categoryAlertTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    // foco breve para accesibilidad (no molesta al usuario)
-                    this.categoryAlertTarget.focus({ preventScroll: true });
-                } catch (_) {}
-            });
+            this.scrollToElement(this.categoryAlertTarget);
+            // foco breve para accesibilidad (no molesta al usuario)
+            try {
+                this.categoryAlertTarget.focus({ preventScroll: true });
+            } catch (_) {}
         }
 
         // --- Listeners de botones ---
@@ -356,12 +354,20 @@ export default class extends Controller {
             return;
         }
 
+        this.scrollToElement(sectionElement);
+    }
+
+    scrollToElement(element, offset = this.constructor.scrollOffset) {
+        if (!element) {
+            return;
+        }
+
         window.requestAnimationFrame(() => {
             try {
-                sectionElement.scrollIntoView({
+                const top = element.getBoundingClientRect().top + window.scrollY - offset;
+                window.scrollTo({
+                    top: Math.max(top, 0),
                     behavior: 'smooth',
-                    block: 'center',
-                    inline: 'nearest',
                 });
             } catch (_) {}
         });

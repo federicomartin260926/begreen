@@ -1,7 +1,10 @@
+{% set showDepartments = showDepartments is defined ? showDepartments : true %}
+{% set showImpactAreas = showImpactAreas is defined ? showImpactAreas : true %}
+{% set showTripleBalance = showTripleBalance is defined ? showTripleBalance : true %}
 {% set showVerificationSources = showVerificationSources is defined ? showVerificationSources : true %}
 {% set projectType = projectType|default(null) %}
 
-{% set departments = taxonomyPresenter.departmentBadges(measure, projectType) %}
+{% set departments = showDepartments ? taxonomyPresenter.departmentBadges(measure, projectType) : [] %}
 {% if departments is not empty %}
     <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.measure.department'|trans }}</dt>
     <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
@@ -14,7 +17,7 @@
     </dd>
 {% endif %}
 
-{% set odsItems = taxonomyPresenter.odsBadges(measure) %}
+{% set odsItems = showOds is defined and showOds is same as(false) ? [] : taxonomyPresenter.odsBadges(measure) %}
 {% if odsItems is not empty %}
     <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">ODS</dt>
     <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
@@ -27,7 +30,7 @@
     </dd>
 {% endif %}
 
-{% set impactAreas = taxonomyPresenter.impactAreas(measure) %}
+{% set impactAreas = showImpactAreas ? taxonomyPresenter.impactAreas(measure) : [] %}
 {% if impactAreas is not empty %}
     <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">Áreas de impacto</dt>
     <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
@@ -37,7 +40,7 @@
     </dd>
 {% endif %}
 
-{% set axes = taxonomyPresenter.tripleBalanceAxes(measure) %}
+{% set axes = showTripleBalance ? taxonomyPresenter.tripleBalanceAxes(measure) : [] %}
 {% if axes is not empty %}
     <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">Triple balance</dt>
     <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
