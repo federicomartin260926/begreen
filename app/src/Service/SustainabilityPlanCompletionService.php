@@ -133,30 +133,33 @@ final class SustainabilityPlanCompletionService
             }
 
             if ($planMeasure->isApplicable() === true) {
-                if ($planMeasure->isCritical() === null) {
-                    $pending[] = [
-                        'measure' => $measure,
-                        'index' => (int) $index,
-                        'reason' => 'critical_missing',
-                    ];
-                    continue;
-                }
-
-                if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
-                    $pending[] = [
-                        'measure' => $measure,
-                        'index' => (int) $index,
-                        'reason' => 'critical_reason_missing',
-                    ];
-                    continue;
-                }
-
                 if ($planMeasure->willImplement() === null) {
                     $pending[] = [
                         'measure' => $measure,
                         'index' => (int) $index,
                         'reason' => 'will_implement_missing',
                     ];
+                    continue;
+                }
+
+                if ($planMeasure->willImplement() === true) {
+                    if ($planMeasure->isCritical() === null) {
+                        $pending[] = [
+                            'measure' => $measure,
+                            'index' => (int) $index,
+                            'reason' => 'critical_missing',
+                        ];
+                        continue;
+                    }
+
+                    if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
+                        $pending[] = [
+                            'measure' => $measure,
+                            'index' => (int) $index,
+                            'reason' => 'critical_reason_missing',
+                        ];
+                        continue;
+                    }
                 }
             }
         }

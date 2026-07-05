@@ -930,12 +930,14 @@ backend:
       less: "Show less"
     q:
       apply: "Does this measure apply to your project?"
+      include_in_plan: "Do you want to include this measure in your plan?"
       critical: "Do you consider it a critical measure in your project?"
       critical_reason: "Why do you consider it critical?"
       critical_reason_ph: "Write the reason…"
       implement: "Will you implement this measure in your project?"
     answers:
       not_applicable: "Doesn’t apply"
+      not_applicable_project: "Not applicable to the project"
       applicable: "Applies"
       not_implement: "Won’t implement"
       implement: "Will implement"

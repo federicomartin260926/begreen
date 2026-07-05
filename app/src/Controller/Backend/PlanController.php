@@ -240,6 +240,7 @@ class PlanController extends AbstractController
             ? max(0, min(max($total - 1, 0), $request->query->getInt('i', 0)))
             : $this->resumeService->resolveIndex($measures, $plan->getPlanMeasures());
         $currentMeasure = $measures[$index] ?? null;
+        $progressIndex = $currentMeasure ? $this->findVisibleMeasureIndex($allMeasures, $currentMeasure) : null;
         $catalogMeasuresTotal = count($allMeasures);
 
         // ===== START mensajes de "cambios de grupo" (categoría/departamento) =====
@@ -302,21 +303,7 @@ class PlanController extends AbstractController
 
         $canGoNext = false;
         if ($currentPm) {
-            $applies  = $currentPm->isApplicable();
-            $critical = $currentPm->isCritical();
-            $willImpl = $currentPm->willImplement();
-
-            if ($applies === false) {
-                $canGoNext = true;
-            } elseif ($applies === true) {
-                if ($critical !== null && $willImpl !== null) {
-                    if ($critical === true && !$this->hasCriticalReason($currentPm)) {
-                        $canGoNext = false;
-                    } else {
-                        $canGoNext = true;
-                    }
-                }
-            }
+            $canGoNext = $this->canAdvanceFromCurrentMeasure($currentPm);
         }
 
         // --- Medidas obligatorias: reglas especiales ---
@@ -403,6 +390,7 @@ class PlanController extends AbstractController
 
             // navegación y medida actual
             'index'            => $index,
+            'progressIndex'    => $progressIndex,
             'total'            => $total,
             'catalogMeasuresTotal' => $catalogMeasuresTotal,
             'measure'          => $planComplete ? null : $currentMeasure,
@@ -928,6 +916,30 @@ class PlanController extends AbstractController
                 }
                 break;
 
+            case 'decision':
+                $decision = (string) $value;
+                if ($decision === 'true' || $decision === 'false') {
+                    $planMeasure->setIsApplicable(true);
+                    $planMeasure->setWillImplement($decision === 'true');
+                    $planMeasure->setIsCritical(null);
+                    $planMeasure->setCriticalReason(null);
+                    $planMeasure->setImplemented(null);
+                    $planMeasure->markAsManual();
+                    break;
+                }
+
+                if ($decision === 'na') {
+                    $planMeasure->setIsApplicable(false);
+                    $planMeasure->setIsCritical(null);
+                    $planMeasure->setCriticalReason(null);
+                    $planMeasure->setWillImplement(null);
+                    $planMeasure->setImplemented(null);
+                    $planMeasure->markAsManual();
+                    break;
+                }
+
+                return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
+
             case 'isCritical':
             case 'critical':
                 $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
@@ -1215,6 +1227,10 @@ class PlanController extends AbstractController
 
     private function isReviewInlineFieldAllowed(Project $project, string $field): bool
     {
+        if ($field === 'decision') {
+            return true;
+        }
+
         $fieldFeatureMap = [
             'verification' => 'sustainability_plan.checklist',
             'responsibles' => 'sustainability_plan.responsibles',
@@ -2060,6 +2076,38 @@ class PlanController extends AbstractController
         return null;
     }
 
+    private function canAdvanceFromCurrentMeasure(PlanMeasure $planMeasure): bool
+    {
+        $applies = $planMeasure->isApplicable();
+        if ($applies === false) {
+            return true;
+        }
+
+        if ($applies !== true) {
+            return false;
+        }
+
+        $willImplement = $planMeasure->willImplement();
+        if ($willImplement === false) {
+            return true;
+        }
+
+        if ($willImplement !== true) {
+            return false;
+        }
+
+        $critical = $planMeasure->isCritical();
+        if ($critical === false) {
+            return true;
+        }
+
+        if ($critical === true) {
+            return $this->hasCriticalReason($planMeasure);
+        }
+
+        return false;
+    }
+
     private function criticalReasonRequiredMessage(): string
     {
         return $this->t->trans('backend.plan.measures.critical_reason_required');
@@ -2075,6 +2123,14 @@ class PlanController extends AbstractController
 
     private function isTerminalSelectionAction(string $field, mixed $value): bool
     {
+        if ($field === 'decision') {
+            return in_array((string) $value, ['false', 'na'], true);
+        }
+
+        if ($field === 'critical') {
+            return $value === 'false';
+        }
+
         if ($field === 'willImplement') {
             return true;
         }

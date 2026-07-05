@@ -183,10 +183,8 @@
                             <div class="align-self-stretch align-self-md-auto ms-md-auto text-muted text-start text-md-end">
                                 {% if total > 0 %}
                                     {% set progressTotal = catalogMeasuresTotal|default(total) %}
-                                    {{ 'backend.plan.progress_applicable'|trans({'%current%': index + 1, '%total%': progressTotal}) }}
-                                    {% if progressTotal > total %}
-                                        {{ 'backend.plan.progress_applicable_details'|trans({'%total%': total}) }}
-                                    {% endif %}
+                                    {% set progressCurrent = progressIndex|default(index) %}
+                                    {{ 'backend.plan.progress_applicable'|trans({'%current%': progressCurrent + 1, '%total%': progressTotal}) }}
                                 {% else %}
                                     —
                                 {% endif %}

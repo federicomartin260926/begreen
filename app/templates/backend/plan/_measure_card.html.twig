@@ -120,42 +120,60 @@
     {% set reason    = pm ? pm.criticalReason : '' %}
     {% set willImpl  = pm is not null ? pm.willImplement : null %}
     {% set implDone  = pm ? pm.isImplemented : false %}
+    {% set decision  = pm is not null
+        ? (pm.isApplicable is same as(false)
+            ? 'na'
+            : (pm.isApplicable is same as(true)
+                ? (pm.willImplement is same as(true)
+                    ? 'true'
+                    : (pm.willImplement is same as(false) ? 'false' : null))
+                : null))
+        : null %}
 
     <div class="mt-4">
 
         {% if not (measureBlock and measureBlock.hasScreeningQuestion and blockAnswer is null) %}
-            {# 1) ¿Aplica? #}
-            <div class="text-center mb-2">{{ 'backend.plan.q.apply'|trans }}</div>
+            {# 1) ¿Quieres incluirla? #}
+            <div class="text-center mb-2">{{ 'backend.plan.q.include_in_plan'|trans }}</div>
             <div class="measure-action-group d-flex justify-content-center gap-3 mb-3">
-                {# No aplica #}
                 <button
                     type="button"
-                    class="btn {% if applicable is same as(false) %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
+                    class="btn {% if decision == 'true' %}btn-success{% else %}btn-outline-success{% endif %} px-4"
                     data-plan-measures-target="actionBtn"
                     data-measure-id="{{ measure.id }}"
-                    data-field="isApplicable"
-                    data-value="false">
-                    {% if applicable is same as(false) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
-                    {{ 'backend.plan.answers.not_applicable'|trans }}
+                    data-field="decision"
+                    data-value="true">
+                    {% if decision == 'true' %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                    {{ 'backend.common.yes'|trans }}
                 </button>
 
-                {# Aplica #}
                 <button
                     type="button"
-                    class="btn {% if applicable is same as(true) %}btn-success{% else %}btn-outline-success{% endif %} px-4"
+                    class="btn {% if decision == 'false' %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
                     data-plan-measures-target="actionBtn"
                     data-measure-id="{{ measure.id }}"
-                    data-field="isApplicable"
-                    data-value="true">
-                    {% if applicable is same as(true) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
-                    {{ 'backend.plan.answers.applicable'|trans }}
+                    data-field="decision"
+                    data-value="false">
+                    {% if decision == 'false' %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                    {{ 'backend.common.no'|trans }}
+                </button>
+
+                <button
+                    type="button"
+                    class="btn {% if decision == 'na' %}btn-secondary{% else %}btn-outline-secondary{% endif %} px-4"
+                    data-plan-measures-target="actionBtn"
+                    data-measure-id="{{ measure.id }}"
+                    data-field="decision"
+                    data-value="na">
+                    {% if decision == 'na' %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                    {{ 'backend.plan.answers.not_applicable_project'|trans }}
                 </button>
             </div>
 
             {# 2) ¿Crítica? (se renderiza oculta hasta que Aplica = true) #}
             <div
                 data-plan-measures-section="critical"
-                class="{% if applicable is not same as(true) %}d-none{% endif %}">
+                class="{% if not (applicable is same as(true) and willImpl is same as(true)) %}d-none{% endif %}">
                 <div class="text-center mb-2">{{ 'backend.plan.q.critical'|trans }}</div>
                 <div class="measure-action-group d-flex justify-content-center gap-3 mb-3">
                     {# No #}
@@ -203,35 +221,21 @@
                 </div>
             </div>
 
-            {# 4) ¿Vas a implementar? (visible si Aplica == true y Crítica respondida) #}
+            {# 4) Continuar (visible una vez respondida la criticidad) #}
             <div
-                data-plan-measures-section="implement"
-                class="{% if applicable is not same as(true) or critical is null %}d-none{% endif %}">
-                <div class="text-center mb-2">{{ 'backend.plan.q.implement'|trans }}</div>
-                <div class="measure-action-group d-flex justify-content-center gap-3 mb-3">
-
-                    {# No implementar #}
+                data-plan-measures-section="critical-continue"
+                class="{% if critical is not same as(true) %}d-none{% endif %}">
+                <div class="d-flex justify-content-center mb-3">
                     <button
                         type="button"
-                        class="btn {% if willImpl is same as(false) %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
+                        class="btn btn-success px-4"
+                        {% if reason|trim == '' %}disabled{% endif %}
                         data-plan-measures-target="actionBtn"
-                        data-measure-id="{{ measure.id }}"
-                        data-field="willImplement"
-                        data-value="false">
-                        {% if willImpl is same as(false) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
-                        {{ 'backend.plan.answers.not_implement'|trans }}
-                    </button>
-
-                    {# Implementar #}
-                    <button
-                        type="button"
-                        class="btn {% if willImpl is same as(true) %}btn-success{% else %}btn-outline-success{% endif %} px-4"
-                        data-plan-measures-target="actionBtn"
+                        data-plan-measures-action="critical-continue"
                         data-measure-id="{{ measure.id }}"
                         data-field="willImplement"
                         data-value="true">
-                        {% if willImpl is same as(true) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
-                        {{ 'backend.plan.answers.implement'|trans }}
+                        {{ 'backend.plan.welcome.continue'|trans }}
                     </button>
                 </div>
             </div>

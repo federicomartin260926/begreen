@@ -65,6 +65,176 @@ final class PlanControllerNavigationTest extends KernelTestCase
         ], $filters);
     }
 
+    public function testMeasuresPageShowsDecisionButtonsAndOmitsImplementStepInCreationFlow(): void
+    {
+        self::bootKernel();
+        $twig = self::getContainer()->get('twig');
+
+        $measure = (new Measure())
+            ->setName('Medida de prueba');
+        $this->setEntityId($measure, 801);
+
+        $html = $twig->render('backend/plan/_measure_card.html.twig', [
+            'measure' => $measure,
+            'planMeasures' => [],
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'projectType' => null,
+            'groupChanged' => null,
+            'prevGroupName' => null,
+            'nextGroupName' => null,
+            'groupingBy' => null,
+            'currentBlockAnswer' => null,
+            'nextCategoryName' => null,
+            'prevCategoryName' => null,
+        ]);
+
+        self::assertStringContainsString('¿Quieres incluir esta medida en tu plan?', $html);
+        self::assertStringContainsString('data-field="decision"', $html);
+        self::assertStringContainsString('Sí', $html);
+        self::assertStringContainsString('No', $html);
+        self::assertStringContainsString('No aplica al proyecto', $html);
+        self::assertStringNotContainsString('¿Vas a implementar esta medida en tu proyecto?', $html);
+        self::assertStringNotContainsString('No implementar', $html);
+        self::assertStringNotContainsString('Implementar', $html);
+    }
+
+    public function testMeasuresPageShowsContinueButtonWhenCriticalIsYes(): void
+    {
+        self::bootKernel();
+        $twig = self::getContainer()->get('twig');
+
+        $measure = (new Measure())
+            ->setName('Medida crítica')
+            ->setQuestionText('¿Pregunta de prueba?');
+        $this->setEntityId($measure, 802);
+
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure($measure)
+            ->setIsApplicable(true)
+            ->setIsCritical(true)
+            ->setCriticalReason('Motivo visible')
+            ->setWillImplement(true)
+            ->markAsManual();
+
+        $html = $twig->render('backend/plan/_measure_card.html.twig', [
+            'measure' => $measure,
+            'planMeasures' => [$planMeasure],
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'projectType' => null,
+            'groupChanged' => null,
+            'prevGroupName' => null,
+            'nextGroupName' => null,
+            'groupingBy' => null,
+            'currentBlockAnswer' => null,
+            'nextCategoryName' => null,
+            'prevCategoryName' => null,
+        ]);
+
+        self::assertStringContainsString('¿Consideras que es una medida crítica en tu proyecto?', $html);
+        self::assertStringContainsString('¿Por qué la consideras crítica?', $html);
+        self::assertStringContainsString('Motivo visible', $html);
+        self::assertStringContainsString('Continuar', $html);
+        self::assertStringNotContainsString('¿Vas a implementar esta medida en tu proyecto?', $html);
+        self::assertStringNotContainsString('No implementar', $html);
+        self::assertStringNotContainsString('Implementar', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical"[\s\S]*data-field="critical"[\s\S]*data-value="true"/', $html);
+        self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="critical"[^>]*class="[^"]*d-none[^"]*"/', $html);
+    }
+
+    public function testMeasuresPageShowsCriticalStepWithNoSelectedWhenCriticalIsFalse(): void
+    {
+        self::bootKernel();
+        $twig = self::getContainer()->get('twig');
+
+        $planMeasure = $this->buildLoadedMeasureState(true, true, false, null);
+
+        self::assertTrue($this->invokeCanAdvanceFromCurrentMeasure($this->getController(), $planMeasure));
+
+        $measure = $planMeasure->getMeasure();
+        $html = $twig->render('backend/plan/_measure_card.html.twig', [
+            'measure' => $measure,
+            'planMeasures' => [$planMeasure],
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'projectType' => null,
+            'groupChanged' => null,
+            'prevGroupName' => null,
+            'nextGroupName' => null,
+            'groupingBy' => null,
+            'currentBlockAnswer' => null,
+            'nextCategoryName' => null,
+            'prevCategoryName' => null,
+        ]);
+
+        self::assertStringContainsString('¿Consideras que es una medida crítica en tu proyecto?', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical"[\s\S]*data-field="critical"[\s\S]*data-value="false"/', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-reason"[^>]*class="[^"]*d-none[^"]*"/', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-continue"[^>]*class="[^"]*d-none[^"]*"/', $html);
+        self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="critical"[^>]*class="[^"]*d-none[^"]*"/', $html);
+    }
+
+    public function testMeasuresPageHidesCriticalStepAndAllowsNextWhenDecisionIsNo(): void
+    {
+        $controller = $this->getController();
+
+        $planMeasure = $this->buildLoadedMeasureState(true, false, null, null);
+
+        self::assertTrue($this->invokeCanAdvanceFromCurrentMeasure($controller, $planMeasure));
+
+        self::bootKernel();
+        $twig = self::getContainer()->get('twig');
+        $measure = $planMeasure->getMeasure();
+        $html = $twig->render('backend/plan/_measure_card.html.twig', [
+            'measure' => $measure,
+            'planMeasures' => [$planMeasure],
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'projectType' => null,
+            'groupChanged' => null,
+            'prevGroupName' => null,
+            'nextGroupName' => null,
+            'groupingBy' => null,
+            'currentBlockAnswer' => null,
+            'nextCategoryName' => null,
+            'prevCategoryName' => null,
+        ]);
+
+        self::assertStringContainsString('data-value="false"', $html);
+        self::assertStringContainsString('btn-danger', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical"\\s+class="d-none"/', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-reason"\\s+class="d-none"/', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-continue"\\s+class="d-none"/', $html);
+    }
+
+    public function testMeasuresPageHidesCriticalStepAndAllowsNextWhenDecisionIsNotApplicable(): void
+    {
+        $controller = $this->getController();
+
+        $planMeasure = $this->buildLoadedMeasureState(false, null, null, null);
+
+        self::assertTrue($this->invokeCanAdvanceFromCurrentMeasure($controller, $planMeasure));
+
+        self::bootKernel();
+        $twig = self::getContainer()->get('twig');
+        $measure = $planMeasure->getMeasure();
+        $html = $twig->render('backend/plan/_measure_card.html.twig', [
+            'measure' => $measure,
+            'planMeasures' => [$planMeasure],
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'projectType' => null,
+            'groupChanged' => null,
+            'prevGroupName' => null,
+            'nextGroupName' => null,
+            'groupingBy' => null,
+            'currentBlockAnswer' => null,
+            'nextCategoryName' => null,
+            'prevCategoryName' => null,
+        ]);
+
+        self::assertStringContainsString('No aplica al proyecto', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical"\\s+class="d-none"/', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-reason"\\s+class="d-none"/', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-continue"\\s+class="d-none"/', $html);
+    }
+
     public function testReviewRedirectsToMeasuresAtFirstPendingMeasureWhenUpgradeBreaksCompleteness(): void
     {
         $controller = $this->getController();
@@ -201,7 +371,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $controller = $this->getController();
         $this->setAdminToken();
 
-        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
             ->setName('Be Green My Film')
@@ -214,6 +384,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setProject($project)
             ->setUser(new User())
             ->setProtocol($protocol);
+        $this->setEntityId($plan, 9000);
+        $this->setEntityId($plan, 9000);
 
         $pendingMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -282,7 +454,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $controller = $this->getController();
         $this->setAdminToken();
 
-        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
             ->setName('Be Green My Film')
@@ -359,7 +531,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $controller = $this->getController();
         $this->setAdminToken();
 
-        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
             ->setName('Be Green My Film')
@@ -441,7 +613,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $controller = $this->getController();
         $this->setAdminToken();
 
-        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
             ->setName('Be Green My Film')
@@ -510,6 +682,650 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($data['success']);
         self::assertStringContainsString('/backend/plan/done', (string) $data['nextUrl']);
         self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
+    }
+
+    public function testUpdateSelectionDecisionYesMarksMeasureAsIncludedAndStaysOnCriticalStep(): void
+    {
+        [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('true');
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertArrayHasKey('nextUrl', $data);
+        self::assertNull($data['nextUrl']);
+        self::assertTrue($currentPlanMeasure->isApplicable());
+        self::assertNull($currentPlanMeasure->isCritical());
+        self::assertTrue($currentPlanMeasure->willImplement());
+    }
+
+    public function testUpdateSelectionDecisionNoMarksMeasureAsApplicableButNotIncluded(): void
+    {
+        [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('false');
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertTrue($currentPlanMeasure->isApplicable());
+        self::assertNull($currentPlanMeasure->isCritical());
+        self::assertFalse($currentPlanMeasure->willImplement());
+    }
+
+    public function testUpdateSelectionDecisionNotApplicableClearsApplicability(): void
+    {
+        [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('na');
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertFalse($currentPlanMeasure->isApplicable());
+        self::assertNull($currentPlanMeasure->isCritical());
+        self::assertNull($currentPlanMeasure->willImplement());
+    }
+
+    public function testUpdateSelectionDecisionNoOnLastMeasureRedirectsToDone(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $lastMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($lastMeasure, 1111);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($lastMeasure)
+            ->setIsApplicable(true)
+            ->setWillImplement(false)
+            ->setIsCritical(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $lastMeasure->getId(),
+            'field' => 'decision',
+            'value' => 'false',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($lastMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/done', (string) $data['nextUrl']);
+    }
+
+    public function testUpdateSelectionDecisionNotApplicableOnLastMeasureRedirectsToDone(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $lastMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($lastMeasure, 1112);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($lastMeasure)
+            ->setIsApplicable(null)
+            ->setWillImplement(null)
+            ->setIsCritical(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $lastMeasure->getId(),
+            'field' => 'decision',
+            'value' => 'na',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($lastMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/done', (string) $data['nextUrl']);
+    }
+
+    public function testUpdateSelectionWillImplementWithCriticalReasonOnLastMeasureRedirectsToDone(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $lastMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($lastMeasure, 1113);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($lastMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(true)
+            ->setCriticalReason('Motivo válido')
+            ->setWillImplement(true)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $lastMeasure->getId(),
+            'field' => 'willImplement',
+            'value' => 'true',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($lastMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/done', (string) $data['nextUrl']);
+    }
+
+    public function testUpdateSelectionCriticalNoAdvancesWithoutRequiringReason(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($currentMeasure, 111);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($nextMeasure, 112);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(true)
+            ->setWillImplement(true)
+            ->setIsCritical(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'critical',
+            'value' => 'false',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertFalse($currentPlanMeasure->isCritical());
+        self::assertNull($currentPlanMeasure->getCriticalReason());
+    }
+
+    public function testUpdateSelectionCriticalYesCanBeUnsetToNoAndClearsReason(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($currentMeasure, 113);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($nextMeasure, 114);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(true)
+            ->setWillImplement(true)
+            ->setIsCritical(true)
+            ->setCriticalReason('Motivo original')
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'critical',
+            'value' => 'false',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertFalse($currentPlanMeasure->isCritical());
+        self::assertNull($currentPlanMeasure->getCriticalReason());
+    }
+
+    public function testUpdateSelectionCriticalYesRequiresReasonBeforeAdvancing(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($currentMeasure, 211);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($nextMeasure, 212);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(true)
+            ->setWillImplement(true)
+            ->setIsCritical(null)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'critical',
+            'value' => 'true',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertArrayHasKey('nextUrl', $data);
+        self::assertNull($data['nextUrl']);
+        self::assertTrue($currentPlanMeasure->isCritical());
+        self::assertNull($currentPlanMeasure->getCriticalReason());
+    }
+
+    public function testUpdateSelectionWillImplementRequiresCriticalReasonWhenMeasureIsCritical(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($currentMeasure, 311);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($nextMeasure, 312);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(true)
+            ->setCriticalReason(null)
+            ->setWillImplement(true)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'willImplement',
+            'value' => 'true',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMockForIgnoredSelection();
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertArrayHasKey('error', $data);
+        self::assertStringContainsString('motivo', (string) $data['error']);
+        self::assertNull($data['nextUrl'] ?? null);
+        self::assertSame('', $currentPlanMeasure->getCriticalReason() ?? '');
+    }
+
+    public function testUpdateSelectionWillImplementWithCriticalReasonAdvances(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($currentMeasure, 411);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5);
+        $this->setEntityId($nextMeasure, 412);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setIsApplicable(true)
+            ->setIsCritical(true)
+            ->setCriticalReason('Motivo válido')
+            ->setWillImplement(true)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'willImplement',
+            'value' => 'true',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertSame('Motivo válido', $currentPlanMeasure->getCriticalReason());
     }
 
     public function testBlockQuestionYesKeepsCurrentMeasurePendingAndReturnsCurrentIndex(): void
@@ -716,6 +1532,234 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame($currentPlanMeasure, $persistedEntities[0]);
     }
 
+    public function testMeasuresProgressCountsSkippedBlockMeasuresInBaseTotal(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+        self::getContainer()->get('twig')->addGlobal('userProjects', []);
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+        $this->setEntityId($plan, 9000);
+
+        $measure1 = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida 1');
+        $this->setEntityId($measure1, 501);
+
+        $block = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('biodiversity')
+            ->setName('Biodiversidad')
+            ->setHasScreeningQuestion(true)
+            ->setScreeningQuestion('¿Se va a rodar en espacios naturales?');
+        $this->setEntityId($block, 502);
+
+        $measure2 = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setMeasureBlock($block)
+            ->setScore(5)
+            ->setName('Medida 2');
+        $this->setEntityId($measure2, 503);
+
+        $measure3 = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida 3');
+        $this->setEntityId($measure3, 504);
+
+        $measure4 = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida 4');
+        $this->setEntityId($measure4, 505);
+
+        $planMeasure1 = (new PlanMeasure())
+            ->setMeasure($measure1)
+            ->setIsApplicable(true)
+            ->setIsCritical(false)
+            ->setWillImplement(true)
+            ->markAsManual();
+        $plan->addPlanMeasure($planMeasure1);
+
+        $planMeasure2 = (new PlanMeasure())
+            ->setMeasure($measure2)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($planMeasure2);
+
+        $planMeasure3 = (new PlanMeasure())
+            ->setMeasure($measure3)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($planMeasure3);
+
+        $planMeasure4 = (new PlanMeasure())
+            ->setMeasure($measure4)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($planMeasure4);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$measure1, $measure2, $measure3, $measure4], $measure2);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($measure2, $planMeasure2);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $persistedEntities = [];
+        $entityManager = $this->createEntityManagerMockForBlockQuestion($persistedEntities);
+        $planCompletionService = self::getContainer()->get(\App\Service\SustainabilityPlanCompletionService::class);
+
+        $visibleMeasuresBefore = $planCompletionService->getVisibleMeasures($plan, $project, $measureRepository);
+        $currentIndexBefore = $planCompletionService->findVisibleMeasureIndex($visibleMeasuresBefore, $measure2);
+        self::assertNotNull($currentIndexBefore);
+
+        $beforeRequest = $this->createRequest([], ['i' => $currentIndexBefore]);
+        $beforeRequest->attributes->set('_route', 'backend_plan_measures');
+        $beforeRequest->attributes->set('_route_params', []);
+
+        $beforeHtml = $this->invokeMeasures(
+            $controller,
+            $beforeRequest,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $this->createEntityManagerMockForMeasuresView(),
+            $this->newStripeCheckoutServiceStubForProTier(),
+            self::getContainer()->get(\App\Repository\CommercialPlanRepository::class)
+        )->getContent();
+
+        self::assertIsString($beforeHtml);
+        self::assertStringContainsString('Medida 2 de 4', $beforeHtml);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $measure2->getId(),
+            'field' => 'blockQuestion',
+            'value' => 'false',
+        ]);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+
+        $visibleMeasuresAfter = $planCompletionService->getVisibleMeasures($plan, $project, $measureRepository);
+        $currentIndexAfter = $planCompletionService->findVisibleMeasureIndex($visibleMeasuresAfter, $measure3);
+        $lastIndexAfter = $planCompletionService->findVisibleMeasureIndex($visibleMeasuresAfter, $measure4);
+        self::assertNotNull($currentIndexAfter);
+        self::assertNotNull($lastIndexAfter);
+
+        $nextRequest = $this->createRequest([], ['i' => $currentIndexAfter]);
+        $nextRequest->attributes->set('_route', 'backend_plan_measures');
+        $nextRequest->attributes->set('_route_params', []);
+        $nextHtml = $this->invokeMeasures(
+            $controller,
+            $nextRequest,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $this->createEntityManagerMockForMeasuresView(),
+            $this->newStripeCheckoutServiceStubForProTier(),
+            self::getContainer()->get(\App\Repository\CommercialPlanRepository::class)
+        )->getContent();
+
+        self::assertIsString($nextHtml);
+        self::assertStringContainsString('Medida 3 de 4', $nextHtml);
+
+        $progressRequest = $this->createRequest([
+            'measureId' => (string) $measure3->getId(),
+            'field' => 'decision',
+            'value' => 'false',
+        ]);
+        $progressMeasureRepository = $this->createMeasureRepositoryMock([$measure1, $measure2, $measure3, $measure4], $measure3);
+        $progressPlanMeasureRepository = $this->createPlanMeasureRepositoryMock($measure3, $planMeasure3);
+        $progressEntityManager = $this->createEntityManagerMock($planMeasure3);
+
+        $progressResponse = $this->invokeUpdateSelection(
+            $controller,
+            $progressRequest,
+            $progressMeasureRepository,
+            $progressPlanMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $progressEntityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $progressResponse);
+        $progressData = json_decode((string) $progressResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($progressData['success']);
+
+        $lastRequest = $this->createRequest([], ['i' => $lastIndexAfter]);
+        $lastRequest->attributes->set('_route', 'backend_plan_measures');
+        $lastRequest->attributes->set('_route_params', []);
+        $lastHtml = $this->invokeMeasures(
+            $controller,
+            $lastRequest,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $this->createEntityManagerMockForMeasuresView(),
+            $this->newStripeCheckoutServiceStubForProTier(),
+            self::getContainer()->get(\App\Repository\CommercialPlanRepository::class)
+        )->getContent();
+
+        self::assertIsString($lastHtml);
+        self::assertStringContainsString('Medida 4 de 4', $lastHtml);
+
+        $finalRequest = $this->createRequest([
+            'measureId' => (string) $measure4->getId(),
+            'field' => 'decision',
+            'value' => 'false',
+        ]);
+        $finalMeasureRepository = $this->createMeasureRepositoryMock([$measure1, $measure2, $measure3, $measure4], $measure4);
+        $finalPlanMeasureRepository = $this->createPlanMeasureRepositoryMock($measure4, $planMeasure4);
+        $finalEntityManager = $this->createEntityManagerMock($planMeasure4);
+
+        $finalResponse = $this->invokeUpdateSelection(
+            $controller,
+            $finalRequest,
+            $finalMeasureRepository,
+            $finalPlanMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $finalEntityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $finalResponse);
+        $finalData = json_decode((string) $finalResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($finalData['success']);
+        self::assertStringContainsString('/backend/plan/done', (string) $finalData['nextUrl']);
+    }
+
     public function testSkippedBlockDoesNotPreventPlanCompletion(): void
     {
         $controller = $this->getController();
@@ -788,9 +1832,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         return $controller;
     }
 
-    private function createRequest(array $post = []): Request
+    private function createRequest(array $post = [], array $query = []): Request
     {
-        $request = new Request([], $post);
+        $request = new Request($query, $post);
         $request->setSession(new Session(new MockArraySessionStorage()));
         self::getContainer()->get('request_stack')->push($request);
 
@@ -898,6 +1942,96 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $entityManager->expects(self::never())->method('flush');
 
         return $entityManager;
+    }
+
+    private function createEntityManagerMockForMeasuresView(): EntityManagerInterface
+    {
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::once())->method('flush');
+
+        return $entityManager;
+    }
+
+    /**
+     * @return array{
+     *     0: PlanController,
+     *     1: Request,
+     *     2: MeasureRepository,
+     *     3: PlanMeasureRepository,
+     *     4: PlanRepository,
+     *     5: SustainabilityPlanBlockAnswerRepository,
+     *     6: ActiveProjectService,
+     *     7: EntityManagerInterface,
+     *     8: PlanMeasure
+     * }
+     */
+    private function buildDecisionScenario(string $decisionValue): array
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $currentMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida actual');
+        $this->setEntityId($currentMeasure, 901);
+
+        $nextMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida siguiente');
+        $this->setEntityId($nextMeasure, 902);
+
+        $currentPlanMeasure = (new PlanMeasure())
+            ->setMeasure($currentMeasure)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($currentPlanMeasure);
+
+        $nextPlanMeasure = (new PlanMeasure())
+            ->setMeasure($nextMeasure)
+            ->setApplicabilitySource('manual');
+        $plan->addPlanMeasure($nextPlanMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $currentMeasure->getId(),
+            'field' => 'decision',
+            'value' => $decisionValue,
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+
+        return [
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager,
+            $currentPlanMeasure,
+        ];
     }
 
     /**
@@ -1031,6 +2165,28 @@ final class PlanControllerNavigationTest extends KernelTestCase
         return $service;
     }
 
+    private function newStripeCheckoutServiceStubForProTier(): \App\Service\StripeProjectCheckoutService
+    {
+        $service = $this->newStripeCheckoutServiceStub();
+        $resolverReflection = new \ReflectionClass(\App\Service\CommercialPlanResolver::class);
+        /** @var \App\Service\CommercialPlanResolver $resolver */
+        $resolver = $resolverReflection->newInstanceWithoutConstructor();
+        $subscriptionRepository = $this->createMock(\App\Repository\ProjectSubscriptionRepository::class);
+        $subscriptionRepository->method('findOneByProject')->willReturn(
+            (new ProjectSubscription())->setTier(ProjectSubscription::TIER_PRO)
+        );
+        $subscriptionProperty = new \ReflectionProperty($resolver, 'subscriptionRepository');
+        $subscriptionProperty->setAccessible(true);
+        $subscriptionProperty->setValue($resolver, $subscriptionRepository);
+
+        $featureGate = new ProjectFeatureGate($resolver);
+        $reflection = new \ReflectionProperty($service, 'featureGate');
+        $reflection->setAccessible(true);
+        $reflection->setValue($service, $featureGate);
+
+        return $service;
+    }
+
     private function invokeReview(
         PlanController $controller,
         Request $request,
@@ -1076,6 +2232,17 @@ final class PlanControllerNavigationTest extends KernelTestCase
         return $result;
     }
 
+    private function invokeCanAdvanceFromCurrentMeasure(PlanController $controller, PlanMeasure $planMeasure): bool
+    {
+        $reflection = new \ReflectionMethod($controller, 'canAdvanceFromCurrentMeasure');
+        $reflection->setAccessible(true);
+
+        /** @var bool $result */
+        $result = $reflection->invoke($controller, $planMeasure);
+
+        return $result;
+    }
+
     private function invokeUpdateSelection(
         PlanController $controller,
         Request $request,
@@ -1100,6 +2267,34 @@ final class PlanControllerNavigationTest extends KernelTestCase
         return $response;
     }
 
+    private function invokeMeasures(
+        PlanController $controller,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        PlanRepository $planRepository,
+        MeasureRepository $measureRepository,
+        PlanMeasureRepository $planMeasureRepository,
+        SustainabilityPlanBlockAnswerRepository $blockAnswerRepository,
+        EntityManagerInterface $entityManager,
+        \App\Service\StripeProjectCheckoutService $checkoutService,
+        \App\Repository\CommercialPlanRepository $commercialPlanRepository
+    ): Response {
+        /** @var Response $response */
+        $response = $controller->measures(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $entityManager,
+            $checkoutService,
+            $commercialPlanRepository
+        );
+
+        return $response;
+    }
+
     private function setEntityId(object $entity, int $id): void
     {
         $reflection = new \ReflectionObject($entity);
@@ -1114,5 +2309,32 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $property = $reflection->getProperty('id');
         $property->setAccessible(true);
         $property->setValue($entity, $id);
+    }
+
+    private function buildLoadedMeasureState(?bool $isApplicable, ?bool $willImplement, ?bool $isCritical, ?string $criticalReason): PlanMeasure
+    {
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida cargada');
+        $this->setEntityId($measure, 9901);
+
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure($measure)
+            ->setIsApplicable($isApplicable)
+            ->setWillImplement($willImplement)
+            ->setIsCritical($isCritical)
+            ->setCriticalReason($criticalReason)
+            ->markAsManual();
+
+        return $planMeasure;
     }
 }

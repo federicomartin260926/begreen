@@ -32,6 +32,15 @@ export default class extends Controller {
                 this.postField(el, measureId, field, value);
             });
         });
+
+        this.element.querySelectorAll('[data-plan-measures-target="criticalReason"]').forEach((input) => {
+            input.addEventListener('input', (e) => {
+                const el = e.currentTarget;
+                const measureId = el.dataset.measureId;
+                const card = this.getMeasureCard(measureId);
+                this.updateCriticalContinueState(card, measureId);
+            });
+        });
     }
 
     async postField(triggerEl, measureId, field, value) {
@@ -69,9 +78,31 @@ export default class extends Controller {
                 lastResponse = data;
             }
 
-            this.setSelectedButtonState(measureId, field, value);
-            if (field === 'criticalReason' || field === 'critical' || field === 'isApplicable') {
-                const sectionToScroll = this.syncMeasureState(measureId);
+            let sectionToScroll = null;
+            if (field === 'decision') {
+                this.applyDecisionState(measureId, value);
+                sectionToScroll = this.syncMeasureState(measureId);
+                if (String(value) === 'true') {
+                    sectionToScroll = card?.querySelector('[data-plan-measures-section="critical"]') || sectionToScroll;
+                }
+            } else {
+                this.setSelectedButtonState(measureId, field, value);
+                sectionToScroll = this.syncMeasureState(measureId);
+                if (field === 'critical') {
+                    if (String(value) === 'false') {
+                        const reasonInput = card?.querySelector(`#crit-reason-${measureId}`);
+                        if (reasonInput) {
+                            reasonInput.value = '';
+                        }
+                    }
+                    sectionToScroll = String(value) === 'true'
+                        ? card?.querySelector('[data-plan-measures-section="critical-reason"]')
+                        : null;
+                } else if (field === 'criticalReason') {
+                    sectionToScroll = card?.querySelector('[data-plan-measures-section="critical-continue"]') || sectionToScroll;
+                }
+            }
+            if (field === 'criticalReason' || field === 'critical' || field === 'decision') {
                 this.scrollToSection(sectionToScroll);
             }
 
@@ -104,7 +135,7 @@ export default class extends Controller {
             return [{ field, value }];
         }
 
-        if (field === 'isApplicable' && String(value) === 'false') {
+        if (field === 'decision') {
             return [{ field, value }];
         }
 
@@ -143,7 +174,9 @@ export default class extends Controller {
 
     getSelectedValue(measureId, field, scope = null) {
         const selected = this.getFieldButtons(measureId, field, scope).find((btn) =>
-            btn.classList.contains('btn-success') || btn.classList.contains('btn-danger')
+            btn.classList.contains('btn-success')
+            || btn.classList.contains('btn-danger')
+            || btn.classList.contains('btn-secondary')
         );
 
         return selected?.dataset.value ?? null;
@@ -155,12 +188,15 @@ export default class extends Controller {
             return null;
         }
 
-        const applicable = this.getSelectedValue(measureId, 'isApplicable');
+        const decision = this.getSelectedValue(measureId, 'decision');
         const critical = this.getSelectedValue(measureId, 'critical');
+        const reasonInput = card.querySelector(`#crit-reason-${measureId}`);
+        const reasonText = String(reasonInput?.value || '').trim();
 
-        const criticalVisible = this.toggleSection(card, 'critical', applicable === 'true');
-        const criticalReasonVisible = this.toggleSection(card, 'critical-reason', critical === 'true');
-        const implementVisible = this.toggleSection(card, 'implement', applicable === 'true' && critical !== null);
+        const criticalVisible = this.toggleSection(card, 'critical', decision === 'true');
+        const criticalReasonVisible = this.toggleSection(card, 'critical-reason', decision === 'true' && critical === 'true');
+        const continueVisible = this.toggleSection(card, 'critical-continue', decision === 'true' && critical === 'true');
+        this.updateCriticalContinueState(card, measureId, reasonText);
 
         if (criticalVisible) {
             return card.querySelector('[data-plan-measures-section="critical"]');
@@ -170,8 +206,8 @@ export default class extends Controller {
             return card.querySelector('[data-plan-measures-section="critical-reason"]');
         }
 
-        if (implementVisible) {
-            return card.querySelector('[data-plan-measures-section="implement"]');
+        if (continueVisible) {
+            return card.querySelector('[data-plan-measures-section="critical-continue"]');
         }
 
         return null;
@@ -191,29 +227,103 @@ export default class extends Controller {
     setSelectedButtonState(measureId, field, value) {
         this.getFieldButtons(measureId, field).forEach((btn) => {
             const isSelected = btn.dataset.value === String(value);
-            const positive = btn.dataset.value === 'true';
-            const negative = btn.dataset.value === 'false';
+            const variant = this.getButtonVariant(btn.dataset.value);
 
             btn.querySelector('i.bi-check-lg')?.remove();
-            btn.classList.remove('btn-success', 'btn-danger', 'btn-outline-success', 'btn-outline-danger');
+            btn.classList.remove(
+                'btn-success',
+                'btn-danger',
+                'btn-secondary',
+                'btn-outline-success',
+                'btn-outline-danger',
+                'btn-outline-secondary'
+            );
             if (isSelected) {
-                btn.classList.add(positive ? 'btn-success' : 'btn-danger');
+                btn.classList.add(variant.selected);
                 const icon = document.createElement('i');
                 icon.className = 'bi bi-check-lg me-1';
                 btn.prepend(icon);
                 return;
             }
 
-            btn.classList.add(positive ? 'btn-outline-success' : 'btn-outline-danger');
+            btn.classList.add(variant.outline);
         });
     }
 
+    applyDecisionState(measureId, value) {
+        const card = this.getMeasureCard(measureId);
+        const reasonInput = card?.querySelector(`#crit-reason-${measureId}`);
+
+        if (value === 'na') {
+            this.setSelectedButtonState(measureId, 'decision', value);
+            this.clearSelectedButtonState(measureId, 'critical');
+            if (reasonInput) {
+                reasonInput.value = '';
+            }
+            return;
+        }
+
+        this.setSelectedButtonState(measureId, 'decision', value);
+        this.clearSelectedButtonState(measureId, 'critical');
+        if (reasonInput) {
+            reasonInput.value = '';
+        }
+    }
+
+    clearSelectedButtonState(measureId, field) {
+        this.getFieldButtons(measureId, field).forEach((btn) => {
+            btn.querySelector('i.bi-check-lg')?.remove();
+            btn.classList.remove('btn-success', 'btn-danger', 'btn-secondary');
+            btn.classList.remove('btn-outline-success', 'btn-outline-danger', 'btn-outline-secondary');
+
+            const variant = this.getButtonVariant(btn.dataset.value);
+            btn.classList.add(variant.outline);
+        });
+    }
+
+    getButtonVariant(value) {
+        if (String(value) === 'true') {
+            return { selected: 'btn-success', outline: 'btn-outline-success' };
+        }
+
+        if (String(value) === 'false') {
+            return { selected: 'btn-danger', outline: 'btn-outline-danger' };
+        }
+
+        return { selected: 'btn-secondary', outline: 'btn-outline-secondary' };
+    }
+
     shouldAdvance(field, value) {
-        if (field === 'isApplicable' && String(value) === 'false') {
-            return true;
+        if (field === 'decision') {
+            return String(value) !== 'true';
+        }
+
+        if (field === 'critical') {
+            return String(value) === 'false';
+        }
+
+        if (field === 'criticalReason') {
+            return false;
         }
 
         return field === 'willImplement';
+    }
+
+    updateCriticalContinueState(card, measureId, reasonText = null) {
+        if (!card) {
+            return;
+        }
+
+        const button = card.querySelector('[data-plan-measures-action="critical-continue"]');
+        if (!button) {
+            return;
+        }
+
+        const decision = this.getSelectedValue(measureId, 'decision', card);
+        const critical = this.getSelectedValue(measureId, 'critical', card);
+        const currentReason = reasonText ?? String(card.querySelector(`#crit-reason-${measureId}`)?.value || '').trim();
+        const enable = decision === 'true' && critical === 'true' && currentReason !== '';
+        button.disabled = !enable;
     }
 
     showInlineError(message, card = null) {
@@ -258,7 +368,9 @@ export default class extends Controller {
     }
 
     navigateAfterSave(field, value) {
-        const goNext = field === 'willImplement' || (field === 'isApplicable' && String(value) === 'false');
+        const goNext = field === 'decision'
+            || field === 'willImplement'
+            || (field === 'isApplicable' && String(value) === 'false');
         if (goNext && (this.currentIndex + 1) < this.totalMeasures) {
             const url = new URL(window.location.href);
             url.searchParams.set('i', String(this.currentIndex + 1));

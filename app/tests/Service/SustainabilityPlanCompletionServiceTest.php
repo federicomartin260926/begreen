@@ -123,7 +123,22 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
         self::assertSame($pendingMeasure->getId(), $pending[0]['measure']->getId());
         self::assertSame('applicability_missing', $pending[0]['reason']);
         self::assertSame($secondPendingMeasure->getId(), $pending[1]['measure']->getId());
-        self::assertSame('critical_missing', $pending[1]['reason']);
+        self::assertSame('will_implement_missing', $pending[1]['reason']);
+    }
+
+    public function testApplicableMeasureNotSelectedForImplementationDoesNotRemainPending(): void
+    {
+        $service = $this->createService([
+            $measure = $this->createMeasure(405, 5, 'Medida cerrada'),
+        ]);
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $plan = $this->createPlan($project);
+        $plan->addPlanMeasure($this->createPlanMeasure($measure, true, null, false));
+
+        self::assertTrue($service->isComplete($plan, $project));
+        self::assertSame('completo', $service->syncStatus($plan, $project) ? 'completo' : 'incompleto');
+        self::assertSame([], $service->getPendingVisibleMeasures($plan, $project));
     }
 
     /**
