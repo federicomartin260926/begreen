@@ -31,6 +31,27 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
     }
 
+    public function testBasicTierCanEnableCustomMeasuresManually(): void
+    {
+        $basicPlan = $this->makeCommercialPlan('basic', [
+            'features' => array_replace(
+                $this->defaultCommercialPlanDefinition('basic')['features'],
+                [
+                    'sustainability_plan.custom_measures' => true,
+                ]
+            ),
+        ]);
+
+        $gate = $this->makeProjectFeatureGate([
+            $basicPlan,
+            $this->makeCommercialPlan('standard'),
+            $this->makeCommercialPlan('pro'),
+        ]);
+        $project = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC);
+
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
+    }
+
     public function testStandardTierRules(): void
     {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
@@ -48,6 +69,7 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.category'));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
         self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.public_comments'));
+        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
     }
 
     public function testProTierRules(): void

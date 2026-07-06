@@ -217,6 +217,28 @@
                     </table>
                 </div>
             {% endfor %}
+
+            {% if customMeasures is defined and customMeasures is not empty %}
+                <h4 class="mt-4">{{ 'backend.plan.preview.custom_measures.title'|trans }}</h4>
+                <div class="row g-3">
+                    {% for customMeasure in customMeasures %}
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded p-3 h-100 bg-light">
+                                <div class="d-flex align-items-start justify-content-between gap-2">
+                                    <div class="fw-semibold">{{ customMeasure.title }}</div>
+                                    <span class="badge bg-success-subtle text-success border">{{ 'backend.plan.preview.custom_measures.badge'|trans }}</span>
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    <span class="text-capitalize">{{ ('backend.plan.review.custom_measures.state.' ~ customMeasure.state)|trans }}</span>
+                                </div>
+                                {% if customMeasure.description %}
+                                    <div class="small mt-2">{{ customMeasure.description }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
         {% endif %}
     </div>
 </div>

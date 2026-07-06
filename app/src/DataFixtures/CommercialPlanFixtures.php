@@ -84,7 +84,7 @@ final class CommercialPlanFixtures extends Fixture implements FixtureGroupInterf
                     'sustainability_plan.internal_notes' => false,
                     'sustainability_plan.responsibles' => false,
                     'sustainability_plan.checklist' => false,
-                    'sustainability_plan.custom_measures' => false,
+                    'sustainability_plan.custom_measures' => true,
                     'sustainability_plan.validation_summary' => false,
                     'sustainability_plan.branding' => false,
                 ],

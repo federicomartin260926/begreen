@@ -47,6 +47,9 @@ class Plan
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $customMeasures = null;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $customMeasuresCompletedAt = null;
+
 
     public function __construct()
     {
@@ -114,6 +117,31 @@ class Plan
     public function setCustomMeasures(?string $customMeasures): static
     {
         $this->customMeasures = $customMeasures;
+        return $this;
+    }
+
+    public function getCustomMeasuresCompletedAt(): ?\DateTimeImmutable
+    {
+        return $this->customMeasuresCompletedAt;
+    }
+
+    public function setCustomMeasuresCompletedAt(?\DateTimeImmutable $customMeasuresCompletedAt): static
+    {
+        $this->customMeasuresCompletedAt = $customMeasuresCompletedAt;
+        return $this;
+    }
+
+    public function markCustomMeasuresCompleted(?\DateTimeImmutable $completedAt = null): static
+    {
+        $this->customMeasuresCompletedAt = $completedAt ?? new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function clearCustomMeasuresCompletion(): static
+    {
+        $this->customMeasuresCompletedAt = null;
+
         return $this;
     }
 

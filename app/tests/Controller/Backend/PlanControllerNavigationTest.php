@@ -13,6 +13,7 @@ use App\Entity\ProjectSubscription;
 use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Entity\User;
 use App\Repository\MeasureRepository;
+use App\Repository\CommercialPlanRepository;
 use App\Repository\PlanMeasureRepository;
 use App\Repository\PlanRepository;
 use App\Repository\SustainabilityPlanBlockAnswerRepository;
@@ -35,20 +36,22 @@ final class PlanControllerNavigationTest extends KernelTestCase
 {
     use CommercialPlanTestHelpers;
 
-    public function testTerminalSelectionNextUrlPointsToDoneWhenPlanIsComplete(): void
+    public function testTerminalSelectionNextUrlPointsToDoneWhenCustomMeasuresStepIsComplete(): void
     {
         $controller = $this->getController();
+        $plan = (new Plan())->setStatus('completo')->markCustomMeasuresCompleted();
 
-        $url = $this->invokeResolveTerminalSelectionNextUrl($controller, true, 48);
+        $url = $this->invokeResolveTerminalSelectionNextUrl($controller, $plan, true, 48);
 
         self::assertStringContainsString('/backend/plan/done', $url);
     }
 
-    public function testTerminalSelectionNextUrlPointsToNextMeasureWhenPendingRemain(): void
+    public function testTerminalSelectionNextUrlPointsToMeasuresWhenCustomMeasuresStepIsPending(): void
     {
         $controller = $this->getController();
+        $plan = (new Plan())->setStatus('completo');
 
-        $url = $this->invokeResolveTerminalSelectionNextUrl($controller, false, 48);
+        $url = $this->invokeResolveTerminalSelectionNextUrl($controller, $plan, true, 48);
 
         self::assertStringContainsString('/backend/plan/measures', $url);
         self::assertStringContainsString('i=48', $url);
@@ -63,6 +66,278 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'is_applicable' => '1',
             'will_implement' => '1',
         ], $filters);
+    }
+
+    public function testIndexRedirectsToMeasuresWhenCustomMeasuresStepIsPending(): void
+    {
+        $controller = $this->getController();
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol)
+            ->setStatus('completo');
+
+        $response = $controller->index(
+            $this->createActiveProjectServiceMock($project),
+            $this->createPlanRepositoryMock($plan)
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/plan/measures', (string) $response->headers->get('Location'));
+    }
+
+    public function testDoneRedirectsToMeasuresWhenCustomMeasuresStepIsPending(): void
+    {
+        $controller = $this->getController();
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setStatus('completo');
+
+        $response = $controller->done(
+            $this->createActiveProjectServiceMock($project),
+            $this->createPlanRepositoryMock($plan)
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/plan/measures', (string) $response->headers->get('Location'));
+    }
+
+    public function testContinueCustomMeasuresMarksStepCompletedAndRedirectsToDone(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol)
+            ->setStatus('completo');
+
+        $request = $this->createRequest([
+            'action' => 'continue_custom_measures',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([]);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
+        $planMeasureRepository->method('findOneBy')->willReturn(null);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('flush');
+        $checkoutService = $this->newStripeCheckoutServiceStub();
+        $commercialPlanRepository = self::getContainer()->get(CommercialPlanRepository::class);
+
+        $response = $controller->measures(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $entityManager,
+            $checkoutService,
+            $commercialPlanRepository
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/plan/done', (string) $response->headers->get('Location'));
+        self::assertNotNull($plan->getCustomMeasuresCompletedAt());
+    }
+
+    public function testCustomMeasuresContinueButtonChangesWhenMeasuresAlreadyExist(): void
+    {
+        self::bootKernel();
+        $this->setAdminToken();
+        $requestStack = self::getContainer()->get('request_stack');
+        $request = Request::create('/');
+        $request->setLocale('es');
+        $request->attributes->set('_route', 'backend_plan_measures');
+        $request->attributes->set('_route_params', []);
+        $requestStack->push($request);
+        $twig = self::getContainer()->get('twig');
+        $twig->addGlobal('userProjects', []);
+
+        $baseContext = [
+            'project' => (new Project())->setName('Proyecto demo'),
+            'plan' => (new Plan())->setStatus('completo'),
+            'projectTier' => ProjectSubscription::TIER_PRO,
+            'projectTierLabel' => 'Pro',
+            'projectTierSummary' => 'Resumen de prueba',
+            'evidenceCount' => 0,
+            'evidenceLimit' => null,
+            'upgradeCta' => null,
+            'commercialCards' => [],
+            'hasWatermark' => false,
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'collaborationSummary' => ['customMeasures' => 0],
+            'commitmentSummary' => ['customMeasures' => 0],
+            'navigationQuery' => [],
+            'showCustomMeasuresStep' => true,
+            'index' => 0,
+            'progressIndex' => 0,
+            'total' => 0,
+            'catalogMeasuresTotal' => 0,
+            'measure' => null,
+            'planMeasures' => [],
+            'canGoNext' => false,
+            'planComplete' => true,
+            'currentBlockAnswer' => null,
+            'groupChanged' => 'no',
+            'prevGroupName' => null,
+            'nextGroupName' => null,
+            'groupingBy' => null,
+            'planChartsConfig' => [],
+            'scoreGained' => 0,
+            'scoreMax' => 0,
+            'canUseCustomMeasures' => true,
+        ];
+
+        $emptyHtml = $twig->render('backend/plan/measures.html.twig', $baseContext + [
+            'customMeasures' => [],
+        ]);
+
+        $filledHtml = $twig->render('backend/plan/measures.html.twig', $baseContext + [
+            'customMeasures' => [
+                [
+                    'title' => 'Medida propia',
+                    'description' => 'Descripción',
+                    'state' => 'active',
+                    'raw' => 'Medida propia',
+                ],
+            ],
+        ]);
+
+        self::assertStringContainsString('Continuar sin añadir', $emptyHtml);
+        self::assertStringContainsString('Continuar', $filledHtml);
+        self::assertStringNotContainsString('Continuar sin añadir', $filledHtml);
+
+        $requestStack->pop();
+    }
+
+    public function testAddCustomMeasureIsAllowedWhenBasicFeatureIsEnabledManually(): void
+    {
+        $basicPlan = $this->makeCommercialPlan('basic', [
+            'features' => array_replace(
+                $this->defaultCommercialPlanDefinition('basic')['features'],
+                [
+                    'sustainability_plan.custom_measures' => true,
+                ]
+            ),
+        ]);
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate([$basicPlan]));
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol)
+            ->setStatus('completo');
+
+        $request = $this->createRequest([
+            'action' => 'add_custom_measure',
+            'custom_measure_title' => 'Instalar paneles solares',
+            'custom_measure_description' => 'Reducir consumo eléctrico',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([]);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
+        $planMeasureRepository->method('findOneBy')->willReturn(null);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('flush');
+        $checkoutService = $this->newStripeCheckoutServiceStub();
+        $commercialPlanRepository = self::getContainer()->get(CommercialPlanRepository::class);
+
+        $response = $controller->measures(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $entityManager,
+            $checkoutService,
+            $commercialPlanRepository
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/plan/measures', (string) $response->headers->get('Location'));
+        self::assertStringContainsString('Instalar paneles solares', (string) $plan->getCustomMeasures());
+        self::assertNull($plan->getCustomMeasuresCompletedAt());
+    }
+
+    public function testAddCustomMeasureIsBlockedWhenFeatureIsDisabled(): void
+    {
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol)
+            ->setStatus('completo');
+
+        $request = $this->createRequest([
+            'action' => 'add_custom_measure',
+            'custom_measure_title' => 'Medida bloqueada',
+            'custom_measure_description' => 'No debería guardarse',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([]);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
+        $planMeasureRepository->method('findOneBy')->willReturn(null);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('flush');
+        $checkoutService = $this->newStripeCheckoutServiceStub();
+        $commercialPlanRepository = self::getContainer()->get(CommercialPlanRepository::class);
+
+        $response = $controller->measures(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $entityManager,
+            $checkoutService,
+            $commercialPlanRepository
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/plan/measures', (string) $response->headers->get('Location'));
+        self::assertNull($plan->getCustomMeasures());
     }
 
     public function testMeasuresPageShowsDecisionButtonsAndOmitsImplementStepInCreationFlow(): void
@@ -383,7 +658,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
         $this->setEntityId($plan, 9000);
         $this->setEntityId($plan, 9000);
 
@@ -465,7 +741,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $currentMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -542,7 +819,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $pendingMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -623,7 +901,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $firstMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -775,7 +1054,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $lastMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -837,7 +1117,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $lastMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -899,7 +1180,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $lastMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -962,7 +1244,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $currentMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -1038,7 +1321,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $currentMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -1115,7 +1399,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
 
         $currentMeasure = (new Measure())
             ->setProtocol($protocol)
@@ -1549,7 +1834,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markCustomMeasuresCompleted();
         $this->setEntityId($plan, 9000);
 
         $measure1 = (new Measure())
@@ -1715,6 +2001,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $progressData = json_decode((string) $progressResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($progressData['success']);
 
+        $plan->markCustomMeasuresCompleted();
+
         $lastRequest = $this->createRequest([], ['i' => $lastIndexAfter]);
         $lastRequest->attributes->set('_route', 'backend_plan_measures');
         $lastRequest->attributes->set('_route_params', []);
@@ -1757,7 +2045,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $finalResponse);
         $finalData = json_decode((string) $finalResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($finalData['success']);
-        self::assertStringContainsString('/backend/plan/done', (string) $finalData['nextUrl']);
+        self::assertStringContainsString('/backend/plan/measures', (string) $finalData['nextUrl']);
+        self::assertStringContainsString('i=3', (string) $finalData['nextUrl']);
     }
 
     public function testSkippedBlockDoesNotPreventPlanCompletion(): void
@@ -1832,9 +2121,24 @@ final class PlanControllerNavigationTest extends KernelTestCase
         return $controller;
     }
 
+    private function getControllerWithFeatureGate(ProjectFeatureGate $featureGate): PlanController
+    {
+        self::bootKernel();
+        self::getContainer()->set(ProjectFeatureGate::class, $featureGate);
+
+        /** @var PlanController $controller */
+        $controller = self::getContainer()->get(PlanController::class);
+        $controller->setContainer(self::getContainer());
+
+        return $controller;
+    }
+
     private function createRequest(array $post = [], array $query = []): Request
     {
         $request = new Request($query, $post);
+        if ($post !== []) {
+            $request->setMethod('POST');
+        }
         $request->setSession(new Session(new MockArraySessionStorage()));
         self::getContainer()->get('request_stack')->push($request);
 
@@ -1848,7 +2152,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setSurnames('User')
             ->setEmail('admin@example.test')
             ->setPassword('password')
-            ->setRoles(['ROLE_ADMIN']);
+            ->setRoles(['ROLE_ADMIN'])
+            ->setCreatedAt(new \DateTimeImmutable('2024-01-01 00:00:00'));
 
         self::getContainer()->get('security.token_storage')->setToken(new UsernamePasswordToken($user, 'main', $user->getRoles()));
     }
@@ -2130,6 +2435,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     private function invokeResolveTerminalSelectionNextUrl(
         PlanController $controller,
+        Plan $plan,
         bool $planComplete,
         int $nextIndex
     ): string {
@@ -2137,7 +2443,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $reflection->setAccessible(true);
 
         /** @var string $url */
-        $url = $reflection->invoke($controller, $planComplete, $nextIndex);
+        $url = $reflection->invoke($controller, $plan, $planComplete, $nextIndex);
 
         return $url;
     }

@@ -252,7 +252,7 @@ backend:
         internal_notes: "Allows saving private team notes that do not necessarily appear in the final PDF. Useful for internal management and follow-up."
         responsibles: "Allows assigning people or areas responsible for specific measures, so it is clear who must execute or validate each action."
         checklist: "Turns measures into an operational tracking list, marking tasks, progress or pending items."
-        custom_measures: "Allows creating custom measures outside the base catalog, adapted to the project's specific needs."
+        custom_measures: "Allows creating measures owned by the project, visible only in that plan."
         validation_summary: "Adds a validation status view/summary: completed, pending and verified measures, evidence and progress level."
         branding: "Allows customizing the output or presentation with visual identity: logo, brand or client/project elements, depending on what the plan supports."
     flash:
@@ -905,11 +905,25 @@ backend:
       spinner: "Generating PDF and sending…"
     complete:
       title: "You’ve completed the plan!"
-      help: "You can add custom measures you plan to implement in the plan."
-      textarea_ph: "Write additional measures here…"
-      custom_measures_help: "Format per line: Title | Description | Score | State. Optional state: planned, to_implement, implemented, verified."
-      custom_measures_locked: "Custom measures are available only in Pro."
-      finalize_btn: "Finish plan"
+      help: "Before closing it, you can add custom measures that will only be visible in this plan."
+      custom_measures_prompt: "Would you like to add any custom measures to this plan?"
+      custom_measures_prompt_help: "If your plan allows it, you can create a project-owned measure before closing the plan. It does not add points or change commitment."
+      add_custom_measure: "Add custom measure"
+      continue_without_adding: "Continue without adding"
+      continue: "Continue"
+      custom_measures_title: "Added measures"
+      custom_measures_empty: "You haven’t added any custom measures yet."
+      custom_measure_badge: "Custom"
+      custom_measures_locked: "Custom measures are available in Standard and Pro plans."
+      custom_measures_locked_help: "Upgrade the plan to enable project-owned measures."
+      custom_measures_modal_title: "New custom measure"
+      custom_measures_modal_help: "It will only appear in this plan. It does not add points or change commitment."
+      custom_measure_title_label: "Title"
+      custom_measure_description_label: "Description"
+      custom_measure_description_ph: "Describe the custom measure…"
+      custom_measure_title_required: "The custom measure title is required."
+      custom_measure_save_btn: "Save measure"
+      custom_measure_saved: "Custom measure added to the plan."
     measures:
       no_items: "No measures available."
       mandatory_warning: "This measure is mandatory. You must select “Applies” and “Will be implemented” to continue."
@@ -971,6 +985,15 @@ backend:
       group_label: "Custom measures"
       category: "Custom measure"
       no_description: "No description"
+      notification:
+        subject: "New custom measure in %project%"
+        body: |
+          Project: %project%
+          Plan: %plan%
+          User: %user%
+          Title: %title%
+          Description: %description%
+          Date: %date%
     flash:
       select_protocol_required: "You must select a protocol."
       invalid_protocol: "Invalid protocol."
@@ -1096,8 +1119,9 @@ backend:
         verified: "Verified measures"
         evidences: "Uploaded evidence files"
       custom_measures:
-        title: "Pro custom measures"
-        help: "These are the measures defined in the custom measures block."
+        title: "Custom measures"
+        help: "These custom measures are defined in this plan."
+        badge: "Custom measure"
         state:
           planned: "Planned"
           to_implement: "To implement"
@@ -1153,6 +1177,9 @@ backend:
       user: "User:"
       empty: "No measures have been loaded for this plan yet."
       summary_by_department: "Summary by department"
+      custom_measures:
+        title: "Custom measures"
+        badge: "Custom measure"
       yes: "Yes"
       no: "No"
       th:
@@ -1195,7 +1222,8 @@ backend:
       charts:
         title: "Plan charts"
       custom_measures:
-        title: "Pro custom measures"
+        title: "Custom measures"
+        badge: "Custom measure"
         th:
           title: "Title"
           score: "Score"

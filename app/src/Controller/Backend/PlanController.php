@@ -11,6 +11,7 @@ use App\Service\SustainabilityPlanCompletionService;
 use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\SustainabilityPlanCollaborationService;
+use App\Service\SustainabilityPlanCustomMeasureService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
 use App\Service\StripeProjectCheckoutService;
@@ -48,6 +49,7 @@ class PlanController extends AbstractController
         private SustainabilityPlanCompletionService $planCompletionService,
         private SustainabilityPlanMeasureOrderer $measureOrderer,
         private SustainabilityPlanCollaborationService $collaborationService,
+        private SustainabilityPlanCustomMeasureService $customMeasureService,
         private SustainabilityCommitmentLevelService $commitmentLevelService
     ) {}
 
@@ -69,8 +71,12 @@ class PlanController extends AbstractController
             return $this->redirectToRoute('backend_plan_welcome');
         }
 
-        // Si hay plan y está completo -> ir a review
+        // Si hay plan y está completo -> ir a review, salvo que falte resolver custom measures
         if ($plan && $plan->getStatus() === 'completo') {
+            if ($this->shouldShowCustomMeasuresStep($plan)) {
+                return $this->redirectToRoute('backend_plan_measures');
+            }
+
             return $this->redirectToRoute('backend_plan_review', $this->reviewDefaultFilters());
         }
 
@@ -191,38 +197,63 @@ class PlanController extends AbstractController
         $navigationQuery = $request->query->all();
         unset($navigationQuery['i']);
         unset($navigationQuery['only_pending']);
+        $canUseCustomMeasures = $this->featureGate->canUseFeature($project, 'sustainability_plan.custom_measures');
 
-        // POST: guardar texto y actualizar estado a completo/incompleto
+        // POST: custom measures interstitial
         if ($request->isMethod('POST')) {
-            $text = trim((string) $request->request->get('custom_measures', ''));
-            if ($this->featureGate->canUseFeature($project, 'sustainability_plan.custom_measures')) {
-                $plan->setCustomMeasures($text !== '' ? $text : null);
-            } elseif ($text !== '') {
-                $this->addFlash('info', 'backend.plan.complete.custom_measures_locked');
+            $action = (string) $request->request->get('action', '');
+
+            if ($action === 'continue_custom_measures') {
+                $planComplete = $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
+                if (!$planComplete) {
+                    $this->addFlash('warning', 'backend.plan.errors.not_complete');
+
+                    return $this->redirectToRoute('backend_plan_measures', $navigationQuery);
+                }
+
+                $plan->markCustomMeasuresCompleted();
+                $em->flush();
+
+                return $this->redirectToRoute('backend_plan_done');
             }
 
-            $planComplete = $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
-            $em->flush();
+            if ($action === 'add_custom_measure') {
+                if (!$canUseCustomMeasures) {
+                    $this->addFlash('info', 'backend.plan.complete.custom_measures_locked');
 
-            $this->addFlash(
-                'success',
-                $planComplete
-                    ? 'backend.plan.flash.completed'
-                    : 'backend.plan.flash.saved_incomplete'
-            );
+                    return $this->redirectToRoute('backend_plan_measures', $navigationQuery);
+                }
 
-            return $planComplete
-                ? $this->redirectToRoute('backend_plan_done')
-                : $this->redirectToRoute('backend_plan_measures');
+                $title = trim((string) $request->request->get('custom_measure_title', ''));
+                $description = trim((string) $request->request->get('custom_measure_description', ''));
+
+                if ($title === '') {
+                    $this->addFlash('warning', 'backend.plan.complete.custom_measure_title_required');
+
+                    return $this->redirectToRoute('backend_plan_measures', $navigationQuery);
+                }
+
+                $this->customMeasureService->addCustomMeasure(
+                    $plan,
+                    $project,
+                    $this->getUser() instanceof User ? $this->getUser() : null,
+                    $title,
+                    $description
+                );
+                $em->flush();
+
+                $this->addFlash('success', 'backend.plan.complete.custom_measure_saved');
+
+                return $this->redirectToRoute('backend_plan_measures', $navigationQuery);
+            }
         }
 
-        // Si ya está completo, dirige a done (resumen)
+        // Si ya está completo y el paso de custom measures ya se resolvió, dirige a done (resumen)
         $planComplete = $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
-        if ($planComplete) {
-            $em->flush();
+        $showCustomMeasuresStep = $this->shouldShowCustomMeasuresStep($plan);
+        $em->flush();
+        if ($planComplete && !$showCustomMeasuresStep) {
             return $this->redirectToRoute('backend_plan_done');
-        } else {
-            $em->flush();
         }
 
         // ===== Medidas del protocolo seleccionado (ORDER BY dinámico: categoría o departamento) =====
@@ -379,6 +410,7 @@ class PlanController extends AbstractController
             'projectTierSummary'=> $projectTierSummary,
             'evidenceCount'    => $evidenceCount,
             'evidenceLimit'    => $evidenceLimit,
+            'canUseCustomMeasures' => $canUseCustomMeasures,
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
             'hasWatermark'     => $this->featureGate->hasWatermark($project),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
@@ -387,6 +419,7 @@ class PlanController extends AbstractController
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
             'navigationQuery'  => $navigationQuery,
+            'showCustomMeasuresStep' => $showCustomMeasuresStep,
 
             // navegación y medida actual
             'index'            => $index,
@@ -416,10 +449,16 @@ class PlanController extends AbstractController
 
     #[Route('/done', name: 'done', methods: ['GET'])]
     public function done(
-        ActiveProjectService $activeProjectService
+        ActiveProjectService $activeProjectService,
+        PlanRepository $planRepository
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) return $this->redirectToRoute('app_backend');
+
+        $plan = $planRepository->findOneBy(['project' => $project]);
+        if ($plan instanceof Plan && $this->shouldShowCustomMeasuresStep($plan)) {
+            return $this->redirectToRoute('backend_plan_measures');
+        }
 
         return $this->render('backend/plan/done.html.twig', [
             'project' => $project,
@@ -502,6 +541,10 @@ class PlanController extends AbstractController
         $previousStatus = $plan->getStatus();
         $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
         $em->flush();
+
+        if ($this->shouldShowCustomMeasuresStep($plan)) {
+            return $this->redirectToRoute('backend_plan_measures');
+        }
 
         // Debe estar completo
         if ($plan->getStatus() !== 'completo') {
@@ -894,7 +937,7 @@ class PlanController extends AbstractController
                     if ($nextVisibleMeasureIndex !== null) {
                         $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $nextVisibleMeasureIndex]);
                     } elseif ($this->planCompletionService->isComplete($plan, $project, $measureRepo)) {
-                        $nextUrl = $this->generateUrl('backend_plan_done');
+                        $nextUrl = $this->resolveTerminalSelectionNextUrl($plan, true, $currentVisibleMeasureIndex ?? 0);
                     } else {
                         return new JsonResponse([
                             'success' => false,
@@ -1066,7 +1109,7 @@ class PlanController extends AbstractController
             if (!$isLastVisibleMeasure) {
                 $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $currentVisibleIndex + 1]);
             } elseif ($complete) {
-                $nextUrl = $this->generateUrl('backend_plan_done');
+                $nextUrl = $this->resolveTerminalSelectionNextUrl($plan, true, $currentVisibleIndex + 1);
             } else {
                 $pendingMeasure = $this->planCompletionService->findFirstPendingVisibleMeasure($plan, $project, $measureRepo);
                 if ($pendingMeasure !== null) {
@@ -1599,6 +1642,7 @@ class PlanController extends AbstractController
             'project'        => $ctx['project'],
             'plan'           => $ctx['plan'],
             'measuresByDpto' => $ctx['measuresByDpto'],
+            'customMeasures' => $ctx['customMeasures'],
             'activeFilters'  => $ctx['activeFilters'],
             'taxonomyPresenter' => $ctx['taxonomyPresenter'],
             'currentUserLabel'   => $ctx['currentUserLabel'],
@@ -2138,13 +2182,18 @@ class PlanController extends AbstractController
         return $field === 'isApplicable' && $value === 'false';
     }
 
-    private function resolveTerminalSelectionNextUrl(bool $planComplete, int $nextIndex): string
+    private function resolveTerminalSelectionNextUrl(Plan $plan, bool $planComplete, int $nextIndex): string
     {
-        if ($planComplete) {
+        if ($planComplete && !$this->shouldShowCustomMeasuresStep($plan)) {
             return $this->generateUrl('backend_plan_done');
         }
 
         return $this->generateUrl('backend_plan_measures', ['i' => $nextIndex]);
+    }
+
+    private function shouldShowCustomMeasuresStep(Plan $plan): bool
+    {
+        return $plan->getStatus() === 'completo' && $plan->getCustomMeasuresCompletedAt() === null;
     }
 
     private function findBlockAnswer(Plan $plan, ?MeasureBlock $block): ?SustainabilityPlanBlockAnswer
@@ -2341,7 +2390,7 @@ class PlanController extends AbstractController
             'sustainability_plan.internal_notes' => 'Notas internas',
             'sustainability_plan.responsibles' => 'Responsables',
             'sustainability_plan.checklist' => 'Checklist',
-            'sustainability_plan.custom_measures' => 'Medidas custom',
+            'sustainability_plan.custom_measures' => 'Medidas personalizadas',
             'sustainability_plan.validation_summary' => 'Resumen de validación',
             'sustainability_plan.branding' => 'Branding',
         ];

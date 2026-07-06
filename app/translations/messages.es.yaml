@@ -244,7 +244,7 @@ backend:
       internal_notes: "Notas internas"
       responsibles: "Responsables"
       checklist: "Checklist"
-      custom_measures: "Medidas custom"
+      custom_measures: "Medidas personalizadas"
       validation_summary: "Resumen de validación"
       branding: "Branding"
       features_info_modal:
@@ -254,7 +254,7 @@ backend:
         internal_notes: "Permite guardar observaciones privadas del equipo que no necesariamente salen en el PDF final. Sirve para gestión interna y seguimiento."
         responsibles: "Permite asignar personas o áreas responsables a medidas concretas, para saber quién debe ejecutar o validar cada acción."
         checklist: "Convierte las medidas en una lista operativa de seguimiento, marcando tareas, avances o puntos pendientes."
-        custom_measures: "Permite crear medidas personalizadas fuera del catálogo base, adaptadas a necesidades concretas del proyecto."
+        custom_measures: "Permite crear medidas propias del proyecto, visibles solo en ese plan."
         validation_summary: "Añade una vista/resumen del estado de validación: medidas completadas, pendientes, verificadas, evidencias y nivel de avance."
         branding: "Permite personalizar la salida o presentación con identidad visual: logo, marca o elementos del cliente/proyecto, según lo que tenga implementado el plan."
     flash:
@@ -908,11 +908,25 @@ backend:
       spinner: "Generando PDF y enviando…"
     complete:
       title: "¡Has completado el plan!"
-      help: "Puedes añadir medidas personalizadas que vayas a implementar en el plan."
-      textarea_ph: "Escribe aquí las medidas adicionales…"
-      custom_measures_help: "Formato por línea: Título | Descripción | Puntuación | Estado. Estado opcional: planned, to_implement, implemented, verified."
-      custom_measures_locked: "Las medidas personalizadas están disponibles solo en Pro."
-      finalize_btn: "Finalizar plan"
+      help: "Antes de cerrarlo, puedes añadir medidas personalizadas que solo se verán en este plan."
+      custom_measures_prompt: "¿Quieres añadir alguna medida personalizada a este plan?"
+      custom_measures_prompt_help: "Si tu plan lo permite, puedes crear una medida propia del proyecto antes de cerrar el plan. No suma puntos ni cambia el compromiso."
+      add_custom_measure: "Añadir medida personalizada"
+      continue_without_adding: "Continuar sin añadir"
+      continue: "Continuar"
+      custom_measures_title: "Medidas añadidas"
+      custom_measures_empty: "Aún no has añadido ninguna medida personalizada."
+      custom_measure_badge: "Personalizada"
+      custom_measures_locked: "Las medidas personalizadas están disponibles en planes Standard y Pro."
+      custom_measures_locked_help: "Actualiza el plan para habilitar la creación de medidas propias del proyecto."
+      custom_measures_modal_title: "Nueva medida personalizada"
+      custom_measures_modal_help: "Solo aparecerá en este plan. No suma puntos ni modifica el compromiso."
+      custom_measure_title_label: "Título"
+      custom_measure_description_label: "Descripción"
+      custom_measure_description_ph: "Describe la medida personalizada…"
+      custom_measure_title_required: "El título de la medida personalizada es obligatorio."
+      custom_measure_save_btn: "Guardar medida"
+      custom_measure_saved: "Medida personalizada añadida al plan."
     measures:
       no_items: "No hay medidas disponibles."
       mandatory_warning: "Esta medida es obligatoria. Debes marcar «Aplica» y «Se implementará» para continuar."
@@ -974,6 +988,15 @@ backend:
       group_label: "Medidas personalizadas"
       category: "Medida personalizada"
       no_description: "Sin descripción"
+      notification:
+        subject: "Nueva medida personalizada en %project%"
+        body: |
+          Proyecto: %project%
+          Plan: %plan%
+          Usuario: %user%
+          Título: %title%
+          Descripción: %description%
+          Fecha: %date%
     flash:
       select_protocol_required: "Debes seleccionar un protocolo."
       invalid_protocol: "Protocolo no válido."
@@ -1102,8 +1125,9 @@ backend:
         verified: "Medidas chequeadas"
         evidences: "Evidencias subidas"
       custom_measures:
-        title: "Medidas personalizadas Pro"
-        help: "Se muestran las medidas definidas en el bloque de medidas personalizadas."
+        title: "Medidas personalizadas"
+        help: "Se muestran las medidas personalizadas definidas en este plan."
+        badge: "Medida personalizada"
         state:
           planned: "Planificada"
           to_implement: "A implementar"
@@ -1161,6 +1185,9 @@ backend:
       user: "Usuario:"
       empty: "Aún no se han cargado medidas para este plan."
       summary_by_department: "Resumen por departamento"
+      custom_measures:
+        title: "Medidas personalizadas"
+        badge: "Medida personalizada"
       yes: "Sí"
       no: "No"
       th:
@@ -1204,7 +1231,8 @@ backend:
       charts:
         title: "Gráficos del plan"
       custom_measures:
-        title: "Medidas personalizadas Pro"
+        title: "Medidas personalizadas"
+        badge: "Medida personalizada"
         th:
           title: "Título"
           score: "Puntuación"

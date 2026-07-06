@@ -368,8 +368,11 @@
       <tbody>
         {% for customMeasure in customMeasures %}
           <tr>
-            <td>{{ customMeasure.title }}</td>
-            <td>{{ customMeasure.score ?? '—' }}</td>
+            <td>
+              <div class="fw-semibold">{{ customMeasure.title }}</div>
+              <div><span class="badge bg-success-subtle text-success border">{{ 'backend.plan.pdf.custom_measures.badge'|trans }}</span></div>
+            </td>
+            <td>—</td>
             <td>{{ ('backend.plan.review.custom_measures.state.' ~ customMeasure.state)|trans }}</td>
             <td>{{ customMeasure.description ?: '—' }}</td>
           </tr>

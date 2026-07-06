@@ -120,35 +120,121 @@
 
             {# ---- CONTENIDO PRINCIPAL ---- #}
             {% if planComplete %}
-                {# Mostrar formulario de medidas personalizadas y Finalizar #}
                 <div class="border rounded p-4 bg_green_1 shadow">
-                    <h4 class="mb-3">{{ 'backend.plan.complete.title'|trans }}</h4>
-                    <p class="text-muted">{{ 'backend.plan.complete.help'|trans }}</p>
+                    <div class="alert alert-success border-0 mb-3">
+                        <div class="fw-semibold mb-1">{{ 'backend.plan.complete.custom_measures_prompt'|trans }}</div>
+                        <div class="small">{{ 'backend.plan.complete.custom_measures_prompt_help'|trans }}</div>
+                    </div>
 
-                    <form action="{{ path('backend_plan_measures', navigationQuery) }}" method="post" class="d-grid gap-3">
-                        {% if projectTier == 'pro' %}
-                            <div>
-                                <textarea
-                                    id="custom-measures"
-                                    name="custom_measures"
-                                    class="form-control"
-                                    rows="5"
-                                    placeholder="{{ 'backend.plan.complete.textarea_ph'|trans }}">{{ plan.customMeasures }}</textarea>
-                                <div class="form-text">
-                                    {{ 'backend.plan.complete.custom_measures_help'|trans }}
-                                </div>
-                            </div>
-                        {% else %}
-                            <div class="alert alert-warning mb-0">
-                                {{ 'backend.plan.complete.custom_measures_locked'|trans }}
-                            </div>
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+                        <div>
+                            <h4 class="mb-1">{{ 'backend.plan.complete.title'|trans }}</h4>
+                            <p class="text-muted mb-0">{{ 'backend.plan.complete.help'|trans }}</p>
+                        </div>
+
+                        {% if canUseCustomMeasures %}
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#customMeasureModal">
+                                <i class="bi bi-plus-circle"></i> {{ 'backend.plan.complete.add_custom_measure'|trans }}
+                            </button>
                         {% endif %}
+                    </div>
 
+                    {% if customMeasures is not empty %}
+                        <div class="mb-3">
+                            <div class="small text-uppercase text-muted fw-semibold mb-2">{{ 'backend.plan.complete.custom_measures_title'|trans }}</div>
+                            <div class="row g-3">
+                                {% for customMeasure in customMeasures %}
+                                    <div class="col-12 col-md-6">
+                                        <div class="border rounded p-3 bg-white h-100">
+                                            <div class="d-flex align-items-start justify-content-between gap-2">
+                                                <div class="fw-semibold">{{ customMeasure.title }}</div>
+                                                <span class="badge bg-success-subtle text-success border">{{ 'backend.plan.complete.custom_measure_badge'|trans }}</span>
+                                            </div>
+                                            <div class="small text-muted mt-2">
+                                                {{ customMeasure.description ?: 'backend.plan.custom_measures.no_description'|trans }}
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="badge bg-light text-dark border">
+                                                    {{ ('backend.plan.review.custom_measures.state.' ~ customMeasure.state)|trans }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-3">
+                            {{ 'backend.plan.complete.custom_measures_empty'|trans }}
+                        </div>
+                    {% endif %}
+
+                    {% if not canUseCustomMeasures %}
+                        <div class="alert alert-warning mb-0">
+                            <div class="fw-semibold mb-1">{{ 'backend.plan.complete.custom_measures_locked'|trans }}</div>
+                            <div class="small">{{ 'backend.plan.complete.custom_measures_locked_help'|trans }}</div>
+                        </div>
+                    {% endif %}
+
+                    <form action="{{ path('backend_plan_measures', navigationQuery) }}" method="post" class="d-grid gap-3 mt-3">
+                        <input type="hidden" name="action" value="continue_custom_measures">
                         <div class="d-flex gap-2 justify-content-end">
-                            <button type="submit" name="finalize" class="btn btn-success">{{ 'backend.plan.complete.finalize_btn'|trans }}</button>
+                            <button type="submit" class="btn btn-success">
+                                {% if customMeasures is not empty %}
+                                    {{ 'backend.plan.complete.continue'|trans }}
+                                {% else %}
+                                    {{ 'backend.plan.complete.continue_without_adding'|trans }}
+                                {% endif %}
+                            </button>
                         </div>
                     </form>
                 </div>
+
+                {% if canUseCustomMeasures %}
+                    <div class="modal fade" id="customMeasureModal" tabindex="-1" aria-labelledby="customMeasureModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <form action="{{ path('backend_plan_measures', navigationQuery) }}" method="post">
+                                    <input type="hidden" name="action" value="add_custom_measure">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="customMeasureModalLabel">{{ 'backend.plan.complete.custom_measures_modal_title'|trans }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="text-muted">{{ 'backend.plan.complete.custom_measures_modal_help'|trans }}</p>
+                                        <div class="mb-3">
+                                            <label for="custom_measure_title" class="form-label">{{ 'backend.plan.complete.custom_measure_title_label'|trans }}</label>
+                                            <input
+                                                type="text"
+                                                id="custom_measure_title"
+                                                name="custom_measure_title"
+                                                class="form-control"
+                                                maxlength="255"
+                                                required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="custom_measure_description" class="form-label">{{ 'backend.plan.complete.custom_measure_description_label'|trans }}</label>
+                                            <textarea
+                                                id="custom_measure_description"
+                                                name="custom_measure_description"
+                                                class="form-control"
+                                                rows="4"
+                                                placeholder="{{ 'backend.plan.complete.custom_measure_description_ph'|trans }}"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ 'backend.common.cancel'|trans }}</button>
+                                        <button type="submit" class="btn btn-primary">{{ 'backend.plan.complete.custom_measure_save_btn'|trans }}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
             {% else %}
                 {# Tarjeta de la medida actual #}
                 {% if measure %}

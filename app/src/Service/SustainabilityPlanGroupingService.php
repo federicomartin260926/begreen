@@ -225,7 +225,7 @@ final class SustainabilityPlanGroupingService
             'measureId' => null,
             'displayName' => $customMeasure['title'],
             'measureTitle' => $customMeasure['title'],
-            'score' => $customMeasure['score'],
+            'score' => null,
             'category' => $this->translator->trans('backend.plan.custom_measures.category'),
             'block' => '—',
             'departments' => '—',

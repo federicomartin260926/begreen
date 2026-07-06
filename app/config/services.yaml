@@ -58,6 +58,11 @@ services:
         arguments:
             $webhookSecret: '%stripe.webhook_secret%'
 
+    App\Service\SustainabilityPlanCustomMeasureService:
+        arguments:
+            $fromEmail: '%app.mail_from%'
+            $notifyEmail: '%contact_email%'
+
     App\Twig\AppExtension:
         tags: ['twig.extension']
 
