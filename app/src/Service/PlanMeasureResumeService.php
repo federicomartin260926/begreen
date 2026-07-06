@@ -43,7 +43,11 @@ final class PlanMeasureResumeService
                 return $lastIndex;
             }
 
-            if ($planMeasure->getApplicabilitySource() === 'block_skip') {
+            if ($this->isStaleBlockSkip($planMeasure)) {
+                return $lastIndex;
+            }
+
+            if ($this->isActiveBlockSkip($planMeasure)) {
                 continue;
             }
 
@@ -52,13 +56,40 @@ final class PlanMeasureResumeService
             }
 
             if ($planMeasure->isApplicable() === true) {
-                if ($planMeasure->isCritical() === null || $planMeasure->willImplement() === null) {
+                if ($planMeasure->willImplement() === null) {
+                    return $lastIndex;
+                }
+
+                if ($planMeasure->willImplement() === true && $planMeasure->isCritical() === null) {
                     return $lastIndex;
                 }
             }
         }
 
         return $hasMeasures ? $lastIndex : 0;
+    }
+
+    private function isActiveBlockSkip(PlanMeasure $planMeasure): bool
+    {
+        return $planMeasure->getApplicabilitySource() === 'block_skip' && $this->isBlockSkipStillJustified($planMeasure);
+    }
+
+    private function isStaleBlockSkip(PlanMeasure $planMeasure): bool
+    {
+        return $planMeasure->getApplicabilitySource() === 'block_skip' && !$this->isBlockSkipStillJustified($planMeasure);
+    }
+
+    private function isBlockSkipStillJustified(PlanMeasure $planMeasure): bool
+    {
+        $measureBlock = $planMeasure->getMeasure()?->getMeasureBlock();
+        $blockSkipAnswer = $planMeasure->getBlockSkipAnswer();
+
+        return $measureBlock instanceof \App\Entity\MeasureBlock
+            && $blockSkipAnswer instanceof \App\Entity\SustainabilityPlanBlockAnswer
+            && $measureBlock->getId() !== null
+            && $blockSkipAnswer->getId() !== null
+            && $blockSkipAnswer->getMeasureBlock()?->getId() === $measureBlock->getId()
+            && $blockSkipAnswer->applies() === false;
     }
 
     private function measureKey(Measure $measure): string

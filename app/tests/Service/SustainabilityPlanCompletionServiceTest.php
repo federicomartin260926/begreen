@@ -126,6 +126,41 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
         self::assertSame('will_implement_missing', $pending[1]['reason']);
     }
 
+    public function testGetPendingVisibleMeasuresTreatsStaleBlockSkipAsPending(): void
+    {
+        $service = $this->createService([
+            $measure = $this->createMeasure(405, 5, 'Medida visible', $this->createMeasureBlock(902)),
+        ]);
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $plan = $this->createPlan($project);
+
+        $currentBlockAnswer = (new SustainabilityPlanBlockAnswer())
+            ->setSustainabilityPlan($plan)
+            ->setMeasureBlock($measure->getMeasureBlock())
+            ->setApplies(true)
+            ->setAnsweredAt(new \DateTimeImmutable());
+        $this->setEntityId($currentBlockAnswer, 802);
+        $plan->addBlockAnswer($currentBlockAnswer);
+
+        $staleBlockAnswer = (new SustainabilityPlanBlockAnswer())
+            ->setSustainabilityPlan($plan)
+            ->setMeasureBlock($measure->getMeasureBlock())
+            ->setApplies(false)
+            ->setAnsweredAt(new \DateTimeImmutable());
+        $this->setEntityId($staleBlockAnswer, 803);
+
+        $planMeasure = $this->createPlanMeasure($measure, null, null, null)
+            ->markAsBlockSkipped($staleBlockAnswer);
+        $plan->addPlanMeasure($planMeasure);
+
+        $pending = $service->getPendingVisibleMeasures($plan, $project);
+
+        self::assertCount(1, $pending);
+        self::assertSame($measure->getId(), $pending[0]['measure']->getId());
+        self::assertSame('stale_block_skip_visible', $pending[0]['reason']);
+    }
+
     public function testApplicableMeasureNotSelectedForImplementationDoesNotRemainPending(): void
     {
         $service = $this->createService([
@@ -207,7 +242,7 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
             ->setProtocol($protocol);
     }
 
-    private function createMeasure(int $id, int $score, string $name = 'Medida'): Measure
+    private function createMeasure(int $id, int $score, string $name = 'Medida', ?MeasureBlock $block = null): Measure
     {
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
@@ -221,6 +256,9 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
             ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
             ->setScore($score)
             ->setName($name);
+        if ($block instanceof MeasureBlock) {
+            $measure->setMeasureBlock($block);
+        }
         $this->setEntityId($measure, $id);
 
         return $measure;

@@ -29,6 +29,10 @@ final class SustainabilityPlanCompletionService
             $plan->setStatusChangedAt(new \DateTimeImmutable());
         }
 
+        if (!$complete && $plan->getCustomMeasuresCompletedAt() !== null) {
+            $plan->clearCustomMeasuresCompletion();
+        }
+
         return $complete;
     }
 
@@ -119,7 +123,16 @@ final class SustainabilityPlanCompletionService
                 continue;
             }
 
-            if ($planMeasure->getApplicabilitySource() === 'block_skip') {
+            if ($this->isStaleBlockSkip($plan, $planMeasure)) {
+                $pending[] = [
+                    'measure' => $measure,
+                    'index' => (int) $index,
+                    'reason' => 'stale_block_skip_visible',
+                ];
+                continue;
+            }
+
+            if ($this->isActiveBlockSkip($plan, $planMeasure)) {
                 continue;
             }
 
@@ -165,6 +178,55 @@ final class SustainabilityPlanCompletionService
         }
 
         return $pending;
+    }
+
+    private function isActiveBlockSkip(Plan $plan, PlanMeasure $planMeasure): bool
+    {
+        if ($planMeasure->getApplicabilitySource() !== 'block_skip') {
+            return false;
+        }
+
+        return $this->isBlockSkipStillJustified($plan, $planMeasure);
+    }
+
+    private function isStaleBlockSkip(Plan $plan, PlanMeasure $planMeasure): bool
+    {
+        if ($planMeasure->getApplicabilitySource() !== 'block_skip') {
+            return false;
+        }
+
+        return !$this->isBlockSkipStillJustified($plan, $planMeasure);
+    }
+
+    private function isBlockSkipStillJustified(Plan $plan, PlanMeasure $planMeasure): bool
+    {
+        $measure = $planMeasure->getMeasure();
+        $measureBlock = $measure?->getMeasureBlock();
+        $blockSkipAnswer = $planMeasure->getBlockSkipAnswer();
+
+        if (!$measureBlock instanceof \App\Entity\MeasureBlock || !$blockSkipAnswer instanceof \App\Entity\SustainabilityPlanBlockAnswer) {
+            return false;
+        }
+
+        $measureBlockId = $measureBlock->getId();
+        $blockSkipAnswerId = $blockSkipAnswer->getId();
+        if ($measureBlockId === null || $blockSkipAnswerId === null) {
+            return false;
+        }
+
+        foreach ($plan->getBlockAnswers() as $currentAnswer) {
+            if ($currentAnswer->getMeasureBlock()?->getId() !== $measureBlockId) {
+                continue;
+            }
+
+            if ($currentAnswer->getId() !== $blockSkipAnswerId) {
+                return false;
+            }
+
+            return $currentAnswer->applies() === false;
+        }
+
+        return false;
     }
 
     private function findPlanMeasureForMeasure(Plan $plan, Measure $measure): ?PlanMeasure
