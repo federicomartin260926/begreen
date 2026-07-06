@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Listen for Xdebug (CLI)",
+      "type": "php",
+      "request": "launch",
+      "port": 9003,
+      "pathMappings": {
+        "/app": "${workspaceFolder}/app"
+      },
+      "ignore": [
+        "**/vendor/**/*.php"
+      ],
+      "log": true
+    },
+    {
+      "name": "Listen for Xdebug (Web)",
+      "type": "php",
+      "request": "launch",
+      "port": 9003,
+      "pathMappings": {
+        "/app": "${workspaceFolder}/app"
+      },
+      "ignore": [
+        "**/vendor/**/*.php"
+      ],
+      "log": true
+    }
+  ]
+}

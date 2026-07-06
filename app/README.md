@@ -82,6 +82,36 @@ make php
 
 ## Comandos útiles
 
+La mayoría de comandos Symfony se ejecutan con `make console ARGS='...'`.
+
+Crear un plan de sostenibilidad de prueba con medidas aleatorias:
+
+```bash
+make console ARGS='app:seed-sustainability-plan 123 25'
+```
+
+Si omites el segundo argumento, el comando crea todas las medidas disponibles para el plan comercial asignado al proyecto:
+
+```bash
+make console ARGS='app:seed-sustainability-plan 123'
+```
+
+Validar o transformar la plantilla estándar de medidas:
+
+```bash
+make console ARGS='app:import:be-green-my-film-v23 /ruta/al/archivo.xlsx --dry-run'
+make console ARGS='app:build-measure-fixture-from-v31 public/fixtures/be_green_my_film_measures.xlsx'
+make console ARGS='app:extract-measure-template-v31 public/fixtures/be_green_my_film_measures.xlsx'
+```
+
+Comandos de utilidad y diagnóstico:
+
+```bash
+make console ARGS='app:send-test-email test@example.com'
+make console ARGS='app:user:test'
+make console ARGS='app:test-ods-translations'
+```
+
 Instalar dependencias PHP:
 
 ```bash
@@ -141,6 +171,56 @@ Diagnóstico básico:
 ```bash
 make doctor
 ```
+
+## Xdebug
+
+La depuración PHP queda habilitada en el stack de desarrollo cuando reconstruyes la imagen:
+
+```bash
+make up-build
+```
+
+La configuración de VS Code está en [`.vscode/launch.json`](../.vscode/launch.json) y define dos perfiles:
+
+- `Listen for Xdebug (CLI)` para comandos Symfony ejecutados con `make console`
+- `Listen for Xdebug (Web)` para requests desde el navegador
+
+Para que funcione en este proyecto:
+
+1. Abre VS Code en la raíz del repositorio, no sólo en `app/`.
+2. Ejecuta `Run and Debug`.
+3. Selecciona `Listen for Xdebug (CLI)` o `Listen for Xdebug (Web)`.
+4. Inicia el listener.
+5. Lanza el comando o abre la URL que quieras depurar.
+
+El stack de desarrollo arranca PHP con:
+
+```bash
+XDEBUG_MODE=debug,develop
+XDEBUG_TRIGGER=1
+XDEBUG_CLIENT_HOST=host.docker.internal
+XDEBUG_CLIENT_PORT=9003
+```
+
+Ejemplo para depurar el comando nuevo:
+
+```bash
+make console ARGS='app:seed-sustainability-plan 402 45'
+```
+
+Ejemplo para depurar la web:
+
+```text
+http://localhost:18080/backend/plan/measures
+```
+
+Notas útiles:
+
+- si abres el workspace en la raíz, el mapping correcto es `/app -> ${workspaceFolder}/app`
+- si tu IDE usa otro `serverName`, ajusta `PHP_IDE_CONFIG_SERVER_NAME` en `app/.env` o `app/.env.local`
+- si cambias configuración de Docker, vuelve a levantar con `make up-build`
+
+La configuración ya está preparada para CLI y navegador con el mismo listener de Xdebug.
 
 ## URLs locales
 

@@ -55,9 +55,41 @@ Parar servicios:
 docker compose down
 ```
 
+## Comandos útiles
+
+El flujo habitual de la aplicación Symfony se ejecuta desde el `Makefile` de raíz:
+
+```bash
+make console ARGS='app:seed-sustainability-plan 123 25'
+```
+
+Ese comando crea un plan de sostenibilidad de prueba para el proyecto `123` con hasta `25` medidas aleatorias del plan comercial asignado. Si omites el segundo argumento, usa todas las medidas disponibles del plan comercial del proyecto.
+
+Otros ejemplos frecuentes:
+
+```bash
+make console ARGS='app:seed-sustainability-plan 123'
+make console ARGS='app:import:be-green-my-film-v23 /ruta/al/archivo.xlsx --dry-run'
+make console ARGS='app:build-measure-fixture-from-v31 public/fixtures/be_green_my_film_measures.xlsx'
+make console ARGS='app:extract-measure-template-v31 public/fixtures/be_green_my_film_measures.xlsx'
+make console ARGS='app:send-test-email test@example.com'
+```
+
+Para operaciones recurrentes también existen estos targets:
+
+```bash
+make up
+make down
+make assets-build
+make schema-update
+make fixtures
+make test
+```
+
 ## Documentación de la app
 
 La documentación funcional y técnica específica de Symfony está en:
 
 - [app/README.md](app/README.md)
 - [docs/measure-template-import.md](docs/measure-template-import.md)
+- La depuración con Xdebug para VS Code está documentada en [app/README.md](app/README.md#xdebug)

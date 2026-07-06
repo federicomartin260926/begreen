@@ -1,5 +1,7 @@
 FROM php:8.3-fpm-bookworm
 
+ARG INSTALL_XDEBUG=0
+
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_HOME=/tmp/composer
 
@@ -11,6 +13,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
  && docker-php-ext-install -j"$(nproc)" intl mbstring pdo_mysql zip gd xml dom opcache curl bcmath \
  && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    if [ "$INSTALL_XDEBUG" = "1" ]; then \
+        apt-get update; \
+        apt-get install -y --no-install-recommends $PHPIZE_DEPS; \
+        pecl install xdebug; \
+        docker-php-ext-enable xdebug; \
+        apt-get purge -y --auto-remove $PHPIZE_DEPS; \
+        rm -rf /var/lib/apt/lists/* /tmp/pear; \
+    fi
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY docker/php/entrypoint.sh /usr/local/bin/begreen-entrypoint
