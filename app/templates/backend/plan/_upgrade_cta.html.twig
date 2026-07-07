@@ -2,16 +2,22 @@
     {% set upgradeModalId = upgradeCta.modalId|default('planUpgradeModal') %}
     <button
         type="button"
-        class="btn btn-primary btn-sm"
+        class="{{ upgradeCta.buttonClass|default('btn btn-primary btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 shadow-sm') }}"
         data-bs-toggle="modal"
         data-bs-target="#{{ upgradeModalId }}">
+        {% if upgradeCta.buttonIcon|default(false) %}
+            <i class="bi {{ upgradeCta.buttonIcon }}"></i>
+        {% endif %}
         {{ upgradeCta.buttonLabel|default(upgradeCta.label) }}
     </button>
 {% elseif upgradeCta.mode == 'single' %}
     {% set upgradeOption = upgradeCta.options|first %}
     <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: upgradeOption.targetTier}) }}" class="d-inline">
         <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ upgradeOption.targetTier) }}">
-        <button type="submit" class="btn btn-primary btn-sm">
+        <button type="submit" class="{{ upgradeCta.buttonClass|default('btn btn-primary btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 shadow-sm') }}">
+            {% if upgradeCta.buttonIcon|default(false) %}
+                <i class="bi {{ upgradeCta.buttonIcon }}"></i>
+            {% endif %}
             {{ upgradeOption.ctaLabel }}
         </button>
     </form>

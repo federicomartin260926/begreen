@@ -1,11 +1,14 @@
-<form method="get" id="plan-filters-form" class="w-100 mb-5" style="scroll-margin-top: 110px;">
-    <div class="row g-2 align-items-end">
-        <div class="col-md-3">
+<form method="get" id="plan-filters-form" class="w-100 mb-4" style="scroll-margin-top: 110px;">
+    <div class="row g-3">
+        <div class="col-12 col-md-6 col-xl-4">
+            <label class="form-label small text-muted fw-semibold mb-1" for="filter-category">
+                {{ 'backend.plan.filters.category'|trans }}
+            </label>
             <select
                 class="selectpicker"
                 name="category"
                 id="filter-category"
-                data-style="form-select border"
+                data-style="form-select border border-success-subtle rounded-3 bg-white shadow-sm py-2"
                 data-width="100%"
                 data-live-search="true"
                 data-none-selected-text="{{ 'backend.plan.filters.category_all'|trans }}"
@@ -18,12 +21,16 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+
+        <div class="col-12 col-md-6 col-xl-4">
+            <label class="form-label small text-muted fw-semibold mb-1" for="filter-department">
+                {{ 'backend.plan.filters.department'|trans }}
+            </label>
             <select
                 class="selectpicker"
                 name="department"
                 id="filter-department"
-                data-style="form-select border"
+                data-style="form-select border border-success-subtle rounded-3 bg-white shadow-sm py-2"
                 data-width="100%"
                 data-live-search="true"
                 data-none-selected-text="{{ 'backend.plan.filters.department_all'|trans }}"
@@ -36,12 +43,16 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+
+        <div class="col-12 col-md-6 col-xl-4">
+            <label class="form-label small text-muted fw-semibold mb-1" for="filter-ods">
+                {{ 'backend.plan.filters.ods'|trans }}
+            </label>
             <select
                 class="selectpicker"
                 name="ods"
                 id="filter-ods"
-                data-style="form-select border"
+                data-style="form-select border border-success-subtle rounded-3 bg-white shadow-sm py-2"
                 data-width="100%"
                 data-live-search="true"
                 data-none-selected-text="{{ 'backend.plan.filters.ods_all'|trans }}"
@@ -54,12 +65,16 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+
+        <div class="col-12 col-md-6 col-xl-4">
+            <label class="form-label small text-muted fw-semibold mb-1" for="filter-impact-area">
+                {{ 'backend.plan.filters.impact_area'|trans }}
+            </label>
             <select
                 class="selectpicker"
                 name="impact_area"
                 id="filter-impact-area"
-                data-style="form-select border"
+                data-style="form-select border border-success-subtle rounded-3 bg-white shadow-sm py-2"
                 data-width="100%"
                 data-live-search="true"
                 data-none-selected-text="{{ 'backend.plan.filters.impact_area_all'|trans }}"
@@ -72,12 +87,16 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+
+        <div class="col-12 col-md-6 col-xl-4">
+            <label class="form-label small text-muted fw-semibold mb-1" for="filter-triple-balance-axis">
+                {{ 'backend.plan.filters.triple_balance'|trans }}
+            </label>
             <select
                 class="selectpicker"
                 name="triple_balance_axis"
                 id="filter-triple-balance-axis"
-                data-style="form-select border"
+                data-style="form-select border border-success-subtle rounded-3 bg-white shadow-sm py-2"
                 data-width="100%"
                 data-live-search="true"
                 data-none-selected-text="{{ 'backend.plan.filters.triple_balance_all'|trans }}"
@@ -90,12 +109,16 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+
+        <div class="col-12 col-md-6 col-xl-4">
+            <label class="form-label small text-muted fw-semibold mb-1" for="filter-scope">
+                {{ 'backend.plan.filters.scope'|trans }}
+            </label>
             <select
                 class="selectpicker"
                 name="scope"
                 id="filter-scope"
-                data-style="form-select border"
+                data-style="form-select border border-success-subtle rounded-3 bg-white shadow-sm py-2"
                 data-width="100%"
                 data-live-search="true"
                 data-none-selected-text="{{ 'backend.plan.filters.scope_all'|trans }}"
@@ -108,68 +131,83 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2 text-end">
-            <button type="button" id="reset-filters" class="btn btn-outline-secondary w-100">
-                <i class="bi bi-x-circle"></i> {{ 'backend.common.clear_filters'|trans }}
-            </button>
-        </div>
     </div>
 
-    <div class="row mt-2 g-2">
-        <div class="col-md-2">
-            <div class="form-check">
-                <input class="form-check-input"
-                       type="checkbox"
-                       name="is_applicable"
-                       id="filter-is-applicable"
-                       value="1"
-                       {{ filters.is_applicable ? 'checked' : '' }}
-                       data-dt-filter="is_applicable">
-                <label class="form-check-label" for="filter-is-applicable">
-                    {{ 'backend.plan.filters.only_applicable'|trans }}
-                </label>
+    <div class="border-top mt-4 pt-3">
+        <div class="d-flex flex-column flex-xl-row gap-3 align-items-start">
+            <div class="flex-grow-1">
+                <div class="small text-uppercase text-muted fw-semibold mb-2">
+                    {{ 'backend.plan.filters.state_title'|trans }}
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <input
+                        class="btn-check"
+                        type="radio"
+                        name="state"
+                        id="filter-state-implement"
+                        value="implement"
+                        {{ filters.state|default('implement') == 'implement' ? 'checked' : '' }}
+                        data-dt-filter="state">
+                    <label
+                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('implement') == 'implement' ? 'btn-success' : 'btn-outline-success' }}"
+                        for="filter-state-implement">
+                        <i class="bi bi-check2-circle"></i>
+                        {{ 'backend.plan.filters.state_implement'|trans }}
+                    </label>
+
+                    <input
+                        class="btn-check"
+                        type="radio"
+                        name="state"
+                        id="filter-state-executed"
+                        value="executed"
+                        {{ filters.state|default('implement') == 'executed' ? 'checked' : '' }}
+                        data-dt-filter="state">
+                    <label
+                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('implement') == 'executed' ? 'btn-success' : 'btn-outline-success' }}"
+                        for="filter-state-executed">
+                        <i class="bi bi-check-circle"></i>
+                        {{ 'backend.plan.filters.state_executed'|trans }}
+                    </label>
+
+                    <input
+                        class="btn-check"
+                        type="radio"
+                        name="state"
+                        id="filter-state-discarded"
+                        value="discarded"
+                        {{ filters.state|default('implement') == 'discarded' ? 'checked' : '' }}
+                        data-dt-filter="state">
+                    <label
+                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('implement') == 'discarded' ? 'btn-success' : 'btn-outline-success' }}"
+                        for="filter-state-discarded">
+                        <i class="bi bi-slash-circle"></i>
+                        {{ 'backend.plan.filters.state_discarded'|trans }}
+                    </label>
+                </div>
             </div>
-        </div>
-        <div class="col-md-2">
-            <div class="form-check">
-                <input class="form-check-input"
-                       type="checkbox"
-                       name="will_implement"
-                       id="filter-will-implement"
-                       value="1"
-                       {{ filters.will_implement ? 'checked' : '' }}
-                       data-dt-filter="will_implement">
-                <label class="form-check-label" for="filter-will-implement">
-                    {{ 'backend.plan.filters.only_to_implement'|trans }}
-                </label>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="form-check">
-                <input class="form-check-input"
-                       type="checkbox"
-                       name="only_implemented"
-                       id="filter-only-implemented"
-                       value="1"
-                       {{ filters.only_implemented ? 'checked' : '' }}
-                       data-dt-filter="only_implemented">
-                <label class="form-check-label" for="filter-only-implemented">
-                    {{ 'backend.plan.filters.only_implemented'|trans }}
-                </label>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="form-check">
-                <input class="form-check-input"
-                       type="checkbox"
-                       name="is_critical"
-                       id="filter-is-critical"
-                       value="1"
-                       {{ filters.is_critical ? 'checked' : '' }}
-                       data-dt-filter="is_critical">
-                <label class="form-check-label" for="filter-is-critical">
-                    {{ 'backend.plan.filters.only_critical'|trans }}
-                </label>
+
+            <div class="flex-shrink-0 ms-xl-auto">
+                <div class="small text-uppercase text-muted fw-semibold mb-2">
+                    {{ 'backend.plan.filters.quick_title'|trans }}
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <input
+                        class="btn-check"
+                        type="checkbox"
+                        name="is_critical"
+                        id="filter-is-critical"
+                        value="1"
+                        {{ filters.is_critical ? 'checked' : '' }}
+                        data-dt-filter="is_critical">
+                    <label
+                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.is_critical ? 'btn-outline-danger' : 'btn-outline-secondary' }}"
+                        for="filter-is-critical">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        {{ 'backend.plan.filters.critical'|trans }}
+                    </label>
+                </div>
             </div>
         </div>
     </div>

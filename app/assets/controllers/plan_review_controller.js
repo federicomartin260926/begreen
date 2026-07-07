@@ -30,19 +30,23 @@ export default class extends Controller {
     // --- Filtros ---
     const filtersForm = this.element.querySelector('#plan-filters-form');
     if (filtersForm) {
-      filtersForm.querySelectorAll('select, input[type="checkbox"]').forEach(input => {
+      filtersForm.querySelectorAll('select, input[type="checkbox"], input[type="radio"]').forEach(input => {
         input.addEventListener('change', () => filtersForm.submit());
       });
+    }
 
-      const resetBtn = filtersForm.querySelector('#reset-filters');
-      if (resetBtn) {
-        resetBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          filtersForm.querySelectorAll('select').forEach(s => { s.value = ''; });
-          filtersForm.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-          filtersForm.submit();
-        });
-      }
+    const resetBtn = this.element.querySelector('#reset-filters');
+    if (resetBtn && filtersForm) {
+      resetBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        filtersForm.querySelectorAll('select').forEach(s => { s.value = ''; });
+        filtersForm.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+        const defaultState = filtersForm.querySelector('input[name="state"][value="implement"]');
+        if (defaultState) {
+          defaultState.checked = true;
+        }
+        filtersForm.submit();
+      });
     }
 
     // Botones de collapse: icono/estilo
@@ -255,6 +259,7 @@ export default class extends Controller {
     document.querySelectorAll('[data-dt-filter]').forEach(input => {
       const key = input.getAttribute('data-dt-filter');
       if (input.type === 'checkbox') { if (input.checked) filters[key] = input.value; }
+      else if (input.type === 'radio') { if (input.checked) filters[key] = input.value; }
       else { if (input.value) filters[key] = input.value; }
     });
     return filters;
@@ -271,10 +276,7 @@ export default class extends Controller {
       'triple_balance_axis',
       'scope',
       'esg',
-      'is_applicable',
-      'will_implement',
-      'pending_selection',
-      'only_implemented',
+      'state',
       'is_critical',
       'open',
     ];

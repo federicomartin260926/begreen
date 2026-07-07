@@ -1,25 +1,128 @@
 {% set panelId = panelId|default('export-options-panel') %}
+{% set compact = compact|default(false) %}
 
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body py-3">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <div class="fw-semibold">{{ 'backend.plan.exports.panel_title'|trans }}</div>
-                <div class="text-muted small">{{ 'backend.plan.exports.subtitle'|trans }}</div>
+{% if compact %}
+    <div class="modal fade" id="{{ panelId }}" tabindex="-1" aria-labelledby="{{ panelId }}Label" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-3">
+                    <div class="pe-4">
+                        <h5 class="modal-title mb-1 fw-semibold" id="{{ panelId }}Label">{{ 'backend.plan.exports.panel_title'|trans }}</h5>
+                        <div class="text-muted small">{{ 'backend.plan.exports.subtitle'|trans }}</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+                        <div class="col">
+                            <div class="border border-primary-subtle rounded-4 p-4 h-100 bg-white shadow-sm d-flex flex-column position-relative">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle position-absolute top-0 end-0 mt-3 me-3">PDF</span>
+                                <div class="pe-5">
+                                    <div class="fw-semibold text-nowrap mb-1">{{ 'backend.plan.exports.unified_pdf'|trans }}</div>
+                                    <div class="small text-muted w-100">{{ 'backend.plan.exports.unified_pdf_help'|trans }}</div>
+                                </div>
+                                <div class="mt-auto">
+                                    <button type="button" class="btn btn-primary btn-sm" data-action="plan-review#downloadPdf">
+                                        <i class="bi bi-download"></i> {{ 'backend.plan.exports.download_now'|trans }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col">
+                            <div class="border rounded-4 p-4 h-100 bg-white shadow-sm d-flex flex-column position-relative">
+                                {% if projectTier in ['standard', 'pro'] %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle position-absolute top-0 end-0 mt-3 me-3">Disponible</span>
+                                {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle position-absolute top-0 end-0 mt-3 me-3">Disponible desde Standard</span>
+                                {% endif %}
+                                <div class="pe-5">
+                                    <div class="fw-semibold text-nowrap mb-1">{{ 'backend.plan.exports.by_department'|trans }}</div>
+                                    <div class="small text-muted w-100">{{ 'backend.plan.exports.by_department_help'|trans }}</div>
+                                </div>
+                                <div class="mt-auto">
+                                    {% if projectTier in ['standard', 'pro'] %}
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a href="{{ path('backend_plan_export_pdf', {'id': plan.id, 'grouping': 'department'}) }}" class="btn btn-outline-primary btn-sm text-decoration-none">
+                                                <i class="bi bi-file-earmark-pdf"></i> {{ 'backend.plan.exports.download_pdf'|trans }}
+                                            </a>
+                                            {% if projectTier == 'pro' %}
+                                                <a href="{{ path('backend_plan_export_excel', {'id': plan.id, 'grouping': 'department'}) }}" class="btn btn-outline-success btn-sm text-decoration-none">
+                                                    <i class="bi bi-file-earmark-excel"></i> {{ 'backend.plan.exports.download_excel'|trans }}
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% for export in [
+                            {'key': 'category', 'label': 'backend.plan.exports.by_category', 'help': 'backend.plan.exports.by_category_help'},
+                            {'key': 'impact_area', 'label': 'backend.plan.exports.by_impact_area', 'help': 'backend.plan.exports.by_impact_area_help'},
+                            {'key': 'triple_balance', 'label': 'backend.plan.exports.by_triple_balance', 'help': 'backend.plan.exports.by_triple_balance_help'},
+                            {'key': 'ods', 'label': 'backend.plan.exports.by_ods', 'help': 'backend.plan.exports.by_ods_help'}
+                        ] %}
+                            <div class="col">
+                                <div class="border rounded-4 p-4 h-100 bg-white shadow-sm d-flex flex-column position-relative">
+                                    {% if projectTier == 'pro' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle position-absolute top-0 end-0 mt-3 me-3">Disponible</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle position-absolute top-0 end-0 mt-3 me-3">Disponible en Pro</span>
+                                    {% endif %}
+                                    <div class="pe-5">
+                                        <div class="fw-semibold text-nowrap mb-1">{{ export.label|trans }}</div>
+                                        <div class="small text-muted w-100">{{ export.help|trans }}</div>
+                                    </div>
+                                    <div class="mt-auto">
+                                        {% if projectTier == 'pro' %}
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <a href="{{ path('backend_plan_export_pdf', {'id': plan.id, 'grouping': export.key}) }}" class="btn btn-outline-primary btn-sm text-decoration-none">
+                                                    <i class="bi bi-file-earmark-pdf"></i> {{ 'backend.plan.exports.download_pdf'|trans }}
+                                                </a>
+                                                <a href="{{ path('backend_plan_export_excel', {'id': plan.id, 'grouping': export.key}) }}" class="btn btn-outline-success btn-sm text-decoration-none">
+                                                    <i class="bi bi-file-earmark-excel"></i> {{ 'backend.plan.exports.download_excel'|trans }}
+                                                </a>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+                    <div class="small text-muted">
+                        {{ 'Las descargas disponibles dependen del tier del proyecto.' }}
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+                        {{ 'backend.common.close'|trans }}
+                    </button>
+                </div>
             </div>
-            <button
-                class="btn btn-success btn-sm text-white"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#{{ panelId }}"
-                aria-expanded="false"
-                aria-controls="{{ panelId }}">
-                {{ 'backend.plan.exports.panel_open'|trans }}
-            </button>
         </div>
+    </div>
+{% else %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <div class="fw-semibold">{{ 'backend.plan.exports.panel_title'|trans }}</div>
+                    <div class="text-muted small">{{ 'backend.plan.exports.subtitle'|trans }}</div>
+                </div>
+                <button
+                    class="btn btn-success btn-sm text-white"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#{{ panelId }}"
+                    aria-expanded="false"
+                    aria-controls="{{ panelId }}">
+                    {{ 'backend.plan.exports.panel_open'|trans }}
+                </button>
+            </div>
 
-        <div class="collapse mt-3" id="{{ panelId }}">
-            <div class="row g-3">
+            <div class="collapse mt-3" id="{{ panelId }}">
+                <div class="row g-3">
                 <div class="col-12 col-md-6 col-xl-4">
                     <div class="border rounded p-3 h-100 bg-light d-flex flex-column">
                         <div class="fw-semibold mb-1">{{ 'backend.plan.exports.unified_pdf'|trans }}</div>
@@ -87,19 +190,20 @@
                         </div>
                     </div>
                 {% endfor %}
-            </div>
+                </div>
 
-            <div class="mt-3">
-                <button
-                    class="btn btn-link btn-sm px-0 text-decoration-none"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#{{ panelId }}"
-                    aria-expanded="true"
-                    aria-controls="{{ panelId }}">
-                    {{ 'backend.plan.exports.panel_close'|trans }}
-                </button>
+                <div class="mt-3">
+                    <button
+                        class="btn btn-link btn-sm px-0 text-decoration-none"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#{{ panelId }}"
+                        aria-expanded="true"
+                        aria-controls="{{ panelId }}">
+                        {{ 'backend.plan.exports.panel_close'|trans }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+{% endif %}

@@ -12,6 +12,7 @@ use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanCustomMeasureService;
+use App\Service\SustainabilityPlanDiscardedMeasureService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
 use App\Service\StripeProjectCheckoutService;
@@ -50,6 +51,7 @@ class PlanController extends AbstractController
         private SustainabilityPlanMeasureOrderer $measureOrderer,
         private SustainabilityPlanCollaborationService $collaborationService,
         private SustainabilityPlanCustomMeasureService $customMeasureService,
+        private SustainabilityPlanDiscardedMeasureService $discardedMeasureService,
         private SustainabilityCommitmentLevelService $commitmentLevelService
     ) {}
 
@@ -596,6 +598,21 @@ class PlanController extends AbstractController
         $onlyImplemented  = $request->query->get('only_implemented');
         $openId           = $request->query->getInt('open', 0);
         $isCritical       = $request->query->get('is_critical');
+        $state            = $request->query->get('state');
+
+        if (!is_string($state) || $state === '') {
+            if (filter_var($onlyImplemented, FILTER_VALIDATE_BOOLEAN)) {
+                $state = 'executed';
+            } elseif (
+                filter_var($isApplicable, FILTER_VALIDATE_BOOLEAN)
+                || filter_var($willImplement, FILTER_VALIDATE_BOOLEAN)
+                || filter_var($pendingSelection, FILTER_VALIDATE_BOOLEAN)
+            ) {
+                $state = 'implement';
+            } else {
+                $state = 'implement';
+            }
+        }
 
         $paginationQuery = $request->query->all();
         unset($paginationQuery['open']);
@@ -669,11 +686,16 @@ class PlanController extends AbstractController
         $qb->addOrderBy('rank', 'ASC')
         ->addOrderBy('sortName', 'ASC');
 
-        if ($isApplicable)    { $qb->andWhere('pm.isApplicable = true'); }
-        if ($willImplement)   { $qb->andWhere('pm.willImplement = true'); }
-        if ($pendingSelection){ $qb->andWhere('pm.isApplicable IS NULL'); }
-        if ($onlyImplemented) { $qb->andWhere('pm.implemented = true'); }
-        if ($isCritical)      { $qb->andWhere('pm.isCritical = true'); }
+        if ($state === 'implement') {
+            $qb->andWhere('pm.isApplicable = true')->andWhere('pm.willImplement = true');
+        } elseif ($state === 'executed') {
+            $qb->andWhere('pm.implemented = true');
+        } elseif ($state === 'discarded') {
+            $qb->andWhere('(pm.isApplicable = false OR (pm.isApplicable = true AND pm.willImplement = false))');
+        }
+        if ($isCritical) {
+            $qb->andWhere('pm.isCritical = true');
+        }
 
         // Total y orden por ranking
         $allMeasures = $qb->getQuery()->getResult();
@@ -698,6 +720,7 @@ class PlanController extends AbstractController
             'will_implement'    => $willImplement,
             'pending_selection' => $pendingSelection,
             'only_implemented'  => $onlyImplemented,
+            'state'             => $state,
         ];
         $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $project, $filtersArr);
 
@@ -786,6 +809,7 @@ class PlanController extends AbstractController
                 'pending_selection' => $pendingSelection,
                 'only_implemented'  => $onlyImplemented,
                 'is_critical'       => $isCritical,
+                'state'             => $state,
             ],
             'protocols'        => $protocols,
             'categories'       => $measureRepository->getCategories($project, $uiLocale),
@@ -1792,6 +1816,8 @@ class PlanController extends AbstractController
         $filterImplement       = $filters['will_implement']     ?? null;
         $filterPending         = $filters['pending_selection']  ?? null;
         $filterOnlyImplemented = $filters['only_implemented']   ?? null;
+        $filterState           = $filters['state']              ?? 'implement';
+        $filterCritical        = $filters['is_critical']        ?? null;
 
         $filtersArr = [
             'protocol'          => $filterProtocol,
@@ -1806,6 +1832,8 @@ class PlanController extends AbstractController
             'will_implement'    => $filterImplement,
             'pending_selection' => $filterPending,
             'only_implemented'  => $filterOnlyImplemented,
+            'state'             => $filterState,
+            'is_critical'       => $filterCritical,
         ];
 
         $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $project, $filtersArr);
@@ -1822,7 +1850,7 @@ class PlanController extends AbstractController
             $measuresByDpto[$dpto][] = $pm;
         }
 
-        $measuresTotal = $this->countFilteredMeasures($plan, $measureRepository, $protocolRepository, $project, $filtersArr, $em);
+        $measuresTotal = $this->countFilteredMeasures($plan, $project, $filtersArr);
 
         // --- PUNTUACIÓN ALCANZADA (con filtros aplicados) ---
         $scoreMax = 0;
@@ -1869,14 +1897,16 @@ class PlanController extends AbstractController
         );
 
         $activeFlags = [];
-        if ($filterApplicable) {
-            $activeFlags[$translator->trans('backend.plan.filters.only_applicable')] = $translator->trans('backend.common.yes');
+        $stateLabels = [
+            'implement' => $translator->trans('backend.plan.filters.state_implement'),
+            'executed' => $translator->trans('backend.plan.filters.state_executed'),
+            'discarded' => $translator->trans('backend.plan.filters.state_discarded'),
+        ];
+        if (isset($stateLabels[$filterState])) {
+            $activeFlags[$stateLabels[$filterState]] = $translator->trans('backend.common.yes');
         }
-        if ($filterImplement) {
-            $activeFlags[$translator->trans('backend.plan.filters.only_to_implement')] = $translator->trans('backend.common.yes');
-        }
-        if ($filterOnlyImplemented) {
-            $activeFlags[$translator->trans('backend.plan.filters.only_implemented')] = $translator->trans('backend.common.yes');
+        if ($filterCritical) {
+            $activeFlags[$translator->trans('backend.plan.filters.critical')] = $translator->trans('backend.common.yes');
         }
 
         $activeFilters = array_merge($activeMain, $activeFlags);
@@ -1943,6 +1973,17 @@ class PlanController extends AbstractController
     private function getFilteredPlanMeasures(Plan $plan, Project $project, array $filters): array
     {
         $result = [];
+        $state = $filters['state'] ?? 'implement';
+        $discardedMeasures = [];
+        if ($state === 'discarded') {
+            $discardedMeasures = array_fill_keys(
+                array_map(
+                    static fn (PlanMeasure $planMeasure): int => (int) $planMeasure->getMeasure()?->getId(),
+                    $this->discardedMeasureService->getDiscardedMeasures($plan, $project)
+                ),
+                true
+            );
+        }
 
         foreach ($this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan) as $pm) {
             $m = $pm->getMeasure();
@@ -1950,7 +1991,9 @@ class PlanController extends AbstractController
                 continue;
             }
 
-            if ($filters['category'] && $m->getCategory()?->getId() != $filters['category']) continue;
+            if ($filters['category'] && $m->getCategory()?->getId() != $filters['category']) {
+                continue;
+            }
 
             if ($filters['protocol']) {
                 $proto = $m->getProtocol();
@@ -1963,17 +2006,22 @@ class PlanController extends AbstractController
             if ($filters['esg'] && $m->getEsg()?->getId() != $filters['esg']) continue;
             if (!$this->taxonomyPresenter->matchesFilters($m, $filters)) continue;
 
-            if ($filters['is_applicable'] !== null && filter_var($filters['is_applicable'], FILTER_VALIDATE_BOOLEAN)) {
-                if (!$pm->isApplicable()) continue;
+            if (!empty($filters['is_critical']) && !$pm->isCritical()) {
+                continue;
             }
-            if ($filters['will_implement'] !== null && filter_var($filters['will_implement'], FILTER_VALIDATE_BOOLEAN)) {
-                if (!$pm->willImplement()) continue;
-            }
-            if ($filters['pending_selection'] !== null && filter_var($filters['pending_selection'], FILTER_VALIDATE_BOOLEAN)) {
-                if ($pm->isApplicable() !== null || $pm->willImplement() !== null) continue;
-            }
-            if ($filters['only_implemented'] !== null && filter_var($filters['only_implemented'], FILTER_VALIDATE_BOOLEAN)) {
-                if (!$pm->isImplemented()) continue;
+
+            if ($state === 'implement') {
+                if ($pm->isApplicable() !== true || $pm->willImplement() !== true) {
+                    continue;
+                }
+            } elseif ($state === 'executed') {
+                if (!$pm->isImplemented()) {
+                    continue;
+                }
+            } elseif ($state === 'discarded') {
+                if (!isset($discardedMeasures[(int) $m->getId()])) {
+                    continue;
+                }
             }
 
             $result[] = $pm;
@@ -1984,34 +2032,11 @@ class PlanController extends AbstractController
 
     private function countFilteredMeasures(
         Plan $plan,
-        MeasureRepository $measureRepository,
-        ProtocolRepository $protocolRepository,
         Project $project,
-        array $filters,
-        EntityManagerInterface $em): int
+        array $filters
+    ): int
     {
-        $protocols = $protocolRepository->getNamesForProjectType($project->getType());
-
-        $qb = $measureRepository->createQueryBuilder('m')->join('m.protocol', 'p');
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
-
-        if (!$filters['protocol'])   $qb->andWhere('p.name IN (:protocols)')->setParameter('protocols', $protocols);
-        else                         $qb->andWhere('p.name = :protocol')->setParameter('protocol', $filters['protocol']);
-        $measureRepository->applyPlanTaxonomyFilters($qb, $filters);
-        if ($filters['is_applicable']) {
-            $qb->join('m.planMeasures', 'pm')->andWhere('pm.isApplicable = true');
-        }
-        if ($filters['will_implement']) {
-            $qb->join('m.planMeasures', 'pm2')->andWhere('pm2.willImplement = true');
-        }
-        if ($filters['pending_selection']) {
-            $qb->leftJoin('m.planMeasures', 'pm3')->andWhere('pm3.isApplicable IS NULL');
-        }
-        if ($filters['only_implemented']) {
-            $qb->join('m.planMeasures', 'pm_impl')->andWhere('pm_impl.implemented = true');
-        }
-
-        return count($this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan));
+        return count($this->getFilteredPlanMeasures($plan, $project, $filters));
     }
 
     /**
@@ -2371,13 +2396,12 @@ class PlanController extends AbstractController
     }
 
     /**
-     * @return array{is_applicable: string, will_implement: string}
+     * @return array{state: string}
      */
     private function reviewDefaultFilters(): array
     {
         return [
-            'is_applicable' => '1',
-            'will_implement' => '1',
+            'state' => 'implement',
         ];
     }
 

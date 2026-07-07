@@ -21,50 +21,60 @@
 {% if filters.scope|default('') is not empty %}
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.scope'|trans]) %}
 {% endif %}
-{% if filters.is_applicable|default(false) %}
-    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.only_applicable'|trans]) %}
-{% endif %}
-{% if filters.will_implement|default(false) %}
-    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.only_to_implement'|trans]) %}
-{% endif %}
-{% if filters.only_implemented|default(false) %}
-    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.only_implemented'|trans]) %}
+{% set stateValue = filters.state|default('implement') %}
+{% if stateValue == 'executed' %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_executed'|trans]) %}
+{% elseif stateValue == 'discarded' %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_discarded'|trans]) %}
+{% else %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_implement'|trans]) %}
 {% endif %}
 {% if filters.is_critical|default(false) %}
-    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.only_critical'|trans]) %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.critical'|trans]) %}
 {% endif %}
 
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body py-3">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-            <div>
-                <div class="fw-semibold">
-                    {{ 'backend.plan.filters.panel_title'|trans }}
+<div class="card border border-success-subtle shadow-sm mb-4 rounded-4 overflow-hidden bg-success-subtle bg-opacity-10">
+    <div class="card-body p-3 p-lg-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+            <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
+                <div class="d-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-circle bg-white text-success shadow-sm border border-success-subtle" style="width:48px;height:48px;">
+                    <i class="bi bi-funnel fs-5"></i>
                 </div>
-                {% if activeFilterLabels is not empty %}
-                    <div class="small text-muted">
-                        {{ 'backend.plan.filters.active_filters'|trans }}: {{ activeFilterLabels|join(', ') }}
+                <div class="min-w-0 flex-grow-1">
+                    <div class="fw-semibold fs-5 mb-1 text-success-emphasis">
+                        {{ 'backend.plan.filters.panel_title'|trans }}
                     </div>
-                {% else %}
-                    <div class="small text-muted">
-                        {{ 'backend.plan.filters.no_filters_active'|trans }}
-                    </div>
-                {% endif %}
+                    {% if activeFilterLabels is not empty %}
+                        <div class="small text-muted text-break">
+                            {{ 'backend.plan.filters.active_filters'|trans }}: {{ activeFilterLabels|join(', ') }}
+                        </div>
+                    {% else %}
+                        <div class="small text-muted">
+                            {{ 'backend.plan.filters.no_filters_active'|trans }}
+                        </div>
+                    {% endif %}
+                </div>
             </div>
-            <button
-                class="btn btn-success btn-sm text-white"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#{{ panelId }}"
-                aria-expanded="false"
-                aria-controls="{{ panelId }}"
-                data-collapse-static-class="1">
-                <span data-collapse-label="collapsed">{{ 'backend.plan.filters.panel_open'|trans }}</span>
-                <span data-collapse-label="expanded" class="d-none">{{ 'backend.plan.filters.panel_close'|trans }}</span>
-            </button>
+            <div class="d-flex flex-wrap gap-2 ms-lg-auto">
+                <button type="button" id="reset-filters" class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill d-inline-flex align-items-center gap-1">
+                    <i class="bi bi-x-circle"></i> {{ 'backend.common.clear_filters'|trans }}
+                </button>
+                <button
+                    class="btn btn-outline-success btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 flex-shrink-0 rounded-pill"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#{{ panelId }}"
+                    aria-expanded="false"
+                    aria-controls="{{ panelId }}"
+                    data-collapse-static-class="1">
+                    <i class="bi bi-chevron-right"></i>
+                    <span data-collapse-label="collapsed">{{ 'backend.plan.filters.panel_open'|trans }}</span>
+                    <span data-collapse-label="expanded" class="d-none">{{ 'backend.plan.filters.panel_close'|trans }}</span>
+                </button>
+            </div>
         </div>
 
-        <div class="collapse mt-3" id="{{ panelId }}">
+        <div class="collapse mt-4" id="{{ panelId }}">
             {% include 'backend/plan/_filters.html.twig' %}
         </div>
     </div>

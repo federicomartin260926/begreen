@@ -63,8 +63,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $filters = $this->invokeReviewDefaultFilters($controller);
 
         self::assertSame([
-            'is_applicable' => '1',
-            'will_implement' => '1',
+            'state' => 'implement',
         ], $filters);
     }
 
@@ -2449,14 +2448,14 @@ final class PlanControllerNavigationTest extends KernelTestCase
     }
 
     /**
-     * @return array{is_applicable: string, will_implement: string}
+     * @return array{state: string}
      */
     private function invokeReviewDefaultFilters(PlanController $controller): array
     {
         $reflection = new \ReflectionMethod($controller, 'reviewDefaultFilters');
         $reflection->setAccessible(true);
 
-        /** @var array{is_applicable: string, will_implement: string} $filters */
+        /** @var array{state: string} $filters */
         $filters = $reflection->invoke($controller);
 
         return $filters;
