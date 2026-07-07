@@ -517,9 +517,20 @@
                                 </button>
                                 <div class="collapse mt-2" id="classification-{{ measure.id }}">
                                     <div class="border rounded-3 bg-body-tertiary p-3">
-                                        <div class="small text-muted mb-2">{{ 'backend.plan.measure.category'|trans }}</div>
                                         {% if measure.category %}
-                                            <div class="mb-2">{{ measure.category.name }}</div>
+                                            <div class="row g-2 align-items-start mb-2">
+                                                <dt class="col-12 col-md-4 col-lg-3">{{ 'backend.plan.measure.category'|trans }}</dt>
+                                                <dd class="col-12 col-md-8 col-lg-9 d-flex flex-wrap gap-1 mb-0">
+                                                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis border">
+                                                        {{ measure.category.name }}
+                                                    </span>
+                                                </dd>
+                                            </div>
+                                        {% else %}
+                                            <div class="row g-2 align-items-start mb-2">
+                                                <dt class="col-12 col-md-4 col-lg-3">{{ 'backend.plan.measure.category'|trans }}</dt>
+                                                <dd class="col-12 col-md-8 col-lg-9 mb-0 text-muted">—</dd>
+                                            </div>
                                         {% endif %}
 
                                         <div class="row g-2">
