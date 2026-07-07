@@ -1189,6 +1189,10 @@ backend:
         critical_reason_required_html: "Debes escribir un <strong>motivo</strong> cuando marques la medida como crítica."
       flag_implemented: "Medida ejecutada"
       flag_verified: "Chequeado"
+      status_executed_with_evidence: "Ejecutada con evidencia"
+      status_executed_without_evidence: "Ejecutada sin evidencia"
+      status_not_executed: "No ejecutada"
+      status_discarded: "Descartada"
     preview:
       title: "Plan de sostenibilidad: %project%"
       status: "Estado del plan: <strong>%status%</strong>"

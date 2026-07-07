@@ -1181,6 +1181,10 @@ backend:
         evidence_oversized_list_intro: "The following exceed the limit:"
       flag_implemented: "Executed measure"
       flag_verified: "Verified"
+      status_executed_with_evidence: "Executed with evidence"
+      status_executed_without_evidence: "Executed without evidence"
+      status_not_executed: "Not executed"
+      status_discarded: "Discarded"
     preview:
       title: "Sustainability plan: %project%"
       status: "Plan status: <strong>%status%</strong>"

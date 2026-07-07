@@ -1502,6 +1502,24 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         color: #198754;
         border-color: #198754;
     }
+    .plan-measure-status-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    .plan-measure-status-dot--executed-with-evidence {
+        background-color: #198754;
+    }
+    .plan-measure-status-dot--executed-no-evidence {
+        background-color: #f28c28;
+    }
+    .plan-measure-status-dot--not-executed {
+        background-color: #d9534f;
+    }
+    .plan-measure-status-dot--discarded {
+        background-color: #9aa0a6;
+    }
     .measure-card .classification-toggle[aria-expanded="true"] {
         background: #fff !important;
         color: #198754 !important;
@@ -1585,6 +1603,24 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         background: #fff;
         color: #198754;
         border-color: #198754;
+    }
+    .plan-measure-status-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    .plan-measure-status-dot--executed-with-evidence {
+        background-color: #198754;
+    }
+    .plan-measure-status-dot--executed-no-evidence {
+        background-color: #f28c28;
+    }
+    .plan-measure-status-dot--not-executed {
+        background-color: #d9534f;
+    }
+    .plan-measure-status-dot--discarded {
+        background-color: #9aa0a6;
     }
     .measure-card .classification-toggle[aria-expanded="true"] {
         background: #fff !important;

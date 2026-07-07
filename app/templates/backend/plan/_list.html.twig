@@ -38,24 +38,37 @@
                     </td>
 
                     {# Determinar color y estrella según reglas #}
-                    {% set statusColor = 'bg-secondary' %}
+                    {% set statusColor = 'plan-measure-status-dot--discarded' %}
+                    {% set statusTitle = 'backend.common.no_answer'|trans %}
                     {% set showStar = false %}
+                    {% set evidencePaths = pm and pm.evidence ? pm.evidence|trim : '' %}
+                    {% set hasEvidence = evidencePaths is not same as('') %}
                     {% if pm %}
-                        {% if pm.isApplicable is same as(true) and pm.willImplement is same as(true) and pm.isCritical is same as(true) %}
-                            {% set statusColor = 'bg-success' %}
-                            {% set showStar = true %}
-                        {% elseif pm.isApplicable is same as(true) and pm.willImplement is same as(true) %}
-                            {% set statusColor = 'bg-success' %}
-                        {% elseif pm.isApplicable is same as(true) and pm.willImplement is same as(false) %}
-                            {% set statusColor = 'bg-warning' %}
-                        {% elseif pm.isApplicable is same as(false) %}
-                            {% set statusColor = 'bg-danger' %}
+                        {% if pm.isApplicable is same as(true) and pm.willImplement is same as(true) %}
+                            {% if pm.isImplemented is same as(true) %}
+                                {% if hasEvidence %}
+                                    {% set statusColor = 'plan-measure-status-dot--executed-with-evidence' %}
+                                    {% set statusTitle = 'backend.plan.review.status_executed_with_evidence'|trans %}
+                                {% else %}
+                                    {% set statusColor = 'plan-measure-status-dot--executed-no-evidence' %}
+                                    {% set statusTitle = 'backend.plan.review.status_executed_without_evidence'|trans %}
+                                {% endif %}
+                            {% else %}
+                                {% set statusColor = 'plan-measure-status-dot--not-executed' %}
+                                {% set statusTitle = 'backend.plan.review.status_not_executed'|trans %}
+                            {% endif %}
+                            {% if pm.isCritical is same as(true) %}
+                                {% set showStar = true %}
+                            {% endif %}
+                        {% elseif pm.isApplicable is same as(false) or (pm.isApplicable is same as(true) and pm.willImplement is same as(false)) %}
+                            {% set statusColor = 'plan-measure-status-dot--discarded' %}
+                            {% set statusTitle = 'backend.plan.review.status_discarded'|trans %}
                         {% endif %}
                     {% endif %}
 
                     <td class="text-muted text-nowrap">
                         <span class="d-inline-flex align-items-center flex-nowrap">
-                            <span class="d-inline-block rounded-circle me-2 {{ statusColor }}" style="width:10px;height:10px;"></span>
+                            <span class="plan-measure-status-dot me-2 {{ statusColor }}" title="{{ statusTitle }}" aria-label="{{ statusTitle }}"></span>
                             {% if showStar %}
                                 <i class="bi bi-star-fill text-warning me-1" title="{{ 'backend.plan.review.critical_measure'|trans }}" aria-label="{{ 'backend.plan.review.critical_measure'|trans }}"></i>
                             {% endif %}
