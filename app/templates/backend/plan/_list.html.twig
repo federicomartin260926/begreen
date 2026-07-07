@@ -406,12 +406,12 @@
                                                     <label class="form-label small mt-3 mb-1" for="internal-notes-{{ measure.id }}">
                                                         {{ 'backend.plan.review.internal_notes'|trans }}
                                                     </label>
-                                                    <div class="form-text mt-0 mb-1">{{ 'backend.plan.review.internal_notes_hint'|trans }}</div>
                                                     <textarea
                                                         id="internal-notes-{{ measure.id }}"
                                                         class="form-control"
                                                         rows="2"
                                                         placeholder="{{ 'backend.plan.review.internal_notes_ph'|trans }}">{{ pm.internalNotes ?? '' }}</textarea>
+                                                    <div class="form-text mt-1">{{ 'backend.plan.review.internal_notes_hint'|trans }}</div>
                                                 {% endif %}
 
                                                 <div class="{% if canUseResponsibles or canUseInternalNotes %}mt-3{% endif %}">
