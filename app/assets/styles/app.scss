@@ -1502,6 +1502,27 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         color: #198754;
         border-color: #198754;
     }
+    .measure-card .classification-toggle[aria-expanded="true"] {
+        background: #fff !important;
+        color: #198754 !important;
+        border-color: #198754 !important;
+        box-shadow: none;
+    }
+    .measure-card .classification-toggle[aria-expanded="true"]:hover,
+    .measure-card .classification-toggle[aria-expanded="true"]:focus,
+    .measure-card .classification-toggle[aria-expanded="true"]:focus-visible {
+        background: #f8fff9 !important;
+        color: #198754 !important;
+        border-color: #198754 !important;
+    }
+    .measure-card .classification-toggle[aria-expanded="true"] i,
+    .measure-card .classification-toggle[aria-expanded="true"] .classification-toggle__label,
+    .measure-card .classification-toggle[aria-expanded="true"] span,
+    .measure-card .classification-toggle[aria-expanded="true"] svg {
+        color: #198754 !important;
+        fill: currentColor;
+        stroke: currentColor;
+    }
     .measure-details {
         font-size: 0.97em;
         color: #444;
@@ -1564,6 +1585,27 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         background: #fff;
         color: #198754;
         border-color: #198754;
+    }
+    .measure-card .classification-toggle[aria-expanded="true"] {
+        background: #fff !important;
+        color: #198754 !important;
+        border-color: #198754 !important;
+        box-shadow: none;
+    }
+    .measure-card .classification-toggle[aria-expanded="true"]:hover,
+    .measure-card .classification-toggle[aria-expanded="true"]:focus,
+    .measure-card .classification-toggle[aria-expanded="true"]:focus-visible {
+        background: #f8fff9 !important;
+        color: #198754 !important;
+        border-color: #198754 !important;
+    }
+    .measure-card .classification-toggle[aria-expanded="true"] i,
+    .measure-card .classification-toggle[aria-expanded="true"] .classification-toggle__label,
+    .measure-card .classification-toggle[aria-expanded="true"] span,
+    .measure-card .classification-toggle[aria-expanded="true"] svg {
+        color: #198754 !important;
+        fill: currentColor;
+        stroke: currentColor;
     }
     .measure-details {
         font-size: 0.97em;
