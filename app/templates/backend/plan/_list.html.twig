@@ -326,6 +326,7 @@
                                     {% set canUseChecklist = canUseChecklist|default(false) %}
                                     {% set canUseResponsibles = canUseResponsibles|default(false) %}
                                     {% set canUseInternalNotes = canUseInternalNotes|default(false) %}
+                                    {% set hasSecondaryExecutionFields = canUseResponsibles or canUseInternalNotes %}
                                     {% set measureCrewMembers = crewMembersByMeasure[measure.id]|default([]) %}
                                     {% set responsibleIds = [] %}
                                     {% if pm %}
@@ -375,119 +376,113 @@
                                         {% endif %}
                                     </div>
 
-                                    <div class="row g-4 mt-0 align-items-start">
-                                        <div class="col-12 col-lg-6 mt-3">
-                                            <label class="form-label small" for="action-taken-{{ measure.id }}">{{ 'backend.plan.review.action_taken'|trans }}</label>
-                                            <textarea
-                                                id="action-taken-{{ measure.id }}"
-                                                class="form-control"
-                                                rows="3"
-                                                placeholder="{{ 'backend.plan.review.action_taken_ph'|trans }}">{{ pm.actionTaken ?? '' }}</textarea>
+                                    {% set evidenceList = (pm and pm.evidence) ? pm.evidence|split("\n")|filter(path => path|trim) : [] %}
+                                    {% set evidenceMetadata = pm and pm.evidenceMetadata ? pm.evidenceMetadata : {} %}
+                                    {% set verificationSources = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
+                                    {% set evidenceCount = evidenceList|length %}
+                                    {% if hasSecondaryExecutionFields %}
+                                        <div class="row g-4 mt-0 align-items-start">
+                                            <div class="col-12 col-lg-6 mt-3">
+                                                <label class="form-label small" for="action-taken-{{ measure.id }}">{{ 'backend.plan.review.action_taken'|trans }}</label>
+                                                <textarea
+                                                    id="action-taken-{{ measure.id }}"
+                                                    class="form-control"
+                                                    rows="3"
+                                                    placeholder="{{ 'backend.plan.review.action_taken_ph'|trans }}">{{ pm.actionTaken ?? '' }}</textarea>
 
-                                            <label class="form-label small mt-3" for="observations-{{ measure.id }}">{{ 'backend.plan.review.public_comment'|trans }}</label>
-                                            <textarea
-                                                id="observations-{{ measure.id }}"
-                                                class="form-control"
-                                                rows="3"
-                                                autocomplete="off"
-                                                placeholder="{{ 'backend.plan.review.public_comment_ph'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
-                                        </div>
+                                                <label class="form-label small mt-3" for="observations-{{ measure.id }}">{{ 'backend.plan.review.public_comment'|trans }}</label>
+                                                <textarea
+                                                    id="observations-{{ measure.id }}"
+                                                    class="form-control"
+                                                    rows="3"
+                                                    autocomplete="off"
+                                                    placeholder="{{ 'backend.plan.review.public_comment_ph'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
 
-                                        <div class="col-12 col-lg-6 mt-3">
-                                            <div class="h-100 d-flex flex-column">
+                                                {% if canManageEvidence or evidenceCount > 0 %}
+                                                    {% include 'backend/plan/_evidence_block.html.twig' with {
+                                                        measure: measure,
+                                                        canManageEvidence: canManageEvidence,
+                                                        evidenceList: evidenceList,
+                                                        evidenceMetadata: evidenceMetadata,
+                                                        verificationSources: verificationSources,
+                                                        evidenceCount: evidenceCount,
+                                                        evidenceBlockWrapperClass: 'mt-3'
+                                                    } %}
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="col-12 col-lg-6 mt-3">
                                                 {% if canUseResponsibles %}
-                                                    <label class="form-label small d-flex justify-content-between align-items-center" for="responsibles-{{ measure.id }}">
-                                                        <span>{{ 'backend.plan.review.responsibles'|trans }}</span>
-                                                    </label>
-                                                    <select
-                                                        id="responsibles-{{ measure.id }}"
-                                                        class="form-select"
-                                                        multiple
-                                                        size="3">
-                                                        {% for crewMember in measureCrewMembers %}
-                                                            {% set fullName = (crewMember.name ?? '') ~ ' ' ~ (crewMember.lastName ?? '') %}
-                                                            <option value="{{ crewMember.id }}"
-                                                                    {% if crewMember.id in responsibleIds %}selected{% endif %}>
-                                                                {{ fullName|trim }}{% if crewMember.department %} · {{ crewMember.department.displayName }}{% endif %}
-                                                            </option>
-                                                        {% endfor %}
-                                                    </select>
-                                                    <div class="form-text">{{ 'backend.plan.review.responsibles_hint'|trans }}</div>
+                                                    <div>
+                                                        <label class="form-label small d-flex justify-content-between align-items-center" for="responsibles-{{ measure.id }}">
+                                                            <span>{{ 'backend.plan.review.responsibles'|trans }}</span>
+                                                        </label>
+                                                        <select
+                                                            id="responsibles-{{ measure.id }}"
+                                                            class="form-select"
+                                                            multiple
+                                                            size="3">
+                                                            {% for crewMember in measureCrewMembers %}
+                                                                {% set fullName = (crewMember.name ?? '') ~ ' ' ~ (crewMember.lastName ?? '') %}
+                                                                <option value="{{ crewMember.id }}"
+                                                                        {% if crewMember.id in responsibleIds %}selected{% endif %}>
+                                                                    {{ fullName|trim }}{% if crewMember.department %} · {{ crewMember.department.displayName }}{% endif %}
+                                                                </option>
+                                                            {% endfor %}
+                                                        </select>
+                                                        <div class="form-text">{{ 'backend.plan.review.responsibles_hint'|trans }}</div>
+                                                    </div>
                                                 {% endif %}
 
                                                 {% if canUseInternalNotes %}
-                                                    <label class="form-label small mt-3 mb-1" for="internal-notes-{{ measure.id }}">
-                                                        {{ 'backend.plan.review.internal_notes'|trans }}
-                                                    </label>
-                                                    <textarea
-                                                        id="internal-notes-{{ measure.id }}"
-                                                        class="form-control"
-                                                        rows="2"
-                                                        placeholder="{{ 'backend.plan.review.internal_notes_ph'|trans }}">{{ pm.internalNotes ?? '' }}</textarea>
-                                                    <div class="form-text mt-1">{{ 'backend.plan.review.internal_notes_hint'|trans }}</div>
-                                                {% endif %}
-
-                                                <div class="{% if canUseResponsibles or canUseInternalNotes %}mt-3{% endif %}">
-                                                    <label class="form-label small d-flex justify-content-between align-items-center" for="evidences-{{ measure.id }}">
-                                                        {{ 'backend.plan.review.evidences'|trans }}
-                                                        {% if not canManageEvidence %}
-                                                            <span class="text-muted small">({{ 'backend.common.readonly'|trans }})</span>
-                                                        {% endif %}
-                                                    </label>
-
-                                                    {% if canManageEvidence %}
-                                                        <input
-                                                            type="file"
-                                                            id="evidences-{{ measure.id }}"
+                                                    <div{% if canUseResponsibles %} class="mt-3"{% endif %}>
+                                                        <label class="form-label small mb-1" for="internal-notes-{{ measure.id }}">
+                                                            {{ 'backend.plan.review.internal_notes'|trans }}
+                                                        </label>
+                                                        <textarea
+                                                            id="internal-notes-{{ measure.id }}"
                                                             class="form-control"
-                                                            multiple
-                                                            data-action="change->plan-review#validateEvidenceFiles change->plan-review#uploadEvidences"
-                                                            data-measure-id="{{ measure.id }}"
-                                                        >
-                                                        <div class="form-text">{{ 'backend.plan.review.evidences_hint'|trans }}</div>
-                                                    {% endif %}
-
-                                                    {% set evidenceList = (pm and pm.evidence) ? pm.evidence|split("\n") : [] %}
-                                                    <ul id="evidence-list-{{ measure.id }}" class="list-group list-group-flush mt-2 border rounded">
-                                                        {% if evidenceList is not empty %}
-                                                            {% for path in evidenceList %}
-                                                                {% if path %}
-                                                                    <li class="list-group-item d-flex align-items-center justify-content-between py-2">
-                                                                        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                                                                            <i class="bi bi-paperclip text-muted"></i>
-                                                                            <a href="{{ path }}" target="_blank" rel="noopener"
-                                                                               class="text-truncate text-decoration-none"
-                                                                               style="max-width: 75%;">
-                                                                                {{ path|split('/')|last }}
-                                                                            </a>
-                                                                        </div>
-
-                                                                        {% if canManageEvidence %}
-                                                                            <div class="ms-2">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    class="btn btn-sm text-danger"
-                                                                                    data-action="click->plan-review#deleteEvidence"
-                                                                                    data-measure-id="{{ measure.id }}"
-                                                                                    data-file="{{ path }}"
-                                                                                    data-bs-toggle="popover"
-                                                                                    data-bs-trigger="hover"
-                                                                                    data-bs-content="{{ 'backend.plan.review.delete_file'|trans({'%file%': path|split('/')|last}) }}">
-                                                                                    <i class="bi bi-trash"></i>
-                                                                                </button>
-                                                                            </div>
-                                                                        {% endif %}
-                                                                    </li>
-                                                                {% endif %}
-                                                            {% endfor %}
-                                                        {% else %}
-                                                            <li class="list-group-item py-2 text-muted small">{{ 'backend.plan.review.no_evidences'|trans }}</li>
-                                                        {% endif %}
-                                                    </ul>
-                                                </div>
+                                                            rows="2"
+                                                            placeholder="{{ 'backend.plan.review.internal_notes_ph'|trans }}">{{ pm.internalNotes ?? '' }}</textarea>
+                                                        <div class="form-text mt-1">{{ 'backend.plan.review.internal_notes_hint'|trans }}</div>
+                                                    </div>
+                                                {% endif %}
                                             </div>
                                         </div>
-                                    </div>
+                                    {% else %}
+                                        <div class="row g-4 mt-0 align-items-start">
+                                            <div class="col-12 col-lg-6 mt-3">
+                                                <label class="form-label small" for="action-taken-{{ measure.id }}">{{ 'backend.plan.review.action_taken'|trans }}</label>
+                                                <textarea
+                                                    id="action-taken-{{ measure.id }}"
+                                                    class="form-control"
+                                                    rows="3"
+                                                    placeholder="{{ 'backend.plan.review.action_taken_ph'|trans }}">{{ pm.actionTaken ?? '' }}</textarea>
+
+                                                <label class="form-label small mt-3" for="observations-{{ measure.id }}">{{ 'backend.plan.review.public_comment'|trans }}</label>
+                                                <textarea
+                                                    id="observations-{{ measure.id }}"
+                                                    class="form-control"
+                                                    rows="3"
+                                                    autocomplete="off"
+                                                    placeholder="{{ 'backend.plan.review.public_comment_ph'|trans }}">{{ pm.publicComment ?? '' }}</textarea>
+                                            </div>
+
+                                            <div class="col-12 col-lg-6 mt-3">
+                                                {% if canManageEvidence or evidenceCount > 0 %}
+                                                    {% include 'backend/plan/_evidence_block.html.twig' with {
+                                                        measure: measure,
+                                                        canManageEvidence: canManageEvidence,
+                                                        evidenceList: evidenceList,
+                                                        evidenceMetadata: evidenceMetadata,
+                                                        verificationSources: verificationSources,
+                                                        evidenceCount: evidenceCount,
+                                                        evidenceBlockWrapperClass: 'mt-0'
+                                                    } %}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
 
                                     <div class="d-flex justify-content-end mt-3">
                                         <button

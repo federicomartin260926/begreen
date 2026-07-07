@@ -75,6 +75,9 @@ class PlanMeasure
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $evidence = null;
 
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $evidenceMetadata = null;
+
     #[ORM\Column(type: 'boolean')]
     private bool $verification = false;
 
@@ -169,6 +172,72 @@ class PlanMeasure
 
     public function getEvidence(): ?string { return $this->evidence; }
     public function setEvidence(?string $evidence): self { $this->evidence = $evidence; return $this; }
+
+    /**
+     * @return array<string, string>|null
+     */
+    public function getEvidenceMetadata(): ?array
+    {
+        return $this->evidenceMetadata;
+    }
+
+    /**
+     * @param array<string, string>|null $evidenceMetadata
+     */
+    public function setEvidenceMetadata(?array $evidenceMetadata): self
+    {
+        $normalized = [];
+        foreach ($evidenceMetadata ?? [] as $path => $sourceCode) {
+            $path = trim((string) $path);
+            $sourceCode = trim((string) $sourceCode);
+            if ($path === '' || $sourceCode === '') {
+                continue;
+            }
+            $normalized[$path] = $sourceCode;
+        }
+
+        $this->evidenceMetadata = $normalized !== [] ? $normalized : null;
+
+        return $this;
+    }
+
+    public function getEvidenceSourceCodeForPath(string $path): ?string
+    {
+        $path = trim($path);
+        if ($path === '' || $this->evidenceMetadata === null) {
+            return null;
+        }
+
+        $code = $this->evidenceMetadata[$path] ?? null;
+
+        return is_string($code) && trim($code) !== '' ? $code : null;
+    }
+
+    public function setEvidenceSourceCodeForPath(string $path, ?string $sourceCode): self
+    {
+        $path = trim($path);
+        if ($path === '') {
+            return $this;
+        }
+
+        $metadata = $this->evidenceMetadata ?? [];
+        $sourceCode = trim((string) $sourceCode);
+
+        if ($sourceCode === '') {
+            unset($metadata[$path]);
+        } else {
+            $metadata[$path] = $sourceCode;
+        }
+
+        $this->evidenceMetadata = $metadata !== [] ? $metadata : null;
+
+        return $this;
+    }
+
+    public function removeEvidenceSourceCodeForPath(string $path): self
+    {
+        return $this->setEvidenceSourceCodeForPath($path, null);
+    }
 
     public function isVerification(): bool { return $this->verification; }
     public function setVerification(bool $verification): self { $this->verification = $verification; return $this; }

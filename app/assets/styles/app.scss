@@ -2159,3 +2159,21 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         display: none;
     }
 }
+
+.evidence-change-source-btn {
+    color: $primary;
+    padding: .05rem .35rem;
+    border-radius: .4rem;
+    line-height: 1.2;
+    text-decoration: none;
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+
+    &:hover,
+    &:focus,
+    &:focus-visible {
+        color: $primary;
+        background-color: rgba($primary, .08);
+        text-decoration: none;
+        box-shadow: none;
+    }
+}

@@ -1,0 +1,176 @@
+{% set evidenceCountLabel = evidenceCount == 1 ? ('backend.plan.review.evidences_attached_count_one'|trans) : ('backend.plan.review.evidences_attached_count_other'|trans) %}
+{% set evidenceBlockWrapperClass = evidenceBlockWrapperClass|default('') %}
+<div class="{{ evidenceBlockWrapperClass }} mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <label class="form-label small mb-0">
+                {{ 'backend.plan.review.evidences'|trans }}
+                {% if not canManageEvidence %}
+                    <span class="text-muted small">({{ 'backend.common.readonly'|trans }})</span>
+                {% endif %}
+            </label>
+            <span class="badge rounded-pill bg-light text-dark border">
+                {{ evidenceCount }} {{ evidenceCountLabel }}
+            </span>
+        </div>
+
+        {% if evidenceCount > 0 and canManageEvidence and verificationSources is not empty %}
+            <button
+                type="button"
+                class="btn btn-sm btn-outline-success"
+                title="{{ 'backend.plan.review.add_evidence'|trans }}"
+                aria-label="{{ 'backend.plan.review.add_evidence'|trans }}"
+                data-action="click->plan-review#openEvidenceModal"
+                data-measure-id="{{ measure.id }}"
+                data-evidence-modal-id="evidence-modal-{{ measure.id }}">
+                + {{ 'backend.plan.review.evidence_add_short'|trans }}
+            </button>
+        {% endif %}
+    </div>
+
+    {% if evidenceCount == 0 %}
+        <div class="border rounded-3 bg-body-tertiary p-3 mt-2 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+            <div class="text-muted small">{{ 'backend.plan.review.evidence_empty_state'|trans }}</div>
+            {% if canManageEvidence and verificationSources is not empty %}
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-success"
+                    title="{{ 'backend.plan.review.add_evidence'|trans }}"
+                    aria-label="{{ 'backend.plan.review.add_evidence'|trans }}"
+                    data-action="click->plan-review#openEvidenceModal"
+                    data-measure-id="{{ measure.id }}"
+                    data-evidence-modal-id="evidence-modal-{{ measure.id }}">
+                    + {{ 'backend.plan.review.add_evidence'|trans }}
+                </button>
+            {% elseif canManageEvidence %}
+                <span class="text-muted small">{{ 'backend.plan.review.no_verification_sources_for_measure'|trans }}</span>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if evidenceList is not empty %}
+        <ul id="evidence-list-{{ measure.id }}" class="list-group list-group-flush border rounded mt-2">
+            {% for path in evidenceList %}
+                {% if path %}
+                    {% set selectedSourceCode = evidenceMetadata[path]|default('') %}
+                    {% set selectedSourceLabel = null %}
+                    {% if verificationSources is not empty and selectedSourceCode is not same as('') %}
+                        {% for source in verificationSources %}
+                            {% if source.code == selectedSourceCode %}
+                                {% set selectedSourceLabel = source.displayName %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    {% set evidenceSourceCollapseId = 'evidence-source-collapse-' ~ measure.id ~ '-' ~ loop.index %}
+                    <li class="list-group-item py-2">
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                            <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                                <i class="bi bi-paperclip text-muted"></i>
+                                <a href="{{ path }}" target="_blank" rel="noopener" class="text-truncate text-decoration-none" style="max-width: 75%;">
+                                    {{ path|split('/')|last }}
+                                </a>
+                            </div>
+
+                            {% if canManageEvidence %}
+                                <div class="ms-2">
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm text-danger"
+                                        data-action="click->plan-review#deleteEvidence"
+                                        data-measure-id="{{ measure.id }}"
+                                        data-file="{{ path }}"
+                                        data-bs-toggle="popover"
+                                        data-bs-trigger="hover"
+                                        data-bs-content="{{ 'backend.plan.review.delete_file'|trans({'%file%': path|split('/')|last}) }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="text-muted small">{{ 'backend.plan.review.evidence_source_label'|trans }}:</span>
+                                {% if selectedSourceLabel %}
+                                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis border">{{ selectedSourceLabel }}</span>
+                                {% else %}
+                                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border">{{ 'backend.plan.review.evidence_source_pending'|trans }}</span>
+                                {% endif %}
+                            </div>
+
+                            {% if canManageEvidence and verificationSources is not empty %}
+                                <button
+                                    type="button"
+                                    class="btn btn-link btn-sm p-0 text-decoration-none evidence-change-source-btn"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#{{ evidenceSourceCollapseId }}"
+                                    aria-expanded="false"
+                                    aria-controls="{{ evidenceSourceCollapseId }}">
+                                    {{ 'backend.plan.review.change_source'|trans }}
+                                </button>
+                            {% endif %}
+                        </div>
+
+                        {% if canManageEvidence and verificationSources is not empty %}
+                            <div class="collapse mt-2" id="{{ evidenceSourceCollapseId }}">
+                                <select
+                                    id="evidence-source-{{ measure.id }}-{{ loop.index }}"
+                                    class="form-select form-select-sm w-auto"
+                                    style="min-width: 260px;"
+                                    data-evidence-source-select="1"
+                                    data-evidence-path="{{ path }}">
+                                    <option value="">{{ 'backend.plan.review.evidence_source_pending'|trans }}</option>
+                                    {% for source in verificationSources %}
+                                        <option value="{{ source.code }}" {% if source.code == selectedSourceCode %}selected{% endif %}>
+                                            {{ source.displayName }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if canManageEvidence %}
+        <div class="modal fade" id="evidence-modal-{{ measure.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ 'backend.plan.review.evidence_add_modal.title'|trans }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% if verificationSources is not empty %}
+                            <div class="mb-3">
+                                <label for="evidence-file-{{ measure.id }}" class="form-label">{{ 'backend.plan.review.evidence_add_modal.file'|trans }}</label>
+                                <input type="file" class="form-control" id="evidence-file-{{ measure.id }}" data-evidence-modal-file="1" required>
+                            </div>
+                            <div class="mb-0">
+                                <label for="evidence-source-modal-{{ measure.id }}" class="form-label">{{ 'backend.plan.review.evidence_add_modal.source'|trans }}</label>
+                                <select class="form-select" id="evidence-source-modal-{{ measure.id }}" data-evidence-modal-source="1" required>
+                                    <option value="">{{ 'backend.common.select'|trans }}</option>
+                                    {% for source in verificationSources %}
+                                        <option value="{{ source.code }}">{{ source.displayName }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info mb-0">{{ 'backend.plan.review.evidence_add_modal.no_sources'|trans }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ 'backend.plan.review.evidence_add_modal.cancel'|trans }}</button>
+                        {% if verificationSources is not empty %}
+                            <button type="button" class="btn btn-success" data-action="click->plan-review#submitEvidenceModal" data-measure-id="{{ measure.id }}" data-evidence-modal-id="evidence-modal-{{ measure.id }}">
+                                {{ 'backend.plan.review.evidence_add_modal.submit'|trans }}
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>

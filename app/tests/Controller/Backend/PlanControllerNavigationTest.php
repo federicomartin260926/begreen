@@ -4,6 +4,7 @@ namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\PlanController;
 use App\Entity\Measure;
+use App\Entity\MeasureVerificationSource;
 use App\Entity\MeasureBlock;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
@@ -11,6 +12,7 @@ use App\Entity\Protocol;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\SustainabilityPlanBlockAnswer;
+use App\Entity\VerificationSource;
 use App\Entity\User;
 use App\Repository\MeasureRepository;
 use App\Repository\CommercialPlanRepository;
@@ -28,6 +30,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -638,6 +641,263 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
         self::assertSame('updated private note', $planMeasure->getInternalNotes());
+    }
+
+    public function testUpdateSelectionPersistsEvidenceMetadataOnlyForVisibleFilesAndAllowedSources(): void
+    {
+        self::bootKernel();
+        $basicPlan = $this->makeCommercialPlan('basic', [
+            'features' => array_replace(
+                $this->defaultCommercialPlanDefinition('basic')['features'],
+                [
+                    'sustainability_plan.evidence_upload' => true,
+                ]
+            ),
+        ]);
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate([$basicPlan]));
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $sourceAllowed = (new VerificationSource())
+            ->setCode('invoice')
+            ->setName('Invoice')
+            ->setSortOrder(10);
+        $this->setEntityId($sourceAllowed, 21);
+
+        $sourceOther = (new VerificationSource())
+            ->setCode('manual')
+            ->setName('Manual note')
+            ->setSortOrder(20);
+        $this->setEntityId($sourceOther, 22);
+
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida con evidencias');
+        $this->setEntityId($measure, 991);
+        $measure->addVerificationSourceLink(
+            (new MeasureVerificationSource())
+                ->setVerificationSource($sourceAllowed)
+                ->setPriority(1)
+        );
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure($measure)
+            ->setEvidence("/uploads/evidences/doc-1.pdf\n/uploads/evidences/doc-2.pdf")
+            ->setEvidenceMetadata([
+                '/uploads/evidences/doc-1.pdf' => 'invoice',
+                '/uploads/evidences/doc-2.pdf' => 'manual',
+                '/uploads/evidences/not-visible.pdf' => 'invoice',
+            ])
+            ->markAsManual();
+        $plan->addPlanMeasure($planMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+            'field' => 'evidence_metadata',
+            'value' => json_encode([
+                '/uploads/evidences/doc-1.pdf' => 'invoice',
+                '/uploads/evidences/doc-2.pdf' => 'manual',
+                '/uploads/evidences/not-visible.pdf' => 'invoice',
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$measure], $measure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($measure, $planMeasure);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createEntityManagerMock($planMeasure);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame([
+            '/uploads/evidences/doc-1.pdf' => 'invoice',
+        ], $planMeasure->getEvidenceMetadata());
+        self::assertSame("/uploads/evidences/doc-1.pdf\n/uploads/evidences/doc-2.pdf", $planMeasure->getEvidence());
+    }
+
+    public function testDeleteEvidenceAlsoRemovesItsMetadata(): void
+    {
+        self::bootKernel();
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida con evidencias');
+        $this->setEntityId($measure, 992);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure($measure)
+            ->setEvidence("/uploads/evidences/doc-1.pdf\n/uploads/evidences/doc-2.pdf")
+            ->setEvidenceMetadata([
+                '/uploads/evidences/doc-1.pdf' => 'invoice',
+                '/uploads/evidences/doc-2.pdf' => 'manual',
+            ])
+            ->markAsManual();
+        $plan->addPlanMeasure($planMeasure);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+            'file' => '/uploads/evidences/doc-1.pdf',
+        ]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$measure], $measure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($measure, $planMeasure);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('persist')->with($planMeasure);
+        $entityManager->expects(self::once())->method('flush');
+
+        $response = $controller->deleteEvidence(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $entityManager
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame("/uploads/evidences/doc-2.pdf", $planMeasure->getEvidence());
+        self::assertSame([
+            '/uploads/evidences/doc-2.pdf' => 'manual',
+        ], $planMeasure->getEvidenceMetadata());
+    }
+
+    public function testUploadEvidencesStoresMetadataForTheNewFile(): void
+    {
+        self::bootKernel();
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+
+        $sourceAllowed = (new VerificationSource())
+            ->setCode('invoice')
+            ->setName('Invoice')
+            ->setSortOrder(10);
+        $this->setEntityId($sourceAllowed, 31);
+
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida con subida');
+        $this->setEntityId($measure, 993);
+        $measure->addVerificationSourceLink(
+            (new MeasureVerificationSource())
+                ->setVerificationSource($sourceAllowed)
+                ->setPriority(1)
+        );
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure($measure)
+            ->setEvidence('/uploads/evidences/existing.pdf')
+            ->setEvidenceMetadata([
+                '/uploads/evidences/existing.pdf' => 'invoice',
+            ])
+            ->markAsManual();
+        $plan->addPlanMeasure($planMeasure);
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
+        self::assertNotFalse($tmpFile);
+        file_put_contents($tmpFile, 'fake pdf content');
+        $uploadedFile = new UploadedFile($tmpFile, 'factura.pdf', 'application/pdf', null, true);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+            'source_code' => 'invoice',
+        ]);
+        $request->files->set('evidences', [$uploadedFile]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$measure], $measure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createPlanMeasureRepositoryMock($measure, $planMeasure);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('persist')->with($planMeasure);
+        $entityManager->expects(self::once())->method('flush');
+
+        $slugger = $this->createMock(\Symfony\Component\String\Slugger\SluggerInterface::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+
+        $response = $controller->uploadEvidences(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $entityManager,
+            $slugger
+        );
+
+        @unlink($tmpFile);
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertCount(1, $data['files']);
+        self::assertStringStartsWith('/uploads/evidences/', $data['files'][0]);
+        self::assertSame('/uploads/evidences/existing.pdf' . "\n" . $data['files'][0], $planMeasure->getEvidence());
+        self::assertSame([
+            '/uploads/evidences/existing.pdf' => 'invoice',
+            $data['files'][0] => 'invoice',
+        ], $planMeasure->getEvidenceMetadata());
     }
 
     public function testUpdateSelectionRedirectsTerminalActionToFirstPendingVisibleMeasure(): void

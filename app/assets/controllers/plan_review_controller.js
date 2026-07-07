@@ -424,24 +424,17 @@ export default class extends Controller {
         updates.push({ field: 'responsibles', value: selectedResponsibleIds });
       }
 
-      // Evidencias
-      const filesInput = document.getElementById(`evidence-files-${measureId}`);
-      if (filesInput && filesInput.files && filesInput.files.length > 0) {
-        const form = new FormData();
-        for (const f of filesInput.files) form.append('files[]', f);
-
-        const upRes  = await fetch('/index.php/backend/plan/upload-evidences', { method: 'POST', body: form });
-        const raw    = await upRes.text();
-        let upData   = null;
-        try { upData = JSON.parse(raw); } catch (_) {
-          throw new Error(this.t('upload_invalid_response'));
+      const evidenceMetadata = {};
+      const existingEvidenceSourceSelects = inlineBox.querySelectorAll('[data-evidence-source-select="1"][data-evidence-path]');
+      existingEvidenceSourceSelects.forEach((select) => {
+        const path = String(select.dataset.evidencePath || '').trim();
+        const sourceCode = String(select.value || '').trim();
+        if (path !== '' && sourceCode !== '') {
+          evidenceMetadata[path] = sourceCode;
         }
-        if (!upRes.ok || !upData?.success || !Array.isArray(upData.files) || upData.files.length === 0) {
-          const msg = (upData && upData.error) ? upData.error : this.t('upload_failed_http', { code: upRes.status });
-          throw new Error(msg);
-        }
-        const evidenceJson = JSON.stringify(upData.files);
-        updates.push({ field: 'evidence', value: evidenceJson });
+      });
+      if (existingEvidenceSourceSelects.length > 0) {
+        updates.push({ field: 'evidence_metadata', value: JSON.stringify(evidenceMetadata) });
       }
     }
 
@@ -474,31 +467,67 @@ export default class extends Controller {
     }
   }
 
-  uploadEvidences(event) {
-    const input = event.currentTarget;
-    if (!input.files || input.files.length === 0) return;
-    const measureId = input.dataset.measureId;
-    const files = input.files;
-    if (!files || files.length === 0) return;
+  openEvidenceModal(event) {
+    const btn = event.currentTarget;
+    const modalId = btn.dataset.evidenceModalId;
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl) return;
 
-    const fd = new FormData();
-    fd.append('measureId', measureId);
-    for (const f of files) fd.append('evidences[]', f);
+    const fileInput = modalEl.querySelector('[data-evidence-modal-file="1"]');
+    const sourceSelect = modalEl.querySelector('[data-evidence-modal-source="1"]');
+    if (fileInput) fileInput.value = '';
+    if (sourceSelect) sourceSelect.value = '';
 
-    fetch('/index.php/backend/plan/upload-evidences', {
-      method: 'POST',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      body: fd
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (!data?.success) throw new Error(data?.error || this.t('evidence_upload_failed'));
-        this.reloadReviewWithQuery({ open: measureId });
-      })
-      .catch(err => {
-        console.error(err);
-        this.showModal(this.t('modal.error_title'), err.message || this.t('evidence_upload_failed'));
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  }
+
+  async submitEvidenceModal(event) {
+    const btn = event.currentTarget;
+    const measureId = btn.dataset.measureId;
+    const modalId = btn.dataset.evidenceModalId;
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl) return;
+
+    const fileInput = modalEl.querySelector('[data-evidence-modal-file="1"]');
+    const sourceSelect = modalEl.querySelector('[data-evidence-modal-source="1"]');
+    const file = fileInput?.files?.[0] || null;
+    const sourceCode = String(sourceSelect?.value || '').trim();
+
+    if (!file) {
+      this.showModal(this.t('modal.error_title'), this.t('evidence_add_modal_file_required'));
+      return;
+    }
+    if (!sourceCode) {
+      this.showModal(this.t('modal.error_title'), this.t('evidence_add_modal_source_required'));
+      return;
+    }
+
+    btn.disabled = true;
+    try {
+      const form = new FormData();
+      form.append('measureId', measureId);
+      form.append('source_code', sourceCode);
+      form.append('evidences[]', file);
+
+      const res = await fetch('/index.php/backend/plan/upload-evidences', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: form
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || this.t('evidence_upload_failed'));
+      }
+
+      bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+      this.reloadReviewWithQuery({ open: measureId });
+    } catch (err) {
+      console.error(err);
+      this.showModal(this.t('modal.error_title'), err.message || this.t('evidence_upload_failed'));
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   deleteEvidence(event) {
@@ -527,38 +556,6 @@ export default class extends Controller {
         console.error(err);
         this.showModal(this.t('modal.error_title'), err.message || this.t('evidence_delete_failed'));
       });
-  }
-
-  validateEvidenceFiles(event) {
-    const input = event.currentTarget;
-    const files = Array.from(input.files || []);
-    if (files.length === 0) return;
-
-    const MAX_FILES = 4;
-    const MAX_SIZE_BYTES = 5 * 1024 * 1024;
-
-    const tooMany = files.length > MAX_FILES;
-    const tooBig = files.filter(f => f.size > MAX_SIZE_BYTES);
-
-    if (!tooMany && tooBig.length === 0) return;
-
-    let html = '<div class="small">';
-    if (tooMany) {
-      html += `<p>${this.t('evidence_max_files', { max: MAX_FILES })}</p>`;
-      html += `<p>${this.t('evidence_selected_files', { n: files.length })}</p>`;
-    }
-    if (tooBig.length > 0) {
-      html += `<p>${this.t('evidence_max_size', { mb: 5 })}<br>${this.t('evidence_oversized_list_intro')}</p><ul class="mb-0">`;
-      tooBig.forEach(f => {
-        const mb = (f.size / (1024 * 1024)).toFixed(2);
-        html += `<li>${f.name} — ${mb} MB</li>`;
-      });
-      html += '</ul>';
-    }
-    html += '</div>';
-
-    input.value = '';
-    this.showEvidenceError(html);
   }
 
   showEvidenceError(messageHtml) {

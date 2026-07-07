@@ -1070,6 +1070,41 @@ class PlanController extends AbstractController
                 $planMeasure->markAsManual();
                 break;
 
+            case 'evidence_metadata':
+            case 'evidenceMetadata':
+                $rawMetadata = json_decode((string) $value, true);
+                if (!is_array($rawMetadata)) {
+                    $rawMetadata = [];
+                }
+
+                $currentEvidencePaths = array_fill_keys(
+                    array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $planMeasure->getEvidence()) ?: []))),
+                    true
+                );
+
+                $allowedSourceCodes = [];
+                foreach ($measure->getResolvedVerificationSourceLinks() as $link) {
+                    $sourceCode = $link->getVerificationSource()?->getCode();
+                    if (is_string($sourceCode) && trim($sourceCode) !== '') {
+                        $allowedSourceCodes[$sourceCode] = true;
+                    }
+                }
+
+                $metadata = [];
+                foreach ($rawMetadata as $path => $sourceCode) {
+                    $path = trim((string) $path);
+                    $sourceCode = trim((string) $sourceCode);
+                    if ($path === '' || $sourceCode === '' || !isset($allowedSourceCodes[$sourceCode]) || !isset($currentEvidencePaths[$path])) {
+                        continue;
+                    }
+
+                    $metadata[$path] = $sourceCode;
+                }
+
+                $planMeasure->setEvidenceMetadata($metadata);
+                $planMeasure->markAsManual();
+                break;
+
             case 'observations':
                 $text = trim((string)$value);
                 $planMeasure->setObservations($text !== '' ? $text : null);
@@ -1303,6 +1338,8 @@ class PlanController extends AbstractController
             'responsibles' => 'sustainability_plan.responsibles',
             'internalNotes' => 'sustainability_plan.internal_notes',
             'internal_notes' => 'sustainability_plan.internal_notes',
+            'evidence_metadata' => 'sustainability_plan.evidence_upload',
+            'evidenceMetadata' => 'sustainability_plan.evidence_upload',
         ];
 
         if (!isset($fieldFeatureMap[$field])) {
@@ -1362,6 +1399,7 @@ class PlanController extends AbstractController
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
 
         $measureId = (int) $request->request->get('measureId', 0);
+        $sourceCode = trim((string) $request->request->get('source_code', $request->request->get('sourceCode', '')));
         /** @var UploadedFile[]|UploadedFile|null $files */
         $files = $request->files->all('evidences');
         if (!is_array($files)) {
@@ -1382,6 +1420,9 @@ class PlanController extends AbstractController
         }
         if (!$measureId || empty($files)) {
             return new JsonResponse(['success' => false, 'error' => 'Parámetros inválidos'], 400);
+        }
+        if (count($files) > 1 && $sourceCode !== '') {
+            return new JsonResponse(['success' => false, 'error' => 'La subida de una sola evidencia por vez es obligatoria cuando se asigna fuente.'], 400);
         }
 
         $measure = $measureRepo->find($measureId);
@@ -1407,6 +1448,20 @@ class PlanController extends AbstractController
             $pm = (new PlanMeasure())->setPlan($plan)->setMeasure($measure);
             $em->persist($pm);
             $em->flush();
+        }
+
+        $allowedSourceCodes = [];
+        foreach ($measure->getResolvedVerificationSourceLinks() as $link) {
+            $code = $link->getVerificationSource()?->getCode();
+            if (is_string($code) && trim($code) !== '') {
+                $allowedSourceCodes[$code] = true;
+            }
+        }
+        if ($allowedSourceCodes !== [] && $sourceCode === '') {
+            return new JsonResponse(['success' => false, 'error' => 'Debes seleccionar una fuente de verificación.'], 400);
+        }
+        if ($sourceCode !== '' && !isset($allowedSourceCodes[$sourceCode])) {
+            return new JsonResponse(['success' => false, 'error' => 'Fuente de verificación inválida.'], 400);
         }
 
         $maxEvidenceCount = $this->featureGate->getMaxEvidenceCount($project);
@@ -1438,6 +1493,7 @@ class PlanController extends AbstractController
 
         // Evidencias existentes (una por línea)
         $existing = array_filter(array_map('trim', explode("\n", (string) $pm->getEvidence())));
+        $metadata = $pm->getEvidenceMetadata() ?? [];
 
         $added = [];
         foreach ($files as $file) {
@@ -1454,10 +1510,14 @@ class PlanController extends AbstractController
             $relPath = $uploadRel . '/' . $target;
             $existing[] = $relPath;
             $added[] = $relPath;
+            if ($sourceCode !== '') {
+                $metadata[$relPath] = $sourceCode;
+            }
         }
 
         $existing = array_values(array_unique($existing));
         $pm->setEvidence(implode("\n", $existing));
+        $pm->setEvidenceMetadata($metadata);
         $em->persist($pm);
         $em->flush();
 
@@ -1520,6 +1580,7 @@ class PlanController extends AbstractController
                 if (is_file($abs)) {
                     @unlink($abs);
                 }
+                $pm->removeEvidenceSourceCodeForPath($path);
                 continue;
             }
             $newList[] = $path;
