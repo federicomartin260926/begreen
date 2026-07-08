@@ -22,11 +22,6 @@
 {% for project in chartProjects %}
     {% set chartBarsMax = max(chartBarsMax, project.emissionSum|default(0)) %}
 {% endfor %}
-{% set demoCompensationSeries = [2, 3, 4, 6, 8, 11] %}
-{% set demoCompensationMax = 1 %}
-{% for point in demoCompensationSeries %}
-    {% set demoCompensationMax = max(demoCompensationMax, point) %}
-{% endfor %}
 
 <div class="backend-project-dashboard container-fluid px-0">
     <div class="backend-dashboard-shell">
@@ -85,64 +80,48 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                         <div class="backend-chart-title">CO₂ por proyecto</div>
-                        <span class="badge bg-light text-dark border">kgCO2e</span>
+                        <span class="badge bg-light text-dark border">kgCO₂e</span>
                     </div>
 
-                    <svg viewBox="0 0 360 180" class="backend-chart-svg" role="img" aria-label="CO2 por proyecto">
-                        <line x1="36" y1="18" x2="36" y2="148" class="backend-chart-axis"></line>
-                        <line x1="36" y1="148" x2="342" y2="148" class="backend-chart-axis"></line>
+                    {% if chartProjects is empty %}
+                        <div class="backend-chart-empty-state">
+                            <div class="backend-chart-empty-state__message">Todavía no hay emisiones registradas.</div>
+                            <div class="backend-chart-empty-state__hint mt-2">
+                                Cuando existan datos, aquí verás hasta 8 proyectos con emisiones.
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="backend-chart-co2-wrap">
+                            <svg viewBox="0 0 360 180" class="backend-chart-svg" role="img" aria-label="CO2 por proyecto">
+                                <line x1="36" y1="18" x2="36" y2="148" class="backend-chart-axis"></line>
+                                <line x1="36" y1="148" x2="342" y2="148" class="backend-chart-axis"></line>
 
-                        {% if chartProjects is empty %}
-                            <text x="189" y="88" text-anchor="middle" class="backend-chart-empty">Sin datos de emisiones</text>
-                        {% else %}
-                            {% set barGap = 14 %}
-                            {% set barWidth = (240 / chartProjects|length)|round(0) %}
-                            {% set cursor = 58 %}
-                            {% for project in chartProjects %}
-                                {% set barHeight = chartBarsMax > 0 ? ((project.emissionSum|default(0) / chartBarsMax) * 92)|round(0) : 0 %}
-                                <g>
-                                    <title>{{ project.name }} · {{ project.emissionSum|number_format(1, ',', '.') }} kgCO₂e</title>
-                                    <rect x="{{ cursor }}" y="{{ 148 - barHeight }}" width="{{ barWidth }}" height="{{ barHeight }}" rx="4"
-                                          class="{% if loop.index is even %}backend-bar backend-bar--soft{% else %}backend-bar{% endif %}"></rect>
-                                    <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 164 }}" text-anchor="middle" class="backend-chart-xlabel">
-                                        {{ project.name|length > 9 ? project.name|slice(0, 9) ~ '…' : project.name }}
-                                    </text>
-                                    <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 138 - barHeight }}" text-anchor="middle" class="backend-chart-bar-value">
-                                        {{ project.emissionSum|number_format(1, ',', '.') }}
-                                    </text>
-                                </g>
-                                {% set cursor = cursor + barWidth + barGap %}
-                            {% endfor %}
-                        {% endif %}
-                    </svg>
-                </div>
-            </div>
-
-            <div class="card dashboard-panel border-0 shadow-sm backend-chart-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                        <div class="backend-chart-title">CO₂ compensado — 2026</div>
-                        <span class="badge bg-light text-dark border">Demo</span>
-                    </div>
-
-                    <svg viewBox="0 0 360 180" class="backend-chart-svg" role="img" aria-label="CO2 compensado 2026">
-                        <line x1="34" y1="18" x2="34" y2="148" class="backend-chart-axis"></line>
-                        <line x1="34" y1="148" x2="342" y2="148" class="backend-chart-axis"></line>
-
-                        {% set linePoints = '' %}
-                        {% set step = demoCompensationSeries|length > 1 ? (280 / (demoCompensationSeries|length - 1)) : 0 %}
-                        {% for point in demoCompensationSeries %}
-                            {% set x = 46 + (loop.index0 * step) %}
-                            {% set y = 138 - ((point / demoCompensationMax) * 88)|round(0) %}
-                            {% set linePoints = linePoints ~ x|round(0) ~ ',' ~ y ~ ' ' %}
-                            <circle cx="{{ x|round(0) }}" cy="{{ y }}" r="4" class="backend-line-dot"></circle>
-                            <text x="{{ x|round(0) }}" y="166" text-anchor="middle" class="backend-chart-xlabel">
-                                {{ ['ene','feb','mar','abr','may','jun'][loop.index0] }}
-                            </text>
-                        {% endfor %}
-                        <polyline points="{{ linePoints|trim }}" class="backend-line-path"></polyline>
-                        <text x="188" y="30" text-anchor="middle" class="backend-chart-line-title">12.1 t acumuladas</text>
-                    </svg>
+                                {% set barGap = 14 %}
+                                {% set barWidth = (240 / chartProjects|length)|round(0) %}
+                                {% set cursor = 58 %}
+                                {% for project in chartProjects %}
+                                    {% set barHeight = chartBarsMax > 0 ? ((project.emissionSum|default(0) / chartBarsMax) * 92)|round(0) : 0 %}
+                                    <g>
+                                        <title>{{ project.name }} · {{ project.emissionSum|number_format(1, ',', '.') }} kgCO₂e</title>
+                                        <rect x="{{ cursor }}" y="{{ 148 - barHeight }}" width="{{ barWidth }}" height="{{ barHeight }}" rx="4"
+                                              class="{% if loop.index is even %}backend-bar backend-bar--soft{% else %}backend-bar{% endif %}"></rect>
+                                        <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 164 }}" text-anchor="middle" class="backend-chart-xlabel">
+                                            {{ project.name|length > 9 ? project.name|slice(0, 9) ~ '…' : project.name }}
+                                        </text>
+                                        <text x="{{ (cursor + (barWidth / 2))|round(0) }}" y="{{ 138 - barHeight }}" text-anchor="middle" class="backend-chart-bar-value">
+                                            {{ project.emissionSum|number_format(1, ',', '.') }}
+                                        </text>
+                                    </g>
+                                    {% set cursor = cursor + barWidth + barGap %}
+                                {% endfor %}
+                            </svg>
+                            {% if dashboardEmissionChartHasMore|default(false) %}
+                                <div class="backend-chart-co2-note mt-2">
+                                    Mostrando los últimos 8 proyectos con emisiones registradas.
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -244,12 +223,9 @@
                             <thead>
                                 <tr>
                                     <th class="dashboard-th-project">Proyecto</th>
-                                    <th class="text-center">01</th>
-                                    <th class="text-center">02</th>
-                                    <th class="text-center">03</th>
-                                    <th class="text-center">04</th>
-                                    <th class="text-center">05</th>
-                                    <th class="text-center">06</th>
+                                    {% for phaseHeader in dashboardPhaseHeaders|default([]) %}
+                                        <th class="text-center text-nowrap" title="{{ phaseHeader.label }}">{{ phaseHeader.label }}</th>
+                                    {% endfor %}
                                     <th class="text-center dashboard-th-actions">Acciones</th>
                                 </tr>
                             </thead>
@@ -288,10 +264,10 @@
 
                                         {% for phase in project.phases %}
                                             {% set phaseHref = null %}
-                                            {% if project.isActive and phase.code == '01' %}
-                                                {% set phaseHref = path('backend_plan_index', {'_locale': app.request.locale}) %}
-                                            {% elseif project.isActive and phase.code == '03' %}
-                                                {% set phaseHref = path('backend_emission_index', {'_locale': app.request.locale}) %}
+                                            {% if phase.code == '01' %}
+                                                {% set phaseHref = path('backend_project_select_project', {id: project.id, target: 'plan'}) %}
+                                            {% elseif phase.code == '03' %}
+                                                {% set phaseHref = path('backend_project_select_project', {id: project.id, target: 'emissions'}) %}
                                             {% endif %}
 
                                             <td class="dashboard-phase-cell text-center">

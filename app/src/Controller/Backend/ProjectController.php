@@ -32,6 +32,15 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[IsGranted('ROLE_USER')]
 class ProjectController extends AbstractController
 {
+    private const DASHBOARD_PHASE_HEADERS = [
+        ['code' => '01', 'label' => 'Plan'],
+        ['code' => '02', 'label' => 'Cartelería'],
+        ['code' => '03', 'label' => 'CO₂'],
+        ['code' => '04', 'label' => 'Informe'],
+        ['code' => '05', 'label' => 'Compensación'],
+        ['code' => '06', 'label' => 'Certificación'],
+    ];
+
     public function __construct(
         private readonly TranslatorInterface $t,
         private readonly ProjectFeatureGate $featureGate,
@@ -127,7 +136,7 @@ class ProjectController extends AbstractController
         }
 
         $dashboardProjects = [];
-        $dashboardProjectsForChart = [];
+        $dashboardEmissionProjects = [];
         $tierCounts = [
             ProjectSubscription::TIER_BASIC => 0,
             ProjectSubscription::TIER_STANDARD => 0,
@@ -171,7 +180,7 @@ class ProjectController extends AbstractController
             $emissionsTotal += $projectEmissionSum;
             $billingDocumentsTotal += $projectBillingDocumentCount;
 
-            $dashboardProjects[] = $this->buildDashboardProjectRow(
+            $dashboardProject = $this->buildDashboardProjectRow(
                 project: $project,
                 plan: $plan,
                 projectTierCode: $projectTierCode,
@@ -180,18 +189,37 @@ class ProjectController extends AbstractController
                 billingDocumentCount: $projectBillingDocumentCount,
                 isActive: $activeProject && $activeProject->getId() === $project->getId(),
             );
+            $dashboardProjects[] = $dashboardProject;
+
+            if ($projectEmissionCount > 0) {
+                $dashboardEmissionProjects[] = [
+                    'id' => $dashboardProject['id'],
+                    'name' => $dashboardProject['name'],
+                    'emissionSum' => $dashboardProject['emissionSum'],
+                    'createdAt' => $dashboardProject['createdAt'],
+                ];
+            }
         }
 
-        $dashboardProjectsForChart = $dashboardProjects;
-        usort($dashboardProjectsForChart, static function (array $left, array $right): int {
-            $emissionCompare = $right['emissionSum'] <=> $left['emissionSum'];
-            if ($emissionCompare !== 0) {
-                return $emissionCompare;
+        usort($dashboardEmissionProjects, static function (array $left, array $right): int {
+            $leftCreatedAt = $left['createdAt'] ?? null;
+            $rightCreatedAt = $right['createdAt'] ?? null;
+
+            if ($leftCreatedAt instanceof \DateTimeInterface && $rightCreatedAt instanceof \DateTimeInterface) {
+                $dateCompare = $rightCreatedAt <=> $leftCreatedAt;
+                if ($dateCompare !== 0) {
+                    return $dateCompare;
+                }
+            } elseif ($leftCreatedAt instanceof \DateTimeInterface) {
+                return -1;
+            } elseif ($rightCreatedAt instanceof \DateTimeInterface) {
+                return 1;
             }
 
             return strcmp((string) $left['name'], (string) $right['name']);
         });
-        $dashboardProjectsForChart = array_slice($dashboardProjectsForChart, 0, 5);
+        $dashboardEmissionChartHasMore = count($dashboardEmissionProjects) > 8;
+        $dashboardProjectsForChart = array_slice($dashboardEmissionProjects, 0, 8);
 
         $dashboardProjects = array_slice($dashboardProjects, $offset, $perPage);
 
@@ -243,6 +271,8 @@ class ProjectController extends AbstractController
                 'activeFilters' => count($activeFilters),
                 'hasActiveFilters' => count($activeFilters) > 0,
             ],
+            'dashboardPhaseHeaders' => self::DASHBOARD_PHASE_HEADERS,
+            'dashboardEmissionChartHasMore' => $dashboardEmissionChartHasMore,
             'filters'       => [
                 'name'      => $name,
                 'type'      => $type,
@@ -420,11 +450,7 @@ class ProjectController extends AbstractController
         $name = trim(implode(' ', $parts));
 
         if ($name === '') {
-            $name = $owner->getEmail() ?? '—';
-        }
-
-        if ($owner->getEmail()) {
-            $name .= ' (' . $owner->getEmail() . ')';
+            return '—';
         }
 
         return $name;
@@ -1276,12 +1302,18 @@ class ProjectController extends AbstractController
     }
 
     #[Route('/select-project/{id}', name: 'select_project', methods: ['POST','GET'])]
-    public function selectProject(Project $project, ActiveProjectService $activeProjectService): RedirectResponse
+    public function selectProject(Project $project, ActiveProjectService $activeProjectService, Request $request): RedirectResponse
     {
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
 
         $activeProjectService->setActiveProject($project);
 
-        return $this->redirectToRoute('app_backend');
+        $target = $request->query->getString('target');
+
+        return match ($target) {
+            'plan' => $this->redirectToRoute('backend_plan_index'),
+            'emissions' => $this->redirectToRoute('backend_emission_index'),
+            default => $this->redirectToRoute('app_backend'),
+        };
     }
 }

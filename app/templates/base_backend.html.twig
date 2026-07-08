@@ -37,7 +37,13 @@
 
             <div class="backend-sidebar__account d-none d-md-block px-3 pb-3">
                 <div class="backend-sidebar__account-card rounded-4 p-3">
-                    <div class="d-flex align-items-center gap-3 min-w-0">
+                    {% set profileSidebarHref = path('app_profile', {'_locale': app.request.locale}) %}
+                    {% set planSidebarHref = activeProject and is_granted('PROJECT_VIEW', activeProject)
+                        ? path('backend_project_billing', { id: activeProject.id, '_locale': app.request.locale })
+                        : null
+                    %}
+
+                    <a href="{{ profileSidebarHref }}" class="backend-sidebar__identity-link d-flex align-items-center gap-3 min-w-0 text-decoration-none">
                         <div class="backend-sidebar__avatar rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
                             {{ app.user.name|default(app.user.email|default('U'))|slice(0, 1)|upper }}
                         </div>
@@ -49,7 +55,7 @@
                                 {{ app.user.email|default('') }}
                             </div>
                         </div>
-                    </div>
+                    </a>
 
                     <div class="backend-sidebar__account-meta small text-white-50 mt-3">
                         <div class="backend-sidebar__meta-row">
@@ -62,37 +68,15 @@
                                 {{ app.user.createdAt ? app.user.createdAt|date('d/m/Y') : '—' }}
                             </strong>
                         </div>
-                        {% if activeProject and is_granted('PROJECT_VIEW', activeProject) %}
-                            <a
-                                href="{{ path('backend_project_edit', { id: activeProject.id, '_locale': app.request.locale }) }}"
-                                title="{{ activeProject.name }}"
-                                class="backend-sidebar__meta-row backend-sidebar__meta-row--link text-decoration-none">
-                                <span>Proyecto activo</span>
-                                <strong class="text-white text-truncate text-end">
-                                    {{ activeProject.name }}
-                                </strong>
-                            </a>
-                        {% else %}
-                            <div class="backend-sidebar__meta-row">
-                                <span>Proyecto activo</span>
-                                <strong class="text-white text-truncate text-end">
-                                    {{ activeProject ? activeProject.name : 'Sin asignar' }}
-                                </strong>
-                            </div>
-                        {% endif %}
-                        {% if activeProject and is_granted('PROJECT_VIEW', activeProject) %}
-                            {% set planSidebarHref = path('backend_project_billing', { id: activeProject.id, '_locale': app.request.locale }) %}
-                            <a
-                                href="{{ planSidebarHref }}"
-                                title="Abrir facturación del proyecto activo"
-                                class="backend-sidebar__meta-row backend-sidebar__meta-row--link text-decoration-none">
-                                <span>Plan</span>
-                                <strong class="text-white">{{ activeProject.subscription ? activeProject.subscription.tier|capitalize : 'Basic' }}</strong>
-                            </a>
-                        {% elseif activeProject %}
-                            <div class="backend-sidebar__meta-row">
-                                <span>Plan</span>
-                                <strong class="text-white">{{ activeProject.subscription ? activeProject.subscription.tier|capitalize : 'Basic' }}</strong>
+                        {% if planSidebarHref %}
+                            <div class="backend-sidebar__actions pt-2">
+                                <a
+                                    href="{{ planSidebarHref }}"
+                                    title="Abrir facturación del proyecto activo"
+                                    class="backend-sidebar__billing-link btn btn-sm text-decoration-none w-100">
+                                    <i class="bi bi-receipt me-1"></i>
+                                    <span>Facturación</span>
+                                </a>
                             </div>
                         {% endif %}
                     </div>
