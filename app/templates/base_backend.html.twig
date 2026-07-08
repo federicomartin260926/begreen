@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Backend - Be green my friend{% endblock %}</title>
 
+    <script>
+        (function () {
+            try {
+                if (window.innerWidth >= 768 && localStorage.getItem('sidebar-collapsed') === 'true') {
+                    document.documentElement.classList.add('backend-sidebar-collapsed');
+                }
+            } catch (e) {}
+        })();
+    </script>
+
     <link rel="icon" href="{{ asset('build/images/logo/favicon-75x75.png') }}" sizes="75x75" type="image/png">
     <link rel="icon" href="{{ asset('build/images/logo/favicon-300x300.png') }}" sizes="192x192" type="image/png">
 
@@ -103,60 +113,61 @@
                             data-bs-toggle="collapse"
                             href="#adminCollapse"
                             role="button"
-                            aria-controls="adminCollapse">
+                            aria-controls="adminCollapse"
+                            title="{{ 'backend.menu.admin'|trans }}">
                             <i class="bi bi-shield-lock flex-shrink-0"></i>
                             <span class="ms-2">{{ 'backend.menu.admin'|trans }}</span>
                             <i class="bi bi-caret-down ms-auto"></i>
                         </a>
 
                         <div class="collapse {% if adminExpanded %}show{% endif %}" id="adminCollapse">
-                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_users' %}active fw-bold{% endif %}" href="{{ path('admin_users_index', {'_locale': app.request.locale}) }}">
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_users' %}active fw-bold{% endif %}" href="{{ path('admin_users_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.users'|trans }}">
                                 <i class="bi bi-person-fill flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.users'|trans }}</span>
                             </a>
-                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_measures' %}active fw-bold{% endif %}" href="{{ path('admin_measures_index', {'_locale': app.request.locale}) }}">
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_measures' %}active fw-bold{% endif %}" href="{{ path('admin_measures_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.measures'|trans }}">
                                 <i class="bi bi-list-check flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.measures'|trans }}</span>
                             </a>
-                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_emission' %}active fw-bold{% endif %}" href="{{ path('admin_emission_activity_index', {'_locale': app.request.locale}) }}">
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_emission' %}active fw-bold{% endif %}" href="{{ path('admin_emission_activity_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.factors'|trans }}">
                                 <i class="bi bi-cloud-haze2-fill flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.factors'|trans }}</span>
                             </a>
-                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_auxiliary' %}active fw-bold{% endif %}" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}">
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_auxiliary' %}active fw-bold{% endif %}" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.aux_tables'|trans }}">
                                 <i class="bi bi-table flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.aux_tables'|trans }}</span>
                             </a>
                             <a class="nav-link my-1 text-decoration-none
-                            {% if app.request.attributes.get('_route') starts with 'admin_cms' or app.request.attributes.get('_route') starts with 'admin_logo' %}active fw-bold{% endif %}" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}">
+                            {% if app.request.attributes.get('_route') starts with 'admin_cms' or app.request.attributes.get('_route') starts with 'admin_logo' %}active fw-bold{% endif %}" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.cms'|trans }}">
                                 <i class="bi bi-layout-text-window-reverse flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.cms'|trans }}</span>
                             </a>
 
-                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_commercial_plans' %}active fw-bold{% endif %}" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}">
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_commercial_plans' %}active fw-bold{% endif %}" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.commercial_plans'|trans }}">
                                 <i class="bi bi-currency-euro flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.commercial_plans'|trans }}</span>
                             </a>
 
-                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_communication' %}active fw-bold{% endif %}" href="{{ path('admin_communication_index', {'_locale': app.request.locale}) }}">
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_communication' %}active fw-bold{% endif %}" href="{{ path('admin_communication_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.communication'|trans }}">
                                 <i class="bi bi-upload flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.communication'|trans }}</span>
                             </a>
                         </div>
                     </div>
                     {% endif %}
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_project' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_project_index', {'_locale': app.request.locale}) }}">
+                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_project' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_project_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.projects'|trans }}">
                         <i class="bi bi-folder-fill flex-shrink-0"></i>
                         <span class="ms-2">{{ 'backend.menu.projects'|trans }}</span>
                     </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_plan' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_index', {'_locale': app.request.locale}) }}">
+                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_plan' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.sustainability_plan'|trans }}">
                         <i class="bi bi-pie-chart-fill flex-shrink-0"></i>
                         <span class="ms-2">{{ 'backend.menu.sustainability_plan'|trans }}</span>
                     </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_emission' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_emission_index', {'_locale': app.request.locale}) }}">
+                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_emission' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_emission_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.emissions'|trans }}">
                         <i class="bi bi-cloud-arrow-up flex-shrink-0"></i>
                         <span class="ms-2">{{ 'backend.menu.emissions'|trans }}</span>
                     </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_communication' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_communication_index', {'_locale': app.request.locale}) }}">
+                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_communication' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_communication_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.communication'|trans }}">
                         <i class="bi bi-file-earmark-text flex-shrink-0"></i>
                         <span class="ms-2">{{ 'backend.menu.communication'|trans }}</span>
                     </a>
@@ -168,42 +179,42 @@
                 <div class="">
                     {% if 'ROLE_SUPER_ADMIN' in app.user.roles %}
                     <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="{{ adminExpanded ? 'true' : 'false' }}">
+                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="{{ adminExpanded ? 'true' : 'false' }}" title="{{ 'backend.menu.admin'|trans }}">
                             <i class="bi bi-shield-lock fs-4"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow text-start">
                             <li>
-                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_users_index', {'_locale': app.request.locale}) }}">
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_users_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.users'|trans }}">
                                     {{ 'backend.menu.users'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_measures_index', {'_locale': app.request.locale}) }}">
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_measures_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.measures'|trans }}">
                                     {{ 'backend.menu.measures'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_emission_activity_index', {'_locale': app.request.locale}) }}">
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_emission_activity_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.factors'|trans }}">
                                     {{ 'backend.menu.factors'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}">
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.aux_tables'|trans }}">
                                     {{ 'backend.menu.aux_tables'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}">
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.cms'|trans }}">
                                     {{ 'backend.menu.cms'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}">
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.commercial_plans'|trans }}">
                                     {{ 'backend.menu.commercial_plans'|trans }}
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_communication_index', {'_locale': app.request.locale}) }}">
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_communication_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.communication'|trans }}">
                                     {{ 'backend.menu.communication'|trans }}
                                 </a>
                             </li>
@@ -215,38 +226,38 @@
                     {% include 'backend/_project_selector.html.twig' with { variant: 'mobile' } %}
 
                     <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.projects'|trans }}">
                             <i class="bi bi-folder-fill fs-4"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_project_index', {'_locale': app.request.locale}) }}">{{ 'backend.menu.projects'|trans }}</a></li>
+                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_project_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.projects'|trans }}">{{ 'backend.menu.projects'|trans }}</a></li>
                         </ul>
                     </div>
 
                     <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.sustainability_plan'|trans }}">
                             <i class="bi bi-pie-chart-fill fs-4"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_index', {'_locale': app.request.locale}) }}">{{ 'backend.menu.sustainability_plan'|trans }}</a></li>
+                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.sustainability_plan'|trans }}">{{ 'backend.menu.sustainability_plan'|trans }}</a></li>
                         </ul>
                     </div>
 
                     <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.emissions'|trans }}">
                             <i class="bi bi-cloud-arrow-up flex-shrink-0"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_emission_index', {'_locale': app.request.locale}) }}">{{ 'backend.menu.emissions'|trans }}</a></li>
+                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_emission_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.emissions'|trans }}">{{ 'backend.menu.emissions'|trans }}</a></li>
                         </ul>
                     </div>
 
                     <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.communication'|trans }}">
                             <i class="bi bi-file-earmark-text flex-shrink-0"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_communication_index', {'_locale': app.request.locale}) }}">{{ 'backend.menu.communication'|trans }}</a></li>
+                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_communication_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.communication'|trans }}">{{ 'backend.menu.communication'|trans }}</a></li>
                         </ul>
                     </div>
 

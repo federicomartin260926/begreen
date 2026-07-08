@@ -563,6 +563,7 @@ $sidebar-border: rgba(255, 255, 255, 0.14);
 }
 
 /* Sidebar colapsado (desktop) */
+html.backend-sidebar-collapsed #sidebar,
 #sidebar.collapsed {
     width: 65px !important;
     min-width: 65px !important;
@@ -570,6 +571,13 @@ $sidebar-border: rgba(255, 255, 255, 0.14);
 }
 
 /* Oculta textos y otros elementos no deseados */
+html.backend-sidebar-collapsed #sidebar .nav span,
+html.backend-sidebar-collapsed #sidebar .breadcrumb,
+html.backend-sidebar-collapsed #sidebar .navbar-brand img,
+html.backend-sidebar-collapsed #sidebar .backend-sidebar__account,
+html.backend-sidebar-collapsed #sidebar .backend-sidebar__account-card,
+html.backend-sidebar-collapsed #sidebar .backend-sidebar__brand-copy,
+html.backend-sidebar-collapsed #sidebar .backend-sidebar__brand + .backend-sidebar__account,
 #sidebar.collapsed .nav span,
 #sidebar.collapsed .breadcrumb,
 #sidebar.collapsed .navbar-brand img,
@@ -581,11 +589,17 @@ $sidebar-border: rgba(255, 255, 255, 0.14);
 }
 
 /* Oculta completamente el bloque de administración (versión desktop) */
+html.backend-sidebar-collapsed #sidebar .admin-desktop-section,
 #sidebar.collapsed .admin-desktop-section {
     display: none !important;
 }
 
 /* Padding del submenú de administración cuando está expandido (solo modo normal) */
+html.backend-sidebar-collapsed #sidebar #adminCollapse,
+#sidebar.collapsed #adminCollapse {
+    padding-left: 0;
+}
+
 #sidebar:not(.collapsed) #adminCollapse {
     padding-left: 1.5rem; /* ps-4 */
 }

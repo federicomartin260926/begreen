@@ -3,12 +3,11 @@ import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
     connect() {
-        //console.log('[SidebarController] conectado');
-
         this.sidebar = document.getElementById('sidebar');
         this.toggleMobile = document.getElementById('toggleSidebar');
         this.toggleDesktop = document.getElementById('toggleSidebarDesktop');
 
+        this.isCollapsed = false;
         this.restoreSidebarState();
         this.registerListeners();
         this.registerOutsideClick();
@@ -16,20 +15,42 @@ export default class extends Controller {
 
     restoreSidebarState() {
         if (window.innerWidth >= 768) {
-            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
-            if (isCollapsed) {
-                this.sidebar.classList.add('collapsed');
-            }
+            this.isCollapsed = this.getStoredCollapsedState();
+            this.applyCollapsedState(this.isCollapsed);
         }
+    }
+
+    getStoredCollapsedState() {
+        try {
+            return localStorage.getItem('sidebar-collapsed') === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    persistCollapsedState(isCollapsed) {
+        this.isCollapsed = isCollapsed;
+        this.applyCollapsedState(isCollapsed);
+
+        try {
+            localStorage.setItem('sidebar-collapsed', String(isCollapsed));
+        } catch (e) {}
+    }
+
+    applyCollapsedState(isCollapsed) {
+        if (!this.sidebar) {
+            return;
+        }
+
+        this.sidebar.classList.toggle('collapsed', isCollapsed);
+        document.documentElement.classList.toggle('backend-sidebar-collapsed', isCollapsed && window.innerWidth >= 768);
     }
 
     registerListeners() {
         if (this.toggleDesktop) {
             this.toggleDesktop.addEventListener('click', () => {
-                console.log('Toggling desktop sidebar');
-                this.sidebar.classList.toggle('collapsed');
-                const isCollapsed = this.sidebar.classList.contains('collapsed');
-                localStorage.setItem('sidebar-collapsed', isCollapsed);
+                const nextCollapsed = !this.sidebar.classList.contains('collapsed');
+                this.persistCollapsedState(nextCollapsed);
             });
         }
 
