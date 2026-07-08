@@ -6,8 +6,8 @@ $info: #4DD0E1;
 $warning: #FFD54F;
 $light: #F1F1F1;
 $dark: #212121;
-$sidebar-bg-start: #2f8d62;
-$sidebar-bg-end: #24684a;
+$sidebar-bg-start: #006e56;
+$sidebar-bg-end: #006e56;
 $sidebar-brand-bg: rgba(255, 255, 255, 0.08);
 $sidebar-surface: rgba(16, 38, 24, 0.22);
 $sidebar-text: #f5fff6;
@@ -58,7 +58,7 @@ $sidebar-border: rgba(255, 255, 255, 0.14);
 }
 
 #sidebar {
-    background: linear-gradient(180deg, $sidebar-bg-start 0%, $sidebar-bg-end 100%);
+    background-color: #006e56;
     color: $sidebar-text;
     overflow-x: hidden;
 
