@@ -172,6 +172,18 @@ Diagnóstico básico:
 make doctor
 ```
 
+## Proyecto activo
+
+La plataforma trabaja con un `active project` para el backend. El comportamiento actual es:
+
+- el proyecto activo se guarda en la sesión de Symfony con la clave `active_project_id`;
+- no existe una cookie propia para el proyecto activo;
+- el navegador sólo conserva la cookie estándar de sesión de Symfony/PHP;
+- si el usuario entra sin proyecto activo en sesión, `ActiveProjectSubscriber` selecciona por defecto el primer proyecto disponible;
+- para usuarios normales, ese primer proyecto se obtiene de sus proyectos ordenados por fecha de creación descendente;
+- para administradores, el primer proyecto sale del listado completo de proyectos, también ordenado por fecha de creación descendente;
+- ciertas rutas del backend, como facturación o cambio de proyecto, actualizan el proyecto activo en sesión al entrar.
+
 ## Xdebug
 
 La depuración PHP queda habilitada en el stack de desarrollo cuando reconstruyes la imagen:
