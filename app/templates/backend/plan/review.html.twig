@@ -230,7 +230,8 @@
             {# FILTROS #}
             {% include 'backend/plan/_measure_filters_panel.html.twig' with {
                 filters: filters,
-                panelId: 'measure-filters-review'
+                panelId: 'measure-filters-review',
+                compact: true
             } %}
 
             {# TABLA DE MEDIDAS #}
