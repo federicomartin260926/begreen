@@ -1965,6 +1965,8 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
 .commitment-growth-footer__track-inner {
     position: relative;
     min-height: 6rem;
+    padding-inline: 1.1rem;
+    box-sizing: border-box;
 }
 
 .commitment-growth-footer__track,
@@ -1989,7 +1991,7 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
 
 .commitment-growth-footer__track-marker {
     position: absolute;
-    top: -.05rem;
+    top: .35rem;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
@@ -2012,15 +2014,15 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
     font-weight: 800;
     line-height: 1;
     box-shadow: 0 8px 16px rgba(15, 125, 87, 0.15);
-    transform: translateY(-1.65rem);
+    transform: translateY(-1rem);
 }
 
 .commitment-growth-footer__track-connector {
     display: block;
     width: 0;
-    height: 5.4rem;
+    height: 4.8rem;
     border-left: 2px dashed rgba(15, 125, 87, 0.42);
-    margin-top: -2.05rem;
+    margin-top: -1.65rem;
 }
 
 .commitment-growth-footer__track-pin {
@@ -2151,12 +2153,15 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
 }
 
 .commitment-growth-footer__stage-icon--plant {
-    max-width: 58px;
+    max-width: 46px;
     transform: none;
 }
 
 .commitment-growth-footer__stage-icon--tree {
-    max-width: 134px;
+    width: 78px;
+    max-width: 78px;
+    height: 66px;
+    max-height: 66px;
     transform: none;
 }
 
