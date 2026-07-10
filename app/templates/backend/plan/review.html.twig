@@ -295,35 +295,33 @@
                 </div>
             </div>
 
-            <div class="mb-4"></div>
-
             {% if commitmentSummary is defined %}
-                {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
-                    variant: 'full',
-                    title: 'backend.plan.commitment.title'|trans,
-                    note: 'backend.plan.commitment.note'|trans,
-                    totalPoints: commitmentSummary.totalOfficialPoints,
-                    items: [
-                        {
-                            label: 'backend.plan.commitment.real'|trans,
-                            block: commitmentSummary.implemented
-                        }
-                    ]
-                } %}
-            {% endif %}
+                <div class="d-flex flex-column gap-4 mt-4">
+                    {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
+                        variant: 'full',
+                        title: 'backend.plan.commitment.title'|trans,
+                        note: 'backend.plan.commitment.note'|trans,
+                        totalPoints: commitmentSummary.totalOfficialPoints,
+                        items: [
+                            {
+                                label: 'backend.plan.commitment.real'|trans,
+                                block: commitmentSummary.implemented
+                            }
+                        ]
+                    } %}
 
-            {% if commitmentSummary is defined %}
-                {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
-                    variant: 'compact',
-                    title: 'backend.plan.commitment.planned'|trans,
-                    totalPoints: commitmentSummary.totalOfficialPoints,
-                    items: [
-                        {
-                            label: 'backend.plan.commitment.planned'|trans,
-                            block: commitmentSummary.planned
-                        }
-                    ]
-                } %}
+                    {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
+                        variant: 'compact',
+                        title: 'backend.plan.commitment.planned'|trans,
+                        totalPoints: commitmentSummary.totalOfficialPoints,
+                        items: [
+                            {
+                                label: 'backend.plan.commitment.planned'|trans,
+                                block: commitmentSummary.planned
+                            }
+                        ]
+                    } %}
+                </div>
             {% endif %}
     </div>
 
