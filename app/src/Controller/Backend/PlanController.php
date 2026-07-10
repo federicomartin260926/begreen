@@ -354,24 +354,6 @@ class PlanController extends AbstractController
 
         // ===== Gráficos =====
         $visiblePlanMeasures = $this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan);
-        $measuresTotal = $total;
-        $effective = $nonApplicable = $agreed = $implemented = 0;
-        foreach ($visiblePlanMeasures as $pm) {
-            if ($pm->getMeasure()?->getProtocol()?->getId() === $protocol->getId()) {
-                if ($pm->isApplicable() === true)  $effective++;
-                if ($pm->isApplicable() === false) $nonApplicable++;
-                if ($pm->willImplement())          $agreed++;
-                if ($pm->isImplemented())          $implemented++;
-            }
-        }
-
-        $planChartsConfig = $this->buildChartsConfig(
-            $measuresTotal,
-            $effective,
-            $nonApplicable,
-            $agreed,
-            $implemented
-        );
 
         // ===== Puntuación (no persistente) =====
         $pmIndex = [];
@@ -439,9 +421,6 @@ class PlanController extends AbstractController
             'prevGroupName'  => $prevGroupName,
             'nextGroupName'  => $displayNextGroupName,
             'groupingBy'     => $groupingBy,
-
-            // gráficos
-            'planChartsConfig' => $planChartsConfig,
 
             // puntuación
             'scoreGained'      => $scoreGained,
@@ -734,12 +713,10 @@ class PlanController extends AbstractController
 
         $measuresTotal = (int) $total;
 
-        $planChartsConfig = $this->buildChartsConfig(
-            $measuresTotal,
-            $effective,
-            $nonApplicable,
-            $agreed,
-            $implemented
+        $planChartsConfig = $this->buildReviewChartsConfig(
+            $filteredPlanMeasures,
+            $plan->getProtocol()?->getId(),
+            $plan->getPlanMeasures()->toArray()
         );
 
         // Puntuación total y ganada para el protocolo del plan
@@ -2330,6 +2307,232 @@ class PlanController extends AbstractController
         $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
 
         return $qb;
+    }
+
+    /**
+     * Construye la config de los 4 gráficos de review calculados por puntos.
+     */
+    private function buildReviewChartsConfig(array $planMeasures, ?int $protocolId, ?array $allPlanMeasures = null): array
+    {
+        $c1       = '#2ecc71';
+        $c2       = 'rgba(63, 195, 138, 0.40)';
+        $c3       = '#e9ecef';
+        $c1Border = '#27ae60';
+        $c2Border = 'rgba(63, 195, 138, 1)';
+        $c3Border = '#7f8c8d';
+
+        $applicabilitySource = $allPlanMeasures ?? $planMeasures;
+
+        $totalPoints = 0;
+        $applicablePoints = 0;
+        $nonApplicablePoints = 0;
+        $assumedPoints = 0;
+        $implementedPoints = 0;
+
+        foreach ($applicabilitySource as $planMeasure) {
+            if (!$planMeasure instanceof PlanMeasure) {
+                continue;
+            }
+
+            $measure = $planMeasure->getMeasure();
+            if (!$measure instanceof Measure) {
+                continue;
+            }
+
+            if ($protocolId !== null && $measure->getProtocol()?->getId() !== $protocolId) {
+                continue;
+            }
+
+            $points = max(0, (int) ($measure->getScore() ?? 0));
+            $totalPoints += $points;
+
+            if ($planMeasure->isApplicable() === true) {
+                $applicablePoints += $points;
+            } elseif ($planMeasure->isApplicable() === false) {
+                $nonApplicablePoints += $points;
+            }
+        }
+
+        foreach ($planMeasures as $planMeasure) {
+            if (!$planMeasure instanceof PlanMeasure) {
+                continue;
+            }
+
+            $measure = $planMeasure->getMeasure();
+            if (!$measure instanceof Measure) {
+                continue;
+            }
+
+            if ($protocolId !== null && $measure->getProtocol()?->getId() !== $protocolId) {
+                continue;
+            }
+
+            $points = max(0, (int) ($measure->getScore() ?? 0));
+
+            if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true) {
+                $assumedPoints += $points;
+            }
+
+            if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true && $planMeasure->isImplemented() === true) {
+                $implementedPoints += $points;
+            }
+        }
+
+        $applicabilityPct = $this->percentageFromPoints($applicablePoints, $totalPoints);
+        $notApplicablePct = $totalPoints > 0 ? round(100 - $applicabilityPct, 1) : 0.0;
+
+        $commitmentPct = $this->percentageFromPoints($assumedPoints, $applicablePoints);
+
+        $complianceImplementedPct = $this->percentageFromPoints($implementedPoints, $assumedPoints);
+        $complianceNotImplementedPct = $assumedPoints > 0 ? round(100 - $complianceImplementedPct, 1) : 0.0;
+
+        $achievementsPct = $this->percentageFromPoints($implementedPoints, $applicablePoints);
+        $achievementsNotPct = $applicablePoints > 0 ? round(100 - $achievementsPct, 1) : 0.0;
+
+        return [
+            'applicability' => [
+                'type' => 'bar',
+                'title' => $this->t->trans('backend.plan.review.charts.applicability.title'),
+                'labels' => [
+                    $this->t->trans('backend.plan.review.charts.applicability.total_possible'),
+                    $this->t->trans('backend.plan.review.charts.applicability.applicable'),
+                    $this->t->trans('backend.plan.review.charts.applicability.not_applicable'),
+                ],
+                'datasets' => [[
+                    'data' => [100, $applicabilityPct, $notApplicablePct],
+                    'backgroundColor' => [$c2, $c1, $c3],
+                    'borderColor' => [$c2Border, $c1Border, $c3Border],
+                    'borderWidth' => 1,
+                    'hoverBackgroundColor' => [$c2, $c1, $c3],
+                ]],
+                'percentValues' => true,
+                'showLegend' => false,
+                'showDataLabels' => false,
+                'showTitle' => false,
+                'options' => [
+                    'layout' => [
+                        'padding' => [
+                            'top' => 24,
+                            'bottom' => 6,
+                            'left' => 8,
+                            'right' => 8,
+                        ],
+                    ],
+                    'scales' => [
+                        'y' => [
+                            'beginAtZero' => true,
+                            'max' => 100,
+                            'grace' => '8%',
+                        ],
+                    ],
+                ],
+            ],
+            'commitment' => [
+                'type' => 'bar',
+                'title' => $this->t->trans('backend.plan.review.charts.commitment.title'),
+                'labels' => [
+                    $this->t->trans('backend.plan.review.charts.commitment.total_possible'),
+                    $this->t->trans('backend.plan.review.charts.commitment.to_implement'),
+                ],
+                'datasets' => [[
+                    'data' => [100, $commitmentPct],
+                    'backgroundColor' => [$c2, $c1],
+                    'borderColor' => [$c2Border, $c1Border],
+                    'borderWidth' => 1,
+                    'hoverBackgroundColor' => [$c2, $c1],
+                ]],
+                'percentValues' => true,
+                'showLegend' => false,
+                'showDataLabels' => false,
+                'showTitle' => false,
+                'options' => [
+                    'indexAxis' => 'y',
+                    'scales' => [
+                        'x' => [
+                            'beginAtZero' => true,
+                            'max' => 100,
+                            'grace' => '8%',
+                        ],
+                    ],
+                ],
+            ],
+            'compliance' => [
+                'type' => 'bar',
+                'title' => $this->t->trans('backend.plan.review.charts.compliance.title'),
+                'labels' => [
+                    $this->t->trans('backend.plan.review.charts.compliance.total_possible'),
+                    $this->t->trans('backend.plan.review.charts.compliance.implemented'),
+                    $this->t->trans('backend.plan.review.charts.compliance.not_implemented'),
+                ],
+                'datasets' => [[
+                    'data' => [100, $complianceImplementedPct, $complianceNotImplementedPct],
+                    'backgroundColor' => [$c2, $c1, $c3],
+                    'borderColor' => [$c2Border, $c1Border, $c3Border],
+                    'borderWidth' => 1,
+                    'hoverBackgroundColor' => [$c2, $c1, $c3],
+                ]],
+                'percentValues' => true,
+                'showLegend' => false,
+                'showDataLabels' => false,
+                'showTitle' => false,
+                'options' => [
+                    'layout' => [
+                        'padding' => [
+                            'top' => 24,
+                            'bottom' => 6,
+                            'left' => 8,
+                            'right' => 8,
+                        ],
+                    ],
+                    'scales' => [
+                        'y' => [
+                            'beginAtZero' => true,
+                            'max' => 100,
+                            'grace' => '8%',
+                        ],
+                    ],
+                ],
+            ],
+            'achievements' => [
+                'type' => 'bar',
+                'title' => $this->t->trans('backend.plan.review.charts.achievements.title'),
+                'labels' => [
+                    $this->t->trans('backend.plan.review.charts.achievements.total_possible'),
+                    $this->t->trans('backend.plan.review.charts.achievements.achieved'),
+                    $this->t->trans('backend.plan.review.charts.achievements.not_achieved'),
+                ],
+                'datasets' => [[
+                    'data' => [100, $achievementsPct, $achievementsNotPct],
+                    'backgroundColor' => [$c2, $c1, $c3],
+                    'borderColor' => [$c2Border, $c1Border, $c3Border],
+                    'borderWidth' => 1,
+                    'hoverBackgroundColor' => [$c2, $c1, $c3],
+                ]],
+                'percentValues' => true,
+                'showLegend' => false,
+                'showDataLabels' => false,
+                'showTitle' => false,
+                'options' => [
+                    'indexAxis' => 'y',
+                    'scales' => [
+                        'x' => [
+                            'beginAtZero' => true,
+                            'max' => 100,
+                            'grace' => '8%',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    private function percentageFromPoints(int $part, int $total): float
+    {
+        if ($total <= 0) {
+            return 0.0;
+        }
+
+        return round(($part / $total) * 100, 1);
     }
 
     /**

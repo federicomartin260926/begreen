@@ -1080,6 +1080,28 @@ backend:
       actions_title: "Actions"
       generating_pdf: "Generating PDF…"
       empty_filters: "No measures match the selected filters."
+      charts:
+        applicability:
+          title: "Applicability"
+          legend: "Points (%)"
+          total_possible: "Total possible (%)"
+          applicable: "Applicable (%)"
+          not_applicable: "Not applicable (%)"
+        commitment:
+          title: "Degree of commitment"
+          legend: "Points (%)"
+          total_possible: "Total possible (%)"
+          to_implement: "To implement (%)"
+        compliance:
+          title: "Degree of compliance"
+          total_possible: "Total possible (%)"
+          implemented: "Implemented (%)"
+          not_implemented: "Not implemented (%)"
+        achievements:
+          title: "Achieved results"
+          total_possible: "Total possible (%)"
+          achieved: "Achieved (%)"
+          not_achieved: "Not achieved (%)"
       preview_modal:
         title: "Plan view by department with applied filters"
         loading: "Loading preview ..."

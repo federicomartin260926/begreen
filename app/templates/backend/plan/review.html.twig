@@ -243,6 +243,58 @@
                 totalPages: totalPages
             } %}
 
+            {# GRÁFICOS #}
+            <div
+                data-controller="plan-charts"
+                data-plan-charts-charts-config-value='{{ planChartsConfig|json_encode|e('html_attr') }}'>
+
+                <div class="row g-4 mt-4">
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="backend-chart-title backend-review-chart-title text-center mb-2">{{ 'backend.plan.review.charts.applicability.title'|trans }}</div>
+                                <div class="ratio ratio-16x9 flex-grow-1">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="applicability"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="backend-chart-title backend-review-chart-title text-center mb-2">{{ 'backend.plan.review.charts.commitment.title'|trans }}</div>
+                                <div class="ratio ratio-16x9 flex-grow-1">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="commitment"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="backend-chart-title backend-review-chart-title text-center mb-2">{{ 'backend.plan.review.charts.compliance.title'|trans }}</div>
+                                <div class="ratio ratio-16x9 flex-grow-1">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="compliance"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="backend-chart-title backend-review-chart-title text-center mb-2">{{ 'backend.plan.review.charts.achievements.title'|trans }}</div>
+                                <div class="ratio ratio-16x9 flex-grow-1">
+                                    <canvas data-plan-charts-target="canvas" data-chart-key="achievements"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="mb-4"></div>
 
             {% if commitmentSummary is defined %}
@@ -273,54 +325,6 @@
                     ]
                 } %}
             {% endif %}
-
-            {# GRÁFICOS #}
-            <div
-                data-controller="plan-charts"
-                data-plan-charts-charts-config-value='{{ planChartsConfig|json_encode|e('html_attr') }}'>
-
-                <div class="row g-4 mt-4">
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="ratio ratio-16x9">
-                                    <canvas data-plan-charts-target="canvas" data-chart-key="summary"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="ratio ratio-16x9">
-                                    <canvas data-plan-charts-target="canvas" data-chart-key="alcance"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="ratio ratio-16x9">
-                                    <canvas data-plan-charts-target="canvas" data-chart-key="commitment"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="ratio ratio-16x9">
-                                    <canvas data-plan-charts-target="canvas" data-chart-key="implementation"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
     </div>
 
     {# MODAL vista previa #}

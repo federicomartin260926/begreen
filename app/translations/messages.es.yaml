@@ -1086,6 +1086,28 @@ backend:
       actions_title: "Acciones"
       generating_pdf: "Generando PDF…"
       empty_filters: "No hay medidas que coincidan con los filtros seleccionados."
+      charts:
+        applicability:
+          title: "Aplicabilidad"
+          legend: "Puntos (%)"
+          total_possible: "Total posible (%)"
+          applicable: "Aplican (%)"
+          not_applicable: "No aplican (%)"
+        commitment:
+          title: "Grado de compromiso"
+          legend: "Puntos (%)"
+          total_possible: "Total posible (%)"
+          to_implement: "A implementar (%)"
+        compliance:
+          title: "Grado de cumplimiento"
+          total_possible: "Total posible (%)"
+          implemented: "Implementado (%)"
+          not_implemented: "No implementado (%)"
+        achievements:
+          title: "Logros alcanzados"
+          total_possible: "Total posible (%)"
+          achieved: "Alcanzados (%)"
+          not_achieved: "No alcanzados (%)"
       preview_modal:
         title: "Vista del plan por departamento con filtros aplicados"
         loading: "Cargando vista ..."

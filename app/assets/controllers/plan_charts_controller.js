@@ -9,6 +9,20 @@ export default class extends Controller {
     static targets = ['canvas'];
     static values = { chartsConfig: Object };
 
+    formatPercent(value, context = null) {
+        const number = Number(value) || 0;
+        const datasetValues = Array.isArray(context?.dataset?.data) ? context.dataset.data : [];
+        const datasetMax = datasetValues.reduce((max, current) => {
+            const parsed = Number(current) || 0;
+            return parsed > max ? parsed : max;
+        }, 0);
+        const normalized = datasetMax <= 1 && number <= 1;
+        const effectiveValue = normalized ? number * 100 : number;
+        const rounded = Math.round(effectiveValue * 10) / 10;
+
+        return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(1)}%`;
+    }
+
     connect() {
         this._charts = [];
         this.renderAll();
@@ -28,13 +42,25 @@ export default class extends Controller {
 
             const isPie = (cfg.type === 'pie' || cfg.type === 'doughnut');
 
+            const isHorizontalBar = cfg.type === 'bar' && cfg.options?.indexAxis === 'y';
+            const isVerticalBar = cfg.type === 'bar' && !isHorizontalBar;
+
+            const showLegend = cfg.showLegend !== false;
+            const showTitle = cfg.showTitle !== false;
+
             const baseOptions = {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: isPie ? { padding: { top: 16, bottom: 4, left: 4, right: 4 } } : {},
+                layout: isPie
+                    ? { padding: { top: 16, bottom: 4, left: 4, right: 4 } }
+                : (isVerticalBar
+                        ? { padding: { top: 24, bottom: 6, left: 8, right: 8 } }
+                        : (isHorizontalBar
+                            ? { padding: { top: 8, bottom: 8, left: 8, right: 36 } }
+                            : {})),
                 plugins: {
-                    legend: { position: 'bottom' },
-                    title: { display: !!cfg.title, text: cfg.title || '' },
+                    legend: { display: showLegend, position: 'bottom' },
+                    title: { display: showTitle && !!cfg.title, text: cfg.title || '' },
                     datalabels: {
                         // Para pies: dentro del arco. Para barras: como lo tenías.
                         anchor: isPie ? 'center' : 'end',
@@ -45,6 +71,10 @@ export default class extends Controller {
                         font: ctx => ({ weight: isPie ? '700' : '600' }),
                         // Oculta etiquetas de segmentos 0
                         display: (ctx) => {
+                            if (cfg.showDataLabels === false) {
+                                return false;
+                            }
+
                             const v = ctx.dataset.data?.[ctx.dataIndex];
                             return v > 0; // no mostramos 0
                         },
@@ -53,12 +83,16 @@ export default class extends Controller {
                             const percentValues = cfg.percentValues === true;
 
                             if (t === 'pie' || t === 'doughnut') {
-                                if (percentValues) return `${value}%`;
+                                if (percentValues) return this.formatPercent(value, context);
                                 const dataArr = context.chart.data.datasets[0].data || [];
                                 const sum = dataArr.reduce((a, b) => a + (parseFloat(b) || 0), 0);
                                 if (!sum) return null;
                                 const pct = Math.round((value / sum) * 100);
                                 return pct ? `${pct}%` : null;
+                            }
+
+                            if (percentValues) {
+                                return this.formatPercent(value, context);
                             }
 
                             // Barras: valor absoluto
