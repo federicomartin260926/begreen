@@ -943,7 +943,7 @@ backend:
       more: "Show more"
       less: "Show less"
     q:
-      apply: "Does this measure apply to your project?"
+      apply: "Does it apply to your project?"
       include_in_plan: "Do you want to include this measure in your plan?"
       critical: "Do you consider it a critical measure in your project?"
       critical_reason: "Why do you consider it critical?"
@@ -1122,7 +1122,7 @@ backend:
       info_title: "Measure information"
       decision_title: "Plan decision"
       execution_title: "Execution"
-      classification_title: "Classification data"
+      classification_title: "More info"
       expand_measure: "Open measure"
       collapse_measure: "Close measure"
       critical_measure: "Critical measure"

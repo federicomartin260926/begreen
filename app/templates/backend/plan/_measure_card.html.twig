@@ -1,5 +1,5 @@
 {# Se espera: measure y planMeasures #}
-<div class="measure-card mb-3 bg_green_1 shadow" id="measure-card">
+<div class="measure-card mb-3 bg_green_1 shadow py-3" id="measure-card">
     {# Aviso de cambio de grupo (categoría/departamento) #}
     {% if groupChanged == 'si' and prevGroupName and nextGroupName %}
     {% set isDept = (groupingBy == 'department') %}
@@ -71,22 +71,62 @@
         role="alert"
         data-plan-measures-target="errorAlert"></div>
 
-    <div class="measure-card__meta d-flex flex-wrap align-items-center gap-2 gap-sm-3 mb-3">
-        <span class="badge bg-light border text-dark text-wrap" style="max-width: 100%;">
-            <i class="bi {{ catIcon }}"></i>
-            {{ catName ?? '—' }}
-        </span>
-        {% if measureBlock %}
+    <div class="measure-card__meta d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <div class="d-flex flex-wrap align-items-center gap-2 gap-sm-3">
             <span class="badge bg-light border text-dark text-wrap" style="max-width: 100%;">
-                {{ 'backend.plan.measure.subgroup'|trans({'%name%': measureBlock.name}) }}
+                <i class="bi {{ catIcon }}"></i>
+                {{ catName ?? '—' }}
             </span>
+            {% for department in departments %}
+                <span class="badge bg-success-subtle text-success-emphasis border text-wrap" style="max-width: 100%;" title="{{ department.title|default(department.displayName) }}">
+                    {{ department.displayName }}
+                </span>
+            {% endfor %}
+        </div>
+
+        {% if measureNavigation is defined and measureNavigation.total|default(0) > 0 %}
+            {% set prevNavigationDisabled = not (measureNavigation.hasPrev|default(false)) %}
+            {% set nextNavigationDisabled = not (measureNavigation.nextEnabled|default(false)) %}
+
+            <div class="d-inline-flex align-items-center overflow-hidden rounded-pill border border-success-subtle bg-light shadow-sm ms-auto flex-shrink-0">
+                <a
+                    class="btn btn-sm border-0 rounded-0 px-2 py-1 text-success d-inline-flex align-items-center justify-content-center {% if prevNavigationDisabled %}disabled{% endif %}"
+                    {% if measureNavigation.hasPrev %}
+                        href="{{ measureNavigation.prevHref }}"
+                    {% else %}
+                        href="#"
+                        aria-disabled="true"
+                        tabindex="-1"
+                    {% endif %}
+                    title="{{ 'backend.common.prev'|trans }}"
+                    aria-label="{{ 'backend.common.prev'|trans }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+
+                <span class="px-2 py-1 fw-semibold text-success text-nowrap border-start border-end border-success-subtle">
+                    {{ 'backend.plan.progress_applicable'|trans({
+                        '%current%': measureNavigation.current + 1,
+                        '%total%': measureNavigation.total
+                    }) }}
+                </span>
+
+                <a
+                    class="btn btn-sm border-0 rounded-0 px-2 py-1 text-success d-inline-flex align-items-center justify-content-center {% if nextNavigationDisabled %}disabled{% endif %}"
+                    {% if measureNavigation.nextEnabled %}
+                        href="{{ measureNavigation.nextHref }}"
+                    {% else %}
+                        href="#"
+                        aria-disabled="true"
+                        tabindex="-1"
+                    {% endif %}
+                    title="{{ 'backend.common.next'|trans }}"
+                    aria-label="{{ 'backend.common.next'|trans }}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
         {% endif %}
-        {% for department in departments %}
-            <span class="badge bg-success-subtle text-success-emphasis border text-wrap" style="max-width: 100%;" title="{{ department.title|default(department.displayName) }}">
-                {{ department.displayName }}
-            </span>
-        {% endfor %}
     </div>
+
     <h5 class="fw-semibold mb-2">{{ measure.questionText ?: measure.name }}</h5>
 
     <div class="measure-details bg-white shadow-sm rounded-3 p-3">
@@ -139,7 +179,7 @@
                 : null))
         : null %}
 
-    <div class="mt-4">
+    <div class="mt-3">
 
         {% if not (measureBlock and measureBlock.hasScreeningQuestion and blockAnswer is null) %}
             {# 1) ¿Quieres incluirla? #}
@@ -230,25 +270,25 @@
                 </div>
             </div>
 
-            {# 4) Continuar (visible una vez respondida la criticidad) #}
-            <div
-                data-plan-measures-section="critical-continue"
-                class="{% if critical is not same as(true) %}d-none{% endif %}">
-                <div class="d-flex justify-content-center">
-                    <button
-                        type="button"
-                        class="btn btn-success px-4"
-                        {% if reason|trim == '' %}disabled{% endif %}
-                        data-plan-measures-target="actionBtn"
-                        data-plan-measures-action="critical-continue"
-                        data-measure-id="{{ measure.id }}"
-                        data-field="willImplement"
-                        data-value="true">
-                        {{ 'backend.plan.welcome.continue'|trans }}
-                    </button>
+            {% if not (measureBlock and measureBlock.hasScreeningQuestion and blockAnswer is null) %}
+                <div
+                    data-plan-measures-section="critical-continue"
+                    class="{% if critical is not same as(true) %}d-none{% endif %}">
+                    <div class="d-flex justify-content-center">
+                        <button
+                            type="button"
+                            class="btn btn-success px-4"
+                            {% if reason|trim == '' %}disabled{% endif %}
+                            data-plan-measures-target="actionBtn"
+                            data-plan-measures-action="critical-continue"
+                            data-measure-id="{{ measure.id }}"
+                            data-field="willImplement"
+                            data-value="true">
+                            {{ 'backend.plan.welcome.continue'|trans }}
+                        </button>
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         {% endif %}
-
     </div>
 </div>

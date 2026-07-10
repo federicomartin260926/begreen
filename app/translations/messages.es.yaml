@@ -946,7 +946,7 @@ backend:
       more: "Ver más"
       less: "Ver menos"
     q:
-      apply: "¿Esta medida aplica a tu proyecto?"
+      apply: "¿Aplica a tu proyecto?"
       include_in_plan: "¿Quieres incluir esta medida en tu plan?"
       critical: "¿Consideras que es una medida crítica en tu proyecto?"
       critical_reason: "¿Por qué la consideras crítica?"
@@ -1128,7 +1128,7 @@ backend:
       info_title: "Información de la medida"
       decision_title: "Decisión del plan"
       execution_title: "Ejecución"
-      classification_title: "Datos de clasificación"
+      classification_title: "Más información"
       expand_measure: "Abrir medida"
       collapse_measure: "Cerrar medida"
       critical_measure: "Medida crítica"

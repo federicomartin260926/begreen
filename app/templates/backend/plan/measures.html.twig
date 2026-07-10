@@ -238,46 +238,23 @@
             {% else %}
                 {# Tarjeta de la medida actual #}
                 {% if measure %}
+                    {% set measureNavigation = {
+                        hasPrev: index > 0,
+                        hasNext: total > 0 and (index + 1) < total,
+                        nextEnabled: total > 0 and (index + 1) < total and canGoNext,
+                        prevHref: path('backend_plan_measures', navigationQuery|merge({ i: index - 1 })),
+                        nextHref: path('backend_plan_measures', navigationQuery|merge({ i: index + 1 })),
+                        current: progressIndex|default(index),
+                        total: catalogMeasuresTotal|default(total)
+                    } %}
+
                     {% include 'backend/plan/_measure_card.html.twig' with {
                         measure: measure,
                         planMeasures: planMeasures,
                         currentBlockAnswer: currentBlockAnswer,
-                        projectType: project.type|default(null)
+                        projectType: project.type|default(null),
+                        measureNavigation: measureNavigation
                     } %}
-
-                    {% if not planComplete %}
-                        {# ——— Navegación medida a medida ——— #}
-                        <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center gap-3 mb-1">
-                            <div class="d-flex flex-wrap gap-2">
-                                {% set hasPrev = index > 0 %}
-                                {% set hasNext = total > 0 and (index + 1) < total %}
-                                {% set nextEnabled = hasNext and canGoNext %}
-
-                                <a class="btn btn-outline-secondary text-decoration-none {% if not hasPrev %}disabled{% endif %}"
-                                   href="{% if hasPrev %}{{ path('backend_plan_measures', navigationQuery|merge({ i: index - 1 })) }}{% else %}#{% endif %}"
-                                   {% if not hasPrev %}tabindex="-1" aria-disabled="true"{% endif %}>
-                                    <i class="bi bi-chevron-left"></i> {{ 'backend.common.prev'|trans }}
-                                </a>
-
-                                <a class="btn btn-outline-secondary text-decoration-none {% if not nextEnabled %}disabled{% endif %}"
-                                   href="{% if nextEnabled %}{{ path('backend_plan_measures', navigationQuery|merge({ i: index + 1 })) }}{% else %}#{% endif %}"
-                                   {% if not nextEnabled %}tabindex="-1" aria-disabled="true"{% endif %}>
-                                    {{ 'backend.common.next'|trans }} <i class="bi bi-chevron-right"></i>
-                                </a>
-                            </div>
-
-                            <div class="align-self-stretch align-self-md-auto ms-md-auto text-muted text-start text-md-end">
-                                {% if total > 0 %}
-                                    {% set progressTotal = catalogMeasuresTotal|default(total) %}
-                                    {% set progressCurrent = progressIndex|default(index) %}
-                                    {{ 'backend.plan.progress_applicable'|trans({'%current%': progressCurrent + 1, '%total%': progressTotal}) }}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endif %}
-
                     {% if commitmentSummary is defined %}
                         {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
                             variant: 'full',

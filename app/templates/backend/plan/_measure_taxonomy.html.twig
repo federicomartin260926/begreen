@@ -31,38 +31,45 @@
 {% endif %}
 
 {% set impactAreas = showImpactAreas ? taxonomyPresenter.impactAreas(measure) : [] %}
-{% if impactAreas is not empty %}
-    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">Áreas de impacto</dt>
-    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
+{% set axes = showTripleBalance ? taxonomyPresenter.tripleBalanceAxes(measure) : [] %}
+{% if impactAreas is not empty or axes is not empty %}
+    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">
+        <span class="d-inline-flex flex-wrap align-items-center gap-1">
+            <span>Áreas de impacto</span>
+            <span class="text-muted">|</span>
+            <span>Triple balance</span>
+        </span>
+    </dt>
+    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap align-items-center gap-1 mb-0">
         {% for impactArea in impactAreas %}
             <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
         {% endfor %}
-    </dd>
-{% endif %}
 
-{% set axes = showTripleBalance ? taxonomyPresenter.tripleBalanceAxes(measure) : [] %}
-{% if axes is not empty %}
-    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">Triple balance</dt>
-    <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1">
-        {% for axis in axes %}
-            {% set axisName = (axis.name|default('')|lower)|replace({
-                'á': 'a',
-                'é': 'e',
-                'í': 'i',
-                'ó': 'o',
-                'ú': 'u',
-                'ü': 'u',
-            }) %}
-            {% set axisBadgeClass = 'bg-secondary-subtle text-secondary-emphasis border' %}
-            {% if axisName == 'ambiental' %}
-                {% set axisBadgeClass = 'bg-success-subtle text-success-emphasis border' %}
-            {% elseif axisName == 'economico' %}
-                {% set axisBadgeClass = 'bg-warning-subtle text-warning-emphasis border' %}
-            {% elseif axisName == 'social' %}
-                {% set axisBadgeClass = 'bg-primary-subtle text-primary-emphasis border' %}
-            {% endif %}
-            <span class="badge rounded-pill {{ axisBadgeClass }}">{{ axis.name }}</span>
-        {% endfor %}
+        {% if impactAreas is not empty and axes is not empty %}
+            <span class="text-muted mx-1" aria-hidden="true">|</span>
+        {% endif %}
+
+        {% if axes is not empty %}
+            {% for axis in axes %}
+                {% set axisName = (axis.name|default('')|lower)|replace({
+                    'á': 'a',
+                    'é': 'e',
+                    'í': 'i',
+                    'ó': 'o',
+                    'ú': 'u',
+                    'ü': 'u',
+                }) %}
+                {% set axisBadgeClass = 'bg-secondary-subtle text-secondary-emphasis border' %}
+                {% if axisName == 'ambiental' %}
+                    {% set axisBadgeClass = 'bg-success-subtle text-success-emphasis border' %}
+                {% elseif axisName == 'economico' %}
+                    {% set axisBadgeClass = 'bg-warning-subtle text-warning-emphasis border' %}
+                {% elseif axisName == 'social' %}
+                    {% set axisBadgeClass = 'bg-primary-subtle text-primary-emphasis border' %}
+                {% endif %}
+                <span class="badge {{ axisBadgeClass }}">{{ axis.name }}</span>
+            {% endfor %}
+        {% endif %}
     </dd>
 {% endif %}
 
