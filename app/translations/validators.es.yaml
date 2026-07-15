@@ -1,6 +1,22 @@
 form.captcha_message: Please confirm you are not a robot.
 
 backend:
+  projects:
+    form:
+      validation:
+        filming_type_required: "Debes seleccionar un tipo de rodaje."
+        distribution_media_required: "Debes seleccionar al menos un medio de distribución."
+        episodes_required: "Debes indicar el número de episodios para series y programas de TV."
+        episode_duration_required: "Debes indicar la duración de cada episodio para series y programas de TV."
+        event_type_primary_required: "Debes indicar el tipo de evento."
+        event_modality_required: "Debes indicar la modalidad del evento."
+        attendees_required: "Debes indicar los asistentes presenciales para la modalidad presencial."
+        online_connections_required: "Debes indicar las conexiones online para la modalidad virtual."
+        funding_total_invalid: "La suma de la financiación debe ser exactamente 100%."
+        percentage_invalid: "Introduce un porcentaje válido con hasta dos decimales."
+        percentage_gt_zero: "El porcentaje debe ser mayor que 0."
+        percentage_lte_hundred: "El porcentaje no puede superar 100%."
+
   project:
     validation:
       start_required: "La fecha de inicio es obligatoria."

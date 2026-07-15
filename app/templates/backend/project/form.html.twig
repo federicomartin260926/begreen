@@ -44,240 +44,217 @@
 
     {# ========= DATOS DEL PROYECTO ========= #}
     <fieldset class="border rounded p-3 mb-4">
-            <legend class="float-none w-auto px-2 fw-semibold">{{ 'backend.projects.form.fs_project'|trans }}</legend>
+        <legend class="float-none w-auto px-2 fw-semibold">{{ 'backend.projects.form.fs_project'|trans }}</legend>
 
-            {# Nombre (fila completa) #}
-            <div class="row">
-                <div class="form-label-over mb-3">
-                    {{ form_label(form.name) }}
-                    {{ form_widget(form.name) }}
-                </div>
+        <div class="row">
+            <div class="col-12 form-label-over mb-3">
+                {{ form_label(form.name) }}
+                {{ form_widget(form.name) }}
             </div>
-
-            {# Fila en 3 columnas: País, Tipo, Fuente #}
-            <div class="row">
-                <div class="col-12 col-md-4 form-label-over mb-3">
+            <div class="col-12 col-md-4 form-label-over mb-3">
                 {{ form_label(form.country) }}
                 {{ form_widget(form.country) }}
-                </div>
-                <div class="col-12 col-md-4 form-label-over mb-3">
+            </div>
+            <div class="col-12 col-md-4 form-label-over mb-3">
                 {{ form_label(form.type) }}
                 {{ form_widget(form.type) }}
-                </div>
-                <div class="col-12 col-md-4 form-label-over mb-3">
+            </div>
+            <div class="col-12 col-md-4 form-label-over mb-3">
                 {{ form_label(form.emissionSourceName) }}
                 {{ form_widget(form.emissionSourceName) }}
-                </div>
             </div>
-
             {% if form.commercialTier is defined %}
-                <div class="row">
-                    <div class="col-12 col-md-4 form-label-over mb-3">
-                        {{ form_label(form.commercialTier) }}
-                        {{ form_widget(form.commercialTier) }}
-                        {% if commercialTierLabel is defined %}
-                            <div class="small text-muted mt-1">
-                                {{ 'backend.projects.form.commercial_tier_current'|trans }} {{ commercialTierLabel }}
-                                {% if commercialTierDescription is defined and commercialTierDescription %}
-                                    <br>{{ commercialTierDescription }}
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    </div>
+                <div class="col-12 col-md-4 form-label-over mb-3">
+                    {{ form_label(form.commercialTier) }}
+                    {{ form_widget(form.commercialTier) }}
+                    {% if commercialTierLabel is defined %}
+                        <div class="small text-muted mt-1">
+                            {{ 'backend.projects.form.commercial_tier_current'|trans }} {{ commercialTierLabel }}
+                            {% if commercialTierDescription is defined and commercialTierDescription %}
+                                <br>{{ commercialTierDescription }}
+                            {% endif %}
+                        </div>
+                    {% endif %}
                 </div>
             {% endif %}
+        </div>
 
-            {% if project is defined and project.subscription %}
-              {% set subscription = project.subscription %}
-              <div class="row mb-3">
+        {% if project is defined and project.subscription %}
+            {% set subscription = project.subscription %}
+            <div class="row mb-3">
                 <div class="col-12 col-md-8 col-lg-6">
-                  <div class="border rounded p-3 bg-light">
-                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                      <div>
-                        <a href="{{ path('backend_project_billing', {id: project.id, from: 'project'}) }}" class="fw-semibold text-decoration-none">
-                          {{ 'backend.subscription.card.title'|trans }}
-                        </a>
-                        <div class="small text-muted">{{ 'backend.subscription.card.subtitle'|trans }}</div>
-                      </div>
-                      <span class="badge {% if subscription.status == 'active' %}bg-success{% elseif subscription.status == 'pending_payment' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                        {{ ('backend.subscription.status.' ~ subscription.status)|trans }}
-                      </span>
+                    <div class="border rounded p-3 bg-light">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <a href="{{ path('backend_project_billing', {id: project.id, from: 'project'}) }}" class="fw-semibold text-decoration-none">
+                                    {{ 'backend.subscription.card.title'|trans }}
+                                </a>
+                                <div class="small text-muted">{{ 'backend.subscription.card.subtitle'|trans }}</div>
+                            </div>
+                            <span class="badge {% if subscription.status == 'active' %}bg-success{% elseif subscription.status == 'pending_payment' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                {{ ('backend.subscription.status.' ~ subscription.status)|trans }}
+                            </span>
+                        </div>
+                        <div class="small text-muted mb-2">
+                            {{ 'backend.subscription.card.tier'|trans }} {{ subscription.tier|upper }}
+                        </div>
+                        <div class="small text-muted mb-2">
+                            {{ 'backend.subscription.card.amount'|trans }}
+                            {% if subscription.paidAmountCents is not null %}
+                                {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        <div class="small text-muted mb-2">
+                            {{ 'backend.subscription.card.paid_at'|trans }}
+                            {% if subscription.paidAt %}
+                                {{ subscription.paidAt|date('d/m/Y H:i') }}
+                            {% elseif subscription.lastPaymentStatus %}
+                                {{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        <div class="small text-muted mb-2">
+                            {% if billingInvoiceAvailable|default(false) %}
+                                {{ 'backend.billing.project.invoice_available'|trans }}
+                            {% else %}
+                                {{ 'backend.billing.project.no_invoice_yet'|trans }}
+                            {% endif %}
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="{{ path('backend_project_billing', {id: project.id, from: 'project'}) }}" class="btn btn-outline-primary btn-sm">
+                                {{ 'backend.billing.project.manage'|trans }}
+                            </a>
+                        </div>
                     </div>
-                    <div class="small text-muted mb-2">
-                      {{ 'backend.subscription.card.tier'|trans }} {{ subscription.tier|upper }}
-                    </div>
-                    <div class="small text-muted mb-2">
-                      {{ 'backend.subscription.card.amount'|trans }}
-                      {% if subscription.paidAmountCents is not null %}
-                        {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
-                      {% else %}
-                        —
-                      {% endif %}
-                    </div>
-                    <div class="small text-muted mb-2">
-                      {{ 'backend.subscription.card.paid_at'|trans }}
-                      {% if subscription.paidAt %}
-                        {{ subscription.paidAt|date('d/m/Y H:i') }}
-                      {% elseif subscription.lastPaymentStatus %}
-                        {{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}
-                      {% else %}
-                        —
-                      {% endif %}
-                    </div>
-                    <div class="small text-muted mb-2">
-                      {% if billingInvoiceAvailable|default(false) %}
-                        {{ 'backend.billing.project.invoice_available'|trans }}
-                      {% else %}
-                        {{ 'backend.billing.project.no_invoice_yet'|trans }}
-                      {% endif %}
-                    </div>
-                    <div class="d-flex flex-wrap gap-2">
-                      <a href="{{ path('backend_project_billing', {id: project.id, from: 'project'}) }}" class="btn btn-outline-primary btn-sm">
-                        {{ 'backend.billing.project.manage'|trans }}
-                      </a>
-                    </div>
-                  </div>
                 </div>
-              </div>
-            {% endif %}
+            </div>
+        {% endif %}
 
-            {# --------- SUBTÍTULO RODAJE (y campos) --------- #}
-            <div class="border-top pt-3 mt-4" data-show-when="type:rodaje">
+        <div class="border-top pt-3 mt-4" data-show-when="type:rodaje">
             <h6 class="text-muted mb-3">{{ 'backend.projects.form.subsection_filming'|trans }}</h6>
-
             <div class="row">
-                <div class="col-12 col-md-6 form-label-over mb-3">
-                {{ form_label(form.filmingType) }}
-                {{ form_widget(form.filmingType) }}
+                <div class="col-12 col-md-4 form-label-over mb-3">
+                    {{ form_label(form.filmingType) }}
+                    {{ form_widget(form.filmingType) }}
                 </div>
-
-                {# fila/columna que se oculta si no hay filmingType #}
-                <div class="col-12 col-md-6 form-label-over mb-3"
-                    data-project-target="filmingGenreRow">
-                {{ form_label(form.filmingGenre) }}
-                {{ form_widget(form.filmingGenre, {
-                    attr: form.filmingGenre.vars.attr|merge({'data-project-target': 'filmingGenre'})
-                }) }}
+                <div class="col-12 col-md-4 form-label-over mb-3" data-project-target="filmingGenreRow" data-show-when="filmingType:feature,filmingType:short,filmingType:tv_series,filmingType:tv_program">
+                    {{ form_label(form.filmingGenre) }}
+                    {{ form_widget(form.filmingGenre) }}
+                </div>
+                <div class="col-12 col-md-4 form-label-over mb-3">
+                    {{ form_label(form.distributionMedia) }}
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-2">
+                        {% for mediaChoice in form.distributionMedia %}
+                            <div class="col">
+                                <div class="form-check">
+                                    {{ form_widget(mediaChoice, {'attr': {'class': 'form-check-input'}}) }}
+                                    {{ form_label(mediaChoice, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
-
             <div class="row">
-                <div class="col-12 col-md-4 form-label-over mb-2">
-                {{ form_label(form.liveTv) }}
-                {{ form_widget(form.liveTv) }}
+                <div class="col-12 col-md-4 form-label-over mb-3" data-show-when="filmingType:tv_series,filmingType:tv_program">
+                    {{ form_label(form.episodios) }}
+                    {{ form_widget(form.episodios) }}
                 </div>
-                <div class="col-12 col-md-4 form-label-over mb-2">
-                {{ form_label(form.advert) }}
-                {{ form_widget(form.advert) }}
-                </div>
-                <div class="col-12 col-md-4 form-label-over mb-2">
-                {{ form_label(form.corporateVideo) }}
-                {{ form_widget(form.corporateVideo) }}
-                </div>
-                <div class="col-12 col-md-4 form-label-over mb-2">
-                {{ form_label(form.musicVideo) }}
-                {{ form_widget(form.musicVideo) }}
-                </div>
-                <div class="col-12 col-md-4 form-label-over mb-2">
-                {{ form_label(form.onlineContent) }}
-                {{ form_widget(form.onlineContent) }}
-                </div>
-                <div class="col-12 col-md-4 form-label-over mb-2">
-                {{ form_label(form.shooting) }}
-                {{ form_widget(form.shooting) }}
+                <div class="col-12 col-md-4 form-label-over mb-3" data-show-when="filmingType:tv_series,filmingType:tv_program">
+                    {{ form_label(form.duracionEpisodio) }}
+                    {{ form_widget(form.duracionEpisodio) }}
                 </div>
             </div>
-            </div>
+        </div>
 
-            {# --------- SUBTÍTULO EVENTO (y campos) --------- #}
-            <div class="border-top pt-3 mt-4" data-show-when="type:evento">
-                <h6 class="text-muted mb-4">{{ 'backend.projects.form.subsection_event'|trans }}</h6>
-                <div class="row">
-                <div class="col-12 col-md-4 col-lg-3 form-label-over mb-3">
+        <div class="border-top pt-3 mt-4" data-show-when="type:evento">
+            <h6 class="text-muted mb-3">{{ 'backend.projects.form.subsection_event'|trans }}</h6>
+            <div class="row">
+                <div class="col-12 col-md-4 form-label-over mb-3">
                     {{ form_label(form.eventTypePrimary) }}
                     {{ form_widget(form.eventTypePrimary) }}
                 </div>
-                <div class="col-12 col-md-4 col-lg-3 form-label-over mb-3">
+                <div class="col-12 col-md-4 form-label-over mb-3">
                     {{ form_label(form.eventModality) }}
                     {{ form_widget(form.eventModality) }}
                 </div>
-                <div class="col-12 col-md-4 col-lg-3 form-label-over mb-3">
-                    {{ form_label(form.eventAttendeesType) }}
-                    {{ form_widget(form.eventAttendeesType) }}
-                </div>
-                <div class="col-12 col-md-4 col-lg-3 form-label-over mb-3">
+                <div class="col-12 col-md-4 form-label-over mb-3" data-show-when="eventModality:presencial,eventModality:hibrido">
                     {{ form_label(form.eventAttendeesCount) }}
                     {{ form_widget(form.eventAttendeesCount) }}
                 </div>
+                <div class="col-12 col-md-4 form-label-over mb-3" data-show-when="eventModality:virtual,eventModality:hibrido">
+                    {{ form_label(form.eventOnlineConnections) }}
+                    {{ form_widget(form.eventOnlineConnections) }}
                 </div>
-
             </div>
+        </div>
 
-            {# --------- SUBTÍTULO CAMPOS COMUNES --------- #}
-            <div class="border-top pt-3 mt-4">
-                <h6 class="text-muted mb-4">{{ 'backend.projects.form.subsection_common'|trans }}</h6>
-                <div class="row">
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.medio) }}
-                        {{ form_widget(form.medio) }}
+        <div class="border-top pt-3 mt-4">
+            <h6 class="text-muted mb-3">{{ 'backend.projects.form.subsection_common'|trans }}</h6>
+            <div class="row">
+                <div class="col-12 col-md-6 form-label-over mb-3">
+                    {{ form_label(form.mainLocation) }}
+                    {{ form_widget(form.mainLocation) }}
+                </div>
+                <div class="col-12 col-md-6 form-label-over mb-3">
+                    {{ form_label(form.presupuesto) }}
+                    {{ form_widget(form.presupuesto) }}
+                </div>
+            </div>
+        </div>
+
+        {% set companyPrototype %}
+            <div class="card mb-3 p-3 border position-relative" data-collection-id="__company__">
+                <div class="row g-3 align-items-start">
+                    <div class="col-12 col-md-4">
+                        {{ form_row(form.projectCompanies.vars.prototype.type) }}
                     </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.presupuesto) }}
-                        {{ form_widget(form.presupuesto) }}
+                    <div class="col-12 col-md-6">
+                        {{ form_row(form.projectCompanies.vars.prototype.name) }}
                     </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.cine) }}
-                        {{ form_widget(form.cine) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.fechas) }}
-                        {{ form_widget(form.fechas) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.tvField) }}
-                        {{ form_widget(form.tvField) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.plataformasStreaming) }}
-                        {{ form_widget(form.plataformasStreaming) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.agencia) }}
-                        {{ form_widget(form.agencia) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.internet) }}
-                        {{ form_widget(form.internet) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.redesSociales) }}
-                        {{ form_widget(form.redesSociales) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.fotografia) }}
-                        {{ form_widget(form.fotografia) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.radio) }}
-                        {{ form_widget(form.radio) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.episodios) }}
-                        {{ form_widget(form.episodios) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.duracionEpisodio) }}
-                        {{ form_widget(form.duracionEpisodio) }}
-                    </div>
-                    <div class="col-12 col-md-6 form-label-over mb-3">
-                        {{ form_label(form.productora) }}
-                        {{ form_widget(form.productora) }}
+                    <div class="col-12 col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-danger w-100" data-action="project-collection#removeItem">
+                            <i class="bi bi-trash"></i> {{ 'backend.common.delete'|trans }}
+                        </button>
                     </div>
                 </div>
             </div>
-        </fieldset>
-        {# ========= /DATOS DEL PROYECTO ========= #}
+        {% endset %}
 
+        <div class="border-top pt-3 mt-4"
+             data-controller="project-collection"
+             data-project-collection-kind-value="company"
+             data-project-collection-index-value="{{ form.projectCompanies|length }}"
+             data-project-collection-prototype-value="{{ companyPrototype|e('html_attr') }}">
+            <h6 class="text-muted mb-3">{{ 'backend.projects.form.companies_section'|trans }}</h6>
+            <div data-project-collection-target="list">
+                {% for companyForm in form.projectCompanies %}
+                    <div class="card mb-3 p-3 border position-relative" data-collection-id="{{ loop.index0 }}">
+                        <div class="row g-3 align-items-start">
+                            <div class="col-12 col-md-4">
+                                {{ form_row(companyForm.type) }}
+                            </div>
+                            <div class="col-12 col-md-6">
+                                {{ form_row(companyForm.name) }}
+                            </div>
+                            <div class="col-12 col-md-2 d-flex align-items-end">
+                                <button type="button" class="btn btn-outline-danger w-100" data-action="project-collection#removeItem">
+                                    <i class="bi bi-trash"></i> {{ 'backend.common.delete'|trans }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        <div class="d-flex justify-content-start">
+                <button type="button" class="btn btn-outline-secondary mb-2" data-project-collection-target="addButton" data-action="project-collection#addItem">
+                    <i class="bi bi-plus-circle"></i> {{ 'backend.common.add'|trans }}
+                </button>
+            </div>
+        </div>
 
         {# ========= FECHAS POR FASE ========= #}
         <fieldset class="border rounded p-3 mb-4">
@@ -330,6 +307,85 @@
           </div>
         </fieldset>
         {# ========= /FECHAS POR FASE ========= #}
+
+        {% set fundingPrototype %}
+            <div class="card mb-3 p-3 border position-relative" data-collection-id="__funding__">
+                <div class="row g-3 align-items-start">
+                    <div class="col-12 col-md-3">
+                        {{ form_row(form.projectFundingSources.vars.prototype.type) }}
+                    </div>
+                    <div class="col-12 col-md-4">
+                        {{ form_row(form.projectFundingSources.vars.prototype.name) }}
+                    </div>
+                    <div class="col-12 col-md-3">
+                        {{ form_row(form.projectFundingSources.vars.prototype.percentage) }}
+                    </div>
+                    <div class="col-12 col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-danger w-100" data-action="project-collection#removeItem">
+                            <i class="bi bi-trash"></i> {{ 'backend.common.delete'|trans }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endset %}
+
+        <div class="border-top pt-3 mt-4"
+             data-controller="project-collection"
+             data-project-collection-kind-value="funding"
+             data-project-collection-index-value="{{ form.projectFundingSources|length }}"
+             data-project-collection-prototype-value="{{ fundingPrototype|e('html_attr') }}">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <h6 class="text-muted mb-0">{{ 'backend.projects.form.funding_section'|trans }}</h6>
+                <div class="text-end">
+                    <div class="small text-muted">{{ 'backend.projects.form.funding_total'|trans }}</div>
+                    <div class="fw-semibold" data-project-collection-target="total">0.00%</div>
+                    <div class="small" data-project-collection-target="feedback"
+                         data-ok-label="{{ 'backend.projects.form.funding_complete'|trans }}"
+                         data-missing-prefix="{{ 'backend.projects.form.funding_missing'|trans }}"
+                         data-excess-prefix="{{ 'backend.projects.form.funding_excess'|trans }}"
+                         data-invalid-label="{{ 'backend.projects.form.validation.percentage_invalid'|trans }}">
+                    </div>
+                </div>
+            </div>
+            <div data-project-collection-target="list">
+                {% for fundingForm in form.projectFundingSources %}
+                    <div class="card mb-3 p-3 border position-relative" data-collection-id="{{ loop.index0 }}">
+                        <div class="row g-3 align-items-start">
+                            <div class="col-12 col-md-3">
+                                {{ form_row(fundingForm.type) }}
+                            </div>
+                            <div class="col-12 col-md-4">
+                                {{ form_row(fundingForm.name) }}
+                            </div>
+                            <div class="col-12 col-md-3">
+                                {{ form_row(fundingForm.percentage) }}
+                            </div>
+                            <div class="col-12 col-md-2 d-flex align-items-end">
+                                <button type="button" class="btn btn-outline-danger w-100" data-action="project-collection#removeItem">
+                                    <i class="bi bi-trash"></i> {{ 'backend.common.delete'|trans }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="d-flex justify-content-start">
+                <button type="button" class="btn btn-outline-secondary mb-2" data-project-collection-target="addButton" data-action="project-collection#addItem">
+                    <i class="bi bi-plus-circle"></i> {{ 'backend.common.add'|trans }}
+                </button>
+            </div>
+        </div>
+
+        <div class="border-top pt-3 mt-4">
+            <h6 class="text-muted mb-3">{{ 'backend.projects.form.eco_manager_status.label'|trans }}</h6>
+            <div class="row">
+                <div class="col-12 col-lg-10">
+                    {{ form_widget(form.ecoManagerStatus) }}
+                </div>
+            </div>
+        </div>
+    </fieldset>
+    {# ========= /DATOS DEL PROYECTO ========= #}
 
         {# ========= EQUIPO TÉCNICO (SOLO VISTA) ========= #}
         {% set crew = project.crewMembers ?? [] %}

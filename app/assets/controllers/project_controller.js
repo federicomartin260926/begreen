@@ -11,6 +11,7 @@ export default class extends Controller {
     "filmingType",
     "filmingGenre",
     "filmingGenreRow",
+    "eventModality",
   ];
 
   static values = {
@@ -52,21 +53,31 @@ export default class extends Controller {
     const rows = this.element.querySelectorAll("[data-show-when]");
     rows.forEach((row) => {
       const rule = (row.dataset.showWhen || "").trim();
-      const visible = this.matchesTypeRule(rule, projectType);
+      const visible = this.matchesRule(rule, projectType);
       row.classList.toggle("d-none", !visible);
       const inputs = row.querySelectorAll("input, select, textarea, button");
       inputs.forEach((el) => (el.disabled = !visible && el.type !== "hidden"));
     });
   }
 
-  matchesTypeRule(rule, currentType) {
+  matchesRule(rule, currentType) {
     if (!rule) return true;
     const parts = rule.split(",").map((s) => s.trim());
     for (const part of parts) {
       const [k, v] = part.split(":").map((s) => s.trim());
-      if (k === "type" && v === currentType) return true;
+      if (this.getFieldValue(k) === v) return true;
     }
     return false;
+  }
+
+  getFieldValue(fieldName) {
+    const control = this.element.querySelector(`[data-project-target="${fieldName}"]`);
+    if (control) {
+      return control.value || "";
+    }
+
+    const fallback = this.element.querySelector(`[name$="[${fieldName}]"]`);
+    return fallback?.value || "";
   }
   // === /Mostrar/Ocultar
 
@@ -85,7 +96,19 @@ export default class extends Controller {
   }
 
   change(event) {
-    if (event.target === this.typeTarget) {
+    if (
+      event.target === this.typeTarget ||
+      event.target === this.filmingTypeTarget ||
+      (this.hasEventModalityTarget && event.target === this.eventModalityTarget)
+    ) {
+      if (event.target === this.typeTarget) {
+        this.syncTypeSpecificFields();
+      } else if (event.target === this.filmingTypeTarget) {
+        this.syncFilmingTypeSpecificFields();
+      } else if (this.hasEventModalityTarget && event.target === this.eventModalityTarget) {
+        this.syncEventModalitySpecificFields();
+      }
+
       this.updateLabels();
       this.toggleConditionalRows();
       this.setupFilmingGenreOptions();
@@ -98,46 +121,129 @@ export default class extends Controller {
   }
 
   setupFilmingGenreOptions() {
-  if (!this.hasFilmingTypeTarget || !this.hasFilmingGenreTarget) return;
+    if (!this.hasFilmingTypeTarget || !this.hasFilmingGenreTarget) return;
 
-  const type = this.filmingTypeTarget.value; // feature|short|tv_series|tv_program|''
-  const allowed = new Set(
-    type === "tv_program"
-      ? ["informativo", "entretenimiento", "cultural", "educativo", "religioso"]
-      : type === ""
-        ? [] // nada seleccionado → ocultamos todas salvo placeholder
-        : ["ficcion", "documental", "animacion", "experimental"]
-  );
+    const type = this.filmingTypeTarget.value;
+    const genericTypes = new Set(["feature", "short", "tv_series"]);
+    const tvProgramTypes = new Set(["tv_program"]);
+    const showAllowed = genericTypes.has(type) || tvProgramTypes.has(type);
+    const allowed = genericTypes.has(type)
+      ? new Set(["ficcion", "documental", "animacion", "experimental"])
+      : tvProgramTypes.has(type)
+        ? new Set(["informativo", "entretenimiento", "cultural", "educativo", "religioso"])
+        : new Set();
 
-  // mostrar/ocultar fila de género
-  if (this.hasFilmingGenreRowTarget) {
-    const show = !!type;
-    this.filmingGenreRowTarget.classList.toggle("d-none", !show);
-    this.filmingGenreRowTarget
-      .querySelectorAll("select, input, textarea, button")
-      .forEach((el) => (el.disabled = !show));
-  }
-
-  const select = this.filmingGenreTarget;
-  const current = select.value;
-
-  // NO reconstruimos. Solo ocultamos/deshabilitamos las no permitidas.
-  Array.from(select.options).forEach((opt) => {
-    if (opt.value === "") {
-      opt.hidden = false;
-      opt.disabled = false;
-      return;
+    if (this.hasFilmingGenreRowTarget) {
+      this.filmingGenreRowTarget.classList.toggle("d-none", !showAllowed);
+      this.filmingGenreRowTarget
+        .querySelectorAll("select, input, textarea, button")
+        .forEach((el) => (el.disabled = !showAllowed));
     }
-    const isAllowed = allowed.has(opt.value);
-    opt.hidden = !isAllowed;
-    opt.disabled = !isAllowed;
-  });
 
-  // Si el valor actual ya no es válido, resetea a placeholder
-  if (current && !allowed.has(current)) {
-    select.value = "";
+    const select = this.filmingGenreTarget;
+    const current = select.value;
+
+    Array.from(select.options).forEach((opt) => {
+      if (opt.value === "") {
+        opt.hidden = false;
+        opt.disabled = false;
+        return;
+      }
+
+      const isAllowed = allowed.has(opt.value);
+      opt.hidden = !isAllowed;
+      opt.disabled = !isAllowed;
+    });
+
+    if (current && !allowed.has(current)) {
+      select.value = "";
+    }
   }
-}
+
+  syncTypeSpecificFields() {
+    if (!this.hasTypeTarget) return;
+
+    if (this.typeTarget.value === "rodaje") {
+      this.clearFieldGroup([
+        "eventTypePrimary",
+        "eventModality",
+        "eventAttendeesCount",
+        "eventOnlineConnections",
+      ]);
+    } else {
+      this.clearFieldGroup([
+        "filmingType",
+        "filmingGenre",
+        "episodios",
+        "duracionEpisodio",
+        "eventTypePrimary",
+        "eventModality",
+        "eventAttendeesCount",
+        "eventOnlineConnections",
+      ]);
+      this.clearCheckboxGroup("distributionMedia");
+    }
+  }
+
+  syncFilmingTypeSpecificFields() {
+    if (!this.hasFilmingTypeTarget) return;
+
+    const value = this.filmingTypeTarget.value;
+    if (value !== "tv_series" && value !== "tv_program") {
+      this.clearFieldGroup(["episodios", "duracionEpisodio"]);
+    }
+  }
+
+  syncEventModalitySpecificFields() {
+    if (!this.hasEventModalityTarget) return;
+
+    const value = this.eventModalityTarget.value;
+    if (value === "presencial") {
+      this.clearFieldGroup(["eventOnlineConnections"]);
+    } else if (value === "virtual") {
+      this.clearFieldGroup(["eventAttendeesCount"]);
+    } else if (value !== "hibrido") {
+      this.clearFieldGroup(["eventAttendeesCount", "eventOnlineConnections"]);
+    }
+  }
+
+  clearFieldGroup(fieldNames) {
+    fieldNames.forEach((fieldName) => {
+      const control = this.element.querySelector(`[data-project-target="${fieldName}"]`)
+        || this.element.querySelector(`[name$="[${fieldName}]"]`);
+
+      if (!control) {
+        return;
+      }
+
+      if (control.type === "checkbox") {
+        control.checked = false;
+        return;
+      }
+
+      if (control.tagName === "SELECT" && control.multiple) {
+        Array.from(control.options).forEach((option) => {
+          option.selected = false;
+        });
+        return;
+      }
+
+      control.value = "";
+    });
+  }
+
+  clearCheckboxGroup(fieldName) {
+    const selectors = [
+      `input[type="checkbox"][name$="[${fieldName}][]"]`,
+      `input[type="checkbox"][name$="[${fieldName}]"]`,
+    ];
+
+    selectors.forEach((selector) => {
+      this.element.querySelectorAll(selector).forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+    });
+  }
 
 
   // Pequeño helper para traducciones: usa data-attrs del form si los tienes, o deja el key como label

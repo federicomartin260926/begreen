@@ -166,7 +166,8 @@ final class MeasureTemplateImporter
             return;
         }
 
-        $measureBlock = $this->resolveMeasureBlock((string) ($rowData['measureBlock'] ?? ''), $protocol, $rowNumber);
+        $measureBlockValue = trim((string) ($rowData['measureBlock'] ?? ''));
+        $measureBlock = $this->resolveMeasureBlock($measureBlockValue, $protocol, $rowNumber);
 
         $departments = $this->resolveDepartments((string) ($rowData['departments'] ?? ''), $rowNumber, $report);
         $odsItems = $this->resolveOdsItems((string) ($rowData['odsItems'] ?? ''), $rowNumber, $report);
@@ -279,6 +280,12 @@ final class MeasureTemplateImporter
             && $measure->getImportVersion() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION
         ) {
             $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $this->mapVerificationSources($verificationSources));
+            if ($measureBlockValue === '') {
+                $validationErrors = array_values(array_filter(
+                    $validationErrors,
+                    static fn (array $error): bool => ($error['field'] ?? null) !== 'measureBlock'
+                ));
+            }
             if ($validationErrors !== []) {
                 foreach ($validationErrors as $error) {
                     $report->addError((string) ($error['field'] ?? 'v23_validation'), sprintf('Fila %d: %s', $rowNumber, (string) ($error['message'] ?? 'Error de validación.')), ['row' => $rowNumber]);

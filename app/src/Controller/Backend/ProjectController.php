@@ -2,7 +2,7 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{Department, EmissionActivity, EmissionRecord, Plan, Position, Project, CrewMember, ProjectMembership, ProjectPhaseDate, User};
+use App\Entity\{Department, EmissionActivity, EmissionRecord, Plan, Position, Project, ProjectCompany, ProjectFundingSource, CrewMember, ProjectMembership, ProjectPhaseDate, User};
 use App\Form\{ CrewMemberImportType, ProjectType, CrewMemberType, CrewMemberCollectionType };
 use App\Repository\{ ProjectBillingDocumentRepository, ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository, EmissionRecordRepository, PlanRepository };
 use App\Security\ProjectVoter;
@@ -479,6 +479,7 @@ class ProjectController extends AbstractController
             'show_commercial_tier' => false,
         ]);
         $form->handleRequest($request);
+        $this->normalizeProject($project);
 
         if ($form->isSubmitted() && $form->isValid()) {
             /** @var User $creator */
@@ -533,6 +534,7 @@ class ProjectController extends AbstractController
             'commercial_tier_value' => $this->featureGate->getTier($project),
         ]);
         $form->handleRequest($request);
+        $this->normalizeProject($project);
 
         if ($form->isSubmitted() && $form->isValid()) {
 
@@ -625,36 +627,41 @@ class ProjectController extends AbstractController
         $newProject
             ->setFilmingType($project->getFilmingType())
             ->setFilmingGenre($project->getFilmingGenre())
-            ->setIsLiveTv($project->isLiveTv())
-            ->setIsAdvert($project->isAdvert())
-            ->setIsCorporateVideo($project->isCorporateVideo())
-            ->setIsMusicVideo($project->isMusicVideo())
-            ->setIsOnlineContent($project->isOnlineContent())
-            ->setIsShooting($project->isShooting());
+            ->setDistributionMedia($project->getDistributionMedia());
 
         // ---- copiar campos de EVENTO ----
         $newProject
             ->setEventTypePrimary($project->getEventTypePrimary())
             ->setEventModality($project->getEventModality())
-            ->setEventAttendeesType($project->getEventAttendeesType())
-            ->setEventAttendeesCount($project->getEventAttendeesCount());
+            ->setEventAttendeesCount($project->getEventAttendeesCount())
+            ->setEventOnlineConnections($project->getEventOnlineConnections());
 
         // ---- copiar campos COMUNES (texto) ----
         $newProject
-            ->setMedio($project->getMedio())
             ->setPresupuesto($project->getPresupuesto())
-            ->setCine($project->getCine())
-            ->setFechas($project->getFechas())
-            ->setTvField($project->getTvField())
-            ->setPlataformasStreaming($project->getPlataformasStreaming())
-            ->setAgencia($project->getAgencia())
-            ->setInternet($project->getInternet())
-            ->setRedesSociales($project->getRedesSociales())
-            ->setFotografia($project->getFotografia())
-            ->setRadio($project->getRadio())
+            ->setMainLocation($project->getMainLocation())
+            ->setEcoManagerStatus($project->getEcoManagerStatus())
             ->setEpisodios($project->getEpisodios())
-            ->setDuracionEpisodio($project->getDuracionEpisodio())
-            ->setProductora($project->getProductora());
+            ->setDuracionEpisodio($project->getDuracionEpisodio());
+
+        foreach ($project->getProjectCompanies() as $company) {
+            $newCompany = (new ProjectCompany())
+                ->setType($company->getType())
+                ->setName($company->getName())
+                ->setPosition($company->getPosition());
+            $newProject->addProjectCompany($newCompany);
+        }
+
+        foreach ($project->getProjectFundingSources() as $source) {
+            $newSource = (new ProjectFundingSource())
+                ->setType($source->getType())
+                ->setName($source->getName())
+                ->setPercentage($source->getPercentage())
+                ->setPosition($source->getPosition());
+            $newProject->addProjectFundingSource($newSource);
+        }
+
+        $this->normalizeProject($newProject);
 
         $em->persist($newProject);
         $em->flush(); // obtener ID
@@ -739,6 +746,11 @@ class ProjectController extends AbstractController
             $project->setSubscription($subscription);
             $em->persist($subscription);
         }
+    }
+
+    private function normalizeProject(Project $project): void
+    {
+        $project->normalizeState();
     }
 
     #[Route('/{id}/edit-crew', name: 'edit_crew')]

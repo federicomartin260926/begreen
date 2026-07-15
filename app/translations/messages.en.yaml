@@ -174,6 +174,7 @@ backend:
     save_changes: "Save changes"
     impersonate: "Impersonate this user"
     stop_impersonating: "Return to my user"
+    add: "Add"
     placeholder: "—"
   roles:
     ROLE_SUPER_ADMIN: "Super Administrator"
@@ -552,11 +553,17 @@ backend:
           short: "Short film"
           tv_series: "TV series"
           tv_program: "TV program"
+          live_broadcast: "Live broadcast"
+          advert: "Advert"
+          corporate_video: "Corporate video"
+          music_video: "Music video"
+          online_content: "Online content"
+          shooting: "Shooting / photo session"
 
       filming_genre:
         label: "Genre / Format"
         groups:
-          film_tv: "Genre (film/series)"
+          film_tv: "Genre (fiction/series)"
           tv_prog: "Format (TV program)"
         options:
           ficcion: "Fiction"
@@ -568,13 +575,6 @@ backend:
           cultural: "Cultural"
           educativo: "Educational"
           religioso: "Religious"
-
-      live_tv: "Live TV broadcast"
-      advert: "Advert"
-      corporate_video: "Corporate video"
-      music_video: "Music video"
-      online_content: "Online content"
-      shooting: "Shooting"
 
       event_type_primary:
         label: "Event type"
@@ -607,13 +607,67 @@ backend:
           virtual: "Virtual"
 
       event_attendees_count:
-        label: "Attendees (count)"
+        label: "In-person attendees"
+
+      event_online_connections:
+        label: "Online connections"
+
+      main_location: "Main location"
+      budget_eur: "Budget (€)"
+
+      distribution_media:
+        label: "Distribution media"
+        options:
+          cinema: "Cinema"
+          tv: "TV"
+          streaming: "Streaming"
+          internet: "Internet"
+          social_media: "Social media"
+          photography: "Photography"
+          radio: "Radio"
+
+      eco_manager_status:
+        label: "Eco Manager status"
+        options:
+          designated: "Yes, already assigned."
+          pending: "No, it will be assigned later."
+          not_required: "Not required for this project."
+
+      project_company:
+        type: "Type"
+        name: "Name"
+
+      project_company_type:
+        options:
+          production_company: "Production company"
+          agency: "Agency"
+          client: "Client"
+
+      project_funding_source:
+        type: "Type"
+        name: "Name or description"
+        percentage: "Percentage"
+
+      project_funding_source_type:
+        options:
+          production_company: "Production company"
+          agency: "Agency"
+          client: "Client"
+          sponsor: "Sponsor"
+          grant: "Grant"
+          other: "Other"
+
+      companies_section: "Companies involved"
+      funding_section: "Funding"
+      funding_total: "Current total"
+      funding_help: "The sum must be exactly 100%."
+      funding_complete: "Funding adds up to 100%."
+      funding_missing: "Missing"
+      funding_excess: "Excess"
 
       common:
         medio: "Medium"
         presupuesto: "Budget"
-        cine: "Cinema"
-        fechas: "Dates"
         tv: "TV"
         plataformas_streaming: "Streaming platforms"
         agencia: "Agency"
@@ -622,7 +676,7 @@ backend:
         fotografia: "Photography"
         radio: "Radio"
         episodios: "Episodes"
-        duracion_episodio: "Duration per episode"
+        duracion_episodio: "Duration per episode, in minutes"
         productora: "Production company"
 
     phases:

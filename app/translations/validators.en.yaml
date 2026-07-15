@@ -1,6 +1,22 @@
 form.captcha_message: Please confirm you are not a robot.
 
 backend:
+  projects:
+    form:
+      validation:
+        filming_type_required: "You must select a filming type."
+        distribution_media_required: "You must select at least one distribution medium."
+        episodes_required: "You must enter the number of episodes for TV series and TV programs."
+        episode_duration_required: "You must enter the episode duration for TV series and TV programs."
+        event_type_primary_required: "You must enter the event type."
+        event_modality_required: "You must enter the event modality."
+        attendees_required: "You must enter in-person attendees for the in-person modality."
+        online_connections_required: "You must enter online connections for the virtual modality."
+        funding_total_invalid: "Funding must add up to exactly 100%."
+        percentage_invalid: "Enter a valid percentage with up to two decimals."
+        percentage_gt_zero: "The percentage must be greater than 0."
+        percentage_lte_hundred: "The percentage cannot exceed 100%."
+
   admin:
     communication:
       form:

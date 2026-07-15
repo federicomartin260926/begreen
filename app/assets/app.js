@@ -27,6 +27,7 @@ import 'datatables.net-responsive-bs5/css/responsive.bootstrap5.min.css';
 // 6) Stimulus + controladores
 import { Application } from '@hotwired/stimulus';
 import ProjectController from './controllers/project_controller';
+import ProjectCollectionController from './controllers/project_collection_controller';
 import ProjectListController from './controllers/project_list_controller';
 import CrewController from './controllers/crew_controller';
 import DatatableController from './controllers/datatable_controller';
@@ -45,6 +46,7 @@ import DescriptionToggleController from './controllers/description_toggle_contro
 
 const application = Application.start();
 application.register('project', ProjectController);
+application.register('project-collection', ProjectCollectionController);
 application.register('project-list', ProjectListController);
 application.register('crew', CrewController);
 application.register('datatable', DatatableController);
