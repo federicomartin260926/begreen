@@ -1,0 +1,235 @@
+<?php
+
+namespace App\Tests\Controller\Backend;
+
+use App\Controller\Backend\ProjectController;
+use App\Entity\Project;
+use App\Entity\ProjectSubscription;
+use App\Entity\User;
+use App\Repository\ProjectBillingDocumentRepository;
+use App\Service\ActiveProjectService;
+use App\Service\ProjectFeatureGate;
+use App\Service\StripeInvoiceStorageService;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+
+final class ProjectControllerFormTest extends KernelTestCase
+{
+    public function testNewFormHidesCommercialTierAndBillingUi(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $this->setAdminToken($admin);
+
+        $controller = $this->createController();
+        $request = $this->createRequest('backend_project_new');
+
+        $response = $controller->new(
+            $request,
+            $entityManager,
+            $this->createMock(ActiveProjectService::class)
+        );
+
+        $content = (string) $response->getContent();
+
+        self::assertStringContainsString('Datos básicos', $content);
+        self::assertStringNotContainsString('Tier comercial', $content);
+        self::assertStringNotContainsString('Facturación del proyecto', $content);
+        self::assertStringNotContainsString('Gestionar facturación', $content);
+        self::assertStringNotContainsString('Tier actual', $content);
+    }
+
+    public function testCreateRedirectsToConfirmationPage(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $this->setAdminToken($admin);
+
+        $controller = $this->createController();
+        $request = $this->createCreateRequest();
+        $activeProjectService = $this->createMock(ActiveProjectService::class);
+        $activeProjectService->expects(self::once())
+            ->method('setActiveProject')
+            ->with(self::callback(static fn(Project $project) => $project->getId() !== null));
+
+        $response = $controller->new($request, $entityManager, $activeProjectService);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/project/', $response->getTargetUrl());
+        self::assertStringContainsString('/created', $response->getTargetUrl());
+
+        $project = $entityManager->getRepository(Project::class)->findOneBy(['name' => 'Proyecto wizard test']);
+        self::assertInstanceOf(Project::class, $project);
+        self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscription()?->getTier());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
+    }
+
+    public function testEditFormShowsCurrentPlanOutsideWizard(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $project = $this->createProject($entityManager, $admin, 'Proyecto edición test');
+        $this->setAdminToken($admin);
+
+        $controller = $this->createController();
+        $request = $this->createRequest('backend_project_edit', ['id' => $project->getId()]);
+
+        $response = $controller->edit($project, $request, $entityManager);
+        $content = (string) $response->getContent();
+
+        self::assertStringContainsString('Plan actual', $content);
+        self::assertStringContainsString('Mejorar plan', $content);
+        self::assertStringNotContainsString('Tier comercial', $content);
+        self::assertStringNotContainsString('Facturación del proyecto', $content);
+        self::assertStringNotContainsString('Gestionar facturación', $content);
+    }
+
+    public function testCreatedPageShowsBasicPlanAndUpgradeCta(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $project = $this->createProject($entityManager, $admin, 'Proyecto post creación');
+        $this->setAdminToken($admin);
+        $this->createRequest('backend_project_created', ['id' => $project->getId()]);
+
+        $controller = $this->createController();
+
+        $response = $controller->created($project, $this->createMock(ActiveProjectService::class));
+        $content = (string) $response->getContent();
+
+        self::assertStringContainsString('Proyecto creado correctamente', $content);
+        self::assertStringContainsString('Plan actual', $content);
+        self::assertStringContainsString('Basic', $content);
+        self::assertStringContainsString('Mejorar plan', $content);
+        self::assertStringContainsString('Continuar con plan Basic', $content);
+        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing', $content);
+    }
+
+    private function createController(): ProjectController
+    {
+        $container = self::getContainer();
+
+        $controller = new ProjectController(
+            $container->get('translator'),
+            $container->get(ProjectFeatureGate::class),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(StripeInvoiceStorageService::class),
+        );
+        $controller->setContainer($container);
+
+        return $controller;
+    }
+
+    private function createRequest(string $route, array $attributes = []): Request
+    {
+        $request = new Request();
+        $request->attributes->set('_route', $route);
+        $request->attributes->set('_route_params', $attributes);
+        foreach ($attributes as $key => $value) {
+            $request->attributes->set($key, $value);
+        }
+        $request->setLocale('es');
+        $request->setSession(new Session(new MockArraySessionStorage()));
+        $request->getSession()->set('_security_main', 'mock');
+
+        self::getContainer()->get('request_stack')->push($request);
+        $twig = self::getContainer()->get('twig');
+        $twig->addGlobal('userProjects', []);
+        $twig->addGlobal('activeProject', null);
+
+        return $request;
+    }
+
+    private function createCreateRequest(): Request
+    {
+        $request = $this->createRequest('backend_project_new');
+        $request->setMethod(Request::METHOD_POST);
+        $request->request->add([
+            'project' => [
+                '_token' => self::getContainer()->get('security.csrf.token_manager')->getToken('project')->getValue(),
+                'name' => 'Proyecto wizard test',
+                'country' => 'ES',
+                'type' => 'rodaje',
+                'emissionSourceName' => 'MITECO',
+                'filmingType' => 'feature',
+                'filmingGenre' => '',
+                'distributionMedia' => ['cinema'],
+                'eventTypePrimary' => '',
+                'eventModality' => '',
+                'eventAttendeesCount' => '',
+                'eventOnlineConnections' => '',
+                'mainLocation' => '',
+                'presupuesto' => '',
+                'ecoManagerStatus' => '',
+                'projectCompanies' => [],
+                'projectFundingSources' => [],
+                'phaseDates' => [
+                    ['phase' => 'preproduccion', 'startDate' => '2026-07-01', 'endDate' => '2026-07-02'],
+                    ['phase' => 'actividad', 'startDate' => '2026-07-03', 'endDate' => '2026-07-04'],
+                    ['phase' => 'postproduccion', 'startDate' => '2026-07-05', 'endDate' => '2026-07-06'],
+                ],
+            ],
+        ]);
+
+        return $request;
+    }
+
+    private function createAdminUser(EntityManagerInterface $entityManager): User
+    {
+        $admin = (new User())
+            ->setName('Admin')
+            ->setSurnames('Wizard')
+            ->setEmail(sprintf('admin.wizard.%s@example.test', uniqid()))
+            ->setPassword('password')
+            ->setRoles(['ROLE_ADMIN'])
+            ->setIsVerified(true);
+
+        $entityManager->persist($admin);
+        $entityManager->flush();
+
+        return $admin;
+    }
+
+    private function createProject(EntityManagerInterface $entityManager, User $owner, string $name): Project
+    {
+        $project = (new Project())
+            ->setName($name)
+            ->setType('rodaje')
+            ->setCountry('ES')
+            ->setEmissionSourceName('MITECO')
+            ->setFilmingType('feature')
+            ->setDistributionMedia(['cinema'])
+            ->setUser($owner);
+
+        $subscription = (new ProjectSubscription())
+            ->setTier(ProjectSubscription::TIER_BASIC)
+            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+            ->setSource(ProjectSubscription::SOURCE_SYSTEM);
+
+        $project->setSubscription($subscription);
+
+        $entityManager->persist($project);
+        $entityManager->flush();
+
+        return $project;
+    }
+
+    private function setAdminToken(User $user): void
+    {
+        self::getContainer()->get('security.token_storage')->setToken(
+            new UsernamePasswordToken($user, 'main', $user->getRoles())
+        );
+    }
+}

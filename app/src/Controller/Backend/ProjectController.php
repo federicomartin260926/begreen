@@ -503,15 +503,12 @@ class ProjectController extends AbstractController
             $activeProjectService->setActiveProject($project);
 
             $this->addFlash('success', 'backend.projects.flash.created');
-            return $this->redirectToRoute('backend_project_index');
+            return $this->redirectToRoute('backend_project_created', ['id' => $project->getId()]);
         }
 
         return $this->render('backend/project/form.html.twig', [
             'form' => $form->createView(),
             'edit' => false,
-            'commercialTier' => $this->featureGate->getTier($project),
-            'commercialTierLabel' => $this->featureGate->getPlanLabel($project),
-            'commercialTierDescription' => $this->featureGate->getPlanDescription($project),
         ]);
     }
 
@@ -521,7 +518,6 @@ class ProjectController extends AbstractController
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
 
         $this->reorderPhases($project);
-        $showCommercialTier = $this->isGranted('ROLE_ADMIN') || $this->isGranted('ROLE_SUPER_ADMIN');
 
         // Guardar fases originales antes de modificar
         $originalPhases = new ArrayCollection();
@@ -530,8 +526,7 @@ class ProjectController extends AbstractController
         }
 
         $form = $this->createForm(ProjectType::class, $project, [
-            'show_commercial_tier' => $showCommercialTier,
-            'commercial_tier_value' => $this->featureGate->getTier($project),
+            'show_commercial_tier' => false,
         ]);
         $form->handleRequest($request);
         $this->normalizeProject($project);
@@ -543,10 +538,6 @@ class ProjectController extends AbstractController
                 if (!$project->getPhaseDates()->contains($originalPhase)) {
                     $em->remove($originalPhase);
                 }
-            }
-
-            if ($showCommercialTier && $form->has('commercialTier')) {
-                $this->syncCommercialTier($project, (string) $form->get('commercialTier')->getData(), $em);
             }
 
             $em->flush();
@@ -561,28 +552,38 @@ class ProjectController extends AbstractController
                 ->count(['phase' => $phaseDate]) > 0;
         }
 
-        $billingInvoiceAvailable = false;
-        foreach ($this->billingDocumentRepository->findByProjectOrdered($project) as $document) {
-            if (
-                $this->invoiceStorageService->hasLocalCopy($document)
-                || $document->getHostedInvoiceUrl() !== null
-                || $document->getInvoicePdfUrl() !== null
-            ) {
-                $billingInvoiceAvailable = true;
-                break;
-            }
-        }
-
         return $this->render('backend/project/form.html.twig', [
-            'form'         => $form->createView(),
-            'edit'         => true,
-            'project'      => $project,
-            'lockedPhases' => $lockedPhases
-            ,
-            'commercialTier' => $this->featureGate->getTier($project),
-            'commercialTierLabel' => $this->featureGate->getPlanLabel($project),
-            'commercialTierDescription' => $this->featureGate->getPlanDescription($project),
-            'billingInvoiceAvailable' => $billingInvoiceAvailable,
+            'form' => $form->createView(),
+            'edit' => true,
+            'project' => $project,
+            'lockedPhases' => $lockedPhases,
+            'projectTier' => $this->featureGate->getTier($project),
+            'projectTierLabel' => $this->featureGate->getPlanLabel($project),
+            'projectTierSummary' => $this->featureGate->getPlanDescription($project),
+            'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', [
+                'id' => $project->getId(),
+                'from' => 'project',
+            ]),
+        ]);
+    }
+
+    #[Route('/{id}/created', name: 'created')]
+    public function created(Project $project, ActiveProjectService $activeProjectService): Response
+    {
+        $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+
+        $activeProjectService->setActiveProject($project);
+
+        return $this->render('backend/project/created.html.twig', [
+            'project' => $project,
+            'projectTier' => $this->featureGate->getTier($project),
+            'projectTierLabel' => $this->featureGate->getPlanLabel($project),
+            'projectTierSummary' => $this->featureGate->getPlanDescription($project),
+            'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', [
+                'id' => $project->getId(),
+                'from' => 'project',
+            ]),
+            'continueUrl' => $this->generateUrl('backend_project_index'),
         ]);
     }
 

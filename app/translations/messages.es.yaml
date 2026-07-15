@@ -508,6 +508,38 @@ backend:
       title_edit: "Editar proyecto"
       h2_new: "Nuevo proyecto"
       h2_edit: "Editar proyecto"
+      wizard:
+        step_1: "Tipo de proyecto"
+        step_2: "Datos generales"
+        step_3: "Fechas"
+        step_4: "Financiación"
+        step_5: "Resumen"
+        overview_label: "Datos del proyecto"
+        project_label: "Tipo de rodaje o evento"
+        general_label: "Información general"
+        dates_label: "Calendario"
+        funding_label: "Financiación"
+        companies_label: "Empresas implicadas"
+        stepper_label: "Progreso del formulario"
+        funding_sources_label: "Fuentes de financiación"
+        previous: "Anterior"
+        next: "Continuar"
+        create_project: "Crear proyecto"
+        save_changes: "Guardar cambios"
+        summary_empty: "El resumen se generará automáticamente cuando navegues por el formulario."
+        final_notice_create: "Una vez creado podrás acceder a las 7 fases desde el dashboard. Puedes empezar por cualquiera de ellas sin orden predeterminado."
+        final_notice_update: "Una vez guardado podrás acceder a las 7 fases desde el dashboard. Puedes empezar por cualquiera de ellas sin orden predeterminado."
+        no_companies: "Sin empresas implicadas."
+        no_funding: "Sin fuentes de financiación."
+
+      current_plan: "Plan actual"
+      upgrade_plan: "Mejorar plan"
+      subsection_basic: "Datos básicos"
+      subsection_basic_help: "Completa la información general del proyecto."
+      subsection_filming_help: "Define la clasificación y los medios de distribución."
+      subsection_event_help: "Define la temática y la modalidad del evento."
+      subsection_event_details: "Asistencia y conexiones"
+      subsection_event_details_help: "Estos datos dependen de la modalidad seleccionada."
 
       fs_project: "Datos del proyecto"
       fs_phases: "Fechas por fase"
@@ -619,6 +651,8 @@ backend:
 
       distribution_media:
         label: "Medios de distribución"
+        title: "Medios de distribución"
+        help: "Puedes seleccionar varios medios."
         options:
           cinema: "Cine"
           tv: "TV"
@@ -660,12 +694,20 @@ backend:
           other: "Otros"
 
       companies_section: "Empresas implicadas"
+      companies_section_label: "Empresas implicadas"
       funding_section: "Financiación"
       funding_total: "Total actual"
       funding_help: "La suma debe ser exactamente 100%."
       funding_complete: "La financiación suma 100%."
       funding_missing: "Faltan"
       funding_excess: "Sobran"
+
+    post_create:
+      title: "Proyecto creado correctamente"
+      description: "Ya tienes un proyecto con plan Basic. Puedes continuar con él o mejorar el plan cuando quieras."
+      current_plan: "Plan actual"
+      upgrade_plan: "Mejorar plan"
+      continue_basic: "Continuar con plan Basic"
 
       common:
         medio: "Medio"

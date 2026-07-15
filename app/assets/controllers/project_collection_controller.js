@@ -14,8 +14,18 @@ export default class extends Controller {
       this.indexValue = this.listTarget.querySelectorAll("[data-collection-id]").length;
     }
 
+    this.onCollectionChange = this.onCollectionChange.bind(this);
+    this.listTarget.addEventListener("input", this.onCollectionChange);
+    this.listTarget.addEventListener("change", this.onCollectionChange);
+
     this.toggleAddButton();
     this.updateFundingSummary();
+    this.emitChanged();
+  }
+
+  disconnect() {
+    this.listTarget.removeEventListener("input", this.onCollectionChange);
+    this.listTarget.removeEventListener("change", this.onCollectionChange);
   }
 
   addItem(event) {
@@ -39,6 +49,7 @@ export default class extends Controller {
     this.listTarget.appendChild(item);
     this.toggleAddButton();
     this.updateFundingSummary();
+    this.emitChanged();
   }
 
   removeItem(event) {
@@ -52,6 +63,12 @@ export default class extends Controller {
     item.remove();
     this.toggleAddButton();
     this.updateFundingSummary();
+    this.emitChanged();
+  }
+
+  onCollectionChange() {
+    this.updateFundingSummary();
+    this.emitChanged();
   }
 
   updateFundingSummary() {
@@ -105,6 +122,14 @@ export default class extends Controller {
     }
 
     this.addButtonTarget.classList.toggle("d-none", false);
+  }
+
+  emitChanged() {
+    this.element.dispatchEvent(
+      new CustomEvent("project-collection:changed", {
+        bubbles: true,
+      })
+    );
   }
 
   parseHundredths(value) {

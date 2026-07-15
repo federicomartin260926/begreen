@@ -26,7 +26,6 @@ export default class extends Controller {
     labelActivity: String,
 
     // Mensajes
-    errorMissingDates: String,
     logPrototypeMissing: String,
     logCannotInsert: String,
   };
@@ -112,6 +111,7 @@ export default class extends Controller {
       this.updateLabels();
       this.toggleConditionalRows();
       this.setupFilmingGenreOptions();
+      this.emitChanged();
     }
   }
 
@@ -307,6 +307,7 @@ export default class extends Controller {
 
     this.updateLabels();
     this.toggleAddButton();
+    this.emitChanged();
   }
 
   removeItem(event) {
@@ -316,6 +317,7 @@ export default class extends Controller {
       const wasPost = item.querySelector('[data-phase="postproduccion"]') !== null;
       item.remove();
       if (wasPost) this.toggleAddButton();
+      this.emitChanged();
     }
   }
 
@@ -326,23 +328,11 @@ export default class extends Controller {
     }
   }
 
-  validateFormBeforeSubmit(event) {
-    const dateFields = this.element.querySelectorAll('input[type="date"]');
-    let isValid = true;
-
-    dateFields.forEach((input) => {
-      if (!input.value) {
-        input.classList.add("is-invalid");
-        isValid = false;
-      } else {
-        input.classList.remove("is-invalid");
-      }
-    });
-
-    if (!isValid) {
-      event.preventDefault();
-      event.stopPropagation();
-      alert(this.errorMissingDatesValue || "Por favor, completa todas las fechas.");
-    }
+  emitChanged() {
+    this.element.dispatchEvent(
+      new CustomEvent("project:changed", {
+        bubbles: true,
+      })
+    );
   }
 }

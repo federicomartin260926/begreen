@@ -506,6 +506,38 @@ backend:
       title_edit: "Edit project"
       h2_new: "New project"
       h2_edit: "Edit project"
+      wizard:
+        step_1: "Project type"
+        step_2: "General data"
+        step_3: "Dates"
+        step_4: "Funding"
+        step_5: "Summary"
+        overview_label: "Project details"
+        project_label: "Filming or event type"
+        general_label: "General information"
+        dates_label: "Timeline"
+        funding_label: "Funding"
+        companies_label: "Involved companies"
+        stepper_label: "Form progress"
+        funding_sources_label: "Funding sources"
+        previous: "Previous"
+        next: "Continue"
+        create_project: "Create project"
+        save_changes: "Save changes"
+        summary_empty: "The summary will be generated automatically as you navigate the form."
+        final_notice_create: "Once created, you will be able to access the 7 phases from the dashboard. You can start with any of them, in no predetermined order."
+        final_notice_update: "Once saved, you will be able to access the 7 phases from the dashboard. You can start with any of them, in no predetermined order."
+        no_companies: "No involved companies."
+        no_funding: "No funding sources."
+
+      current_plan: "Current plan"
+      upgrade_plan: "Upgrade plan"
+      subsection_basic: "Basic data"
+      subsection_basic_help: "Fill in the general project information."
+      subsection_filming_help: "Define the classification and distribution media."
+      subsection_event_help: "Define the event theme and modality."
+      subsection_event_details: "Attendance and connections"
+      subsection_event_details_help: "These details depend on the selected modality."
 
       fs_project: "Project details"
       fs_phases: "Phase dates"
@@ -617,6 +649,8 @@ backend:
 
       distribution_media:
         label: "Distribution media"
+        title: "Distribution media"
+        help: "You can select multiple media."
         options:
           cinema: "Cinema"
           tv: "TV"
@@ -658,12 +692,20 @@ backend:
           other: "Other"
 
       companies_section: "Companies involved"
+      companies_section_label: "Companies involved"
       funding_section: "Funding"
       funding_total: "Current total"
       funding_help: "The sum must be exactly 100%."
       funding_complete: "Funding adds up to 100%."
       funding_missing: "Missing"
       funding_excess: "Excess"
+
+    post_create:
+      title: "Project created successfully"
+      description: "You now have a project on the Basic plan. You can continue with it or upgrade the plan whenever you want."
+      current_plan: "Current plan"
+      upgrade_plan: "Upgrade plan"
+      continue_basic: "Continue with Basic plan"
 
       common:
         medio: "Medium"
