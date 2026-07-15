@@ -544,10 +544,41 @@ export default class extends Controller {
     const fileInput = modalEl.querySelector('[data-evidence-modal-file="1"]');
     const sourceSelect = modalEl.querySelector('[data-evidence-modal-source="1"]');
     if (fileInput) fileInput.value = '';
-    if (sourceSelect) sourceSelect.value = '';
+    if (sourceSelect) {
+      sourceSelect.value = '';
+      this.clearEvidenceModalSourceError(sourceSelect);
+    }
 
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
+  }
+
+  clearEvidenceModalSourceError(eventOrSelect) {
+    const select = eventOrSelect?.currentTarget || eventOrSelect;
+    if (!select) return;
+
+    const modalEl = select.closest('.modal');
+    const feedback = modalEl?.querySelector('[data-evidence-modal-source-feedback="1"]');
+    const defaultMessage = this.t('evidence_add_modal_source_required');
+
+    select.classList.remove('is-invalid');
+    select.removeAttribute('aria-invalid');
+    if (feedback) {
+      feedback.classList.add('d-none');
+      feedback.textContent = defaultMessage;
+    }
+  }
+
+  showEvidenceModalSourceError(modalEl, message = this.t('evidence_add_modal_source_required')) {
+    const sourceSelect = modalEl?.querySelector('[data-evidence-modal-source="1"]');
+    const feedback = modalEl?.querySelector('[data-evidence-modal-source-feedback="1"]');
+    if (!sourceSelect || !feedback) return;
+
+    sourceSelect.classList.add('is-invalid');
+    sourceSelect.setAttribute('aria-invalid', 'true');
+    feedback.textContent = message;
+    feedback.classList.remove('d-none');
+    sourceSelect.focus();
   }
 
   async submitEvidenceModal(event) {
@@ -567,7 +598,7 @@ export default class extends Controller {
       return;
     }
     if (!sourceCode) {
-      this.showModal(this.t('modal.error_title'), this.t('evidence_add_modal_source_required'));
+      this.showEvidenceModalSourceError(modalEl);
       return;
     }
 
@@ -585,6 +616,11 @@ export default class extends Controller {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
+        const backendError = String(data?.error || '').trim();
+        if (this.isEvidenceModalSourceRequiredError(backendError)) {
+          this.showEvidenceModalSourceError(modalEl, this.t('evidence_add_modal_source_required'));
+          return;
+        }
         throw new Error(data.error || this.t('evidence_upload_failed'));
       }
 
@@ -592,10 +628,27 @@ export default class extends Controller {
       this.reloadReviewWithQuery({ open: measureId });
     } catch (err) {
       console.error(err);
+      if (this.isEvidenceModalSourceRequiredError(err?.message)) {
+        this.showEvidenceModalSourceError(modalEl, this.t('evidence_add_modal_source_required'));
+        return;
+      }
       this.showModal(this.t('modal.error_title'), err.message || this.t('evidence_upload_failed'));
     } finally {
       btn.disabled = false;
     }
+  }
+
+  isEvidenceModalSourceRequiredError(error) {
+    const value = String(error || '').trim();
+    return [
+      'evidence_add_modal_source_required',
+      this.t('evidence_add_modal_source_required'),
+      this.t('evidence_add_modal_source_required_inline'),
+      'Selecciona una fuente de verificación.',
+      'Debes seleccionar una fuente de verificación.',
+      'Select a verification source.',
+      'You must select a verification source.'
+    ].includes(value);
   }
 
   deleteEvidence(event) {

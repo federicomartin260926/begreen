@@ -150,12 +150,24 @@
                             </div>
                             <div class="mb-0">
                                 <label for="evidence-source-modal-{{ measure.id }}" class="form-label">{{ 'backend.plan.review.evidence_add_modal.source'|trans }}</label>
-                                <select class="form-select" id="evidence-source-modal-{{ measure.id }}" data-evidence-modal-source="1" required>
+                                <select
+                                    class="form-select"
+                                    id="evidence-source-modal-{{ measure.id }}"
+                                    data-evidence-modal-source="1"
+                                    data-action="change->plan-review#clearEvidenceModalSourceError"
+                                    aria-describedby="evidence-source-feedback-{{ measure.id }}"
+                                    required>
                                     <option value="">{{ 'backend.common.select'|trans }}</option>
                                     {% for source in verificationSources %}
                                         <option value="{{ source.code }}">{{ source.displayName }}</option>
                                     {% endfor %}
                                 </select>
+                                <div
+                                    id="evidence-source-feedback-{{ measure.id }}"
+                                    class="invalid-feedback"
+                                    data-evidence-modal-source-feedback="1">
+                                    {{ 'backend.plan.review.stimulus.evidence_add_modal_source_required'|trans }}
+                                </div>
                             </div>
                         {% else %}
                             <div class="alert alert-info mb-0">{{ 'backend.plan.review.evidence_add_modal.no_sources'|trans }}</div>
