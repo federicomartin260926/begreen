@@ -1,6 +1,6 @@
 {% set evidenceCountLabel = evidenceCount == 1 ? ('backend.plan.review.evidences_attached_count_one'|trans) : ('backend.plan.review.evidences_attached_count_other'|trans) %}
 {% set evidenceBlockWrapperClass = evidenceBlockWrapperClass|default('') %}
-<div class="{{ evidenceBlockWrapperClass }} mb-3">
+<div class="{{ evidenceBlockWrapperClass }} mb-3" data-measure-id="{{ measure.id }}" data-evidence-count="{{ evidenceCount }}">
     <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <label class="form-label small mb-0">

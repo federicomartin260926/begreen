@@ -1296,6 +1296,7 @@ backend:
         pdf_error_generic: "The PDF could not be generated. Please try again."
         pdf_default_filename: "sustainability_plan.pdf"
         implemented_require_will_html: "You must first check <strong>“Will implement”</strong> before marking it as executed."
+        implemented_require_action_and_evidence: "To mark the measure as executed, you must fill in the action field and upload one evidence file"
         implemented_yes: "Executed: Yes"
         implemented_no: "Executed: No"
         save_error_generic: "Could not save"

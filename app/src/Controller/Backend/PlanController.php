@@ -870,6 +870,7 @@ class PlanController extends AbstractController
 
         // --- Mutaciones por campo ---
         $nextUrl = null;
+        $implementedError = null;
 
         switch ($field) {
             case 'blockQuestion':
@@ -1025,6 +1026,13 @@ class PlanController extends AbstractController
                     ], 400);
                 }
                 $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
+                if ($bool === true && !$planMeasure->canBeMarkedAsImplemented()) {
+                    $planMeasure->setImplemented(false);
+                    $planMeasure->markAsManual();
+                    $implementedError = $this->implementedRequirementsMessage();
+                    break;
+                }
+
                 $planMeasure->setImplemented($bool);
                 $planMeasure->markAsManual();
                 break;
@@ -1039,12 +1047,14 @@ class PlanController extends AbstractController
                 $text = trim((string)$value);
                 $planMeasure->setActionTaken($text !== '' ? $text : null);
                 $planMeasure->markAsManual();
+                $planMeasure->normalizeImplementedState();
                 break;
 
             case 'evidence':
                 $text = trim((string)$value);
                 $planMeasure->setEvidence($text !== '' ? $text : null);
                 $planMeasure->markAsManual();
+                $planMeasure->normalizeImplementedState();
                 break;
 
             case 'evidence_metadata':
@@ -1054,10 +1064,7 @@ class PlanController extends AbstractController
                     $rawMetadata = [];
                 }
 
-                $currentEvidencePaths = array_fill_keys(
-                    array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $planMeasure->getEvidence()) ?: []))),
-                    true
-                );
+                $currentEvidencePaths = array_fill_keys($planMeasure->getEvidencePaths(), true);
 
                 $allowedSourceCodes = [];
                 foreach ($measure->getResolvedVerificationSourceLinks() as $link) {
@@ -1080,6 +1087,7 @@ class PlanController extends AbstractController
 
                 $planMeasure->setEvidenceMetadata($metadata);
                 $planMeasure->markAsManual();
+                $planMeasure->normalizeImplementedState();
                 break;
 
             case 'observations':
@@ -1131,6 +1139,14 @@ class PlanController extends AbstractController
         $complete = $this->planCompletionService->syncStatus($plan, $project, $measureRepo);
         $em->flush();
 
+        if ($implementedError !== null) {
+            return new JsonResponse([
+                'success' => false,
+                'error'   => $implementedError,
+                'implemented' => $planMeasure->isImplemented(),
+            ], 400);
+        }
+
         if ($this->isTerminalSelectionAction($field, $value)) {
             $visibleMeasures = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
             $currentVisibleIndex = $this->planCompletionService->findVisibleMeasureIndex($visibleMeasures, $measure);
@@ -1175,6 +1191,7 @@ class PlanController extends AbstractController
         return new JsonResponse([
             'success' => true,
             'nextUrl' => $nextUrl,
+            'implemented' => $planMeasure->isImplemented(),
         ]);
     }
 
@@ -1495,6 +1512,7 @@ class PlanController extends AbstractController
         $existing = array_values(array_unique($existing));
         $pm->setEvidence(implode("\n", $existing));
         $pm->setEvidenceMetadata($metadata);
+        $pm->normalizeImplementedState();
         $em->persist($pm);
         $em->flush();
 
@@ -1565,11 +1583,16 @@ class PlanController extends AbstractController
 
         if ($removed) {
             $pm->setEvidence(implode("\n", $newList));
+            $pm->normalizeImplementedState();
             $em->persist($pm);
             $em->flush();
         }
 
-        return new JsonResponse(['success' => true, 'removed' => $removed]);
+        return new JsonResponse([
+            'success' => true,
+            'removed' => $removed,
+            'implemented' => $pm->isImplemented(),
+        ]);
     }
 
     #[Route('/download', name: 'download_pdf', methods: ['GET'])]
@@ -2181,6 +2204,11 @@ class PlanController extends AbstractController
         }
 
         return null;
+    }
+
+    private function implementedRequirementsMessage(): string
+    {
+        return $this->t->trans('backend.plan.review.stimulus.implemented_require_action_and_evidence');
     }
 
     private function canAdvanceFromCurrentMeasure(PlanMeasure $planMeasure): bool

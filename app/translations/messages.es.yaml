@@ -1303,6 +1303,7 @@ backend:
         pdf_error_generic: "No se pudo generar el PDF. Inténtalo de nuevo."
         pdf_default_filename: "plan_sostenibilidad.pdf"
         implemented_require_will_html: "Primero debes marcar <strong>“Se implementará”</strong> para poder marcarla como ejecutada."
+        implemented_require_action_and_evidence: "Para que puedas dar la medida como ejecutada es obligatorio rellenar el campo de acción y subir una evidencia"
         implemented_yes: "Ejecutada: Sí"
         implemented_no: "Ejecutada: No"
         save_error_generic: "No se pudo guardar"

@@ -161,6 +161,11 @@ class PlanMeasure
     public function getActionTaken(): ?string { return $this->actionTaken; }
     public function setActionTaken(?string $actionTaken): self { $this->actionTaken = $actionTaken; return $this; }
 
+    public function hasActionTaken(): bool
+    {
+        return trim((string) $this->actionTaken) !== '';
+    }
+
     public function getObservations(): ?string { return $this->observations; }
     public function setObservations(?string $observations): self { $this->observations = $observations; return $this; }
 
@@ -172,6 +177,46 @@ class PlanMeasure
 
     public function getEvidence(): ?string { return $this->evidence; }
     public function setEvidence(?string $evidence): self { $this->evidence = $evidence; return $this; }
+
+    /**
+     * @return string[]
+     */
+    /**
+     * Persisted evidence paths stored as newline-separated text in the database.
+     * This does not validate filesystem existence.
+     *
+     * @return string[]
+     */
+    public function getEvidencePaths(): array
+    {
+        $paths = array_filter(array_map(
+            'trim',
+            preg_split('/\R/u', (string) $this->evidence) ?: []
+        ));
+
+        return array_values($paths);
+    }
+
+    public function hasEvidence(): bool
+    {
+        return $this->getEvidencePaths() !== [];
+    }
+
+    public function canBeMarkedAsImplemented(): bool
+    {
+        return $this->hasActionTaken() && $this->hasEvidence();
+    }
+
+    public function normalizeImplementedState(): bool
+    {
+        if ($this->implemented === true && !$this->canBeMarkedAsImplemented()) {
+            $this->implemented = false;
+
+            return true;
+        }
+
+        return false;
+    }
 
     /**
      * @return array<string, string>|null

@@ -161,34 +161,59 @@ export default class extends Controller {
     const checked = input.checked;
     const measureId = input.dataset.measureId;
     const url = input.dataset.url;
-    const allowed = input.dataset.allowed === '1';
-
-    if (!allowed) {
-      input.checked = false;
-      this.showModal(this.t('modal.notice_title'), this.t('implemented_require_will_html'));
+    const measureContainer = input.closest('[data-plan-measure-row]');
+    if (!measureContainer) {
+      console.error('plan-review: measure container not found for implemented toggle', { measureId, input });
+      this.showModal(this.t('modal.error_title'), this.t('network_error'));
       return;
     }
 
-    const prevChecked = !checked;
-    const body = new URLSearchParams({ measureId, field: 'implemented', value: checked ? 'true' : 'false' });
-
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-        body: body.toString(),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        input.checked = prevChecked;
-        throw new Error(data.error || this.t('save_error_generic'));
+    if (checked) {
+      const selectedWillImplement = measureContainer.querySelector('input[data-field="willImplement"]:checked');
+      const selectedValue = String(selectedWillImplement?.value ?? '').trim().toLowerCase();
+      const willImplement = selectedValue === 'true' || selectedValue === '1';
+      if (willImplement !== true) {
+        input.checked = false;
+        this.showModal(this.t('modal.notice_title'), this.t('implemented_require_will_html'));
+        return;
       }
 
+      const actionTakenEl = measureContainer.querySelector(`#action-taken-${measureId}`);
+      const actionTakenValue = String(actionTakenEl?.value || '').trim();
+      const evidenceCount = this.getEvidenceCount(measureContainer, measureId);
+      if (actionTakenValue === '' || evidenceCount === 0) {
+        input.checked = false;
+        this.showModal(this.t('modal.notice_title'), this.t('implemented_require_action_and_evidence'));
+        return;
+      }
+
+      try {
+        await this.persistSelectionField(url, measureId, 'action_taken', actionTakenValue);
+        const result = await this.persistSelectionField(url, measureId, 'implemented', 'true');
+        const badge = document.querySelector(`[data-role="badge-implemented"][data-measure-id="${measureId}"]`);
+        if (badge) {
+          badge.classList.remove('bg-success', 'bg-secondary');
+          badge.classList.add(result.implemented ? 'bg-success' : 'bg-secondary');
+          badge.textContent = result.implemented ? this.t('implemented_yes') : this.t('implemented_no');
+        }
+        input.checked = !!result.implemented;
+        return;
+      } catch (err) {
+        input.checked = false;
+        console.error(err);
+        this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
+        return;
+      }
+    }
+
+    const prevChecked = !checked;
+
+    try {
+      const data = await this.persistSelectionField(url, measureId, 'implemented', checked ? 'true' : 'false');
       const badge = document.querySelector(`[data-role="badge-implemented"][data-measure-id="${measureId}"]`);
       if (badge) {
         badge.classList.remove('bg-success', 'bg-secondary');
-        if (checked) {
+        if (data.implemented) {
           badge.classList.add('bg-success');
           badge.textContent = this.t('implemented_yes');
         } else {
@@ -197,6 +222,7 @@ export default class extends Controller {
         }
       }
     } catch (err) {
+      input.checked = prevChecked;
       console.error(err);
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
     }
@@ -372,6 +398,7 @@ export default class extends Controller {
     const inlineBox = document.getElementById(`inline-edit-${measureId}`);
     const canSend = (el) => el && !el.disabled && el.dataset.locked !== '1';
     const updates = [];
+    let implementedBlocked = false;
 
     if (saveSection === 'state' && inlineBox) {
       // ======= BLOQUE: ESTADO EN EL PLAN =======
@@ -412,9 +439,6 @@ export default class extends Controller {
       const internalNotesEl = document.getElementById(`internal-notes-${measureId}`);
       const responsiblesEl  = document.getElementById(`responsibles-${measureId}`);
 
-      if (implementedEl && !implementedEl.disabled) {
-        updates.push({ field: 'implemented', value: implementedEl.checked ? 'true' : 'false' });
-      }
       if (canSend(verificationEl)) updates.push({ field: 'verification', value: verificationEl.checked ? 'true' : 'false' });
       if (canSend(actionTakenEl))  updates.push({ field: 'action_taken', value: (actionTakenEl.value || '').trim() });
       if (canSend(observationsEl)) updates.push({ field: 'observations', value: (observationsEl.value || '').trim() });
@@ -436,6 +460,10 @@ export default class extends Controller {
       if (existingEvidenceSourceSelects.length > 0) {
         updates.push({ field: 'evidence_metadata', value: JSON.stringify(evidenceMetadata) });
       }
+
+      if (implementedEl && !implementedEl.disabled) {
+        updates.push({ field: 'implemented', value: implementedEl.checked ? 'true' : 'false' });
+      }
     }
 
     if (updates.length === 0) return;
@@ -444,6 +472,10 @@ export default class extends Controller {
 
     try {
       for (const up of updates) {
+        if (implementedBlocked && up.field === 'implemented' && up.value === 'true') {
+          continue;
+        }
+
         const body = new URLSearchParams({ measureId, field: up.field, value: up.value });
         const res = await fetch('/index.php/backend/plan/update-selection', {
           method: 'POST',
@@ -456,12 +488,48 @@ export default class extends Controller {
           const msg = (data && data.error) ? data.error : this.t('save_error_generic');
           throw new Error(msg);
         }
+
+        if (typeof data.implemented === 'boolean') {
+          const implementedEl = document.getElementById(`implemented-${measureId}`);
+          if (implementedEl) {
+            implementedEl.checked = data.implemented;
+          }
+
+          const badge = document.querySelector(`[data-role="badge-implemented"][data-measure-id="${measureId}"]`);
+          if (badge) {
+            badge.classList.remove('bg-success', 'bg-secondary');
+            if (data.implemented) {
+              badge.classList.add('bg-success');
+              badge.textContent = this.t('implemented_yes');
+            } else {
+              badge.classList.add('bg-secondary');
+              badge.textContent = this.t('implemented_no');
+            }
+          }
+
+          if (!data.implemented) {
+            implementedBlocked = true;
+          }
+        }
       }
 
       // Mantener la medida abierta
       this.reloadReviewWithQuery({ open: measureId });
     } catch (err) {
       console.error(err);
+      if (err?.message === this.t('implemented_require_action_and_evidence')) {
+        const implementedEl = document.getElementById(`implemented-${measureId}`);
+        if (implementedEl) {
+          implementedEl.checked = false;
+        }
+
+        const badge = document.querySelector(`[data-role="badge-implemented"][data-measure-id="${measureId}"]`);
+        if (badge) {
+          badge.classList.remove('bg-success');
+          badge.classList.add('bg-secondary');
+          badge.textContent = this.t('implemented_no');
+        }
+      }
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
       btn.disabled = false;
     }
@@ -564,6 +632,30 @@ export default class extends Controller {
     if (!modalEl) return;
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
+  }
+
+  getEvidenceCount(measureContainer, measureId) {
+    const wrapper = measureContainer?.querySelector(`[data-measure-id="${measureId}"][data-evidence-count]`);
+    if (!wrapper) return 0;
+
+    const parsed = Number.parseInt(wrapper.dataset.evidenceCount || '0', 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  async persistSelectionField(url, measureId, field, value) {
+    const body = new URLSearchParams({ measureId, field, value });
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body: body.toString(),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || this.t('save_error_generic'));
+    }
+
+    return data;
   }
 
   showModal(title = this.t('modal.default_title'), html = '', { size = 'md' } = {}) {

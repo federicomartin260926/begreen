@@ -512,6 +512,68 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertMatchesRegularExpression('/data-plan-measures-section="critical-continue"\\s+class="d-none"/', $html);
     }
 
+    public function testListExposesCheckedImplementRadioWhenWillImplementIsYes(): void
+    {
+        self::bootKernel();
+        $this->setAdminToken();
+        $requestStack = self::getContainer()->get('request_stack');
+        $request = Request::create('/backend/plan/review');
+        $request->setLocale('es');
+        $request->attributes->set('_route', 'backend_plan_review');
+        $request->attributes->set('_route_params', []);
+        $requestStack->push($request);
+        $twig = self::getContainer()->get('twig');
+        $twig->addGlobal('userProjects', []);
+
+        $planMeasure = $this->buildLoadedMeasureState(true, true, false, null);
+        $measure = $planMeasure->getMeasure();
+
+        $html = $twig->render('backend/plan/_list.html.twig', [
+            'project' => (new Project())->setName('Proyecto demo'),
+            'plan' => (new Plan())->setStatus('completo'),
+            'measures' => [$measure],
+            'planMeasures' => [$planMeasure],
+            'projectTier' => ProjectSubscription::TIER_PRO,
+            'projectTierLabel' => 'Pro',
+            'projectTierSummary' => 'Resumen de prueba',
+            'evidenceCount' => 0,
+            'evidenceLimit' => null,
+            'upgradeCta' => null,
+            'commercialCards' => [],
+            'hasWatermark' => false,
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'collaborationSummary' => ['customMeasures' => 0],
+            'commitmentSummary' => ['customMeasures' => 0],
+            'navigationQuery' => [],
+            'showCustomMeasuresStep' => true,
+            'index' => 0,
+            'progressIndex' => 0,
+            'total' => 1,
+            'catalogMeasuresTotal' => 1,
+            'measure' => null,
+            'canGoNext' => false,
+            'planComplete' => true,
+            'currentBlockAnswer' => null,
+            'groupChanged' => 'no',
+            'prevGroupName' => null,
+            'nextGroupName' => null,
+            'groupingBy' => null,
+            'planChartsConfig' => [],
+            'scoreGained' => 0,
+            'scoreMax' => 0,
+            'canUseCustomMeasures' => true,
+            'crewMembersByMeasure' => [],
+            'canUseChecklist' => false,
+            'canUseResponsibles' => false,
+            'canUseInternalNotes' => false,
+        ]);
+
+        self::assertMatchesRegularExpression('/<input[^>]*name="implement-' . $measure->getId() . '"[^>]*value="true"[^>]*checked[^>]*>/', $html);
+        self::assertStringContainsString('data-action="change->plan-review#toggleImplemented"', $html);
+
+        $requestStack->pop();
+    }
+
     public function testReviewRedirectsToMeasuresAtFirstPendingMeasureWhenUpgradeBreaksCompleteness(): void
     {
         $controller = $this->getController();
