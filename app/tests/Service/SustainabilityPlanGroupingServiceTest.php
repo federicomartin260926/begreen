@@ -12,6 +12,7 @@ use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Entity\Protocol;
 use App\Entity\TripleBalanceAxis;
 use App\Service\MeasureTaxonomyPresenter;
@@ -118,10 +119,11 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
 
         $project = new Project();
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier($tier)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_MANUAL);
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         $plan = (new Plan())
             ->setProject($project)

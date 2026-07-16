@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\CommercialPhase;
 use App\Repository\ProjectSubscriptionRepository;
 use App\Entity\Traits\TimestampableTrait;
 use Doctrine\ORM\Mapping as ORM;
@@ -10,6 +11,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Entity(repositoryClass: ProjectSubscriptionRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'project_subscription')]
+#[ORM\UniqueConstraint(name: 'uniq_project_subscription_project_phase', columns: ['project_id', 'phase'])]
 class ProjectSubscription
 {
     use TimestampableTrait;
@@ -32,9 +34,13 @@ class ProjectSubscription
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\OneToOne(inversedBy: 'subscription')]
+    #[ORM\ManyToOne(inversedBy: 'subscriptions')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Project $project = null;
+
+    #[ORM\Column(type: 'string', length: 20, enumType: CommercialPhase::class)]
+    #[Assert\NotNull]
+    private CommercialPhase $phase;
 
     #[ORM\Column(length: 20)]
     #[Assert\Choice(choices: [self::TIER_BASIC, self::TIER_STANDARD, self::TIER_PRO])]
@@ -97,6 +103,18 @@ class ProjectSubscription
     public function setProject(?Project $project): self
     {
         $this->project = $project;
+        return $this;
+    }
+
+    public function getPhase(): CommercialPhase
+    {
+        return $this->phase;
+    }
+
+    public function setPhase(CommercialPhase $phase): self
+    {
+        $this->phase = $phase;
+
         return $this;
     }
 

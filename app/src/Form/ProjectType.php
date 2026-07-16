@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Entity\Project;
+use App\Enum\CommercialPhase;
 use App\Enum\ProjectCatalog;
 use App\Service\CommercialPlanResolver;
 use Symfony\Component\Form\AbstractType;
@@ -57,9 +58,9 @@ class ProjectType extends AbstractType
 
         $showCommercialTier = (bool) $options['show_commercial_tier'];
         $commercialTierValue = (string) ($options['commercial_tier_value'] ?? 'basic');
-        $basicPlan = $this->commercialPlanResolver->getPlanByCode('basic');
-        $standardPlan = $this->commercialPlanResolver->getPlanByCode('standard');
-        $proPlan = $this->commercialPlanResolver->getPlanByCode('pro');
+        $basicPlan = $this->commercialPlanResolver->getPlanByCode(CommercialPhase::ELABORATION, 'basic');
+        $standardPlan = $this->commercialPlanResolver->getPlanByCode(CommercialPhase::ELABORATION, 'standard');
+        $proPlan = $this->commercialPlanResolver->getPlanByCode(CommercialPhase::ELABORATION, 'pro');
 
         $builder
             ->add('name', TextType::class, [

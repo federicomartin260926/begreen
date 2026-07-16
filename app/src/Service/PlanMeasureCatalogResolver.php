@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Measure;
 use App\Entity\Protocol;
 use App\Entity\Project;
+use App\Enum\CommercialPhase;
 use App\Service\ProjectFeatureGate;
 use Doctrine\ORM\QueryBuilder;
 
@@ -34,7 +35,7 @@ final class PlanMeasureCatalogResolver
             ->setParameter('catalogImportVersion', self::BE_GREEN_MY_FILM_IMPORT_VERSION);
 
         if ($project) {
-            $qb->setParameter('catalogAllowedScores', $this->featureGate->getAllowedScores($project));
+            $qb->setParameter('catalogAllowedScores', $this->featureGate->getAllowedScores($project, CommercialPhase::ELABORATION));
         }
     }
 
@@ -49,6 +50,6 @@ final class PlanMeasureCatalogResolver
             return false;
         }
 
-        return $project ? in_array((int) ($measure->getScore() ?? 0), $this->featureGate->getAllowedScores($project), true) : true;
+        return $project ? in_array((int) ($measure->getScore() ?? 0), $this->featureGate->getAllowedScores($project, CommercialPhase::ELABORATION), true) : true;
     }
 }

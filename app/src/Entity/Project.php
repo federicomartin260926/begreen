@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Enum\ProjectCatalog;
+use App\Enum\CommercialPhase;
 use App\Repository\ProjectRepository;
 use App\Entity\Traits\TimestampableTrait;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -56,9 +57,9 @@ class Project
     #[Assert\Valid]
     private Collection $projectFundingSources;
 
-    #[ORM\OneToOne(mappedBy: 'project', targetEntity: ProjectSubscription::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(mappedBy: 'project', targetEntity: ProjectSubscription::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[Assert\Valid]
-    private ?ProjectSubscription $subscription = null;
+    private Collection $subscriptions;
 
     #[ORM\OneToMany(mappedBy: 'project', targetEntity: ProjectBillingDocument::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $billingDocuments;
@@ -127,6 +128,7 @@ class Project
         $this->projectFundingSources = new ArrayCollection();
         $this->crewMembers = new ArrayCollection();
         $this->billingDocuments = new ArrayCollection();
+        $this->subscriptions = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -242,17 +244,52 @@ class Project
         return $this;
     }
 
-    public function getSubscription(): ?ProjectSubscription
+    /**
+     * @return Collection<int, ProjectSubscription>
+     */
+    public function getSubscriptions(): Collection
     {
-        return $this->subscription;
+        return $this->subscriptions;
     }
 
-    public function setSubscription(?ProjectSubscription $subscription): self
+    public function getSubscriptionForPhase(CommercialPhase $phase): ?ProjectSubscription
     {
-        $this->subscription = $subscription;
-        if ($subscription && $subscription->getProject() !== $this) {
-            $subscription->setProject($this);
+        foreach ($this->subscriptions as $subscription) {
+            if ($subscription->getPhase() === $phase) {
+                return $subscription;
+            }
         }
+
+        return null;
+    }
+
+    public function addSubscription(ProjectSubscription $subscription): self
+    {
+        foreach ($this->subscriptions as $existing) {
+            if ($existing->getPhase() === $subscription->getPhase() && $existing !== $subscription) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Project already has a subscription for phase "%s".',
+                    $subscription->getPhase()->value
+                ));
+            }
+        }
+
+        if (!$this->subscriptions->contains($subscription)) {
+            $this->subscriptions->add($subscription);
+            if ($subscription->getProject() !== $this) {
+                $subscription->setProject($this);
+            }
+        }
+
+        return $this;
+    }
+
+    public function removeSubscription(ProjectSubscription $subscription): self
+    {
+        if ($this->subscriptions->removeElement($subscription) && $subscription->getProject() === $this) {
+            $subscription->setProject(null);
+        }
+
         return $this;
     }
 

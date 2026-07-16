@@ -4,6 +4,7 @@ namespace App\Tests\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use PHPUnit\Framework\TestCase;
 
@@ -17,18 +18,18 @@ final class ProjectFeatureGateTest extends TestCase
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC);
         $basicDefinition = $this->defaultCommercialPlanDefinition('basic');
 
-        self::assertSame([4, 5], $gate->getAllowedScores($project));
-        self::assertSame('Basic', $gate->getPlanLabel($project));
-        self::assertSame($basicDefinition['description'], $gate->getPlanDescription($project));
-        self::assertTrue($gate->hasWatermark($project));
-        self::assertSame(10, $gate->getMaxEvidenceCount($project));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.department_pdf'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.public_comments'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.internal_notes'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.responsibles'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
+        self::assertSame([4, 5], $gate->getAllowedScores($project, CommercialPhase::ELABORATION));
+        self::assertSame('Basic', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame($basicDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
+        self::assertTrue($gate->hasWatermark($project, CommercialPhase::ELABORATION));
+        self::assertSame(10, $gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department_pdf'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.internal_notes'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.responsibles'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
     }
 
     public function testBasicTierCanEnableCustomMeasuresManually(): void
@@ -49,7 +50,7 @@ final class ProjectFeatureGateTest extends TestCase
         ]);
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC);
 
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
     }
 
     public function testStandardTierRules(): void
@@ -58,18 +59,18 @@ final class ProjectFeatureGateTest extends TestCase
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_STANDARD);
         $standardDefinition = $this->defaultCommercialPlanDefinition('standard');
 
-        self::assertSame([3, 4, 5], $gate->getAllowedScores($project));
-        self::assertSame('Standard', $gate->getPlanLabel($project));
-        self::assertSame($standardDefinition['description'], $gate->getPlanDescription($project));
-        self::assertFalse($gate->hasWatermark($project));
-        self::assertNull($gate->getMaxEvidenceCount($project));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.department_pdf'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.advanced_exports'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.department_pdf'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.category'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
-        self::assertFalse($gate->canUseFeature($project, 'sustainability_plan.public_comments'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
+        self::assertSame([3, 4, 5], $gate->getAllowedScores($project, CommercialPhase::ELABORATION));
+        self::assertSame('Standard', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame($standardDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
+        self::assertFalse($gate->hasWatermark($project, CommercialPhase::ELABORATION));
+        self::assertNull($gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.advanced_exports'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department_pdf'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.category'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
     }
 
     public function testProTierRules(): void
@@ -78,20 +79,20 @@ final class ProjectFeatureGateTest extends TestCase
         $project = $this->createProjectWithTier(ProjectSubscription::TIER_PRO);
         $proDefinition = $this->defaultCommercialPlanDefinition('pro');
 
-        self::assertSame([1, 2, 3, 4, 5], $gate->getAllowedScores($project));
-        self::assertSame('Pro', $gate->getPlanLabel($project));
-        self::assertSame($proDefinition['description'], $gate->getPlanDescription($project));
-        self::assertFalse($gate->hasWatermark($project));
-        self::assertNull($gate->getMaxEvidenceCount($project));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.branding'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.category'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.department'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.export.excel'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.public_comments'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.internal_notes'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.responsibles'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.custom_measures'));
-        self::assertTrue($gate->canUseFeature($project, 'sustainability_plan.validation_summary'));
+        self::assertSame([1, 2, 3, 4, 5], $gate->getAllowedScores($project, CommercialPhase::ELABORATION));
+        self::assertSame('Pro', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame($proDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
+        self::assertFalse($gate->hasWatermark($project, CommercialPhase::ELABORATION));
+        self::assertNull($gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.branding'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.category'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.internal_notes'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.responsibles'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.validation_summary'));
     }
 
     public function testMissingSubscriptionDefaultsToBasic(): void
@@ -99,19 +100,20 @@ final class ProjectFeatureGateTest extends TestCase
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = new Project();
 
-        self::assertSame(ProjectSubscription::TIER_BASIC, $gate->getTier($project));
-        self::assertSame('Basic', $gate->getPlanLabel($project));
+        self::assertSame(ProjectSubscription::TIER_BASIC, $gate->getTier($project, CommercialPhase::ELABORATION));
+        self::assertSame('Basic', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 
     private function createProjectWithTier(string $tier): Project
     {
         $project = new Project();
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier($tier)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_MANUAL);
 
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         return $project;
     }

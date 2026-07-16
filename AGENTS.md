@@ -53,6 +53,7 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Do not introduce migrations as the required workflow unless explicitly requested.
 * If `doctrine:schema:validate` fails on mapping, fix the entity mapping first.
 * Do not spend time cleaning residual `dump-sql` drift unless it corresponds to a real missing column, broken mapping, or functional regression.
+* While the project remains in development, schema changes may assume fixtures can be regenerated and existing development data can be discarded.
 
 ## Testing
 
@@ -136,3 +137,12 @@ A change is complete when:
 * `git diff` has been reviewed.
 * Documentation has been updated only if workflows, deployment behavior, assets or functional contracts changed.
 * Any skipped validation is reported explicitly with the reason.
+
+## Development-phase data compatibility
+
+* This project is still in active development.
+* Until explicitly stated otherwise, do not preserve compatibility with historical or legacy data.
+* Do not add legacy fallbacks, compatibility aliases, transitional dual models or synchronization logic for old records.
+* Prefer updating the Doctrine mapping, applying `doctrine:schema:update`, regenerating fixtures and adapting all consumers to the new model.
+* Keep the implementation minimal and remove obsolete paths instead of maintaining them in parallel.
+* Only introduce historical-data compatibility when explicitly requested because the project has entered a production/data-preservation phase.

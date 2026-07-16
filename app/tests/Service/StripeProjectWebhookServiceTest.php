@@ -4,6 +4,7 @@ namespace App\Tests\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
 use App\Repository\PlanRepository;
@@ -215,7 +216,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
         $subscriptionRepository->method('findOneByStripeCheckoutSessionId')->willReturn($subscription);
 
         $projectRepository = $this->createMock(ProjectRepository::class);
-        $projectRepository->method('find')->willReturn((new Project())->setSubscription($subscription));
+        $projectRepository->method('find')->willReturn((new Project())->addSubscription($subscription));
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::atLeastOnce())->method('flush');
@@ -237,10 +238,10 @@ final class StripeProjectWebhookServiceTest extends TestCase
     private function createFeatureGate(): ProjectFeatureGate
     {
         $commercialPlanRepository = $this->createMock(CommercialPlanRepository::class);
-        $commercialPlanRepository->method('findActiveByCode')->willReturnCallback(static fn (string $code) => null);
+        $commercialPlanRepository->method('findActiveByPhaseAndCode')->willReturn(null);
 
         $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(null);
+        $subscriptionRepository->method('findOneByProjectAndPhase')->willReturn(null);
 
         return new ProjectFeatureGate(new CommercialPlanResolver($commercialPlanRepository, $subscriptionRepository));
     }
@@ -248,6 +249,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
     private function createSubscription(string $tier, string $status): ProjectSubscription
     {
         return (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier($tier)
             ->setStatus($status)
             ->setSource(ProjectSubscription::SOURCE_MANUAL)

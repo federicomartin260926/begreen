@@ -5,6 +5,7 @@ namespace App\Tests\Controller\Backend;
 use App\Controller\Backend\ProjectController;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Entity\User;
 use App\Repository\EmissionRecordRepository;
 use App\Repository\PlanRepository;
@@ -91,6 +92,51 @@ final class ProjectControllerDashboardTest extends KernelTestCase
         self::assertStringNotContainsString('Eliminar', $actionCell);
     }
 
+    public function testDashboardQueryDoesNotDuplicateProjectsWithMultipleSubscriptions(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+
+        $admin = (new User())
+            ->setName('Admin')
+            ->setSurnames('Dashboard')
+            ->setEmail(sprintf('admin.dashboard.query.%s@example.test', uniqid()))
+            ->setPassword('password')
+            ->setRoles(['ROLE_ADMIN'])
+            ->setIsVerified(true);
+        $entityManager->persist($admin);
+
+        $project = $this->createProject($admin, 'Proyecto con dos suscripciones');
+        $project->addSubscription(
+            (new ProjectSubscription())
+                ->setPhase(CommercialPhase::IMPLEMENTATION)
+                ->setTier(ProjectSubscription::TIER_STANDARD)
+                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+                ->setSource(ProjectSubscription::SOURCE_SYSTEM)
+        );
+        $entityManager->flush();
+
+        $projects = $container->get(ProjectRepository::class)
+            ->createQueryBuilder('p')
+            ->leftJoin('p.projectMemberships', 'pm')
+            ->leftJoin('pm.user', 'mu')
+            ->leftJoin('p.user', 'cu')
+            ->leftJoin('p.subscriptions', 'sub')
+            ->addSelect('pm', 'mu', 'cu', 'sub')
+            ->select('DISTINCT p')
+            ->orderBy('p.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $occurrences = array_filter(
+            $projects,
+            static fn (Project $candidate): bool => $candidate->getId() === $project->getId()
+        );
+
+        self::assertCount(1, $occurrences);
+    }
+
     private function createProject(User $owner, string $name): Project
     {
         $project = (new Project())
@@ -100,11 +146,12 @@ final class ProjectControllerDashboardTest extends KernelTestCase
             ->setUser($owner);
 
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier(ProjectSubscription::TIER_BASIC)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_SYSTEM);
 
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         self::getContainer()->get(EntityManagerInterface::class)->persist($project);
 

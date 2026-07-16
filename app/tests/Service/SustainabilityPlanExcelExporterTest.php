@@ -5,6 +5,7 @@ namespace App\Tests\Service;
 use App\Entity\Plan;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Service\SustainabilityPlanExcelExporter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -85,10 +86,11 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
     {
         $project = new Project();
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier($tier)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_MANUAL);
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         return $project;
     }

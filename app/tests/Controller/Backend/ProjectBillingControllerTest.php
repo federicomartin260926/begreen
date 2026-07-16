@@ -7,6 +7,7 @@ use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectMembership;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Entity\User;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
@@ -36,7 +37,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $project = $this->createProject(86, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
             ->setPaidAmountCents(9900)
@@ -143,6 +144,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $entityManager->flush();
 
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier(ProjectSubscription::TIER_STANDARD)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
@@ -157,7 +159,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
             ->setPaymentReference('cs_test_a1LvgirVsq49dTzNPCjqSpsqVAaHQvHFo266VsnvqaVEDIhX8AiLUFxIcE')
             ->setStripeHostedInvoiceUrl('https://invoice.test/view')
             ->setStripeInvoicePdfUrl('https://invoice.test/pdf');
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         $this->setUserToken($user);
 
@@ -228,7 +230,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $project = $this->createProject(87, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
             ->setPaidAmountCents(9900)
@@ -323,7 +325,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $project = $this->createProject(91, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
             ->setPaidAmountCents(9900)
@@ -371,7 +373,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $project = $this->createProject(88, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
             ->setPaidAmountCents(9900)
@@ -457,7 +459,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $project = $this->createProject(92, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
             ->setPaidAmountCents(9900)
@@ -526,7 +528,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $project = $this->createProject(93, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
             ->setPaidAmountCents(9900)
@@ -619,9 +621,11 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
 
         $commercialPlanRepository = $this->createMock(CommercialPlanRepository::class);
-        $commercialPlanRepository->method('findActiveByCode')->willReturnCallback(
-            static function (string $code) use ($plans): ?\App\Entity\CommercialPlan {
-                return $plans[strtolower(trim($code))] ?? null;
+        $commercialPlanRepository->method('findActiveByPhaseAndCode')->willReturnCallback(
+            static function (CommercialPhase $phase, string $code) use ($plans): ?\App\Entity\CommercialPlan {
+                return $phase === CommercialPhase::ELABORATION
+                    ? ($plans[strtolower(trim($code))] ?? null)
+                    : null;
             }
         );
         $planRepository = $this->createMock(PlanRepository::class);
@@ -673,11 +677,12 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $this->setEntityId($project, $id);
 
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier($tier)
             ->setStatus($status)
             ->setSource(ProjectSubscription::SOURCE_STRIPE);
 
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         return $project;
     }

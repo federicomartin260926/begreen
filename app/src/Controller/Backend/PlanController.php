@@ -3,6 +3,7 @@
 namespace App\Controller\Backend;
 
 use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User};
+use App\Enum\CommercialPhase;
 use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
@@ -199,7 +200,7 @@ class PlanController extends AbstractController
         $navigationQuery = $request->query->all();
         unset($navigationQuery['i']);
         unset($navigationQuery['only_pending']);
-        $canUseCustomMeasures = $this->featureGate->canUseFeature($project, 'sustainability_plan.custom_measures');
+        $canUseCustomMeasures = $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures');
 
         // POST: custom measures interstitial
         if ($request->isMethod('POST')) {
@@ -377,11 +378,11 @@ class PlanController extends AbstractController
             }
         }
 
-        $projectTier = $this->featureGate->getTier($project);
-        $evidenceLimit = $this->featureGate->getMaxEvidenceCount($project);
+        $projectTier = $this->featureGate->getTier($project, CommercialPhase::ELABORATION);
+        $evidenceLimit = $this->featureGate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION);
         $evidenceCount = $this->countProjectEvidenceFiles($plan);
-        $projectTierLabel = $this->featureGate->getPlanLabel($project);
-        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
         $upgradeCta = $this->buildUpgradeCta($project, $plan, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
 
@@ -396,7 +397,7 @@ class PlanController extends AbstractController
             'evidenceLimit'    => $evidenceLimit,
             'canUseCustomMeasures' => $canUseCustomMeasures,
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
-            'hasWatermark'     => $this->featureGate->hasWatermark($project),
+            'hasWatermark'     => $this->featureGate->hasWatermark($project, CommercialPhase::ELABORATION),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'upgradeCta'       => $upgradeCta,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
@@ -740,25 +741,25 @@ class PlanController extends AbstractController
         }
 
         $uiLocale = $request->getLocale();
-        $projectTierLabel = $this->featureGate->getPlanLabel($project);
-        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
-        $upgradeCta = $this->buildUpgradeCta($project, $plan, $this->featureGate->getTier($project), $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
+        $upgradeCta = $this->buildUpgradeCta($project, $plan, $this->featureGate->getTier($project, CommercialPhase::ELABORATION), $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
 
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
-            'projectTier'      => $this->featureGate->getTier($project),
+            'projectTier'      => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
             'projectTierLabel'  => $projectTierLabel,
             'projectTierSummary'=> $projectTierSummary,
-            'canUseChecklist'  => $this->featureGate->canUseFeature($project, 'sustainability_plan.checklist'),
-            'canUseResponsibles'=> $this->featureGate->canUseFeature($project, 'sustainability_plan.responsibles'),
-            'canUseInternalNotes'=> $this->featureGate->canUseFeature($project, 'sustainability_plan.internal_notes'),
+            'canUseChecklist'  => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.checklist'),
+            'canUseResponsibles'=> $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.responsibles'),
+            'canUseInternalNotes'=> $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.internal_notes'),
             'evidenceCount'    => $this->countProjectEvidenceFiles($plan),
-            'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project),
+            'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION),
             'commercialCards'  => $this->buildCommercialFeatureCards($project),
             'upgradeCta'       => $upgradeCta,
-            'hasWatermark'     => $this->featureGate->hasWatermark($project),
+            'hasWatermark'     => $this->featureGate->hasWatermark($project, CommercialPhase::ELABORATION),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
@@ -1340,7 +1341,7 @@ class PlanController extends AbstractController
             return true;
         }
 
-        return $this->featureGate->canUseFeature($project, $fieldFeatureMap[$field]);
+        return $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, $fieldFeatureMap[$field]);
     }
 
 
@@ -1458,7 +1459,7 @@ class PlanController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Fuente de verificación inválida.'], 400);
         }
 
-        $maxEvidenceCount = $this->featureGate->getMaxEvidenceCount($project);
+        $maxEvidenceCount = $this->featureGate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION);
         if ($maxEvidenceCount !== null) {
             $currentEvidenceCount = $this->countProjectEvidenceFiles($plan);
             $incomingEvidenceCount = 0;
@@ -1971,17 +1972,17 @@ class PlanController extends AbstractController
         }
 
         $activeFilters = array_merge($activeMain, $activeFlags);
-        $projectTierLabel = $this->featureGate->getPlanLabel($project);
-        $projectTierSummary = $this->featureGate->getPlanDescription($project) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         return [
             'project'        => $project,
             'plan'           => $plan,
-            'projectTier'    => $this->featureGate->getTier($project),
+            'projectTier'    => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
             'projectTierLabel'=> $projectTierLabel,
             'projectTierSummary'=> $projectTierSummary,
             'currentUserLabel'=> $this->buildCurrentUserLabel(),
-            'hasWatermark'   => $this->featureGate->hasWatermark($project),
+            'hasWatermark'   => $this->featureGate->hasWatermark($project, CommercialPhase::ELABORATION),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
@@ -2713,7 +2714,7 @@ class PlanController extends AbstractController
 
         $cards = [];
         foreach ($definitions as $feature => $label) {
-            $state = $this->featureGate->getFeatureState($project, $feature);
+            $state = $this->featureGate->getFeatureState($project, CommercialPhase::ELABORATION, $feature);
             if ($state['visible'] && !$state['enabled']) {
                 $cards[] = [
                     'label' => $label,
@@ -2769,7 +2770,7 @@ class PlanController extends AbstractController
                 continue;
             }
 
-            $commercialPlan = $commercialPlanRepository->findActiveByCode($targetTier);
+            $commercialPlan = $commercialPlanRepository->findActiveByPhaseAndCode(CommercialPhase::ELABORATION, $targetTier);
             if (!$commercialPlan instanceof CommercialPlan) {
                 continue;
             }

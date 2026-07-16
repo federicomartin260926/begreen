@@ -5,6 +5,7 @@ namespace App\Tests\Support;
 use App\Entity\CommercialPlan;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\ProjectSubscriptionRepository;
 use App\Service\CommercialPlanResolver;
@@ -29,28 +30,41 @@ trait CommercialPlanTestHelpers
         $indexedPlans = [];
         foreach ($plans as $plan) {
             if ($plan instanceof CommercialPlan) {
-                $indexedPlans[strtolower($plan->getCode())] = $plan;
+                $indexedPlans[$plan->getPhase()->value . ':' . strtolower($plan->getCode())] = $plan;
             }
         }
-
-        $planRepository->method('findActiveByCode')->willReturnCallback(
-            static function (string $code) use ($indexedPlans): ?CommercialPlan {
+        $planRepository->method('findActiveByPhaseAndCode')->willReturnCallback(
+            static function (CommercialPhase $phase, string $code) use ($indexedPlans): ?CommercialPlan {
                 $normalized = strtolower(trim($code));
 
-                return $indexedPlans[$normalized] ?? null;
+                return $indexedPlans[$phase->value . ':' . $normalized] ?? null;
             }
         );
         $planRepository->method('findActiveOrdered')->willReturnCallback(
             static function () use ($indexedPlans): array {
                 $plans = array_values($indexedPlans);
-                usort($plans, static fn (CommercialPlan $left, CommercialPlan $right): int => $left->getSortOrder() <=> $right->getSortOrder());
+                usort($plans, static function (CommercialPlan $left, CommercialPlan $right): int {
+                    $phaseCompare = $left->getPhase()->value <=> $right->getPhase()->value;
+                    if ($phaseCompare !== 0) {
+                        return $phaseCompare;
+                    }
+
+                    $sortCompare = $left->getSortOrder() <=> $right->getSortOrder();
+                    if ($sortCompare !== 0) {
+                        return $sortCompare;
+                    }
+
+                    return 0;
+                });
 
                 return $plans;
             }
         );
 
         $subscriptionRepository ??= $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(null);
+        $subscriptionRepository->method('findOneByProjectAndPhase')->willReturnCallback(
+            static fn (Project $project, CommercialPhase $phase): ?ProjectSubscription => null
+        );
 
         return new CommercialPlanResolver($planRepository, $subscriptionRepository);
     }
@@ -66,11 +80,12 @@ trait CommercialPlanTestHelpers
     {
         $project = new Project();
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier($tier)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_MANUAL);
 
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         return $project;
     }
@@ -83,6 +98,7 @@ trait CommercialPlanTestHelpers
         }
 
         return (new CommercialPlan())
+            ->setPhase($definition['phase'] ?? CommercialPhase::ELABORATION)
             ->setCode($definition['code'])
             ->setName($definition['name'])
             ->setDescription($definition['description'])
@@ -101,6 +117,7 @@ trait CommercialPlanTestHelpers
     {
         return match (strtolower(trim($code))) {
             'standard' => [
+                'phase' => CommercialPhase::ELABORATION,
                 'code' => 'standard',
                 'name' => 'Standard',
                 'description' => 'Incluye PDF agrupado por departamentos, marca de agua desactivada y evidencias ilimitadas para gestionar proyectos con más detalle.',
@@ -137,6 +154,7 @@ trait CommercialPlanTestHelpers
                 ],
             ],
             'pro' => [
+                'phase' => CommercialPhase::ELABORATION,
                 'code' => 'pro',
                 'name' => 'Pro',
                 'description' => 'Incluye exportaciones avanzadas por categorías, departamentos, áreas de impacto, triple balance y ODS, además de campos colaborativos y medidas custom.',
@@ -173,6 +191,7 @@ trait CommercialPlanTestHelpers
                 ],
             ],
             default => [
+                'phase' => CommercialPhase::ELABORATION,
                 'code' => 'basic',
                 'name' => 'Basic',
                 'description' => 'Plan gratuito para empezar, con PDF unificado, marca de agua activa y límite de 10 evidencias por proyecto.',

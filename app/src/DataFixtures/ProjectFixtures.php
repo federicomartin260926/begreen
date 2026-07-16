@@ -6,6 +6,7 @@ use App\Entity\Project;
 use App\Entity\ProjectMembership;
 use App\Entity\ProjectPhaseDate;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Repository\UserRepository;
 use App\Repository\OdsRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -57,11 +58,12 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
                 ->setEmissionSourceName('MITECO'); // Valor por defecto
 
             $subscription = (new ProjectSubscription())
+                ->setPhase(CommercialPhase::ELABORATION)
                 ->setProject($project)
                 ->setTier(ProjectSubscription::TIER_BASIC)
                 ->setStatus(ProjectSubscription::STATUS_ACTIVE)
                 ->setSource(ProjectSubscription::SOURCE_SYSTEM);
-            $project->setSubscription($subscription);
+            $project->addSubscription($subscription);
 
             $manager->persist($project);
 

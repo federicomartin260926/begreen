@@ -4,6 +4,7 @@ namespace App\Controller\Backend;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Exception\PendingStripeCheckoutException;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
@@ -69,7 +70,7 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
 
         $this->activeProjectService->setActiveProject($project);
 
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $sessionId = (string) $request->query->get('session_id', '');
         if ($sessionId !== '') {
             $reconciliation = $this->checkoutService->reconcilePendingCheckout($project, $sessionId);
@@ -155,7 +156,7 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
     {
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
 
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $sessionId = (string) $request->query->get('session_id', '');
         if (
             $subscription

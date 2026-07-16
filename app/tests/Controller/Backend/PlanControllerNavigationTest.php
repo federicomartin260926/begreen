@@ -11,6 +11,7 @@ use App\Entity\PlanMeasure;
 use App\Entity\Protocol;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Entity\VerificationSource;
 use App\Entity\User;
@@ -2800,7 +2801,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $resolver = $resolverReflection->newInstanceWithoutConstructor();
         $subscriptionRepository = $this->createMock(\App\Repository\ProjectSubscriptionRepository::class);
         $subscriptionRepository->method('findOneByProject')->willReturn(
-            (new ProjectSubscription())->setTier(ProjectSubscription::TIER_PRO)
+            (new ProjectSubscription())
+                ->setPhase(CommercialPhase::ELABORATION)
+                ->setTier(ProjectSubscription::TIER_PRO)
         );
         $subscriptionProperty = new \ReflectionProperty($resolver, 'subscriptionRepository');
         $subscriptionProperty->setAccessible(true);

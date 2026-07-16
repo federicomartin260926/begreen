@@ -13,6 +13,7 @@ use App\Entity\Protocol;
 use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Entity\User;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
@@ -78,9 +79,9 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
 
         self::assertInstanceOf(RedirectResponse::class, $response);
         self::assertStringContainsString('/backend/plan', $response->getTargetUrl());
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
-        self::assertSame('pi_success_1', $project->getSubscription()?->getStripePaymentIntentId());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
+        self::assertSame('pi_success_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripePaymentIntentId());
     }
 
     public function testSuccessRouteRedirectsToFirstPendingMeasureWhenUpgradeBreaksCompleteness(): void
@@ -164,9 +165,9 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         self::assertInstanceOf(RedirectResponse::class, $response);
         self::assertStringContainsString('/backend/project/43/billing', $response->getTargetUrl());
         self::assertStringContainsString('from=index', $response->getTargetUrl());
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
-        self::assertSame('pi_manual_1', $project->getSubscription()?->getStripePaymentIntentId());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
+        self::assertSame('pi_manual_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripePaymentIntentId());
     }
 
     public function testCancelUpgradeKeepsTheActivePlanIntact(): void
@@ -175,8 +176,8 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $container = self::getContainer();
 
         $project = $this->createProject(44, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO, 'cs_cancel_1');
-        $project->getSubscription()?->setPaidAmountCents(9900);
-        $project->getSubscription()?->setLastPaymentStatus('paid');
+        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setPaidAmountCents(9900);
+        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setLastPaymentStatus('paid');
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('flush');
@@ -197,11 +198,11 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
 
         self::assertInstanceOf(RedirectResponse::class, $response);
         self::assertStringContainsString('/backend/plan', $response->getTargetUrl());
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
-        self::assertSame('paid', $project->getSubscription()?->getLastPaymentStatus());
-        self::assertNull($project->getSubscription()?->getTargetTier());
-        self::assertNull($project->getSubscription()?->getStripeCheckoutSessionId());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
+        self::assertSame('paid', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getLastPaymentStatus());
+        self::assertNull($project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
+        self::assertNull($project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCheckoutSessionId());
     }
 
     public function testLoginRedirectsAuthenticatedUsersToBackend(): void
@@ -244,9 +245,11 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
                 $indexedPlans[strtolower(trim($commercialPlan->getCode()))] = $commercialPlan;
             }
         }
-        $planRepository->method('findActiveByCode')->willReturnCallback(
-            static function (string $code) use ($indexedPlans): ?CommercialPlan {
-                return $indexedPlans[strtolower(trim($code))] ?? null;
+        $planRepository->method('findActiveByPhaseAndCode')->willReturnCallback(
+            static function (CommercialPhase $phase, string $code) use ($indexedPlans): ?CommercialPlan {
+                return $phase === CommercialPhase::ELABORATION
+                    ? ($indexedPlans[strtolower(trim($code))] ?? null)
+                    : null;
             }
         );
 
@@ -317,6 +320,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $this->setEntityId($project, $id);
 
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier($tier)
             ->setStatus($status)
             ->setSource(ProjectSubscription::SOURCE_MANUAL)
@@ -326,7 +330,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
             $subscription->setStripeCheckoutSessionId($sessionId);
         }
 
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         return $project;
     }

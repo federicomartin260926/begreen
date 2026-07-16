@@ -8,6 +8,7 @@ use App\Entity\Plan;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\User;
+use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\PlanRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -38,7 +39,7 @@ final class StripeProjectCheckoutService
 
     public function getAvailableUpgradeTargets(Project $project): array
     {
-        $currentTier = $this->featureGate->getTier($project);
+        $currentTier = $this->featureGate->getTier($project, CommercialPhase::ELABORATION);
         $available = [];
 
         foreach ([ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO] as $targetTier) {
@@ -69,7 +70,7 @@ final class StripeProjectCheckoutService
 
     public function reconcilePendingCheckout(Project $project, ?string $sessionId = null): StripeCheckoutReconciliationResult
     {
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         if (!$subscription instanceof ProjectSubscription) {
             return StripeCheckoutReconciliationResult::nothingToConfirm();
         }
@@ -204,7 +205,7 @@ final class StripeProjectCheckoutService
     public function canUpgrade(Project|string $projectOrTier, string $targetTier): bool
     {
         $currentTier = $projectOrTier instanceof Project
-            ? $this->featureGate->getTier($projectOrTier)
+            ? $this->featureGate->getTier($projectOrTier, CommercialPhase::ELABORATION)
             : $projectOrTier;
 
         return $this->isValidTargetTier($targetTier) && $this->tierRank($targetTier) > $this->tierRank($currentTier);
@@ -212,12 +213,13 @@ final class StripeProjectCheckoutService
 
     public function startCheckout(Project $project, string $targetTier, ?User $user = null): string
     {
-        $currentTier = $this->featureGate->getTier($project);
+        $currentTier = $this->featureGate->getTier($project, CommercialPhase::ELABORATION);
         if (!$this->canUpgrade($currentTier, $targetTier)) {
             throw new \InvalidArgumentException('Upgrade not allowed for the selected tier.');
         }
 
-        $subscription = $project->getSubscription() ?? new ProjectSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION) ?? new ProjectSubscription();
+        $subscription->setPhase(CommercialPhase::ELABORATION);
         $subscription->setProject($project);
 
         if (
@@ -299,8 +301,8 @@ final class StripeProjectCheckoutService
             ->setLastPaymentStatus('checkout_created')
             ->setTargetTier($targetTier);
 
-        if (!$project->getSubscription()) {
-            $project->setSubscription($subscription);
+        if (!$project->getSubscriptionForPhase(CommercialPhase::ELABORATION)) {
+            $project->addSubscription($subscription);
             $this->entityManager->persist($subscription);
         }
 
@@ -326,7 +328,7 @@ final class StripeProjectCheckoutService
     public function resolveTargetAmountCents(Project|string $projectOrTier, string $targetTier): ?int
     {
         $currentTier = $projectOrTier instanceof Project
-            ? $this->featureGate->getTier($projectOrTier)
+            ? $this->featureGate->getTier($projectOrTier, CommercialPhase::ELABORATION)
             : $projectOrTier;
 
         if (!$this->canUpgrade($currentTier, $targetTier)) {
@@ -381,7 +383,7 @@ final class StripeProjectCheckoutService
 
     private function findTargetPlan(string $targetTier): ?CommercialPlan
     {
-        return $this->commercialPlanRepository->findActiveByCode($targetTier);
+        return $this->commercialPlanRepository->findActiveByPhaseAndCode(CommercialPhase::ELABORATION, $targetTier);
     }
 
     private function resolveCurrentPlan(string $currentTier): ?CommercialPlan

@@ -6,6 +6,7 @@ use App\Exception\PendingStripeCheckoutException;
 use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
 use App\Repository\PlanRepository;
@@ -48,12 +49,12 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame('always', $client->checkout->sessions->createCalls[0]['customer_creation']);
         self::assertTrue($client->checkout->sessions->createCalls[0]['invoice_creation']['enabled']);
         self::assertSame('standard', $client->checkout->sessions->createCalls[0]['metadata']['commercial_plan_code']);
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
-        self::assertSame(ProjectSubscription::SOURCE_MANUAL, $project->getSubscription()?->getSource());
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTargetTier());
-        self::assertSame($sessionId, $project->getSubscription()?->getStripeCheckoutSessionId());
-        self::assertSame('checkout_created', $project->getSubscription()?->getLastPaymentStatus());
-        self::assertNull($project->getSubscription()?->getPaidAmountCents());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::SOURCE_MANUAL, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getSource());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
+        self::assertSame($sessionId, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCheckoutSessionId());
+        self::assertSame('checkout_created', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getLastPaymentStatus());
+        self::assertNull($project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getPaidAmountCents());
     }
 
     public function testStandardProjectCheckoutUsesUpgradePriceAndKeepsTargetTierPending(): void
@@ -81,9 +82,9 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame('standard_to_pro', $client->checkout->sessions->createCalls[0]['payment_intent_data']['metadata']['upgrade_type']);
         self::assertSame('always', $client->checkout->sessions->createCalls[0]['customer_creation']);
         self::assertTrue($client->checkout->sessions->createCalls[0]['invoice_creation']['enabled']);
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
-        self::assertSame(ProjectSubscription::TIER_PRO, $project->getSubscription()?->getTargetTier());
-        self::assertSame($sessionId, $project->getSubscription()?->getStripeCheckoutSessionId());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_PRO, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
+        self::assertSame($sessionId, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCheckoutSessionId());
         self::assertSame(10000, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_PRO));
     }
 
@@ -242,7 +243,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $invoiceStorage->expects(self::once())
             ->method('upsertFromStripeCheckout')
             ->with(
-                $project->getSubscription(),
+                $project->getSubscriptionForPhase(CommercialPhase::ELABORATION),
                 self::isType('object'),
                 self::isType('object')
             )
@@ -255,19 +256,19 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
         self::assertSame(['cs_paid_1'], array_column($client->checkout->sessions->retrieveCalls, 'sessionId'));
         self::assertContains('customer', $client->checkout->sessions->retrieveCalls[0]['options']['expand']);
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTier());
-        self::assertSame(9900, $project->getSubscription()?->getPaidAmountCents());
-        self::assertSame('EUR', $project->getSubscription()?->getCurrency());
-        self::assertSame('INV-2026-001', $project->getSubscription()?->getPaymentReference());
-        self::assertSame('paid', $project->getSubscription()?->getLastPaymentStatus());
-        self::assertSame('pi_paid_1', $project->getSubscription()?->getStripePaymentIntentId());
-        self::assertSame('in_paid_1', $project->getSubscription()?->getStripeInvoiceId());
-        self::assertSame('cus_paid_1', $project->getSubscription()?->getStripeCustomerId());
-        self::assertSame('https://invoice.test/view', $project->getSubscription()?->getStripeHostedInvoiceUrl());
-        self::assertSame('https://invoice.test/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
-        self::assertSame('cs_paid_1', $project->getSubscription()?->getStripeCheckoutSessionId());
-        self::assertNull($project->getSubscription()?->getTargetTier());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
+        self::assertSame(9900, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getPaidAmountCents());
+        self::assertSame('EUR', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getCurrency());
+        self::assertSame('INV-2026-001', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getPaymentReference());
+        self::assertSame('paid', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getLastPaymentStatus());
+        self::assertSame('pi_paid_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripePaymentIntentId());
+        self::assertSame('in_paid_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeInvoiceId());
+        self::assertSame('cus_paid_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCustomerId());
+        self::assertSame('https://invoice.test/view', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeHostedInvoiceUrl());
+        self::assertSame('https://invoice.test/pdf', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeInvoicePdfUrl());
+        self::assertSame('cs_paid_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCheckoutSessionId());
+        self::assertNull($project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
     }
 
     public function testPaidPendingCheckoutWithoutInvoiceStillActivatesPlan(): void
@@ -305,11 +306,11 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
         self::assertSame(['cs_paid_no_invoice'], array_column($client->checkout->sessions->retrieveCalls, 'sessionId'));
         self::assertContains('customer', $client->checkout->sessions->retrieveCalls[0]['options']['expand']);
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
-        self::assertSame('pi_paid_no_invoice', $project->getSubscription()?->getStripePaymentIntentId());
-        self::assertSame('cus_paid_no_invoice', $project->getSubscription()?->getStripeCustomerId());
-        self::assertNull($project->getSubscription()?->getStripeHostedInvoiceUrl());
-        self::assertNull($project->getSubscription()?->getStripeInvoicePdfUrl());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame('pi_paid_no_invoice', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripePaymentIntentId());
+        self::assertSame('cus_paid_no_invoice', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCustomerId());
+        self::assertNull($project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeHostedInvoiceUrl());
+        self::assertNull($project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeInvoicePdfUrl());
     }
 
     public function testUnpaidCheckoutStaysPending(): void
@@ -332,9 +333,9 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $result = $service->reconcilePendingCheckout($project, 'cs_unpaid_1');
 
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_PENDING, $result->status);
-        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscription()?->getStatus());
-        self::assertSame('unpaid', $project->getSubscription()?->getLastPaymentStatus());
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTargetTier());
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame('unpaid', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getLastPaymentStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
     }
 
     public function testMetadataMismatchDoesNotConfirmPayment(): void
@@ -357,8 +358,8 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $result = $service->reconcilePendingCheckout($project, 'cs_mismatch_1');
 
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_MISMATCH, $result->status);
-        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscription()?->getStatus());
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscription()?->getTargetTier());
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
     }
 
     public function testAlreadyConfirmedCheckoutIsIdempotent(): void
@@ -387,13 +388,13 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $plans = $this->makeDefaultCommercialPlans();
         $plans['pro']->setStripePriceId('price_pro');
         $project = $this->createProject(ProjectSubscription::TIER_PRO, ProjectSubscription::STATUS_ACTIVE, null, 'cs_active_1', 42);
-        $project->getSubscription()?->setStripePaymentIntentId(null);
-        $project->getSubscription()?->setPaymentReference(null);
+        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setStripePaymentIntentId(null);
+        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setPaymentReference(null);
         $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
         $invoiceStorage->expects(self::once())
             ->method('upsertFromStripeCheckout')
             ->with(
-                $project->getSubscription(),
+                $project->getSubscriptionForPhase(CommercialPhase::ELABORATION),
                 self::isType('object'),
                 self::isType('object')
             )
@@ -403,13 +404,13 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $result = $service->reconcilePendingCheckout($project, 'cs_active_1');
 
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_ALREADY_CONFIRMED, $result->status);
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
-        self::assertSame('pi_active_1', $project->getSubscription()?->getStripePaymentIntentId());
-        self::assertSame('cus_active_1', $project->getSubscription()?->getStripeCustomerId());
-        self::assertSame('in_active_1', $project->getSubscription()?->getStripeInvoiceId());
-        self::assertSame('https://invoice.test/active/view', $project->getSubscription()?->getStripeHostedInvoiceUrl());
-        self::assertSame('https://invoice.test/active/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
-        self::assertSame('cs_active_1', $project->getSubscription()?->getStripeCheckoutSessionId());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame('pi_active_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripePaymentIntentId());
+        self::assertSame('cus_active_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCustomerId());
+        self::assertSame('in_active_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeInvoiceId());
+        self::assertSame('https://invoice.test/active/view', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeHostedInvoiceUrl());
+        self::assertSame('https://invoice.test/active/pdf', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeInvoicePdfUrl());
+        self::assertSame('cs_active_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCheckoutSessionId());
         self::assertSame(['in_active_1'], $client->invoices->retrieveCalls);
     }
 
@@ -457,7 +458,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
 
         self::assertSame(StripeCheckoutReconciliationResult::STATUS_CONFIRMED, $result->status);
         self::assertSame(['in_invoice_refetch_1'], $client->invoices->retrieveCalls);
-        self::assertSame('https://invoice.test/refetch/pdf', $project->getSubscription()?->getStripeInvoicePdfUrl());
+        self::assertSame('https://invoice.test/refetch/pdf', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeInvoicePdfUrl());
     }
 
     public function testPaidPendingCheckoutFlagsPlanWhenUpgradeMakesItIncomplete(): void
@@ -549,12 +550,12 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $indexedPlans = [];
         foreach ($plans as $commercialPlan) {
             if ($commercialPlan instanceof \App\Entity\CommercialPlan) {
-                $indexedPlans[strtolower($commercialPlan->getCode())] = $commercialPlan;
+                $indexedPlans[$commercialPlan->getPhase()->value . ':' . strtolower($commercialPlan->getCode())] = $commercialPlan;
             }
         }
-        $planRepository->method('findActiveByCode')->willReturnCallback(
-            static function (string $code) use ($indexedPlans): ?\App\Entity\CommercialPlan {
-                return $indexedPlans[strtolower(trim($code))] ?? null;
+        $planRepository->method('findActiveByPhaseAndCode')->willReturnCallback(
+            static function (\App\Enum\CommercialPhase $phase, string $code) use ($indexedPlans): ?\App\Entity\CommercialPlan {
+                return $indexedPlans[$phase->value . ':' . strtolower(trim($code))] ?? null;
             }
         );
 
@@ -693,6 +694,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         }
 
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier($tier)
             ->setStatus($status ?? ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_MANUAL);
@@ -704,7 +706,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
             $subscription->setStripeCheckoutSessionId($sessionId);
         }
 
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         return $project;
     }

@@ -6,6 +6,7 @@ use App\Entity\{Department, EmissionActivity, EmissionRecord, Plan, Position, Pr
 use App\Form\{ CrewMemberImportType, ProjectType, CrewMemberType, CrewMemberCollectionType };
 use App\Repository\{ ProjectBillingDocumentRepository, ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository, EmissionRecordRepository, PlanRepository };
 use App\Security\ProjectVoter;
+use App\Enum\CommercialPhase;
 use App\Service\ActiveProjectService;
 use App\Entity\ProjectSubscription;
 use App\Service\ProjectFeatureGate;
@@ -79,7 +80,7 @@ class ProjectController extends AbstractController
             ->leftJoin('p.projectMemberships', 'pm')
             ->leftJoin('pm.user', 'mu') // miembro
             ->leftJoin('p.user', 'cu')  // creador
-            ->leftJoin('p.subscription', 'sub')
+            ->leftJoin('p.subscriptions', 'sub')
             ->addSelect('pm', 'mu', 'cu', 'sub');
 
         // Alcance por rol
@@ -155,7 +156,7 @@ class ProjectController extends AbstractController
             ->getResult();
 
         foreach ($filteredProjects as $project) {
-            $projectTierCode = $this->featureGate->getTier($project);
+            $projectTierCode = $this->featureGate->getTier($project, CommercialPhase::ELABORATION);
             if (!isset($tierCounts[$projectTierCode])) {
                 $tierCounts[$projectTierCode] = 0;
             }
@@ -256,8 +257,8 @@ class ProjectController extends AbstractController
                 'totalProjects' => $total,
                 'pageProjects' => count($dashboardProjects),
                 'activeProject' => $activeProject,
-                'activeProjectTierLabel' => $activeProject ? $this->featureGate->getPlanLabel($activeProject) : null,
-                'activeProjectTierCode' => $activeProject ? $this->featureGate->getTier($activeProject) : null,
+                'activeProjectTierLabel' => $activeProject ? $this->featureGate->getPlanLabel($activeProject, CommercialPhase::ELABORATION) : null,
+                'activeProjectTierCode' => $activeProject ? $this->featureGate->getTier($activeProject, CommercialPhase::ELABORATION) : null,
                 'activeProjectPlanStatus' => $activePlan?->getStatus(),
                 'activeProjectPlanStatusLabel' => $activePlan ? $this->t->trans('backend.plan.status.' . $activePlan->getStatus()) : null,
                 'activeProjectPlanMeasures' => $activePlan ? $activePlan->getPlanMeasures()->count() : 0,
@@ -337,8 +338,8 @@ class ProjectController extends AbstractController
             'country' => $project->getCountry(),
             'ownerLabel' => $this->formatProjectOwner($project),
             'tierCode' => $projectTierCode,
-            'tierLabel' => $this->featureGate->getPlanLabel($project),
-            'tierDescription' => $this->featureGate->getPlanDescription($project),
+            'tierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
+            'tierDescription' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
             'isActive' => $isActive,
             'createdAt' => $project->getCreatedAt(),
             'plan' => [
@@ -557,9 +558,9 @@ class ProjectController extends AbstractController
             'edit' => true,
             'project' => $project,
             'lockedPhases' => $lockedPhases,
-            'projectTier' => $this->featureGate->getTier($project),
-            'projectTierLabel' => $this->featureGate->getPlanLabel($project),
-            'projectTierSummary' => $this->featureGate->getPlanDescription($project),
+            'projectTier' => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
+            'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
+            'projectTierSummary' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
             'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', [
                 'id' => $project->getId(),
                 'from' => 'project',
@@ -576,9 +577,9 @@ class ProjectController extends AbstractController
 
         return $this->render('backend/project/created.html.twig', [
             'project' => $project,
-            'projectTier' => $this->featureGate->getTier($project),
-            'projectTierLabel' => $this->featureGate->getPlanLabel($project),
-            'projectTierSummary' => $this->featureGate->getPlanDescription($project),
+            'projectTier' => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
+            'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
+            'projectTierSummary' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
             'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', [
                 'id' => $project->getId(),
                 'from' => 'project',
@@ -697,10 +698,11 @@ class ProjectController extends AbstractController
 
     private function ensureBasicSubscription(Project $project): ProjectSubscription
     {
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         if (!$subscription) {
             $subscription = new ProjectSubscription();
-            $project->setSubscription($subscription);
+            $subscription->setPhase(CommercialPhase::ELABORATION);
+            $project->addSubscription($subscription);
         }
 
         $subscription
@@ -725,7 +727,8 @@ class ProjectController extends AbstractController
 
     private function syncCommercialTier(Project $project, string $tier, EntityManagerInterface $em): void
     {
-        $subscription = $project->getSubscription() ?? new ProjectSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION) ?? new ProjectSubscription();
+        $subscription->setPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setProject($project)
             ->setTier(in_array($tier, [ProjectSubscription::TIER_BASIC, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO], true) ? $tier : ProjectSubscription::TIER_BASIC)
@@ -743,8 +746,8 @@ class ProjectController extends AbstractController
             ->setPaidAt(null)
             ->setTargetTier(null);
 
-        if (!$project->getSubscription()) {
-            $project->setSubscription($subscription);
+        if (!$project->getSubscriptionForPhase(CommercialPhase::ELABORATION)) {
+            $project->addSubscription($subscription);
             $em->persist($subscription);
         }
     }

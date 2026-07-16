@@ -5,6 +5,7 @@ namespace App\Tests\Service;
 use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Service\StripeInvoiceStorageService;
 use PHPUnit\Framework\TestCase;
@@ -433,11 +434,12 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         $this->setEntityId($project, 86);
 
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setProject($project)
             ->setStripeInvoicePdfUrl('https://stripe.test/invoice.pdf')
             ->setStripeInvoiceId('in_test_86');
 
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         return $subscription;
     }

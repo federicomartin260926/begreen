@@ -5,8 +5,10 @@ namespace App\Service;
 use App\Entity\CommercialPlan;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\ProjectSubscriptionRepository;
+use LogicException;
 
 final class CommercialPlanResolver
 {
@@ -20,69 +22,74 @@ final class CommercialPlanResolver
     ) {
     }
 
-    public function getSubscription(Project $project): ?ProjectSubscription
+    public function getSubscription(Project $project, CommercialPhase $phase): ?ProjectSubscription
     {
-        return $project->getSubscription() ?? $this->subscriptionRepository->findOneByProject($project);
+        return $project->getSubscriptionForPhase($phase)
+            ?? $this->subscriptionRepository->findOneByProjectAndPhase($project, $phase);
     }
 
-    public function getTierCode(Project $project): string
+    public function getTierCode(Project $project, CommercialPhase $phase): string
     {
-        return $this->normalizeCode($this->getSubscription($project)?->getTier());
+        $subscription = $this->getSubscription($project, $phase);
+
+        if (!$subscription instanceof ProjectSubscription) {
+            return self::BASIC_CODE;
+        }
+
+        return $this->normalizeCode($subscription->getTier());
     }
 
-    public function getPlanForProject(Project $project): CommercialPlan
+    public function getPlanForProject(Project $project, CommercialPhase $phase): CommercialPlan
     {
-        return $this->getPlanByCode($this->getTierCode($project));
+        return $this->getPlanByCode($phase, $this->getTierCode($project, $phase));
     }
 
-    public function getPlanByCode(string $code): CommercialPlan
+    public function getPlanByCode(CommercialPhase $phase, string $code): CommercialPlan
     {
         $normalizedCode = $this->normalizeCode($code);
-        $plan = $this->commercialPlanRepository->findActiveByCode($normalizedCode);
-        if ($plan instanceof CommercialPlan) {
-            return $plan;
+        $plan = $this->commercialPlanRepository->findActiveByPhaseAndCode($phase, $normalizedCode);
+
+        if (!$plan instanceof CommercialPlan) {
+            throw new LogicException(sprintf(
+                'Missing active commercial plan for phase "%s" and code "%s".',
+                $phase->value,
+                $normalizedCode
+            ));
         }
 
-        if ($normalizedCode !== self::BASIC_CODE) {
-            $basicPlan = $this->commercialPlanRepository->findActiveByCode(self::BASIC_CODE);
-            if ($basicPlan instanceof CommercialPlan) {
-                return $basicPlan;
-            }
-        }
-
-        return $this->createFallbackBasicPlan();
+        return $plan;
     }
 
     /**
      * @return int[]
      */
-    public function getAllowedScores(Project $project): array
+    public function getAllowedScores(Project $project, CommercialPhase $phase): array
     {
-        return $this->getPlanForProject($project)->getAllowedScores();
+        return $this->getPlanForProject($project, $phase)->getAllowedScores();
     }
 
-    public function getMaxEvidenceCount(Project $project): ?int
+    public function getMaxEvidenceCount(Project $project, CommercialPhase $phase): ?int
     {
-        return $this->getPlanForProject($project)->getMaxEvidenceCount();
+        return $this->getPlanForProject($project, $phase)->getMaxEvidenceCount();
     }
 
-    public function hasWatermark(Project $project): bool
+    public function hasWatermark(Project $project, CommercialPhase $phase): bool
     {
-        return $this->getPlanForProject($project)->isWatermarkEnabled();
+        return $this->getPlanForProject($project, $phase)->isWatermarkEnabled();
     }
 
-    public function canUseFeature(Project $project, string $feature): bool
+    public function canUseFeature(Project $project, CommercialPhase $phase, string $feature): bool
     {
-        return (bool) $this->getPlanForProject($project)->getFeature($feature, false);
+        return (bool) $this->getPlanForProject($project, $phase)->getFeature($feature, false);
     }
 
-    public function getUpgradeTarget(Project $project, string $feature): ?string
+    public function getUpgradeTarget(Project $project, CommercialPhase $phase, string $feature): ?string
     {
-        if ($this->canUseFeature($project, $feature)) {
+        if ($this->canUseFeature($project, $phase, $feature)) {
             return null;
         }
 
-        foreach ($this->getActivePlansOrdered() as $plan) {
+        foreach ($this->getActivePlansOrdered($phase) as $plan) {
             if ((bool) $plan->getFeature($feature, false)) {
                 return $plan->getCode();
             }
@@ -91,11 +98,11 @@ final class CommercialPlanResolver
         return null;
     }
 
-    public function getFeatureState(Project $project, string $feature): array
+    public function getFeatureState(Project $project, CommercialPhase $phase, string $feature): array
     {
-        $requiredTier = $this->getUpgradeTarget($project, $feature);
-        $enabled = $this->canUseFeature($project, $feature);
-        $visible = $this->isFeatureKnown($feature);
+        $requiredTier = $this->getUpgradeTarget($project, $phase, $feature);
+        $enabled = $this->canUseFeature($project, $phase, $feature);
+        $visible = $this->isFeatureKnown($phase, $feature);
 
         return [
             'visible' => $visible,
@@ -103,83 +110,44 @@ final class CommercialPlanResolver
             'requiredTier' => $requiredTier,
             'reason' => $enabled || $requiredTier === null
                 ? null
-                : sprintf('Disponible en %s', $this->getPlanByCode($requiredTier)->getName()),
+                : sprintf('Disponible en %s', $this->getPlanByCode($phase, $requiredTier)->getName()),
         ];
     }
 
-    public function getPlanLabel(Project $project): string
+    public function getPlanLabel(Project $project, CommercialPhase $phase): string
     {
-        return $this->getPlanForProject($project)->getName();
+        return $this->getPlanForProject($project, $phase)->getName();
     }
 
-    public function getPlanDescription(Project $project): ?string
+    public function getPlanDescription(Project $project, CommercialPhase $phase): ?string
     {
-        return $this->getPlanForProject($project)->getDescription();
+        return $this->getPlanForProject($project, $phase)->getDescription();
     }
 
-    private function normalizeCode(?string $code): string
+    private function normalizeCode(string $code): string
     {
-        $normalized = strtolower(trim((string) $code));
-
-        return match ($normalized) {
-            self::STANDARD_CODE, self::PRO_CODE => $normalized,
-            default => self::BASIC_CODE,
-        };
+        return strtolower(trim($code));
     }
 
     /**
      * @return CommercialPlan[]
      */
-    private function getActivePlansOrdered(): array
+    private function getActivePlansOrdered(CommercialPhase $phase): array
     {
-        return $this->commercialPlanRepository->findActiveOrdered();
+        return array_values(array_filter(
+            $this->commercialPlanRepository->findActiveOrdered(),
+            static fn (CommercialPlan $plan): bool => $plan->getPhase() === $phase
+        ));
     }
 
-    private function isFeatureKnown(string $feature): bool
+    private function isFeatureKnown(CommercialPhase $phase, string $feature): bool
     {
-        foreach ($this->getActivePlansOrdered() as $plan) {
+        foreach ($this->getActivePlansOrdered($phase) as $plan) {
             if ($plan->hasFeature($feature)) {
                 return true;
             }
         }
 
-        return $this->createFallbackBasicPlan()->hasFeature($feature);
-    }
-
-    private function createFallbackBasicPlan(): CommercialPlan
-    {
-        return (new CommercialPlan())
-            ->setCode(self::BASIC_CODE)
-            ->setName('Basic')
-            ->setDescription(null)
-            ->setPriceAmount(0)
-            ->setPriceCurrency('EUR')
-            ->setMaxEvidenceCount(10)
-            ->setWatermarkEnabled(true)
-            ->setActive(true)
-            ->setSortOrder(1)
-            ->setFeatures([
-                'allowed_scores' => [4, 5],
-                'sustainability_plan.unified_pdf' => true,
-                'sustainability_plan.evidence_upload' => true,
-                'sustainability_plan.watermark_free_pdf' => false,
-                'sustainability_plan.department_pdf' => false,
-                'sustainability_plan.export.department_pdf' => false,
-                'sustainability_plan.history' => false,
-                'sustainability_plan.advanced_exports' => false,
-                'sustainability_plan.export.category' => false,
-                'sustainability_plan.export.department' => false,
-                'sustainability_plan.export.impact_area' => false,
-                'sustainability_plan.export.triple_balance' => false,
-                'sustainability_plan.export.ods' => false,
-                'sustainability_plan.export.excel' => false,
-                'sustainability_plan.public_comments' => false,
-                'sustainability_plan.internal_notes' => false,
-                'sustainability_plan.responsibles' => false,
-                'sustainability_plan.checklist' => false,
-                'sustainability_plan.custom_measures' => false,
-                'sustainability_plan.validation_summary' => false,
-                'sustainability_plan.branding' => false,
-            ]);
+        return false;
     }
 }

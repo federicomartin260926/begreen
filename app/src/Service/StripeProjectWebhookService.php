@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Plan;
+use App\Enum\CommercialPhase;
 use App\Repository\PlanRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\ProjectSubscriptionRepository;
@@ -164,7 +165,7 @@ final class StripeProjectWebhookService
             return null;
         }
 
-        return $project->getSubscription();
+        return $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
     }
 
     private function resolveTargetTier(array $sessionData, ProjectSubscription $subscription): string

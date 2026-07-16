@@ -10,6 +10,7 @@ use App\Entity\Protocol;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\SustainabilityPlanBlockAnswer;
+use App\Enum\CommercialPhase;
 use App\Repository\MeasureRepository;
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\ProjectFeatureGate;
@@ -38,7 +39,7 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
         self::assertTrue($service->syncStatus($plan, $project));
         self::assertSame('completo', $plan->getStatus());
 
-        $project->getSubscription()?->setTier(ProjectSubscription::TIER_STANDARD);
+        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setTier(ProjectSubscription::TIER_STANDARD);
 
         self::assertFalse($service->syncStatus($plan, $project));
         self::assertSame('incompleto', $plan->getStatus());
@@ -63,7 +64,7 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
         self::assertTrue($service->syncStatus($plan, $project));
         self::assertSame('completo', $plan->getStatus());
 
-        $project->getSubscription()?->setTier(ProjectSubscription::TIER_STANDARD);
+        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setTier(ProjectSubscription::TIER_STANDARD);
 
         self::assertTrue($service->syncStatus($plan, $project));
         self::assertSame('completo', $plan->getStatus());

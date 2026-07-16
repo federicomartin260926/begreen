@@ -7,6 +7,7 @@ use App\Entity\CommercialPlan;
 use App\Entity\Plan;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
+use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
 use App\Tests\Support\CommercialPlanTestHelpers;
@@ -140,9 +141,11 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
     private function makeCommercialPlanRepository(array $plans): CommercialPlanRepository
     {
         $repository = $this->createMock(CommercialPlanRepository::class);
-        $repository->method('findActiveByCode')->willReturnCallback(
-            static function (string $code) use ($plans): ?CommercialPlan {
-                return $plans[strtolower(trim($code))] ?? null;
+        $repository->method('findActiveByPhaseAndCode')->willReturnCallback(
+            static function (CommercialPhase $phase, string $code) use ($plans): ?CommercialPlan {
+                return $phase === CommercialPhase::ELABORATION
+                    ? ($plans[strtolower(trim($code))] ?? null)
+                    : null;
             }
         );
 

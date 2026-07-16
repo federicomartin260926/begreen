@@ -9,6 +9,7 @@ use App\Entity\PlanMeasure;
 use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Entity\Protocol;
 use App\Repository\MeasureRepository;
 use App\Service\PlanMeasureCatalogResolver;
@@ -175,10 +176,11 @@ final class SustainabilityCommitmentLevelServiceTest extends TestCase
 
         $project = new Project();
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier(ProjectSubscription::TIER_PRO)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_MANUAL);
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         $plan = (new Plan())
             ->setProject($project)

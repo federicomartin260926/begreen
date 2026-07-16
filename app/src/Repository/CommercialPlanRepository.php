@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\CommercialPlan;
+use App\Enum\CommercialPhase;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -16,10 +17,11 @@ class CommercialPlanRepository extends ServiceEntityRepository
         parent::__construct($registry, CommercialPlan::class);
     }
 
-    public function findActiveByCode(string $code): ?CommercialPlan
+    public function findActiveByPhaseAndCode(CommercialPhase $phase, string $code): ?CommercialPlan
     {
         return $this->findOneBy([
-            'code' => $code,
+            'phase' => $phase,
+            'code' => strtolower(trim($code)),
             'active' => true,
         ]);
     }
@@ -32,7 +34,8 @@ class CommercialPlanRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('p')
             ->andWhere('p.active = :active')
             ->setParameter('active', true)
-            ->orderBy('p.sortOrder', 'ASC')
+            ->orderBy('p.phase', 'ASC')
+            ->addOrderBy('p.sortOrder', 'ASC')
             ->addOrderBy('p.id', 'ASC')
             ->getQuery()
             ->getResult();

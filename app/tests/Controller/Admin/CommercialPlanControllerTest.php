@@ -4,6 +4,7 @@ namespace App\Tests\Controller\Admin;
 
 use App\Controller\Admin\CommercialPlanController;
 use App\Entity\CommercialPlan;
+use App\Enum\CommercialPhase;
 use App\Form\CommercialPlanType;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -32,6 +33,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
     {
         $container = self::getContainer();
         $plan = (new CommercialPlan())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setCode('pro')
             ->setName('Pro')
             ->setDescription('Plan intermedio.')
@@ -127,6 +129,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
         $container = self::getContainer();
 
         $plan = (new CommercialPlan())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setCode('pro-test')
             ->setName('Pro')
             ->setDescription('Plan avanzado.')
@@ -198,6 +201,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
         $formFactory = $container->get('form.factory');
 
         $basicPlan = (new CommercialPlan())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setCode('basic')
             ->setName('Basic')
             ->setDescription('Plan gratuito.')
@@ -212,6 +216,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
             ->setFeatures([]);
 
         $standardPlan = (new CommercialPlan())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setCode('standard')
             ->setName('Standard')
             ->setDescription('Plan estándar.')
@@ -226,6 +231,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
             ->setFeatures([]);
 
         $proPlan = (new CommercialPlan())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setCode('pro')
             ->setName('Pro')
             ->setDescription('Plan Pro.')
@@ -255,5 +261,25 @@ final class CommercialPlanControllerTest extends KernelTestCase
         self::assertArrayNotHasKey('stripeUpgradeFromStandardPriceId', $basicForm->children);
         self::assertArrayNotHasKey('stripeUpgradeFromStandardPriceId', $standardForm->children);
         self::assertArrayHasKey('stripeUpgradeFromStandardPriceId', $proForm->children);
+    }
+
+    public function testCommercialPlanCannotBePersistedWithoutPhase(): void
+    {
+        $entityManager = self::getContainer()->get('doctrine')->getManager();
+        $plan = (new CommercialPlan())
+            ->setCode('test-plan')
+            ->setName('Test plan')
+            ->setDescription('Temporary plan for validation.')
+            ->setPriceAmount(0)
+            ->setPriceCurrency('EUR')
+            ->setMaxEvidenceCount(0)
+            ->setWatermarkEnabled(false)
+            ->setActive(true)
+            ->setSortOrder(99)
+            ->setFeatures([]);
+
+        $this->expectException(\LogicException::class);
+        $entityManager->persist($plan);
+        $entityManager->flush();
     }
 }

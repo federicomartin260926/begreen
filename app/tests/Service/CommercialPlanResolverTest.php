@@ -4,6 +4,7 @@ namespace App\Tests\Service;
 
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use PHPUnit\Framework\TestCase;
 
@@ -16,13 +17,13 @@ final class CommercialPlanResolverTest extends TestCase
         $resolver = $this->makeCommercialPlanResolver($this->makeDefaultCommercialPlans());
         $project = new Project();
 
-        self::assertSame(ProjectSubscription::TIER_BASIC, $resolver->getTierCode($project));
-        self::assertSame([4, 5], $resolver->getAllowedScores($project));
-        self::assertTrue($resolver->hasWatermark($project));
-        self::assertSame(10, $resolver->getMaxEvidenceCount($project));
-        self::assertFalse($resolver->canUseFeature($project, 'sustainability_plan.department_pdf'));
-        self::assertFalse($resolver->canUseFeature($project, 'sustainability_plan.custom_comments'));
-        self::assertSame('Basic', $resolver->getPlanLabel($project));
+        self::assertSame(ProjectSubscription::TIER_BASIC, $resolver->getTierCode($project, CommercialPhase::ELABORATION));
+        self::assertSame([4, 5], $resolver->getAllowedScores($project, CommercialPhase::ELABORATION));
+        self::assertTrue($resolver->hasWatermark($project, CommercialPhase::ELABORATION));
+        self::assertSame(10, $resolver->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
+        self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
+        self::assertSame('Basic', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 
     public function testStandardPlanRules(): void
@@ -30,14 +31,14 @@ final class CommercialPlanResolverTest extends TestCase
         $resolver = $this->makeCommercialPlanResolver($this->makeDefaultCommercialPlans());
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
 
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $resolver->getTierCode($project));
-        self::assertSame([3, 4, 5], $resolver->getAllowedScores($project));
-        self::assertFalse($resolver->hasWatermark($project));
-        self::assertNull($resolver->getMaxEvidenceCount($project));
-        self::assertTrue($resolver->canUseFeature($project, 'sustainability_plan.department_pdf'));
-        self::assertFalse($resolver->canUseFeature($project, 'sustainability_plan.custom_comments'));
-        self::assertFalse($resolver->canUseFeature($project, 'sustainability_plan.export.excel'));
-        self::assertSame('Standard', $resolver->getPlanLabel($project));
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $resolver->getTierCode($project, CommercialPhase::ELABORATION));
+        self::assertSame([3, 4, 5], $resolver->getAllowedScores($project, CommercialPhase::ELABORATION));
+        self::assertFalse($resolver->hasWatermark($project, CommercialPhase::ELABORATION));
+        self::assertNull($resolver->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
+        self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
+        self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
+        self::assertSame('Standard', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 
     public function testProPlanRules(): void
@@ -45,21 +46,23 @@ final class CommercialPlanResolverTest extends TestCase
         $resolver = $this->makeCommercialPlanResolver($this->makeDefaultCommercialPlans());
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
 
-        self::assertSame(ProjectSubscription::TIER_PRO, $resolver->getTierCode($project));
-        self::assertSame([1, 2, 3, 4, 5], $resolver->getAllowedScores($project));
-        self::assertFalse($resolver->hasWatermark($project));
-        self::assertNull($resolver->getMaxEvidenceCount($project));
-        self::assertTrue($resolver->canUseFeature($project, 'sustainability_plan.export.excel'));
-        self::assertTrue($resolver->canUseFeature($project, 'sustainability_plan.branding'));
-        self::assertTrue($resolver->canUseFeature($project, 'sustainability_plan.custom_comments'));
-        self::assertSame('Pro', $resolver->getPlanLabel($project));
+        self::assertSame(ProjectSubscription::TIER_PRO, $resolver->getTierCode($project, CommercialPhase::ELABORATION));
+        self::assertSame([1, 2, 3, 4, 5], $resolver->getAllowedScores($project, CommercialPhase::ELABORATION));
+        self::assertFalse($resolver->hasWatermark($project, CommercialPhase::ELABORATION));
+        self::assertNull($resolver->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
+        self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.branding'));
+        self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
+        self::assertSame('Pro', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 
-    public function testUnknownPlanCodeFallsBackToBasic(): void
+    public function testUnknownPlanCodeFailsWithConfigurationError(): void
     {
         $resolver = $this->makeCommercialPlanResolver($this->makeDefaultCommercialPlans());
 
-        self::assertSame('basic', $resolver->getPlanByCode('unknown-tier')->getCode());
-        self::assertSame([4, 5], $resolver->getPlanByCode('unknown-tier')->getAllowedScores());
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Missing active commercial plan for phase "elaboration" and code "unknown-tier".');
+
+        $resolver->getPlanByCode(CommercialPhase::ELABORATION, 'unknown-tier');
     }
 }

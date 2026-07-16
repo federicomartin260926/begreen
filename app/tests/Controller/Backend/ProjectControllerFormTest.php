@@ -5,6 +5,7 @@ namespace App\Tests\Controller\Backend;
 use App\Controller\Backend\ProjectController;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Entity\User;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Service\ActiveProjectService;
@@ -68,8 +69,8 @@ final class ProjectControllerFormTest extends KernelTestCase
 
         $project = $entityManager->getRepository(Project::class)->findOneBy(['name' => 'Proyecto wizard test']);
         self::assertInstanceOf(Project::class, $project);
-        self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscription()?->getTier());
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscription()?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
     }
 
     public function testEditFormShowsCurrentPlanOutsideWizard(): void
@@ -214,11 +215,12 @@ final class ProjectControllerFormTest extends KernelTestCase
             ->setUser($owner);
 
         $subscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::ELABORATION)
             ->setTier(ProjectSubscription::TIER_BASIC)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_SYSTEM);
 
-        $project->setSubscription($subscription);
+        $project->addSubscription($subscription);
 
         $entityManager->persist($project);
         $entityManager->flush();

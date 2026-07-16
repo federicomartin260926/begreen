@@ -8,6 +8,7 @@ use App\Entity\PlanMeasure;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
+use App\Enum\CommercialPhase;
 use App\Repository\MeasureRepository;
 use App\Repository\PlanRepository;
 use App\Repository\ProjectRepository;
@@ -70,14 +71,14 @@ final class SeedSustainabilityPlanCommand extends Command
             return Command::FAILURE;
         }
 
-        $subscription = $this->commercialPlanResolver->getSubscription($project);
+        $subscription = $this->commercialPlanResolver->getSubscription($project, CommercialPhase::ELABORATION);
         if (!$subscription instanceof ProjectSubscription) {
             $io->error(sprintf('El proyecto %d no tiene un plan comercial asignado.', $projectId));
 
             return Command::FAILURE;
         }
 
-        $commercialPlan = $this->commercialPlanResolver->getPlanForProject($project);
+        $commercialPlan = $this->commercialPlanResolver->getPlanForProject($project, CommercialPhase::ELABORATION);
 
         $plan = $this->planRepository->findOneBy(['project' => $project]);
         if (!$plan instanceof Plan) {

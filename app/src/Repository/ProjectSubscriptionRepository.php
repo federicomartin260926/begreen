@@ -2,8 +2,9 @@
 
 namespace App\Repository;
 
-use App\Entity\Project;
 use App\Entity\ProjectSubscription;
+use App\Entity\Project;
+use App\Enum\CommercialPhase;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -17,9 +18,12 @@ class ProjectSubscriptionRepository extends ServiceEntityRepository
         parent::__construct($registry, ProjectSubscription::class);
     }
 
-    public function findOneByProject(Project $project): ?ProjectSubscription
+    public function findOneByProjectAndPhase(Project $project, CommercialPhase $phase): ?ProjectSubscription
     {
-        return $this->findOneBy(['project' => $project]);
+        return $this->findOneBy([
+            'project' => $project,
+            'phase' => $phase,
+        ]);
     }
 
     public function findOneByStripeCheckoutSessionId(string $sessionId): ?ProjectSubscription

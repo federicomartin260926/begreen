@@ -7,6 +7,7 @@ use App\Entity\Plan;
 use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
 use App\Repository\PlanRepository;
@@ -50,7 +51,7 @@ final class ProjectBillingController extends AbstractController
 
         $this->activeProjectService->setActiveProject($project);
 
-        $subscription = $project->getSubscription();
+        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $plan = $this->planRepository->findOneBy(['project' => $project]);
         $availableUpgradeTargets = $this->checkoutService->getAvailableUpgradeTargets($project);
         $hasPendingUpgrade = $subscription
@@ -262,7 +263,7 @@ final class ProjectBillingController extends AbstractController
                 continue;
             }
 
-            $plan = $commercialPlanRepository->findActiveByCode($targetTier);
+            $plan = $commercialPlanRepository->findActiveByPhaseAndCode(CommercialPhase::ELABORATION, $targetTier);
             if (!$plan instanceof CommercialPlan) {
                 continue;
             }
@@ -365,7 +366,7 @@ final class ProjectBillingController extends AbstractController
 
     private function resolveProjectTier(Project $project): string
     {
-        return $project->getSubscription()?->getTier() ?? ProjectSubscription::TIER_BASIC;
+        return $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier() ?? ProjectSubscription::TIER_BASIC;
     }
 
     private function formatPlanPrice(?int $priceAmount, string $currency): string

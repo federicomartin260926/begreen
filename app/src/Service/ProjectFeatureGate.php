@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Project;
+use App\Enum\CommercialPhase;
 
 final class ProjectFeatureGate
 {
@@ -10,68 +11,63 @@ final class ProjectFeatureGate
     {
     }
 
-    public function getSubscription(Project $project): ?\App\Entity\ProjectSubscription
+    public function getTier(Project $project, CommercialPhase $phase): string
     {
-        return $this->commercialPlanResolver->getSubscription($project);
+        return $this->commercialPlanResolver->getTierCode($project, $phase);
     }
 
-    public function getTier(Project $project): string
+    public function isBasic(Project $project, CommercialPhase $phase): bool
     {
-        return $this->commercialPlanResolver->getTierCode($project);
+        return $this->getTier($project, $phase) === 'basic';
     }
 
-    public function isBasic(Project $project): bool
+    public function isStandard(Project $project, CommercialPhase $phase): bool
     {
-        return $this->getTier($project) === 'basic';
+        return $this->getTier($project, $phase) === 'standard';
     }
 
-    public function isStandard(Project $project): bool
+    public function isPro(Project $project, CommercialPhase $phase): bool
     {
-        return $this->getTier($project) === 'standard';
+        return $this->getTier($project, $phase) === 'pro';
     }
 
-    public function isPro(Project $project): bool
+    public function getAllowedScores(Project $project, CommercialPhase $phase): array
     {
-        return $this->getTier($project) === 'pro';
+        return $this->commercialPlanResolver->getAllowedScores($project, $phase);
     }
 
-    public function getAllowedScores(Project $project): array
+    public function getMaxEvidenceCount(Project $project, CommercialPhase $phase): ?int
     {
-        return $this->commercialPlanResolver->getAllowedScores($project);
+        return $this->commercialPlanResolver->getMaxEvidenceCount($project, $phase);
     }
 
-    public function getMaxEvidenceCount(Project $project): ?int
+    public function getPlanLabel(Project $project, CommercialPhase $phase): string
     {
-        return $this->commercialPlanResolver->getMaxEvidenceCount($project);
+        return $this->commercialPlanResolver->getPlanLabel($project, $phase);
     }
 
-    public function getPlanLabel(Project $project): string
+    public function getPlanDescription(Project $project, CommercialPhase $phase): ?string
     {
-        return $this->commercialPlanResolver->getPlanLabel($project);
+        return $this->commercialPlanResolver->getPlanDescription($project, $phase);
     }
 
-    public function getPlanDescription(Project $project): ?string
+    public function hasWatermark(Project $project, CommercialPhase $phase): bool
     {
-        return $this->commercialPlanResolver->getPlanDescription($project);
+        return $this->commercialPlanResolver->hasWatermark($project, $phase);
     }
 
-    public function hasWatermark(Project $project): bool
+    public function canUseFeature(Project $project, CommercialPhase $phase, string $feature): bool
     {
-        return $this->commercialPlanResolver->hasWatermark($project);
+        return $this->commercialPlanResolver->canUseFeature($project, $phase, $feature);
     }
 
-    public function canUseFeature(Project $project, string $feature): bool
+    public function getUpgradeTarget(Project $project, CommercialPhase $phase, string $feature): ?string
     {
-        return $this->commercialPlanResolver->canUseFeature($project, $feature);
+        return $this->commercialPlanResolver->getUpgradeTarget($project, $phase, $feature);
     }
 
-    public function getUpgradeTarget(Project $project, string $feature): ?string
+    public function getFeatureState(Project $project, CommercialPhase $phase, string $feature): array
     {
-        return $this->commercialPlanResolver->getUpgradeTarget($project, $feature);
-    }
-
-    public function getFeatureState(Project $project, string $feature): array
-    {
-        return $this->commercialPlanResolver->getFeatureState($project, $feature);
+        return $this->commercialPlanResolver->getFeatureState($project, $phase, $feature);
     }
 }

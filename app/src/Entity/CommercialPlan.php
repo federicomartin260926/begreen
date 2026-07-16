@@ -2,13 +2,16 @@
 
 namespace App\Entity;
 
+use App\Enum\CommercialPhase;
 use App\Entity\Traits\TimestampableTrait;
 use App\Repository\CommercialPlanRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: CommercialPlanRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'commercial_plan')]
+#[ORM\UniqueConstraint(name: 'uniq_commercial_plan_phase_code', columns: ['phase', 'code'])]
 class CommercialPlan
 {
     use TimestampableTrait;
@@ -23,7 +26,11 @@ class CommercialPlan
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\Column(length: 20, unique: true)]
+    #[ORM\Column(type: 'string', length: 20, enumType: CommercialPhase::class)]
+    #[Assert\NotNull]
+    private CommercialPhase $phase;
+
+    #[ORM\Column(length: 20)]
     private string $code = 'basic';
 
     #[ORM\Column(length: 100)]
@@ -62,6 +69,27 @@ class CommercialPlan
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    public function assertPhaseIsSet(): void
+    {
+        if (!isset($this->phase)) {
+            throw new \LogicException('CommercialPlan phase must be set before persisting or updating.');
+        }
+    }
+
+    public function getPhase(): CommercialPhase
+    {
+        return $this->phase;
+    }
+
+    public function setPhase(CommercialPhase $phase): self
+    {
+        $this->phase = $phase;
+
+        return $this;
     }
 
     public function getCode(): string
