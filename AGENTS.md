@@ -77,6 +77,7 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * If a legacy internal label appears in class names, commands or services, treat it as technical debt to remove or neutralize when touching that area.
 * Protocol-specific names such as `Rodaje` may exist as protocol data, fixtures or user-visible protocol names, but not as infrastructure names for the generic measures import/export flow.
 * Do not introduce protocol editions, catalog editions, plan snapshots or measure historical versioning unless explicitly requested later.
+* Before changing plan states, navigation, filters, charts, execution, incidents, checklist or verification behavior, consult `docs/sustainability-plan-status-model.md` and keep elaboration, implementation and verification as separate dimensions.
 
 ## CodeGraph
 

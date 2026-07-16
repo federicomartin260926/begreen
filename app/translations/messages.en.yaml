@@ -252,10 +252,10 @@ backend:
         public_comments: "Allows adding project-specific comments to measures or plan sections, so the report can fit the real client case."
         internal_notes: "Allows saving private team notes that do not necessarily appear in the final PDF. Useful for internal management and follow-up."
         responsibles: "Allows assigning people or areas responsible for specific measures, so it is clear who must execute or validate each action."
-        checklist: "Turns measures into an operational tracking list, marking tasks, progress or pending items."
-        custom_measures: "Allows creating measures owned by the project, visible only in that plan."
-        validation_summary: "Adds a validation status view/summary: completed, pending and verified measures, evidence and progress level."
-        branding: "Allows customizing the output or presentation with visual identity: logo, brand or client/project elements, depending on what the plan supports."
+        checklist: "Allows an administrator or external verifier to review measures, check their actions and evidence, record the audit result, and validate compliance for certification."
+        custom_measures: "Allows project-specific measures to be created and shown only within its Sustainability Plan."
+        validation_summary: "Adds a validation status view/summary: measures awaiting audit, verified measures, requested corrections, and the overall compliance level."
+        branding: "Allows documents and presentations to be customized with the client or project's visual identity, such as logo, brand and other graphic elements."
     flash:
       updated: "Commercial plan updated successfully."
   measures:
