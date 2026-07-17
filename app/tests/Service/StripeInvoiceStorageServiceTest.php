@@ -59,7 +59,7 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         $session = (object) [
             'id' => 'cs_test_86',
             'payment_status' => 'paid',
-            'amount_total' => 9900,
+            'amount_total' => 2900,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_test_86'],
             'customer' => (object) ['id' => 'cus_test_86'],
@@ -83,7 +83,7 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         self::assertSame('in_test_86', $document->getStripeInvoiceId());
         self::assertSame('cus_test_86', $document->getStripeCustomerId());
         self::assertSame('INV-TEST-86', $document->getPaymentReference());
-        self::assertSame(9900, $document->getAmountCents());
+        self::assertSame(2900, $document->getAmountCents());
         self::assertSame('EUR', $document->getCurrency());
         self::assertSame('https://stripe.test/invoice/view', $document->getHostedInvoiceUrl());
         self::assertSame('https://stripe.test/invoice/pdf', $document->getInvoicePdfUrl());
@@ -147,7 +147,7 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         $session = (object) [
             'id' => 'cs_test_86',
             'payment_status' => 'paid',
-            'amount_total' => 9900,
+            'amount_total' => 2900,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_test_86'],
             'customer' => (object) ['id' => 'cus_test_86'],

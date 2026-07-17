@@ -36,6 +36,9 @@
     </div>
 {% else %}
     {% if userProjects|length > 1 %}
+        {% set fallbackProjectId = activeProject ? activeProject.id : (userProjects|first).id %}
+        {% set selectProjectAction = path('backend_project_select_project', {'id': fallbackProjectId}) %}
+        {% set selectProjectActionBase = selectProjectAction|replace({('/' ~ fallbackProjectId): '/'}) %}
         <div id="projects_select" class="me-1 d-flex align-items-center min-w-0">
             <span
                 class="me-2 flex-shrink-0"
@@ -46,7 +49,8 @@
                 <i class="bi bi-question-circle"></i>
             </span>
             <form method="post"
-                action="{{ path('backend_project_select_project', {'id': 'PROJECT_ID', '_locale': app.request.locale}) }}"
+                action="{{ selectProjectAction }}"
+                data-action-base="{{ selectProjectActionBase }}"
                 class="mb-0">
                 <select name="project_id"
                         class="selectpicker"
@@ -54,7 +58,7 @@
                         data-width="260px"
                         data-style="btn-outline-secondary btn-sm"
                         title="{{ 'backend.projects.select.placeholder'|trans }}"
-                        onchange="this.form.action=this.form.action.replace('PROJECT_ID', this.value); this.form.submit();">
+                        onchange="this.form.action=this.form.dataset.actionBase + this.value; this.form.submit();">
                     {% for p in userProjects %}
                     <option value="{{ p.id }}" {% if activeProject and p.id == activeProject.id %}selected{% endif %}>
                         {{ p.name }}

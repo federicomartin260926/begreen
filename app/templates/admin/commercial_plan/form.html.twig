@@ -17,7 +17,10 @@
                     <h2 class="mb-1">{{ 'backend.commercial_plans.form.heading'|trans({'%name%': plan.name}) }}</h2>
                     <p class="text-muted mb-0">{{ 'backend.commercial_plans.form.subtitle'|trans }}</p>
                 </div>
-                <span class="badge bg-secondary text-uppercase">{{ plan.code }}</span>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="badge bg-secondary text-uppercase">{{ plan.code }}</span>
+                    <span class="badge bg-info text-dark text-uppercase">{{ ('backend.commercial_phases.' ~ plan.phase.value)|trans }}</span>
+                </div>
             </div>
 
             {{ form_start(form) }}

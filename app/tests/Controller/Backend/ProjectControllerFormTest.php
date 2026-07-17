@@ -8,6 +8,7 @@ use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
 use App\Entity\User;
 use App\Repository\ProjectBillingDocumentRepository;
+use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
 use App\Service\ProjectFeatureGate;
 use App\Service\StripeInvoiceStorageService;
@@ -151,16 +152,94 @@ final class ProjectControllerFormTest extends KernelTestCase
         $this->createRequest('backend_project_created', ['id' => $project->getId()]);
 
         $controller = $this->createController();
+        $projectRepository = $entityManager->getRepository(Project::class);
 
-        $response = $controller->created($project, $this->createMock(ActiveProjectService::class));
+        $response = $controller->created($project->getId(), $projectRepository, $this->createMock(ActiveProjectService::class));
         $content = (string) $response->getContent();
 
         self::assertStringContainsString('Proyecto creado correctamente', $content);
-        self::assertStringContainsString('Plan actual', $content);
+        self::assertStringContainsString('Plan de Elaboración', $content);
         self::assertStringContainsString('Basic', $content);
         self::assertStringContainsString('Mejorar plan', $content);
         self::assertStringContainsString('Continuar con plan Basic', $content);
         self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing', $content);
+    }
+
+    public function testCreatedRedirectsWhenProjectDoesNotExist(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $this->setAdminToken($admin);
+        $request = $this->createRequest('backend_project_created', ['id' => 552]);
+
+        $projectRepository = $this->createMock(ProjectRepository::class);
+        $projectRepository->expects(self::once())
+            ->method('find')
+            ->with(552)
+            ->willReturn(null);
+
+        $controller = $this->createController();
+        $response = $controller->created(552, $projectRepository, $this->createMock(ActiveProjectService::class));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/project/', $response->getTargetUrl());
+        self::assertStringNotContainsString('/created', $response->getTargetUrl());
+        self::assertSame(['backend.projects.flash.project_not_found'], $request->getSession()->getFlashBag()->peek('warning'));
+    }
+
+    public function testSelectProjectRedirectsWhenProjectDoesNotExist(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $this->setAdminToken($admin);
+        $request = $this->createRequest('backend_project_select_project', ['id' => 552]);
+
+        $projectRepository = $this->createMock(ProjectRepository::class);
+        $projectRepository->expects(self::once())
+            ->method('find')
+            ->with(552)
+            ->willReturn(null);
+
+        $controller = $this->createController();
+        $response = $controller->selectProject(552, $projectRepository, $this->createMock(ActiveProjectService::class), $request);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/project/', $response->getTargetUrl());
+        self::assertSame(['backend.projects.flash.project_not_found'], $request->getSession()->getFlashBag()->peek('warning'));
+    }
+
+    public function testProjectSelectorRendersNumericActionWithoutPlaceholder(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $this->setAdminToken($admin);
+        $request = $this->createRequest('backend_project_index');
+
+        $projectOne = (new Project())->setName('Proyecto uno');
+        $projectTwo = (new Project())->setName('Proyecto dos');
+        $this->setEntityId($projectOne, 11);
+        $this->setEntityId($projectTwo, 22);
+
+        $twig = $container->get('twig');
+        $twig->addGlobal('userProjects', [$projectOne, $projectTwo]);
+        $twig->addGlobal('activeProject', $projectOne);
+
+        $html = $twig->render('backend/_project_selector.html.twig', [
+            'variant' => 'header',
+            'userProjects' => [$projectOne, $projectTwo],
+            'activeProject' => $projectOne,
+        ]);
+
+        self::assertStringNotContainsString('PROJECT_ID', $html);
+        self::assertStringContainsString('/backend/project/select-project/11', $html);
+        self::assertStringContainsString('data-action-base="/backend/project/select-project/"', $html);
+        self::assertStringContainsString('value="22"', $html);
     }
 
     private function createController(): ProjectController
@@ -303,6 +382,18 @@ final class ProjectControllerFormTest extends KernelTestCase
         $entityManager->flush();
 
         return $project;
+    }
+
+    private function setEntityId(object $entity, int $id): void
+    {
+        $reflection = new \ReflectionClass($entity);
+        if (!$reflection->hasProperty('id')) {
+            return;
+        }
+
+        $property = $reflection->getProperty('id');
+        $property->setAccessible(true);
+        $property->setValue($entity, $id);
     }
 
     private function setAdminToken(User $user): void

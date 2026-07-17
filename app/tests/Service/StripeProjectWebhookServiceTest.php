@@ -37,7 +37,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
             'payment_intent_id' => 'pi_test_123',
             'customer_id' => 'cus_test_123',
             'currency' => 'eur',
-            'amount_total' => 10000,
+            'amount_total' => 2000,
             'payment_status' => 'paid',
             'invoice' => [
                 'id' => 'in_test_123',
@@ -50,7 +50,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
         self::assertSame(ProjectSubscription::TIER_PRO, $subscription->getTier());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $subscription->getStatus());
         self::assertSame(ProjectSubscription::SOURCE_STRIPE, $subscription->getSource());
-        self::assertSame(10000, $subscription->getPaidAmountCents());
+        self::assertSame(2000, $subscription->getPaidAmountCents());
         self::assertSame('EUR', $subscription->getCurrency());
         self::assertSame('INV-2026-001', $subscription->getPaymentReference());
         self::assertSame('cs_test_123', $subscription->getStripeCheckoutSessionId());
@@ -78,7 +78,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
             'target_tier' => ProjectSubscription::TIER_STANDARD,
             'payment_intent_id' => 'pi_test_fallback',
             'currency' => 'eur',
-            'amount_total' => 9900,
+            'amount_total' => 2900,
             'payment_status' => 'paid',
         ]);
 
@@ -106,7 +106,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
             'payment_intent_id' => 'pi_test_123',
             'customer_id' => 'cus_test_123',
             'currency' => 'eur',
-            'amount_total' => 10000,
+            'amount_total' => 2000,
             'payment_status' => 'paid',
             'invoice' => [
                 'id' => 'in_test_123',
@@ -136,7 +136,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
             'payment_intent_id' => 'pi_test_123',
             'customer_id' => 'cus_test_123',
             'currency' => 'eur',
-            'amount_total' => 10000,
+            'amount_total' => 2000,
             'payment_status' => 'paid',
             'invoice' => [
                 'id' => 'in_test_123',

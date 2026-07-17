@@ -40,7 +40,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(9900)
+            ->setPaidAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
             ->setLastPaymentStatus('paid')
@@ -55,7 +55,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $document = $this->createDocument($project, $subscription, 12);
         $document
             ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(9900)
+            ->setAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaymentReference('INV-TEST-86')
             ->setStripeCheckoutSessionId('cs_test_86')
@@ -97,7 +97,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $content = $response->getContent();
 
         self::assertIsString($content);
-        self::assertStringContainsString('Facturación del proyecto', $content);
+        self::assertStringContainsString('Plan de Elaboración contratado', $content);
         self::assertStringContainsString('Documentos de facturación', $content);
         self::assertStringContainsString('Ver factura', $content);
         self::assertStringContainsString('Descargar PDF', $content);
@@ -148,7 +148,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
             ->setTier(ProjectSubscription::TIER_STANDARD)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(9900)
+            ->setPaidAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
             ->setLastPaymentStatus('paid')
@@ -166,7 +166,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $document = $this->createDocument($project, $subscription, 13);
         $document
             ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(9900)
+            ->setAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaymentReference('cs_test_a1LvgirVsq49dTzNPCjqSpsqVAaHQvHFo266VsnvqaVEDIhX8AiLUFxIcE')
             ->setStripeCheckoutSessionId('cs_test_89')
@@ -233,7 +233,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(9900)
+            ->setPaidAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
             ->setLastPaymentStatus('paid');
@@ -328,7 +328,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(9900)
+            ->setPaidAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
             ->setLastPaymentStatus('checkout_created')
@@ -362,7 +362,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
 
         self::assertIsString($content);
         self::assertStringContainsString('Actualización pendiente', $content);
-        self::assertStringContainsString('100,00 €', $content);
+        self::assertStringContainsString('20,00 €', $content);
         self::assertStringContainsString('Actualizar referencias desde Stripe', $content);
     }
 
@@ -376,7 +376,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(9900)
+            ->setPaidAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
             ->setLastPaymentStatus('paid')
@@ -387,7 +387,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $document = $this->createDocument($project, $subscription, 12);
         $document
             ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(9900)
+            ->setAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaymentReference('INV-TEST-88')
             ->setStripeCheckoutSessionId('cs_test_88')
@@ -462,7 +462,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(9900)
+            ->setPaidAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
             ->setLastPaymentStatus('paid')
@@ -474,7 +474,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $document = $this->createDocument($project, $subscription, 14);
         $document
             ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(9900)
+            ->setAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaymentReference('INV-TEST-92')
             ->setStripeCheckoutSessionId('cs_test_92')
@@ -531,7 +531,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $subscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(9900)
+            ->setPaidAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
             ->setLastPaymentStatus('paid')
@@ -544,7 +544,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $document = $this->createDocument($project, $subscription, 15);
         $document
             ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(9900)
+            ->setAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaymentReference('cs_test_93')
             ->setStripeCheckoutSessionId('cs_test_93')

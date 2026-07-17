@@ -73,6 +73,29 @@ final class CommercialPlanFixturesTest extends TestCase
             CommercialPhase::IMPLEMENTATION->value . ':pro',
         ], $keys);
 
+        self::assertSame([
+            'Elaboración Basic',
+            'Elaboración Standard',
+            'Elaboración Pro',
+            'Implementación Basic',
+            'Implementación Standard',
+            'Implementación Pro',
+        ], array_map(static fn (CommercialPlan $plan): string => $plan->getName(), $persistedPlans));
+
+        self::assertSame([
+            0,
+            2900,
+            4900,
+            0,
+            2900,
+            4900,
+        ], array_map(static fn (CommercialPlan $plan): int => $plan->getPriceAmount() ?? -1, $persistedPlans));
+
+        foreach ($persistedPlans as $plan) {
+            self::assertNull($plan->getStripePriceId());
+            self::assertNull($plan->getStripeUpgradeFromStandardPriceId());
+        }
+
         $implementationPlans = [];
         foreach ($persistedPlans as $plan) {
             if ($plan->getPhase() === CommercialPhase::IMPLEMENTATION) {

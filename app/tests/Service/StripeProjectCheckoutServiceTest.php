@@ -85,7 +85,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
         self::assertSame(ProjectSubscription::TIER_PRO, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
         self::assertSame($sessionId, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCheckoutSessionId());
-        self::assertSame(10000, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_PRO));
+        self::assertSame(2000, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_PRO));
     }
 
     public function testBasicProjectCanUpgradeToStandardAndPro(): void
@@ -98,8 +98,8 @@ final class StripeProjectCheckoutServiceTest extends TestCase
 
         self::assertTrue($service->canUpgrade($project, ProjectSubscription::TIER_STANDARD));
         self::assertTrue($service->canUpgrade($project, ProjectSubscription::TIER_PRO));
-        self::assertSame(9900, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_STANDARD));
-        self::assertSame(19900, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_PRO));
+        self::assertSame(2900, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_STANDARD));
+        self::assertSame(4900, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_PRO));
 
         $available = $service->getAvailableUpgradeTargets($project);
         self::assertArrayHasKey(ProjectSubscription::TIER_STANDARD, $available);
@@ -119,13 +119,13 @@ final class StripeProjectCheckoutServiceTest extends TestCase
 
         self::assertFalse($service->canUpgrade($project, ProjectSubscription::TIER_STANDARD));
         self::assertTrue($service->canUpgrade($project, ProjectSubscription::TIER_PRO));
-        self::assertSame(10000, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_PRO));
+        self::assertSame(2000, $service->resolveTargetAmountCents($project, ProjectSubscription::TIER_PRO));
 
         $available = $service->getAvailableUpgradeTargets($project);
         self::assertArrayNotHasKey(ProjectSubscription::TIER_STANDARD, $available);
         self::assertArrayHasKey(ProjectSubscription::TIER_PRO, $available);
         self::assertSame('price_upgrade', $available[ProjectSubscription::TIER_PRO]['priceId']);
-        self::assertSame(10000, $available[ProjectSubscription::TIER_PRO]['amountCents']);
+        self::assertSame(2000, $available[ProjectSubscription::TIER_PRO]['amountCents']);
     }
 
     public function testStandardProjectDoesNotOfferProUpgradeWithoutDifferentialPriceId(): void
@@ -219,7 +219,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_paid_1',
             'payment_status' => 'paid',
-            'amount_total' => 9900,
+            'amount_total' => 2900,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_paid_1'],
             'customer' => (object) ['id' => 'cus_paid_1'],
@@ -258,7 +258,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         self::assertContains('customer', $client->checkout->sessions->retrieveCalls[0]['options']['expand']);
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
-        self::assertSame(9900, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getPaidAmountCents());
+        self::assertSame(2900, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getPaidAmountCents());
         self::assertSame('EUR', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getCurrency());
         self::assertSame('INV-2026-001', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getPaymentReference());
         self::assertSame('paid', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getLastPaymentStatus());
@@ -277,7 +277,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_paid_no_invoice',
             'payment_status' => 'paid',
-            'amount_total' => 9900,
+            'amount_total' => 2900,
             'currency' => 'eur',
             'payment_intent' => 'pi_paid_no_invoice',
             'customer' => 'cus_paid_no_invoice',
@@ -374,7 +374,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_active_1',
             'payment_status' => 'paid',
-            'amount_total' => 19900,
+            'amount_total' => 4900,
             'currency' => 'eur',
             'metadata' => (object) [
                 'project_id' => '42',
@@ -427,7 +427,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_invoice_refetch_1',
             'payment_status' => 'paid',
-            'amount_total' => 19900,
+            'amount_total' => 4900,
             'currency' => 'eur',
             'metadata' => (object) [
                 'project_id' => '42',
@@ -467,7 +467,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_paid_upgrade_pending',
             'payment_status' => 'paid',
-            'amount_total' => 10000,
+            'amount_total' => 2000,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_paid_upgrade_pending'],
             'metadata' => (object) [
@@ -504,7 +504,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_paid_upgrade_complete',
             'payment_status' => 'paid',
-            'amount_total' => 10000,
+            'amount_total' => 2000,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_paid_upgrade_complete'],
             'metadata' => (object) [

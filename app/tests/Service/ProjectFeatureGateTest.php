@@ -19,7 +19,7 @@ final class ProjectFeatureGateTest extends TestCase
         $basicDefinition = $this->defaultCommercialPlanDefinition('basic');
 
         self::assertSame([4, 5], $gate->getAllowedScores($project, CommercialPhase::ELABORATION));
-        self::assertSame('Basic', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame('Elaboración Basic', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
         self::assertSame($basicDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
         self::assertTrue($gate->hasWatermark($project, CommercialPhase::ELABORATION));
         self::assertSame(10, $gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
@@ -60,7 +60,7 @@ final class ProjectFeatureGateTest extends TestCase
         $standardDefinition = $this->defaultCommercialPlanDefinition('standard');
 
         self::assertSame([3, 4, 5], $gate->getAllowedScores($project, CommercialPhase::ELABORATION));
-        self::assertSame('Standard', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame('Elaboración Standard', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
         self::assertSame($standardDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
         self::assertFalse($gate->hasWatermark($project, CommercialPhase::ELABORATION));
         self::assertNull($gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
@@ -80,7 +80,7 @@ final class ProjectFeatureGateTest extends TestCase
         $proDefinition = $this->defaultCommercialPlanDefinition('pro');
 
         self::assertSame([1, 2, 3, 4, 5], $gate->getAllowedScores($project, CommercialPhase::ELABORATION));
-        self::assertSame('Pro', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame('Elaboración Pro', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
         self::assertSame($proDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
         self::assertFalse($gate->hasWatermark($project, CommercialPhase::ELABORATION));
         self::assertNull($gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));

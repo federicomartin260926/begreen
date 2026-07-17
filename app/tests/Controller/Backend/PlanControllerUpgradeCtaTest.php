@@ -65,7 +65,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
             CommercialPhase::ELABORATION,
             ProjectSubscription::TIER_STANDARD,
             [
-                ProjectSubscription::TIER_PRO => ['priceId' => 'price_upgrade', 'amountCents' => 10000],
+                ProjectSubscription::TIER_PRO => ['priceId' => 'price_upgrade', 'amountCents' => 2000],
             ],
             $this->makeCommercialPlanRepository($plans),
             $this->makeMeasureRepository()
@@ -76,7 +76,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         self::assertSame(ProjectSubscription::TIER_PRO, $result['options'][0]['targetTier']);
         self::assertSame('Pro', $result['options'][0]['name']);
         self::assertStringContainsString('Actualizar a Pro', $result['options'][0]['ctaLabel']);
-        self::assertStringContainsString('100,00 €', $result['options'][0]['ctaLabel']);
+        self::assertStringContainsString('20,00 €', $result['options'][0]['ctaLabel']);
         self::assertSame(200, $result['options'][0]['measureCount']);
     }
 

@@ -54,7 +54,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_success_1',
             'payment_status' => 'paid',
-            'amount_total' => 9900,
+            'amount_total' => 2900,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_success_1'],
             'metadata' => (object) [
@@ -98,7 +98,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_success_pending',
             'payment_status' => 'paid',
-            'amount_total' => 10000,
+            'amount_total' => 2000,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_success_pending'],
             'metadata' => (object) [
@@ -137,7 +137,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_manual_1',
             'payment_status' => 'paid',
-            'amount_total' => 9900,
+            'amount_total' => 2900,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_manual_1'],
             'metadata' => (object) [
@@ -176,7 +176,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $container = self::getContainer();
 
         $project = $this->createProject(44, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO, 'cs_cancel_1');
-        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setPaidAmountCents(9900);
+        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setPaidAmountCents(2900);
         $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setLastPaymentStatus('paid');
 
         $entityManager = $this->createMock(EntityManagerInterface::class);

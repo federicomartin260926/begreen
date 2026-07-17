@@ -23,6 +23,7 @@
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>{{ 'backend.commercial_plans.list.table.phase'|trans }}</th>
                             <th>{{ 'backend.commercial_plans.list.table.name'|trans }}</th>
                             <th>{{ 'backend.commercial_plans.list.table.code'|trans }}</th>
                             <th class="text-end">{{ 'backend.commercial_plans.list.table.price'|trans }}</th>
@@ -35,6 +36,7 @@
                         {% for plan in plans %}
                             <tr>
                                 <td>{{ plan.id }}</td>
+                                <td>{{ ('backend.commercial_phases.' ~ plan.phase.value)|trans }}</td>
                                 <td>
                                     <strong>{{ plan.name }}</strong>
                                     {% if plan.description %}
@@ -72,7 +74,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="7" class="text-center text-muted">{{ 'backend.commercial_plans.list.empty'|trans }}</td>
+                                <td colspan="8" class="text-center text-muted">{{ 'backend.commercial_plans.list.empty'|trans }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

@@ -22,6 +22,7 @@ final class CommercialPlanController extends AbstractController
 
         return $this->render('admin/commercial_plan/index.html.twig', [
             'plans' => $commercialPlanRepository->findBy([], [
+                'phase' => 'ASC',
                 'sortOrder' => 'ASC',
                 'id' => 'ASC',
             ]),

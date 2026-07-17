@@ -135,9 +135,9 @@ trait CommercialPlanTestHelpers
             'standard' => [
                 'phase' => CommercialPhase::ELABORATION,
                 'code' => 'standard',
-                'name' => 'Standard',
-                'description' => 'Incluye PDF agrupado por departamentos, marca de agua desactivada y evidencias ilimitadas para gestionar proyectos con más detalle.',
-                'priceAmount' => 9900,
+                'name' => 'Elaboración Standard',
+                'description' => 'Plan de Elaboración con PDF agrupado por departamentos, marca de agua desactivada y evidencias ilimitadas para gestionar proyectos con más detalle.',
+                'priceAmount' => 2900,
                 'priceCurrency' => 'EUR',
                 'stripePriceId' => null,
                 'stripeUpgradeFromStandardPriceId' => null,
@@ -172,12 +172,12 @@ trait CommercialPlanTestHelpers
             'pro' => [
                 'phase' => CommercialPhase::ELABORATION,
                 'code' => 'pro',
-                'name' => 'Pro',
-                'description' => 'Incluye exportaciones avanzadas por categorías, departamentos, áreas de impacto, triple balance y ODS, además de campos colaborativos y medidas custom.',
-                'priceAmount' => 19900,
+                'name' => 'Elaboración Pro',
+                'description' => 'Plan de Elaboración con exportaciones avanzadas por categorías, departamentos, áreas de impacto, triple balance y ODS, además de campos colaborativos.',
+                'priceAmount' => 4900,
                 'priceCurrency' => 'EUR',
                 'stripePriceId' => null,
-                'stripeUpgradeFromStandardPriceId' => 'price_1TedI4QbEObZty5pDwVrk5PS',
+                'stripeUpgradeFromStandardPriceId' => null,
                 'maxEvidenceCount' => null,
                 'watermarkEnabled' => false,
                 'active' => true,
@@ -209,8 +209,8 @@ trait CommercialPlanTestHelpers
             default => [
                 'phase' => CommercialPhase::ELABORATION,
                 'code' => 'basic',
-                'name' => 'Basic',
-                'description' => 'Plan gratuito para empezar, con PDF unificado, marca de agua activa y límite de 10 evidencias por proyecto.',
+                'name' => 'Elaboración Basic',
+                'description' => 'Plan gratuito de Elaboración para empezar, con PDF unificado, marca de agua activa y límite de 10 evidencias por proyecto.',
                 'priceAmount' => 0,
                 'priceCurrency' => 'EUR',
                 'stripePriceId' => null,
@@ -253,6 +253,16 @@ trait CommercialPlanTestHelpers
         $definition['features']['allowed_scores'] = [4, 5];
         $definition['features']['sustainability_plan.custom_measures'] = false;
         $definition['features']['sustainability_plan.public_comments'] = false;
+        $definition['name'] = match ($definition['code']) {
+            'standard' => 'Implementación Standard',
+            'pro' => 'Implementación Pro',
+            default => 'Implementación Basic',
+        };
+        $definition['description'] = match ($definition['code']) {
+            'standard' => 'Plan de Implementación con checklist, responsables, notas internas y evidencias ilimitadas para gestionar la ejecución con más detalle.',
+            'pro' => 'Plan de Implementación con exportaciones avanzadas por categorías, departamentos, áreas de impacto, triple balance y ODS, además de capacidades avanzadas de ejecución.',
+            default => 'Plan gratuito de Implementación para empezar, con PDF unificado, marca de agua activa y límite de 10 evidencias por proyecto.',
+        };
 
         if ($definition['code'] === 'basic') {
             return $definition;
@@ -269,9 +279,11 @@ trait CommercialPlanTestHelpers
         $definition['features']['sustainability_plan.checklist'] = true;
 
         if ($definition['code'] === 'standard') {
+            $definition['priceAmount'] = 2900;
             return $definition;
         }
 
+        $definition['priceAmount'] = 4900;
         $definition['features']['sustainability_plan.advanced_exports'] = true;
         $definition['features']['sustainability_plan.export.category'] = true;
         $definition['features']['sustainability_plan.export.department'] = true;

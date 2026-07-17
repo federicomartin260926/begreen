@@ -21,9 +21,8 @@
     <div class="alert alert-light border mb-4">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
         <div>
-          <div class="small text-muted">{{ 'backend.projects.post_create.current_plan'|trans }}</div>
+          <div class="small text-muted">{{ 'backend.projects.post_create.plan_context'|trans }}</div>
           <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="fw-semibold">{{ 'backend.plan.tier.current'|trans }}:</span>
             <span class="badge bg-success-subtle text-success border border-success-subtle">{{ projectTierLabel }}</span>
           </div>
           <div class="small text-muted mt-2">{{ 'backend.projects.post_create.description'|trans }}</div>
@@ -53,7 +52,7 @@
           </div>
           <div class="col-12 col-lg-4">
             <div class="border rounded-4 p-3 bg-light h-100">
-              <div class="small text-muted">{{ 'backend.plan.tier.current'|trans }}</div>
+              <div class="small text-muted">{{ 'backend.projects.post_create.plan_context'|trans }}</div>
               <div class="h4 mb-2">{{ projectTierLabel }}</div>
               {% if projectTierSummary is defined and projectTierSummary %}
                 <div class="text-muted">{{ projectTierSummary }}</div>

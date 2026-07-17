@@ -23,7 +23,7 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertSame(10, $resolver->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
         self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
         self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
-        self::assertSame('Basic', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame('Elaboración Basic', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 
     public function testStandardPlanRules(): void
@@ -38,7 +38,7 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
         self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
         self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
-        self::assertSame('Standard', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame('Elaboración Standard', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 
     public function testProPlanRules(): void
@@ -53,7 +53,7 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
         self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.branding'));
         self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
-        self::assertSame('Pro', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame('Elaboración Pro', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 
     public function testUnknownPlanCodeFailsWithConfigurationError(): void

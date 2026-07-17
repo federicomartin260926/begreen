@@ -569,8 +569,15 @@ class ProjectController extends AbstractController
     }
 
     #[Route('/{id}/created', name: 'created')]
-    public function created(Project $project, ActiveProjectService $activeProjectService): Response
+    public function created(int $id, ProjectRepository $projectRepository, ActiveProjectService $activeProjectService): Response
     {
+        $project = $projectRepository->find($id);
+        if (!$project instanceof Project) {
+            $this->addFlash('warning', 'backend.projects.flash.project_not_found');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
+
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
 
         $activeProjectService->setActiveProject($project);
@@ -1323,9 +1330,16 @@ class ProjectController extends AbstractController
         return $this->redirectToRoute('backend_project_index');
     }
 
-    #[Route('/select-project/{id}', name: 'select_project', methods: ['POST','GET'])]
-    public function selectProject(Project $project, ActiveProjectService $activeProjectService, Request $request): RedirectResponse
+    #[Route('/select-project/{id}', name: 'select_project', methods: ['POST','GET'], requirements: ['id' => '\d+'])]
+    public function selectProject(int $id, ProjectRepository $projectRepository, ActiveProjectService $activeProjectService, Request $request): RedirectResponse
     {
+        $project = $projectRepository->find($id);
+        if (!$project instanceof Project) {
+            $this->addFlash('warning', 'backend.projects.flash.project_not_found');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
+
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
 
         $activeProjectService->setActiveProject($project);
