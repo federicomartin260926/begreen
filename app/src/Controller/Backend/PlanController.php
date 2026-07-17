@@ -384,7 +384,7 @@ class PlanController extends AbstractController
         $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION);
         $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
-        $upgradeCta = $this->buildUpgradeCta($project, $plan, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
+        $upgradeCta = $this->buildUpgradeCta($project, $plan, CommercialPhase::ELABORATION, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
 
         // ===== Render =====
         return $this->render('backend/plan/measures.html.twig', [
@@ -396,7 +396,7 @@ class PlanController extends AbstractController
             'evidenceCount'    => $evidenceCount,
             'evidenceLimit'    => $evidenceLimit,
             'canUseCustomMeasures' => $canUseCustomMeasures,
-            'commercialCards'  => $this->buildCommercialFeatureCards($project),
+            'commercialCards'  => $this->buildCommercialFeatureCards($project, CommercialPhase::ELABORATION),
             'hasWatermark'     => $this->featureGate->hasWatermark($project, CommercialPhase::ELABORATION),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'upgradeCta'       => $upgradeCta,
@@ -497,7 +497,6 @@ class PlanController extends AbstractController
         MeasureRepository $measureRepository,
         ProtocolRepository $protocolRepository,
         CommercialPlanRepository $commercialPlanRepository,
-        StripeProjectCheckoutService $checkoutService,
         EntityManagerInterface $em,
         MailerInterface $mailer,
         TranslatorInterface $translator
@@ -741,25 +740,26 @@ class PlanController extends AbstractController
         }
 
         $uiLocale = $request->getLocale();
-        $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION);
-        $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
-        $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
-        $upgradeCta = $this->buildUpgradeCta($project, $plan, $this->featureGate->getTier($project, CommercialPhase::ELABORATION), $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
+        $reviewPhase = CommercialPhase::IMPLEMENTATION;
+        $projectTier = $this->featureGate->getTier($project, $reviewPhase);
+        $projectTierLabel = $this->featureGate->getPlanLabel($project, $reviewPhase);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project, $reviewPhase) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $upgradeCta = $this->buildUpgradeCta($project, $plan, $reviewPhase, $projectTier, [], $commercialPlanRepository, $measureRepository, false);
 
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,
             'plan'             => $plan,
-            'projectTier'      => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
+            'projectTier'      => $projectTier,
             'projectTierLabel'  => $projectTierLabel,
             'projectTierSummary'=> $projectTierSummary,
-            'canUseChecklist'  => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.checklist'),
-            'canUseResponsibles'=> $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.responsibles'),
-            'canUseInternalNotes'=> $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.internal_notes'),
+            'canUseChecklist'  => $this->featureGate->canUseFeature($project, $reviewPhase, 'sustainability_plan.checklist'),
+            'canUseResponsibles'=> $this->featureGate->canUseFeature($project, $reviewPhase, 'sustainability_plan.responsibles'),
+            'canUseInternalNotes'=> $this->featureGate->canUseFeature($project, $reviewPhase, 'sustainability_plan.internal_notes'),
             'evidenceCount'    => $this->countProjectEvidenceFiles($plan),
-            'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION),
-            'commercialCards'  => $this->buildCommercialFeatureCards($project),
+            'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project, $reviewPhase),
+            'commercialCards'  => $this->buildCommercialFeatureCards($project, $reviewPhase),
             'upgradeCta'       => $upgradeCta,
-            'hasWatermark'     => $this->featureGate->hasWatermark($project, CommercialPhase::ELABORATION),
+            'hasWatermark'     => $this->featureGate->hasWatermark($project, $reviewPhase),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
@@ -1341,7 +1341,7 @@ class PlanController extends AbstractController
             return true;
         }
 
-        return $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, $fieldFeatureMap[$field]);
+        return $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, $fieldFeatureMap[$field]);
     }
 
 
@@ -1437,12 +1437,8 @@ class PlanController extends AbstractController
         // VOTER: vas a modificar evidencias del plan -> EDIT
         $this->denyAccessUnlessGranted(PlanVoter::EDIT, $plan);
 
-        // Asegurar PlanMeasure (se puede crear si no existe todavía)
-        $pm = $pmRepo->findOneBy(['plan' => $plan, 'measure' => $measure]);
-        if (!$pm) {
-            $pm = (new PlanMeasure())->setPlan($plan)->setMeasure($measure);
-            $em->persist($pm);
-            $em->flush();
+        if (!$this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.evidence_upload')) {
+            return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
         }
 
         $allowedSourceCodes = [];
@@ -1459,7 +1455,7 @@ class PlanController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Fuente de verificación inválida.'], 400);
         }
 
-        $maxEvidenceCount = $this->featureGate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION);
+        $maxEvidenceCount = $this->featureGate->getMaxEvidenceCount($project, CommercialPhase::IMPLEMENTATION);
         if ($maxEvidenceCount !== null) {
             $currentEvidenceCount = $this->countProjectEvidenceFiles($plan);
             $incomingEvidenceCount = 0;
@@ -1475,6 +1471,14 @@ class PlanController extends AbstractController
                     'error' => sprintf('Basic permite un máximo de %d evidencias por proyecto.', $maxEvidenceCount),
                 ], 403);
             }
+        }
+
+        // Asegurar PlanMeasure (solo cuando las validaciones previas ya pasaron)
+        $pm = $pmRepo->findOneBy(['plan' => $plan, 'measure' => $measure]);
+        if (!$pm) {
+            $pm = (new PlanMeasure())->setPlan($plan)->setMeasure($measure);
+            $em->persist($pm);
+            $em->flush();
         }
 
         // Directorio de subida
@@ -1972,17 +1976,17 @@ class PlanController extends AbstractController
         }
 
         $activeFilters = array_merge($activeMain, $activeFlags);
-        $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION);
-        $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::IMPLEMENTATION);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::IMPLEMENTATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         return [
             'project'        => $project,
             'plan'           => $plan,
-            'projectTier'    => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
+            'projectTier'    => $this->featureGate->getTier($project, CommercialPhase::IMPLEMENTATION),
             'projectTierLabel'=> $projectTierLabel,
             'projectTierSummary'=> $projectTierSummary,
             'currentUserLabel'=> $this->buildCurrentUserLabel(),
-            'hasWatermark'   => $this->featureGate->hasWatermark($project, CommercialPhase::ELABORATION),
+            'hasWatermark'   => $this->featureGate->hasWatermark($project, CommercialPhase::IMPLEMENTATION),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
@@ -2698,23 +2702,28 @@ class PlanController extends AbstractController
         ];
     }
 
-    private function buildCommercialFeatureCards(Project $project): array
+    private function buildCommercialFeatureCards(Project $project, CommercialPhase $phase): array
     {
-        $definitions = [
-            'sustainability_plan.department_pdf' => 'PDF por departamentos',
-            'sustainability_plan.advanced_exports' => 'Exportaciones avanzadas',
-            'sustainability_plan.public_comments' => 'Comentarios personalizados',
-            'sustainability_plan.internal_notes' => 'Notas internas',
-            'sustainability_plan.responsibles' => 'Responsables',
-            'sustainability_plan.checklist' => 'Checklist',
-            'sustainability_plan.custom_measures' => 'Medidas personalizadas',
-            'sustainability_plan.validation_summary' => 'Resumen de validación',
-            'sustainability_plan.branding' => 'Branding',
-        ];
+        $definitions = $phase === CommercialPhase::IMPLEMENTATION
+            ? [
+                'sustainability_plan.department_pdf' => 'PDF por departamentos',
+                'sustainability_plan.advanced_exports' => 'Exportaciones avanzadas',
+                'sustainability_plan.internal_notes' => 'Notas internas',
+                'sustainability_plan.responsibles' => 'Responsables',
+                'sustainability_plan.checklist' => 'Checklist',
+                'sustainability_plan.validation_summary' => 'Resumen de validación',
+                'sustainability_plan.branding' => 'Branding',
+            ]
+            : [
+                'sustainability_plan.department_pdf' => 'PDF por departamentos',
+                'sustainability_plan.advanced_exports' => 'Exportaciones avanzadas',
+                'sustainability_plan.public_comments' => 'Comentarios personalizados',
+                'sustainability_plan.custom_measures' => 'Medidas personalizadas',
+            ];
 
         $cards = [];
         foreach ($definitions as $feature => $label) {
-            $state = $this->featureGate->getFeatureState($project, CommercialPhase::ELABORATION, $feature);
+            $state = $this->featureGate->getFeatureState($project, $phase, $feature);
             if ($state['visible'] && !$state['enabled']) {
                 $cards[] = [
                     'label' => $label,
@@ -2745,13 +2754,32 @@ class PlanController extends AbstractController
      *     }>
      * }
      */
-    private function buildUpgradeCta(Project $project, Plan $plan, string $projectTier, array $availableUpgradeTargets, CommercialPlanRepository $commercialPlanRepository, MeasureRepository $measureRepository): array
-    {
+    private function buildUpgradeCta(
+        Project $project,
+        Plan $plan,
+        CommercialPhase $phase,
+        string $projectTier,
+        array $availableUpgradeTargets,
+        CommercialPlanRepository $commercialPlanRepository,
+        MeasureRepository $measureRepository,
+        bool $checkoutEnabled = true
+    ): array {
         if ($projectTier === ProjectSubscription::TIER_PRO) {
             return [
                 'mode' => 'none',
+                'phase' => $phase->value,
                 'label' => $this->t->trans('backend.plan.upgrade.active_title'),
                 'title' => null,
+                'options' => [],
+            ];
+        }
+
+        if (!$checkoutEnabled) {
+            return [
+                'mode' => 'unavailable',
+                'phase' => $phase->value,
+                'label' => $this->t->trans('backend.plan.upgrade.phase_checkout_pending'),
+                'title' => $this->t->trans('backend.plan.upgrade.select_title'),
                 'options' => [],
             ];
         }
@@ -2770,7 +2798,7 @@ class PlanController extends AbstractController
                 continue;
             }
 
-            $commercialPlan = $commercialPlanRepository->findActiveByPhaseAndCode(CommercialPhase::ELABORATION, $targetTier);
+            $commercialPlan = $commercialPlanRepository->findActiveByPhaseAndCode($phase, $targetTier);
             if (!$commercialPlan instanceof CommercialPlan) {
                 continue;
             }
@@ -2784,6 +2812,7 @@ class PlanController extends AbstractController
                 : null;
             $options[] = [
                 'targetTier' => $targetTier,
+                'phase' => $phase->value,
                 'name' => $commercialPlan->getName(),
                 'description' => $commercialPlan->getDescription(),
                 'priceAmount' => $displayAmountCents,
@@ -2801,6 +2830,7 @@ class PlanController extends AbstractController
         if ($options === []) {
             return [
                 'mode' => 'unavailable',
+                'phase' => $phase->value,
                 'label' => $this->t->trans('backend.plan.upgrade.price_id_missing'),
                 'title' => $this->t->trans('backend.plan.upgrade.select_title'),
                 'options' => [],
@@ -2810,6 +2840,7 @@ class PlanController extends AbstractController
         if (\count($options) === 1) {
             return [
                 'mode' => 'single',
+                'phase' => $phase->value,
                 'label' => $options[0]['ctaLabel'],
                 'title' => $this->t->trans('backend.plan.upgrade.select_title'),
                 'options' => $options,
@@ -2818,6 +2849,7 @@ class PlanController extends AbstractController
 
         return [
             'mode' => 'modal',
+            'phase' => $phase->value,
             'label' => $this->t->trans('backend.plan.upgrade.open_selector'),
             'title' => $this->t->trans('backend.plan.upgrade.select_title'),
             'options' => $options,

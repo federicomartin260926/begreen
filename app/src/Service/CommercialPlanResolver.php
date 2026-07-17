@@ -33,7 +33,15 @@ final class CommercialPlanResolver
         $subscription = $this->getSubscription($project, $phase);
 
         if (!$subscription instanceof ProjectSubscription) {
-            return self::BASIC_CODE;
+            $projectReference = $project->getId() !== null
+                ? (string) $project->getId()
+                : 'unpersisted';
+
+            throw new LogicException(sprintf(
+                'Missing project subscription for project "%s" and phase "%s".',
+                $projectReference,
+                $phase->value
+            ));
         }
 
         return $this->normalizeCode($subscription->getTier());

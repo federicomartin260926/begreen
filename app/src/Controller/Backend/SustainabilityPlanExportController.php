@@ -78,10 +78,10 @@ final class SustainabilityPlanExportController extends AbstractController
             'grouping' => $grouping,
             'groupingLabel' => $this->groupingService->getGroupingLabel($grouping),
             'groups' => $groups,
-            'projectTier' => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
-            'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
+            'projectTier' => $this->featureGate->getTier($project, CommercialPhase::IMPLEMENTATION),
+            'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::IMPLEMENTATION),
             'generatedAt' => new \DateTimeImmutable(),
-            'hasWatermark' => $this->featureGate->hasWatermark($project, CommercialPhase::ELABORATION),
+            'hasWatermark' => $this->featureGate->hasWatermark($project, CommercialPhase::IMPLEMENTATION),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
         ]);
 
@@ -165,28 +165,28 @@ final class SustainabilityPlanExportController extends AbstractController
     private function isPdfAllowed(Project $project, string $grouping): bool
     {
         return match ($grouping) {
-            'department' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department_pdf')
-                || $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department'),
-            'category' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.category'),
-            'impact_area' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.impact_area'),
-            'triple_balance' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.triple_balance'),
-            'ods' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.ods'),
+            'department' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.department_pdf')
+                || $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.department'),
+            'category' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.category'),
+            'impact_area' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.impact_area'),
+            'triple_balance' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.triple_balance'),
+            'ods' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.ods'),
             default => false,
         };
     }
 
     private function isExcelAllowed(Project $project, string $grouping): bool
     {
-        if (!$this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel')) {
+        if (!$this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.excel')) {
             return false;
         }
 
         return match ($grouping) {
-            'department' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department'),
-            'category' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.category'),
-            'impact_area' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.impact_area'),
-            'triple_balance' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.triple_balance'),
-            'ods' => $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.ods'),
+            'department' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.department'),
+            'category' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.category'),
+            'impact_area' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.impact_area'),
+            'triple_balance' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.triple_balance'),
+            'ods' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.ods'),
             default => false,
         };
     }

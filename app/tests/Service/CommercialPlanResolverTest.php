@@ -12,10 +12,10 @@ final class CommercialPlanResolverTest extends TestCase
 {
     use CommercialPlanTestHelpers;
 
-    public function testBasicPlanRulesAndFallbackForMissingSubscription(): void
+    public function testBasicPlanRules(): void
     {
         $resolver = $this->makeCommercialPlanResolver($this->makeDefaultCommercialPlans());
-        $project = new Project();
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
 
         self::assertSame(ProjectSubscription::TIER_BASIC, $resolver->getTierCode($project, CommercialPhase::ELABORATION));
         self::assertSame([4, 5], $resolver->getAllowedScores($project, CommercialPhase::ELABORATION));
@@ -64,5 +64,16 @@ final class CommercialPlanResolverTest extends TestCase
         $this->expectExceptionMessage('Missing active commercial plan for phase "elaboration" and code "unknown-tier".');
 
         $resolver->getPlanByCode(CommercialPhase::ELABORATION, 'unknown-tier');
+    }
+
+    public function testMissingSubscriptionFailsWithConfigurationError(): void
+    {
+        $resolver = $this->makeCommercialPlanResolver($this->makeDefaultCommercialPlans());
+        $project = new Project();
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Missing project subscription for project "unpersisted" and phase "elaboration".');
+
+        $resolver->getTierCode($project, CommercialPhase::ELABORATION);
     }
 }

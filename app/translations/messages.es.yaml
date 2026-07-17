@@ -912,6 +912,7 @@ backend:
       upgrade_to: "Actualizar a %name% — %price% + IVA"
       measure_count: "%count% medidas"
       price_id_missing: "Stripe Price ID no configurado"
+      phase_checkout_pending: "Contratación de Implementación pendiente de activar"
       to_standard: "Actualizar a Standard — 99€ + IVA"
       to_pro: "Actualizar a Pro — 199€ + IVA"
       to_pro_standard: "Actualizar a Pro — 100€ + IVA"

@@ -21,6 +21,9 @@ trait CommercialPlanTestHelpers
             'basic' => $this->makeCommercialPlan('basic'),
             'standard' => $this->makeCommercialPlan('standard'),
             'pro' => $this->makeCommercialPlan('pro'),
+            'implementation_basic' => $this->makeCommercialPlan('basic', ['phase' => CommercialPhase::IMPLEMENTATION]),
+            'implementation_standard' => $this->makeCommercialPlan('standard', ['phase' => CommercialPhase::IMPLEMENTATION]),
+            'implementation_pro' => $this->makeCommercialPlan('pro', ['phase' => CommercialPhase::IMPLEMENTATION]),
         ];
     }
 
@@ -78,21 +81,34 @@ trait CommercialPlanTestHelpers
 
     private function makeProjectWithTier(string $tier): Project
     {
-        $project = new Project();
-        $subscription = (new ProjectSubscription())
-            ->setPhase(CommercialPhase::ELABORATION)
-            ->setTier($tier)
-            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-            ->setSource(ProjectSubscription::SOURCE_MANUAL);
+        return $this->makeProjectWithTiers($tier, $tier);
+    }
 
-        $project->addSubscription($subscription);
+    private function makeProjectWithTiers(string $elaborationTier, string $implementationTier): Project
+    {
+        $project = new Project();
+        foreach ([
+            [CommercialPhase::ELABORATION, $elaborationTier],
+            [CommercialPhase::IMPLEMENTATION, $implementationTier],
+        ] as [$phase, $tier]) {
+            $subscription = (new ProjectSubscription())
+                ->setPhase($phase)
+                ->setTier($tier)
+                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+                ->setSource(ProjectSubscription::SOURCE_MANUAL);
+
+            $project->addSubscription($subscription);
+        }
 
         return $project;
     }
 
     private function makeCommercialPlan(string $code, array $overrides = []): CommercialPlan
     {
-        $definition = $this->defaultCommercialPlanDefinition($code);
+        $phase = $overrides['phase'] ?? CommercialPhase::ELABORATION;
+        $definition = $phase === CommercialPhase::IMPLEMENTATION
+            ? $this->defaultImplementationCommercialPlanDefinition($code)
+            : $this->defaultCommercialPlanDefinition($code);
         foreach ($overrides as $key => $value) {
             $definition[$key] = $value;
         }
@@ -228,5 +244,44 @@ trait CommercialPlanTestHelpers
                 ],
             ],
         };
+    }
+
+    private function defaultImplementationCommercialPlanDefinition(string $code): array
+    {
+        $definition = $this->defaultCommercialPlanDefinition($code);
+        $definition['phase'] = CommercialPhase::IMPLEMENTATION;
+        $definition['features']['allowed_scores'] = [4, 5];
+        $definition['features']['sustainability_plan.custom_measures'] = false;
+        $definition['features']['sustainability_plan.public_comments'] = false;
+
+        if ($definition['code'] === 'basic') {
+            return $definition;
+        }
+
+        $definition['maxEvidenceCount'] = null;
+        $definition['watermarkEnabled'] = false;
+        $definition['features']['sustainability_plan.watermark_free_pdf'] = true;
+        $definition['features']['sustainability_plan.department_pdf'] = true;
+        $definition['features']['sustainability_plan.export.department_pdf'] = true;
+        $definition['features']['sustainability_plan.history'] = true;
+        $definition['features']['sustainability_plan.internal_notes'] = true;
+        $definition['features']['sustainability_plan.responsibles'] = true;
+        $definition['features']['sustainability_plan.checklist'] = true;
+
+        if ($definition['code'] === 'standard') {
+            return $definition;
+        }
+
+        $definition['features']['sustainability_plan.advanced_exports'] = true;
+        $definition['features']['sustainability_plan.export.category'] = true;
+        $definition['features']['sustainability_plan.export.department'] = true;
+        $definition['features']['sustainability_plan.export.impact_area'] = true;
+        $definition['features']['sustainability_plan.export.triple_balance'] = true;
+        $definition['features']['sustainability_plan.export.ods'] = true;
+        $definition['features']['sustainability_plan.export.excel'] = true;
+        $definition['features']['sustainability_plan.validation_summary'] = true;
+        $definition['features']['sustainability_plan.branding'] = true;
+
+        return $definition;
     }
 }

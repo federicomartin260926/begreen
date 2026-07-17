@@ -909,6 +909,7 @@ backend:
       upgrade_to: "Upgrade to %name% — %price% + VAT"
       measure_count: "%count% measures"
       price_id_missing: "Stripe Price ID not configured"
+      phase_checkout_pending: "Implementation checkout pending activation"
       to_standard: "Upgrade to Standard — €99 + VAT"
       to_pro: "Upgrade to Pro — €199 + VAT"
       to_pro_standard: "Upgrade to Pro — €100 + VAT"

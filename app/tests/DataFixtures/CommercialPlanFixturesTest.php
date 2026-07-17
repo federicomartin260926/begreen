@@ -72,5 +72,28 @@ final class CommercialPlanFixturesTest extends TestCase
             CommercialPhase::IMPLEMENTATION->value . ':standard',
             CommercialPhase::IMPLEMENTATION->value . ':pro',
         ], $keys);
+
+        $implementationPlans = [];
+        foreach ($persistedPlans as $plan) {
+            if ($plan->getPhase() === CommercialPhase::IMPLEMENTATION) {
+                $implementationPlans[$plan->getCode()] = $plan;
+            }
+        }
+
+        self::assertTrue($implementationPlans['basic']->getFeature('sustainability_plan.evidence_upload'));
+        self::assertFalse($implementationPlans['basic']->getFeature('sustainability_plan.checklist'));
+        self::assertSame(10, $implementationPlans['basic']->getMaxEvidenceCount());
+        self::assertTrue($implementationPlans['basic']->isWatermarkEnabled());
+
+        self::assertTrue($implementationPlans['standard']->getFeature('sustainability_plan.checklist'));
+        self::assertTrue($implementationPlans['standard']->getFeature('sustainability_plan.responsibles'));
+        self::assertTrue($implementationPlans['standard']->getFeature('sustainability_plan.internal_notes'));
+        self::assertFalse($implementationPlans['standard']->getFeature('sustainability_plan.export.excel'));
+        self::assertNull($implementationPlans['standard']->getMaxEvidenceCount());
+        self::assertFalse($implementationPlans['standard']->isWatermarkEnabled());
+
+        self::assertTrue($implementationPlans['pro']->getFeature('sustainability_plan.validation_summary'));
+        self::assertTrue($implementationPlans['pro']->getFeature('sustainability_plan.branding'));
+        self::assertTrue($implementationPlans['pro']->getFeature('sustainability_plan.export.excel'));
     }
 }

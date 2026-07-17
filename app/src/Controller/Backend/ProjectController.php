@@ -466,7 +466,7 @@ class ProjectController extends AbstractController
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
         $project = new Project();
-        $this->ensureBasicSubscription($project);
+        $this->ensureBasicSubscriptions($project);
 
         // Fases por defecto
         foreach (['actividad', 'preproduccion', 'postproduccion'] as $phaseName) {
@@ -495,7 +495,7 @@ class ProjectController extends AbstractController
 
             $project->addProjectMembership($membership);
 
-            $this->ensureBasicSubscription($project);
+            $this->ensureBasicSubscriptions($project);
 
             $em->persist($project);
             $em->persist($membership);
@@ -616,7 +616,7 @@ class ProjectController extends AbstractController
 
         // 1) Clonar datos básicos del proyecto
         $newProject = new Project();
-        $this->ensureBasicSubscription($newProject);
+        $this->ensureBasicSubscriptions($newProject);
         $newProject
             ->setName($project->getName() . ' (copia)')
             ->setType($project->getType())
@@ -696,12 +696,18 @@ class ProjectController extends AbstractController
         return $this->redirectToRoute('backend_project_index');
     }
 
-    private function ensureBasicSubscription(Project $project): ProjectSubscription
+    private function ensureBasicSubscriptions(Project $project): void
     {
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
+        $this->ensureBasicSubscription($project, CommercialPhase::ELABORATION);
+        $this->ensureBasicSubscription($project, CommercialPhase::IMPLEMENTATION);
+    }
+
+    private function ensureBasicSubscription(Project $project, CommercialPhase $phase): ProjectSubscription
+    {
+        $subscription = $project->getSubscriptionForPhase($phase);
         if (!$subscription) {
             $subscription = new ProjectSubscription();
-            $subscription->setPhase(CommercialPhase::ELABORATION);
+            $subscription->setPhase($phase);
             $project->addSubscription($subscription);
         }
 

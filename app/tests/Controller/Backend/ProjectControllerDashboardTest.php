@@ -4,6 +4,7 @@ namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\ProjectController;
 use App\Entity\Project;
+use App\Entity\ProjectMembership;
 use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
 use App\Entity\User;
@@ -44,7 +45,7 @@ final class ProjectControllerDashboardTest extends KernelTestCase
 
         $this->setAdminToken($admin);
 
-        $request = new Request();
+        $request = new Request(['name' => 'Proyecto objetivo dashboard']);
         $request->attributes->set('_route', 'backend_project_index');
         $request->setLocale('es');
         $request->setSession(new Session(new MockArraySessionStorage()));
@@ -108,13 +109,7 @@ final class ProjectControllerDashboardTest extends KernelTestCase
         $entityManager->persist($admin);
 
         $project = $this->createProject($admin, 'Proyecto con dos suscripciones');
-        $project->addSubscription(
-            (new ProjectSubscription())
-                ->setPhase(CommercialPhase::IMPLEMENTATION)
-                ->setTier(ProjectSubscription::TIER_STANDARD)
-                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-                ->setSource(ProjectSubscription::SOURCE_SYSTEM)
-        );
+        $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->setTier(ProjectSubscription::TIER_STANDARD);
         $entityManager->flush();
 
         $projects = $container->get(ProjectRepository::class)
@@ -145,15 +140,25 @@ final class ProjectControllerDashboardTest extends KernelTestCase
             ->setCountry('ES')
             ->setUser($owner);
 
-        $subscription = (new ProjectSubscription())
-            ->setPhase(CommercialPhase::ELABORATION)
-            ->setTier(ProjectSubscription::TIER_BASIC)
-            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-            ->setSource(ProjectSubscription::SOURCE_SYSTEM);
+        foreach ([CommercialPhase::ELABORATION, CommercialPhase::IMPLEMENTATION] as $phase) {
+            $subscription = (new ProjectSubscription())
+                ->setPhase($phase)
+                ->setTier(ProjectSubscription::TIER_BASIC)
+                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+                ->setSource(ProjectSubscription::SOURCE_SYSTEM);
 
-        $project->addSubscription($subscription);
+            $project->addSubscription($subscription);
+        }
 
-        self::getContainer()->get(EntityManagerInterface::class)->persist($project);
+        $membership = (new ProjectMembership())
+            ->setUser($owner)
+            ->setProject($project)
+            ->setProjectRole('owner');
+        $project->addProjectMembership($membership);
+
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $entityManager->persist($project);
+        $entityManager->persist($membership);
 
         return $project;
     }

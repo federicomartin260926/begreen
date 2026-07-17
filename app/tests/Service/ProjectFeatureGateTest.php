@@ -95,25 +95,38 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.validation_summary'));
     }
 
-    public function testMissingSubscriptionDefaultsToBasic(): void
+    public function testPhaseTiersAreIndependent(): void
     {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
-        $project = new Project();
+        $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_BASIC);
 
-        self::assertSame(ProjectSubscription::TIER_BASIC, $gate->getTier($project, CommercialPhase::ELABORATION));
-        self::assertSame('Basic', $gate->getPlanLabel($project, CommercialPhase::ELABORATION));
+        self::assertSame(ProjectSubscription::TIER_PRO, $gate->getTier($project, CommercialPhase::ELABORATION));
+        self::assertSame([1, 2, 3, 4, 5], $gate->getAllowedScores($project, CommercialPhase::ELABORATION));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
+
+        self::assertSame(ProjectSubscription::TIER_BASIC, $gate->getTier($project, CommercialPhase::IMPLEMENTATION));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.checklist'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.responsibles'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.internal_notes'));
+        self::assertSame(10, $gate->getMaxEvidenceCount($project, CommercialPhase::IMPLEMENTATION));
+        self::assertTrue($gate->hasWatermark($project, CommercialPhase::IMPLEMENTATION));
     }
 
     private function createProjectWithTier(string $tier): Project
     {
         $project = new Project();
-        $subscription = (new ProjectSubscription())
-            ->setPhase(CommercialPhase::ELABORATION)
-            ->setTier($tier)
-            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-            ->setSource(ProjectSubscription::SOURCE_MANUAL);
+        foreach ([
+            [CommercialPhase::ELABORATION, $tier],
+            [CommercialPhase::IMPLEMENTATION, $tier],
+        ] as [$phase, $phaseTier]) {
+            $subscription = (new ProjectSubscription())
+                ->setPhase($phase)
+                ->setTier($phaseTier)
+                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+                ->setSource(ProjectSubscription::SOURCE_MANUAL);
 
-        $project->addSubscription($subscription);
+            $project->addSubscription($subscription);
+        }
 
         return $project;
     }

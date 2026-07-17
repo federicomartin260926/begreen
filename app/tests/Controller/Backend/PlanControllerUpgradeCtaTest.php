@@ -30,6 +30,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
             $controller,
             $project,
             $this->makePlanWithProtocol(),
+            CommercialPhase::ELABORATION,
             ProjectSubscription::TIER_BASIC,
             [
                 ProjectSubscription::TIER_STANDARD => ['priceId' => 'price_standard'],
@@ -61,6 +62,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
             $controller,
             $project,
             $this->makePlanWithProtocol(),
+            CommercialPhase::ELABORATION,
             ProjectSubscription::TIER_STANDARD,
             [
                 ProjectSubscription::TIER_PRO => ['priceId' => 'price_upgrade', 'amountCents' => 10000],
@@ -87,6 +89,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
             $controller,
             $project,
             $this->makePlanWithProtocol(),
+            CommercialPhase::ELABORATION,
             ProjectSubscription::TIER_PRO,
             [],
             $this->makeCommercialPlanRepository($this->makeDefaultCommercialPlans()),
@@ -111,6 +114,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
             $controller,
             $project,
             $this->makePlanWithProtocol(),
+            CommercialPhase::ELABORATION,
             ProjectSubscription::TIER_BASIC,
             [
                 ProjectSubscription::TIER_STANDARD => ['priceId' => null],
@@ -123,6 +127,28 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         self::assertSame('single', $result['mode']);
         self::assertCount(1, $result['options']);
         self::assertSame(ProjectSubscription::TIER_PRO, $result['options'][0]['targetTier']);
+    }
+
+    public function testImplementationUpgradeCtaDoesNotExposeCheckoutBeforeStripePhaseSupport(): void
+    {
+        $controller = $this->getController();
+        $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_BASIC);
+
+        $result = $this->invokeBuildUpgradeCta(
+            $controller,
+            $project,
+            $this->makePlanWithProtocol(),
+            CommercialPhase::IMPLEMENTATION,
+            ProjectSubscription::TIER_BASIC,
+            [],
+            $this->makeCommercialPlanRepository($this->makeDefaultCommercialPlans()),
+            $this->makeMeasureRepository(),
+            false
+        );
+
+        self::assertSame('unavailable', $result['mode']);
+        self::assertSame(CommercialPhase::IMPLEMENTATION->value, $result['phase']);
+        self::assertSame([], $result['options']);
     }
 
     private function getController(): PlanController
@@ -143,9 +169,11 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         $repository = $this->createMock(CommercialPlanRepository::class);
         $repository->method('findActiveByPhaseAndCode')->willReturnCallback(
             static function (CommercialPhase $phase, string $code) use ($plans): ?CommercialPlan {
-                return $phase === CommercialPhase::ELABORATION
-                    ? ($plans[strtolower(trim($code))] ?? null)
-                    : null;
+                $key = $phase === CommercialPhase::ELABORATION
+                    ? strtolower(trim($code))
+                    : $phase->value . '_' . strtolower(trim($code));
+
+                return $plans[$key] ?? null;
             }
         );
 
@@ -188,16 +216,18 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         PlanController $controller,
         \App\Entity\Project $project,
         Plan $plan,
+        CommercialPhase $phase,
         string $projectTier,
         array $availableUpgradeTargets,
         CommercialPlanRepository $commercialPlanRepository,
-        MeasureRepository $measureRepository
+        MeasureRepository $measureRepository,
+        bool $checkoutEnabled = true
     ): array {
         $reflection = new \ReflectionMethod($controller, 'buildUpgradeCta');
         $reflection->setAccessible(true);
 
         /** @var array $result */
-        $result = $reflection->invoke($controller, $project, $plan, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
+        $result = $reflection->invoke($controller, $project, $plan, $phase, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository, $checkoutEnabled);
 
         return $result;
     }

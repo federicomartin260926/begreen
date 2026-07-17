@@ -57,13 +57,15 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
                 ->setUser($user)
                 ->setEmissionSourceName('MITECO'); // Valor por defecto
 
-            $subscription = (new ProjectSubscription())
-                ->setPhase(CommercialPhase::ELABORATION)
-                ->setProject($project)
-                ->setTier(ProjectSubscription::TIER_BASIC)
-                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-                ->setSource(ProjectSubscription::SOURCE_SYSTEM);
-            $project->addSubscription($subscription);
+            foreach ([CommercialPhase::ELABORATION, CommercialPhase::IMPLEMENTATION] as $commercialPhase) {
+                $subscription = (new ProjectSubscription())
+                    ->setPhase($commercialPhase)
+                    ->setProject($project)
+                    ->setTier(ProjectSubscription::TIER_BASIC)
+                    ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+                    ->setSource(ProjectSubscription::SOURCE_SYSTEM);
+                $project->addSubscription($subscription);
+            }
 
             $manager->persist($project);
 

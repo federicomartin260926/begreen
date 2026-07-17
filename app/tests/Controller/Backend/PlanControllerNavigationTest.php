@@ -71,6 +71,23 @@ final class PlanControllerNavigationTest extends KernelTestCase
         ], $filters);
     }
 
+    public function testReviewInlineFieldsUseImplementationPhase(): void
+    {
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
+        $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_BASIC);
+
+        self::assertFalse($this->invokeIsReviewInlineFieldAllowed($controller, $project, 'verification'));
+        self::assertFalse($this->invokeIsReviewInlineFieldAllowed($controller, $project, 'responsibles'));
+        self::assertFalse($this->invokeIsReviewInlineFieldAllowed($controller, $project, 'internal_notes'));
+        self::assertTrue($this->invokeIsReviewInlineFieldAllowed($controller, $project, 'decision'));
+
+        $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->setTier(ProjectSubscription::TIER_STANDARD);
+
+        self::assertTrue($this->invokeIsReviewInlineFieldAllowed($controller, $project, 'verification'));
+        self::assertTrue($this->invokeIsReviewInlineFieldAllowed($controller, $project, 'responsibles'));
+        self::assertTrue($this->invokeIsReviewInlineFieldAllowed($controller, $project, 'internal_notes'));
+    }
+
     public function testIndexRedirectsToMeasuresWhenCustomMeasuresStepIsPending(): void
     {
         $controller = $this->getController();
@@ -621,7 +638,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $planRepository = $this->createPlanRepositoryMock($plan);
         $protocolRepository = $this->createMock(\App\Repository\ProtocolRepository::class);
         $commercialPlanRepository = $this->createMock(\App\Repository\CommercialPlanRepository::class);
-        $checkoutService = $this->newStripeCheckoutServiceStub();
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('flush');
         $mailer = $this->createMock(\Symfony\Component\Mailer\MailerInterface::class);
@@ -635,7 +651,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             $measureRepository,
             $protocolRepository,
             $commercialPlanRepository,
-            $checkoutService,
             $entityManager,
             $mailer,
             $translator
@@ -710,14 +725,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
     {
         self::bootKernel();
         $basicPlan = $this->makeCommercialPlan('basic', [
+            'phase' => CommercialPhase::IMPLEMENTATION,
             'features' => array_replace(
-                $this->defaultCommercialPlanDefinition('basic')['features'],
+                $this->defaultImplementationCommercialPlanDefinition('basic')['features'],
                 [
                     'sustainability_plan.evidence_upload' => true,
                 ]
             ),
         ]);
-        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate([$basicPlan]));
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate([
+            $this->makeCommercialPlan('basic'),
+            $basicPlan,
+        ]));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -961,6 +980,254 @@ final class PlanControllerNavigationTest extends KernelTestCase
             '/uploads/evidences/existing.pdf' => 'invoice',
             $data['files'][0] => 'invoice',
         ], $planMeasure->getEvidenceMetadata());
+    }
+
+    public function testUploadEvidencesUsesImplementationBasicLimitEvenWhenElaborationIsPro(): void
+    {
+        self::bootKernel();
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 2);
+
+        $targetMeasure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida con límite');
+        $this->setEntityId($targetMeasure, 994);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        for ($i = 1; $i <= 10; $i++) {
+            $existingMeasure = (new Measure())
+                ->setProtocol($protocol)
+                ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+                ->setScore(5)
+                ->setName('Medida previa ' . $i);
+            $this->setEntityId($existingMeasure, 2000 + $i);
+
+            $existingPlanMeasure = (new PlanMeasure())
+                ->setMeasure($existingMeasure)
+                ->setEvidence('/uploads/evidences/existing-' . $i . '.pdf')
+                ->markAsManual();
+            $plan->addPlanMeasure($existingPlanMeasure);
+        }
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
+        self::assertNotFalse($tmpFile);
+        file_put_contents($tmpFile, 'fake pdf content');
+        $uploadedFile = new UploadedFile($tmpFile, 'limite.pdf', 'application/pdf', null, true);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $targetMeasure->getId(),
+        ]);
+        $request->files->set('evidences', [$uploadedFile]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$targetMeasure], $targetMeasure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
+        $planMeasureRepository->method('findOneBy')->willReturn(null);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::never())->method('flush');
+
+        $slugger = $this->createMock(\Symfony\Component\String\Slugger\SluggerInterface::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+
+        $response = $controller->uploadEvidences(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $entityManager,
+            $slugger
+        );
+
+        self::assertFileExists($tmpFile);
+        @unlink($tmpFile);
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        self::assertSame(403, $response->getStatusCode());
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertSame('Basic permite un máximo de 10 evidencias por proyecto.', $data['error']);
+        self::assertCount(10, $plan->getPlanMeasures());
+        foreach ($plan->getPlanMeasures() as $existingPlanMeasure) {
+            self::assertNotSame($targetMeasure, $existingPlanMeasure->getMeasure());
+        }
+    }
+
+    public function testUploadEvidencesRejectsWhenImplementationEvidenceUploadIsDisabled(): void
+    {
+        self::bootKernel();
+        $basicImplementationPlan = $this->makeCommercialPlan('basic', [
+            'phase' => CommercialPhase::IMPLEMENTATION,
+            'features' => array_replace(
+                $this->defaultImplementationCommercialPlanDefinition('basic')['features'],
+                [
+                    'sustainability_plan.evidence_upload' => false,
+                ]
+            ),
+        ]);
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate([
+            $this->makeCommercialPlan('basic'),
+            $this->makeCommercialPlan('standard'),
+            $this->makeCommercialPlan('pro'),
+            $basicImplementationPlan,
+            $this->makeCommercialPlan('standard', ['phase' => CommercialPhase::IMPLEMENTATION]),
+            $this->makeCommercialPlan('pro', ['phase' => CommercialPhase::IMPLEMENTATION]),
+        ]));
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 3);
+
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida denegada');
+        $this->setEntityId($measure, 995);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+        ]);
+        $measureRepository = $this->createMeasureRepositoryMock([$measure], $measure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
+        $planMeasureRepository->method('findOneBy')->willReturn(null);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::never())->method('flush');
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
+        self::assertNotFalse($tmpFile);
+        file_put_contents($tmpFile, 'fake pdf content');
+        $uploadedFile = new UploadedFile($tmpFile, 'denegada.pdf', 'application/pdf', null, true);
+        $request->files->set('evidences', [$uploadedFile]);
+
+        $slugger = $this->createMock(\Symfony\Component\String\Slugger\SluggerInterface::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+
+        $response = $controller->uploadEvidences(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $entityManager,
+            $slugger
+        );
+
+        self::assertFileExists($tmpFile);
+        @unlink($tmpFile);
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        self::assertSame(403, $response->getStatusCode());
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertSame('Feature not available for current plan tier', $data['error']);
+        self::assertCount(0, $plan->getPlanMeasures());
+    }
+
+    public function testUploadEvidencesRejectsInvalidSourceWithoutPersistingPlanMeasure(): void
+    {
+        self::bootKernel();
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 4);
+
+        $sourceAllowed = (new VerificationSource())
+            ->setCode('invoice')
+            ->setName('Invoice')
+            ->setSortOrder(10);
+        $this->setEntityId($sourceAllowed, 40);
+
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida con fuente inválida');
+        $this->setEntityId($measure, 996);
+        $measure->addVerificationSourceLink(
+            (new MeasureVerificationSource())
+                ->setVerificationSource($sourceAllowed)
+                ->setPriority(1)
+        );
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
+        self::assertNotFalse($tmpFile);
+        file_put_contents($tmpFile, 'fake pdf content');
+        $uploadedFile = new UploadedFile($tmpFile, 'fuente-invalida.pdf', 'application/pdf', null, true);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+            'source_code' => 'manual',
+        ]);
+        $request->files->set('evidences', [$uploadedFile]);
+
+        $measureRepository = $this->createMeasureRepositoryMock([$measure], $measure);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
+        $planMeasureRepository->method('findOneBy')->willReturn(null);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::never())->method('flush');
+
+        $slugger = $this->createMock(\Symfony\Component\String\Slugger\SluggerInterface::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+
+        $response = $controller->uploadEvidences(
+            $request,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $entityManager,
+            $slugger
+        );
+
+        self::assertInstanceOf(JsonResponse::class, $response);
+        self::assertSame(400, $response->getStatusCode());
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertSame('Fuente de verificación inválida.', $data['error']);
+        self::assertCount(0, $plan->getPlanMeasures());
+        self::assertFileExists($tmpFile);
+        @unlink($tmpFile);
     }
 
     public function testUpdateSelectionRedirectsTerminalActionToFirstPendingVisibleMeasure(): void
@@ -2680,14 +2947,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::bootKernel();
 
         $basicPlan = $this->makeCommercialPlan('basic', [
+            'phase' => CommercialPhase::IMPLEMENTATION,
             'features' => array_replace(
-                $this->defaultCommercialPlanDefinition('basic')['features'],
+                $this->defaultImplementationCommercialPlanDefinition('basic')['features'],
                 [
                     'sustainability_plan.internal_notes' => $featureEnabled,
                 ]
             ),
         ]);
-        $featureGate = $this->makeProjectFeatureGate([$basicPlan]);
+        $featureGate = $this->makeProjectFeatureGate([
+            $this->makeCommercialPlan('basic'),
+            $basicPlan,
+        ]);
         self::getContainer()->set(ProjectFeatureGate::class, $featureGate);
 
         $this->setAdminToken();
@@ -2784,6 +3055,14 @@ final class PlanControllerNavigationTest extends KernelTestCase
         return $filters;
     }
 
+    private function invokeIsReviewInlineFieldAllowed(PlanController $controller, Project $project, string $field): bool
+    {
+        $reflection = new \ReflectionMethod($controller, 'isReviewInlineFieldAllowed');
+        $reflection->setAccessible(true);
+
+        return (bool) $reflection->invoke($controller, $project, $field);
+    }
+
     private function newStripeCheckoutServiceStub(): \App\Service\StripeProjectCheckoutService
     {
         $reflection = new \ReflectionClass(\App\Service\StripeProjectCheckoutService::class);
@@ -2800,10 +3079,12 @@ final class PlanControllerNavigationTest extends KernelTestCase
         /** @var \App\Service\CommercialPlanResolver $resolver */
         $resolver = $resolverReflection->newInstanceWithoutConstructor();
         $subscriptionRepository = $this->createMock(\App\Repository\ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProject')->willReturn(
-            (new ProjectSubscription())
-                ->setPhase(CommercialPhase::ELABORATION)
-                ->setTier(ProjectSubscription::TIER_PRO)
+        $subscriptionRepository->method('findOneByProjectAndPhase')->willReturnCallback(
+            static fn (\App\Entity\Project $project, CommercialPhase $phase): ?ProjectSubscription => $phase === CommercialPhase::ELABORATION
+                ? (new ProjectSubscription())
+                    ->setPhase(CommercialPhase::ELABORATION)
+                    ->setTier(ProjectSubscription::TIER_PRO)
+                : null
         );
         $subscriptionProperty = new \ReflectionProperty($resolver, 'subscriptionRepository');
         $subscriptionProperty->setAccessible(true);
@@ -2825,7 +3106,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
         MeasureRepository $measureRepository,
         \App\Repository\ProtocolRepository $protocolRepository,
         \App\Repository\CommercialPlanRepository $commercialPlanRepository,
-        \App\Service\StripeProjectCheckoutService $checkoutService,
         EntityManagerInterface $entityManager,
         \Symfony\Component\Mailer\MailerInterface $mailer,
         \Symfony\Contracts\Translation\TranslatorInterface $translator
@@ -2838,7 +3118,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             $measureRepository,
             $protocolRepository,
             $commercialPlanRepository,
-            $checkoutService,
             $entityManager,
             $mailer,
             $translator

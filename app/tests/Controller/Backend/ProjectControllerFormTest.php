@@ -71,6 +71,8 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertInstanceOf(Project::class, $project);
         self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getStatus());
     }
 
     public function testEditFormShowsCurrentPlanOutsideWizard(): void
@@ -93,6 +95,49 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringNotContainsString('Tier comercial', $content);
         self::assertStringNotContainsString('Facturación del proyecto', $content);
         self::assertStringNotContainsString('Gestionar facturación', $content);
+    }
+
+    public function testEditDoesNotOverwriteImplementationSubscription(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $project = $this->createProject($entityManager, $admin, 'Proyecto edición implementación');
+        $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->setTier(ProjectSubscription::TIER_STANDARD);
+        $entityManager->flush();
+        $this->setAdminToken($admin);
+
+        $controller = $this->createController();
+        $request = $this->createEditRequest($project);
+
+        $response = $controller->edit($project, $request, $entityManager);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
+    }
+
+    public function testCloneCreatesBothBasicSubscriptions(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $project = $this->createProject($entityManager, $admin, 'Proyecto clon test');
+        $this->setAdminToken($admin);
+
+        $controller = $this->createController();
+        $request = $this->createRequest('backend_project_clone', ['id' => $project->getId()]);
+
+        $response = $controller->clone($project, $entityManager);
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $clonedProject = $entityManager->getRepository(Project::class)->findOneBy(['name' => 'Proyecto clon test (copia)']);
+        self::assertInstanceOf(Project::class, $clonedProject);
+        self::assertSame(ProjectSubscription::TIER_BASIC, $clonedProject->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
+        self::assertSame(ProjectSubscription::TIER_BASIC, $clonedProject->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
     }
 
     public function testCreatedPageShowsBasicPlanAndUpgradeCta(): void
@@ -187,6 +232,36 @@ final class ProjectControllerFormTest extends KernelTestCase
         return $request;
     }
 
+    private function createEditRequest(Project $project): Request
+    {
+        $request = $this->createRequest('backend_project_edit', ['id' => $project->getId()]);
+        $request->setMethod(Request::METHOD_POST);
+        $request->request->add([
+            'project' => [
+                '_token' => self::getContainer()->get('security.csrf.token_manager')->getToken('project')->getValue(),
+                'name' => $project->getName(),
+                'country' => 'ES',
+                'type' => 'rodaje',
+                'emissionSourceName' => 'MITECO',
+                'filmingType' => 'feature',
+                'filmingGenre' => '',
+                'distributionMedia' => ['cinema'],
+                'eventTypePrimary' => '',
+                'eventModality' => '',
+                'eventAttendeesCount' => '',
+                'eventOnlineConnections' => '',
+                'mainLocation' => '',
+                'presupuesto' => '',
+                'ecoManagerStatus' => '',
+                'projectCompanies' => [],
+                'projectFundingSources' => [],
+                'phaseDates' => [],
+            ],
+        ]);
+
+        return $request;
+    }
+
     private function createAdminUser(EntityManagerInterface $entityManager): User
     {
         $admin = (new User())
@@ -214,13 +289,15 @@ final class ProjectControllerFormTest extends KernelTestCase
             ->setDistributionMedia(['cinema'])
             ->setUser($owner);
 
-        $subscription = (new ProjectSubscription())
-            ->setPhase(CommercialPhase::ELABORATION)
-            ->setTier(ProjectSubscription::TIER_BASIC)
-            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-            ->setSource(ProjectSubscription::SOURCE_SYSTEM);
+        foreach ([CommercialPhase::ELABORATION, CommercialPhase::IMPLEMENTATION] as $phase) {
+            $subscription = (new ProjectSubscription())
+                ->setPhase($phase)
+                ->setTier(ProjectSubscription::TIER_BASIC)
+                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+                ->setSource(ProjectSubscription::SOURCE_SYSTEM);
 
-        $project->addSubscription($subscription);
+            $project->addSubscription($subscription);
+        }
 
         $entityManager->persist($project);
         $entityManager->flush();
