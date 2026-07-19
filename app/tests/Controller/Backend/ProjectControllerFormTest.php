@@ -162,7 +162,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringContainsString('Basic', $content);
         self::assertStringContainsString('Mejorar plan', $content);
         self::assertStringContainsString('Continuar con plan Basic', $content);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing', $content);
+        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/elaboration', $content);
     }
 
     public function testCreatedRedirectsWhenProjectDoesNotExist(): void

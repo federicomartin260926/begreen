@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
+use App\Entity\ProjectSubscription;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -25,6 +26,21 @@ class ProjectBillingDocumentRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('document')
             ->andWhere('document.project = :project')
             ->setParameter('project', $project)
+            ->orderBy('document.issuedAt', 'DESC')
+            ->addOrderBy('document.createdAt', 'DESC')
+            ->addOrderBy('document.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return ProjectBillingDocument[]
+     */
+    public function findBySubscriptionOrdered(ProjectSubscription $subscription): array
+    {
+        return $this->createQueryBuilder('document')
+            ->andWhere('document.subscription = :subscription')
+            ->setParameter('subscription', $subscription)
             ->orderBy('document.issuedAt', 'DESC')
             ->addOrderBy('document.createdAt', 'DESC')
             ->addOrderBy('document.id', 'DESC')

@@ -13,6 +13,7 @@ use App\Repository\ProjectSubscriptionRepository;
 use App\Service\CommercialPlanResolver;
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\ProjectFeatureGate;
+use App\Service\StripeInvoiceStorageService;
 use App\Service\SustainabilityPlanCompletionService;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\StripeProjectWebhookService;
@@ -32,6 +33,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
         $service->processCompletedCheckoutSession([
             'id' => 'cs_test_123',
             'project_id' => 42,
+            'commercial_phase' => CommercialPhase::ELABORATION->value,
             'target_tier' => ProjectSubscription::TIER_PRO,
             'current_tier' => ProjectSubscription::TIER_STANDARD,
             'payment_intent_id' => 'pi_test_123',
@@ -75,6 +77,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
         $service->processCompletedCheckoutSession([
             'id' => 'cs_test_fallback',
             'project_id' => 42,
+            'commercial_phase' => CommercialPhase::ELABORATION->value,
             'target_tier' => ProjectSubscription::TIER_STANDARD,
             'payment_intent_id' => 'pi_test_fallback',
             'currency' => 'eur',
@@ -102,6 +105,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
         $payload = [
             'id' => 'cs_test_123',
             'project_id' => 42,
+            'commercial_phase' => CommercialPhase::ELABORATION->value,
             'target_tier' => ProjectSubscription::TIER_PRO,
             'payment_intent_id' => 'pi_test_123',
             'customer_id' => 'cus_test_123',
@@ -132,6 +136,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
         $service->processCompletedCheckoutSession([
             'id' => 'cs_test_123',
             'project_id' => 42,
+            'commercial_phase' => CommercialPhase::ELABORATION->value,
             'target_tier' => ProjectSubscription::TIER_PRO,
             'payment_intent_id' => 'pi_test_123',
             'customer_id' => 'cus_test_123',
@@ -168,6 +173,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
         $service->processCheckoutSessionExpired([
             'id' => 'cs_test_expired',
             'project_id' => 42,
+            'commercial_phase' => CommercialPhase::ELABORATION->value,
             'target_tier' => ProjectSubscription::TIER_STANDARD,
         ]);
 
@@ -197,17 +203,59 @@ final class StripeProjectWebhookServiceTest extends TestCase
                 new PlanMeasureCatalogResolver($this->createFeatureGate()),
                 new SustainabilityPlanMeasureOrderer(),
             ),
+            $this->createMock(StripeInvoiceStorageService::class),
             'whsec_test',
         );
 
         $service->processCompletedCheckoutSession([
             'id' => 'cs_unknown',
             'project_id' => 9999,
+            'commercial_phase' => CommercialPhase::ELABORATION->value,
             'target_tier' => ProjectSubscription::TIER_PRO,
             'payment_intent_id' => 'pi_unknown',
         ]);
 
         self::assertTrue(true);
+    }
+
+    public function testCompletedCheckoutWithMismatchedCommercialPhaseIsIgnored(): void
+    {
+        $subscription = $this->createSubscription(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT, CommercialPhase::ELABORATION);
+        $subscription->setStripeCheckoutSessionId('cs_phase_mismatch');
+        $subscription->setTargetTier(ProjectSubscription::TIER_STANDARD);
+
+        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
+        $subscriptionRepository->method('findOneByStripeCheckoutSessionId')->willReturn($subscription);
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('flush');
+
+        $service = new StripeProjectWebhookService(
+            $entityManager,
+            $subscriptionRepository,
+            $this->createMock(ProjectRepository::class),
+            $this->createMock(PlanRepository::class),
+            new SustainabilityPlanCompletionService(
+                $this->createMock(MeasureRepository::class),
+                new PlanMeasureCatalogResolver($this->createFeatureGate()),
+                new SustainabilityPlanMeasureOrderer(),
+            ),
+            $this->createMock(StripeInvoiceStorageService::class),
+            'whsec_test',
+        );
+
+        $service->processCompletedCheckoutSession([
+            'id' => 'cs_phase_mismatch',
+            'project_id' => 42,
+            'commercial_phase' => CommercialPhase::IMPLEMENTATION->value,
+            'target_tier' => ProjectSubscription::TIER_STANDARD,
+            'payment_intent_id' => 'pi_phase_mismatch',
+            'payment_status' => 'paid',
+        ]);
+
+        self::assertSame(ProjectSubscription::TIER_BASIC, $subscription->getTier());
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $subscription->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $subscription->getTargetTier());
     }
 
     private function createService(ProjectSubscription $subscription): StripeProjectWebhookService
@@ -220,6 +268,8 @@ final class StripeProjectWebhookServiceTest extends TestCase
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::atLeastOnce())->method('flush');
+        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
+        $invoiceStorage->method('upsertFromStripeCheckout')->willReturn(new \App\Entity\ProjectBillingDocument());
 
         return new StripeProjectWebhookService(
             $entityManager,
@@ -231,6 +281,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
                 new PlanMeasureCatalogResolver($this->createFeatureGate()),
                 new SustainabilityPlanMeasureOrderer(),
             ),
+            $invoiceStorage,
             'whsec_test',
         );
     }
@@ -246,10 +297,10 @@ final class StripeProjectWebhookServiceTest extends TestCase
         return new ProjectFeatureGate(new CommercialPlanResolver($commercialPlanRepository, $subscriptionRepository));
     }
 
-    private function createSubscription(string $tier, string $status): ProjectSubscription
+    private function createSubscription(string $tier, string $status, CommercialPhase $phase = CommercialPhase::ELABORATION): ProjectSubscription
     {
         return (new ProjectSubscription())
-            ->setPhase(CommercialPhase::ELABORATION)
+            ->setPhase($phase)
             ->setTier($tier)
             ->setStatus($status)
             ->setSource(ProjectSubscription::SOURCE_MANUAL)

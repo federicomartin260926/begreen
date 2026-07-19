@@ -91,10 +91,30 @@ final class CommercialPlanFixturesTest extends TestCase
             4900,
         ], array_map(static fn (CommercialPlan $plan): int => $plan->getPriceAmount() ?? -1, $persistedPlans));
 
+        $stripePriceIds = [];
+        $stripeUpgradePriceIds = [];
         foreach ($persistedPlans as $plan) {
-            self::assertNull($plan->getStripePriceId());
-            self::assertNull($plan->getStripeUpgradeFromStandardPriceId());
+            $key = $plan->getPhase()->value . ':' . $plan->getCode();
+            $stripePriceIds[$key] = $plan->getStripePriceId();
+            $stripeUpgradePriceIds[$key] = $plan->getStripeUpgradeFromStandardPriceId();
         }
+
+        self::assertSame([
+            'elaboration:basic' => null,
+            'elaboration:standard' => 'price_1TtuAORudvqjmqq94aHX3Om4',
+            'elaboration:pro' => 'price_1TttueRudvqjmqq9BkITaeEb',
+            'implementation:basic' => null,
+            'implementation:standard' => 'price_1TttwkRudvqjmqq9KlY7cJdx',
+            'implementation:pro' => 'price_1TttxeRudvqjmqq95jlhpWXG',
+        ], $stripePriceIds);
+        self::assertSame([
+            'elaboration:basic' => null,
+            'elaboration:standard' => null,
+            'elaboration:pro' => 'price_1Ttu7aRudvqjmqq97V6Ilj3L',
+            'implementation:basic' => null,
+            'implementation:standard' => null,
+            'implementation:pro' => 'price_1Ttu8IRudvqjmqq9DxbI41sP',
+        ], $stripeUpgradePriceIds);
 
         $implementationPlans = [];
         foreach ($persistedPlans as $plan) {

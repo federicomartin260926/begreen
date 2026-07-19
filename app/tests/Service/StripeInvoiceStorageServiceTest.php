@@ -17,6 +17,7 @@ use App\Tests\Support\Stripe\FakeStripeClient;
 use App\Tests\Support\Stripe\FakeStripeCheckoutFacade;
 use App\Tests\Support\Stripe\FakeStripeCheckoutSessions;
 use App\Tests\Support\Stripe\FakeStripeInvoicesFacade;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class StripeInvoiceStorageServiceTest extends TestCase
 {
@@ -61,6 +62,13 @@ final class StripeInvoiceStorageServiceTest extends TestCase
             'payment_status' => 'paid',
             'amount_total' => 2900,
             'currency' => 'eur',
+            'metadata' => (object) [
+                'commercial_phase' => CommercialPhase::ELABORATION->value,
+                'current_tier' => ProjectSubscription::TIER_BASIC,
+                'target_tier' => ProjectSubscription::TIER_STANDARD,
+                'commercial_plan_code' => ProjectSubscription::TIER_STANDARD,
+                'upgrade_type' => null,
+            ],
             'payment_intent' => (object) ['id' => 'pi_test_86'],
             'customer' => (object) ['id' => 'cus_test_86'],
             'invoice' => (object) [
@@ -83,6 +91,7 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         self::assertSame('in_test_86', $document->getStripeInvoiceId());
         self::assertSame('cus_test_86', $document->getStripeCustomerId());
         self::assertSame('INV-TEST-86', $document->getPaymentReference());
+        self::assertSame('Elaboración Standard', $document->getPurchaseLabel());
         self::assertSame(2900, $document->getAmountCents());
         self::assertSame('EUR', $document->getCurrency());
         self::assertSame('https://stripe.test/invoice/view', $document->getHostedInvoiceUrl());
@@ -91,6 +100,188 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         self::assertNotNull($document->getDownloadedAt());
         self::assertFileExists($projectDir.'/var/private/'.$document->getLocalPath());
         self::assertSame("%PDF-1.4\n%PDF test\n", file_get_contents($projectDir.'/var/private/'.$document->getLocalPath()));
+    }
+
+    public function testUpsertFromStripeCheckoutLeavesPurchaseLabelNullWhenMetadataIsMissing(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
+            new MockHttpClient(static function (): never {
+                throw new \RuntimeException('HTTP client should not be called when the invoice PDF metadata is missing.');
+            }),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(EntityManagerInterface::class),
+            $projectDir,
+        );
+
+        $subscription = $this->createSubscription();
+        $session = (object) [
+            'id' => 'cs_missing_metadata',
+            'payment_status' => 'paid',
+            'amount_total' => 2900,
+            'currency' => 'eur',
+            'payment_intent' => (object) ['id' => 'pi_missing_metadata'],
+            'customer' => (object) ['id' => 'cus_missing_metadata'],
+            'invoice' => (object) [
+                'id' => 'in_missing_metadata',
+                'number' => 'INV-MISSING-METADATA',
+                'hosted_invoice_url' => 'https://stripe.test/invoice/view',
+            ],
+        ];
+
+        $document = $service->upsertFromStripeCheckout($subscription, $session, $session->invoice);
+
+        self::assertNull($document->getPurchaseLabel());
+    }
+
+    public function testUpsertFromStripeCheckoutLeavesPurchaseLabelNullWhenPhaseMetadataIsInvalid(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
+            new MockHttpClient(static function (): never {
+                throw new \RuntimeException('HTTP client should not be called when the phase metadata is invalid.');
+            }),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(EntityManagerInterface::class),
+            $projectDir,
+        );
+
+        $subscription = $this->createSubscription();
+        $session = (object) [
+            'id' => 'cs_invalid_phase',
+            'payment_status' => 'paid',
+            'amount_total' => 2900,
+            'currency' => 'eur',
+            'metadata' => (object) [
+                'commercial_phase' => 'invalid-phase',
+                'current_tier' => ProjectSubscription::TIER_BASIC,
+                'target_tier' => ProjectSubscription::TIER_STANDARD,
+                'commercial_plan_code' => ProjectSubscription::TIER_STANDARD,
+            ],
+            'payment_intent' => (object) ['id' => 'pi_invalid_phase'],
+            'customer' => (object) ['id' => 'cus_invalid_phase'],
+            'invoice' => (object) [
+                'id' => 'in_invalid_phase',
+                'number' => 'INV-INVALID-PHASE',
+                'hosted_invoice_url' => 'https://stripe.test/invoice/view',
+            ],
+        ];
+
+        $document = $service->upsertFromStripeCheckout($subscription, $session, $session->invoice);
+
+        self::assertNull($document->getPurchaseLabel());
+    }
+
+    public function testUpsertFromStripeCheckoutLeavesPurchaseLabelNullWhenTargetTierIsMissing(): void
+    {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
+            new MockHttpClient(static function (): never {
+                throw new \RuntimeException('HTTP client should not be called when the target tier metadata is missing.');
+            }),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(EntityManagerInterface::class),
+            $projectDir,
+        );
+
+        $subscription = $this->createSubscription();
+        $session = (object) [
+            'id' => 'cs_missing_target_tier',
+            'payment_status' => 'paid',
+            'amount_total' => 2900,
+            'currency' => 'eur',
+            'metadata' => (object) [
+                'commercial_phase' => CommercialPhase::ELABORATION->value,
+                'current_tier' => ProjectSubscription::TIER_BASIC,
+                'commercial_plan_code' => ProjectSubscription::TIER_STANDARD,
+            ],
+            'payment_intent' => (object) ['id' => 'pi_missing_target_tier'],
+            'customer' => (object) ['id' => 'cus_missing_target_tier'],
+            'invoice' => (object) [
+                'id' => 'in_missing_target_tier',
+                'number' => 'INV-MISSING-TARGET',
+                'hosted_invoice_url' => 'https://stripe.test/invoice/view',
+            ],
+        ];
+
+        $document = $service->upsertFromStripeCheckout($subscription, $session, $session->invoice);
+
+        self::assertNull($document->getPurchaseLabel());
+    }
+
+    #[DataProvider('purchaseLabelProvider')]
+    public function testUpsertFromStripeCheckoutUsesOnlyCoherentMetadataForPurchaseLabel(
+        string $currentTier,
+        string $targetTier,
+        ?string $upgradeType,
+        ?string $expectedLabel,
+    ): void {
+        $projectDir = sys_get_temp_dir().'/bgmf_invoice_storage_'.uniqid();
+        $service = new StripeInvoiceStorageService(
+            $this->createStripeClient(),
+            new MockHttpClient(static function (): never {
+                throw new \RuntimeException('HTTP client should not be called when the invoice PDF metadata is missing.');
+            }),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(EntityManagerInterface::class),
+            $projectDir,
+        );
+
+        $subscription = $this->createSubscription();
+        $session = (object) [
+            'id' => 'cs_purchase_label',
+            'payment_status' => 'paid',
+            'amount_total' => 2900,
+            'currency' => 'eur',
+            'metadata' => (object) array_filter([
+                'commercial_phase' => CommercialPhase::IMPLEMENTATION->value,
+                'current_tier' => $currentTier,
+                'target_tier' => $targetTier,
+                'upgrade_type' => $upgradeType,
+            ], static fn (mixed $value): bool => $value !== null),
+            'payment_intent' => (object) ['id' => 'pi_purchase_label'],
+            'customer' => (object) ['id' => 'cus_purchase_label'],
+            'invoice' => (object) [
+                'id' => 'in_purchase_label',
+                'number' => 'INV-PURCHASE-LABEL',
+                'hosted_invoice_url' => 'https://stripe.test/invoice/view',
+            ],
+        ];
+
+        $document = $service->upsertFromStripeCheckout($subscription, $session, $session->invoice);
+
+        self::assertSame($expectedLabel, $document->getPurchaseLabel());
+    }
+
+    public static function purchaseLabelProvider(): iterable
+    {
+        yield 'standard to pro upgrade' => [
+            ProjectSubscription::TIER_STANDARD,
+            ProjectSubscription::TIER_PRO,
+            'standard_to_pro',
+            'Upgrade Implementación Standard → Pro',
+        ];
+        yield 'basic to pro' => [
+            ProjectSubscription::TIER_BASIC,
+            ProjectSubscription::TIER_PRO,
+            null,
+            'Implementación Pro',
+        ];
+        yield 'basic to standard' => [
+            ProjectSubscription::TIER_BASIC,
+            ProjectSubscription::TIER_STANDARD,
+            null,
+            'Implementación Standard',
+        ];
+        yield 'incoherent upgrade marker' => [
+            ProjectSubscription::TIER_BASIC,
+            ProjectSubscription::TIER_STANDARD,
+            'standard_to_pro',
+            null,
+        ];
     }
 
     public function testUpsertFromStripeCheckoutReusesExistingDocumentWithoutDuplicating(): void
@@ -149,6 +340,13 @@ final class StripeInvoiceStorageServiceTest extends TestCase
             'payment_status' => 'paid',
             'amount_total' => 2900,
             'currency' => 'eur',
+            'metadata' => (object) [
+                'commercial_phase' => CommercialPhase::ELABORATION->value,
+                'current_tier' => ProjectSubscription::TIER_BASIC,
+                'target_tier' => ProjectSubscription::TIER_STANDARD,
+                'commercial_plan_code' => ProjectSubscription::TIER_STANDARD,
+                'upgrade_type' => null,
+            ],
             'payment_intent' => (object) ['id' => 'pi_test_86'],
             'customer' => (object) ['id' => 'cus_test_86'],
             'invoice' => (object) [
@@ -160,12 +358,15 @@ final class StripeInvoiceStorageServiceTest extends TestCase
         ];
 
         $firstDocument = $service->upsertFromStripeCheckout($subscription, $session, $session->invoice);
+        self::assertSame('Elaboración Standard', $firstDocument->getPurchaseLabel());
+        $subscription->setTier(ProjectSubscription::TIER_PRO);
         $secondDocument = $service->upsertFromStripeCheckout($subscription, $session, $session->invoice);
 
         self::assertSame($firstDocument, $secondDocument);
         self::assertSame($existingDocument, $secondDocument);
         self::assertSame('stripe-invoices/project-86/invoice-in_test_86.pdf', $secondDocument->getLocalPath());
         self::assertSame('2026-06-04 10:00:00', $secondDocument->getDownloadedAt()?->format('Y-m-d H:i:s'));
+        self::assertSame('Elaboración Standard', $secondDocument->getPurchaseLabel());
     }
 
     public function testSyncRejectsNonPdfResponse(): void

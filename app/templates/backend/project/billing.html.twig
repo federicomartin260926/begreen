@@ -17,7 +17,7 @@
 <div class="container-fluid px-0 backend-client-shell">
   <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
-      <h2 class="mb-1">{{ 'backend.billing.project.plan_context'|trans }}</h2>
+      <h2 class="mb-1">{{ 'backend.billing.project.plan_context'|trans }}: {{ phaseLabel }}</h2>
       <div class="text-muted">{{ project.name }}</div>
     </div>
     <div class="d-flex gap-2">
@@ -26,6 +26,22 @@
       </a>
     </div>
   </div>
+
+  <div class="small text-muted mb-2">{{ 'backend.billing.project.phase_tabs'|trans }}</div>
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link {% if phase.value == 'elaboration' %}active{% endif %}"
+         href="{{ path('backend_project_billing', {id: project.id, phase: 'elaboration'}) }}">
+        {{ 'backend.commercial_phases.elaboration'|trans }}
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if phase.value == 'implementation' %}active{% endif %}"
+         href="{{ path('backend_project_billing', {id: project.id, phase: 'implementation'}) }}">
+        {{ 'backend.commercial_phases.implementation'|trans }}
+      </a>
+    </li>
+  </ul>
 
   {% set subscription = subscription ?? null %}
   {% set stripeReference = subscription ? (subscription.paymentReference ?: subscription.stripePaymentIntentId ?: subscription.stripeCheckoutSessionId) : null %}
@@ -38,6 +54,12 @@
 
   {% if subscription %}
     <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <div class="border rounded p-3 h-100 bg-light">
+          <div class="small text-muted">{{ 'backend.billing.project.plan_context'|trans }}</div>
+          <div class="fw-semibold">{{ phaseLabel }}</div>
+        </div>
+      </div>
       <div class="col-12 col-md-6">
         <div class="border rounded p-3 h-100 bg-light">
           <div class="small text-muted">{{ 'backend.billing.project.payment_status'|trans }}</div>
@@ -124,16 +146,62 @@
               <div class="small text-muted">{{ pendingUpgrade.description }}</div>
             {% endif %}
             <div class="small text-muted mt-1">
-              {{ 'backend.billing.project.upgrade_pending_status'|trans }}
+              {% if pendingCheckout.shouldVerify %}
+                {{ 'backend.billing.project.payment_pending_paid'|trans }}
+              {% elseif pendingCheckout.isReusable %}
+                {{ 'backend.billing.project.payment_pending_open'|trans }}
+              {% elseif pendingCheckout.shouldRetry %}
+                {{ 'backend.billing.project.payment_pending_retry'|trans }}
+              {% else %}
+                {{ 'backend.billing.project.upgrade_pending_status'|trans }}
+              {% endif %}
             </div>
+            {% if canManageBilling %}
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                {% if pendingCheckout.isReusable %}
+                  <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
+                    <button type="submit" class="btn btn-success">
+                      {{ 'backend.subscription.actions.continue_payment'|trans }}
+                    </button>
+                  </form>
+                {% elseif pendingCheckout.shouldRetry %}
+                  <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
+                    <button type="submit" class="btn btn-warning text-dark">
+                      {{ 'backend.subscription.actions.retry_payment'|trans }}
+                    </button>
+                  </form>
+                {% elseif pendingCheckout.shouldVerify %}
+                  <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, phase: phase.value, from: from}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id ~ '_' ~ phase.value) }}">
+                    <button type="submit" class="btn btn-primary">
+                      {{ 'backend.subscription.actions.verify_status'|trans }}
+                    </button>
+                  </form>
+                {% endif %}
+                <form method="post" action="{{ path('backend_project_subscription_cancel_pending', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
+                  <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_cancel_pending_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
+                  <button type="submit" class="btn btn-outline-danger">
+                    {{ 'backend.subscription.actions.cancel_payment_attempt'|trans }}
+                  </button>
+                </form>
+                <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, phase: phase.value, from: from}) }}">
+                  <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id ~ '_' ~ phase.value) }}">
+                  <button type="submit" class="btn btn-outline-secondary">
+                    {{ 'backend.subscription.actions.verify_payment'|trans }}
+                  </button>
+                </form>
+              </div>
+            {% endif %}
           </div>
         </div>
       {% endif %}
       <div class="col-12">
         <div class="d-flex flex-wrap gap-2">
-          {% if canSeeStripeAdminActions and canVerifyPayment %}
-            <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, from: from}) }}">
-              <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id) }}">
+          {% if canSeeStripeAdminActions and canVerifyPayment and (pendingUpgrade is not defined or pendingCheckout.shouldVerify) %}
+            <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, phase: phase.value, from: from}) }}">
+              <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id ~ '_' ~ phase.value) }}">
               <button type="submit" class="btn btn-warning text-dark fw-semibold">
                 {% if subscription.status == 'pending_payment' %}
                   {{ 'backend.subscription.actions.verify_payment'|trans }}
@@ -174,6 +242,9 @@
                       <span class="badge bg-secondary">{{ ('backend.billing.document.type.' ~ document.type)|trans }}</span>
                       <span class="badge {% if document.status == 'paid' %}bg-success{% elseif document.status == 'void' %}bg-danger{% elseif document.status == 'open' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
                         {{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}
+                      </span>
+                      <span class="badge bg-info-subtle text-info border border-info-subtle">
+                        {{ ('backend.commercial_phases.' ~ (document.subscription ? document.subscription.phase.value : phase.value))|trans }}
                       </span>
                     </div>
                     {% if shortPaymentReference %}
@@ -219,6 +290,12 @@
                       <div class="fw-semibold">{{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}</div>
                     </div>
                   </div>
+                  <div class="col-12 col-md-4">
+                    <div class="border rounded p-3 h-100 bg-light">
+                      <div class="small text-muted">{{ 'backend.billing.project.concept'|trans }}</div>
+                      <div class="fw-semibold text-break">{{ document.purchaseLabel ?: '—' }}</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="d-flex flex-wrap gap-2 mt-3">
@@ -229,7 +306,7 @@
                             data-bs-target="#billingDocumentModal{{ document.id }}">
                       {{ 'backend.subscription.actions.view_invoice'|trans }}
                     </button>
-                    <a href="{{ path('backend_project_billing_document_download', {id: project.id, documentId: document.id, from: from}) }}" class="btn btn-outline-success" target="_blank" rel="noopener">
+                    <a href="{{ path('backend_project_billing_document_download', {id: project.id, phase: phase.value, documentId: document.id, from: from}) }}" class="btn btn-outline-success" target="_blank" rel="noopener">
                       {{ 'backend.subscription.actions.download_pdf'|trans }}
                     </a>
                   {% endif %}
@@ -240,7 +317,7 @@
                   {% endif %}
                   {% set hasUsefulInvoiceRefs = document.invoicePdfUrl or document.stripeInvoiceId or document.stripeCheckoutSessionId or document.paymentReference %}
                   {% if canSeeStripeAdminActions and not hasLocalCopy and hasUsefulInvoiceRefs %}
-                    <form method="post" action="{{ path('backend_project_billing_document_sync', {id: project.id, documentId: document.id, from: from}) }}">
+                    <form method="post" action="{{ path('backend_project_billing_document_sync', {id: project.id, phase: phase.value, documentId: document.id, from: from}) }}">
                       <input type="hidden" name="_token" value="{{ csrf_token('project_billing_document_sync_' ~ project.id ~ '_' ~ document.id) }}">
                       <button type="submit" class="btn btn-primary">
                         {{ 'backend.billing.project.try_download_invoice'|trans }}
@@ -262,7 +339,7 @@
                     <div class="modal-body p-0">
                       <div class="ratio ratio-16x9" style="min-height: 70vh;">
                         <iframe
-                          src="{{ path('backend_project_billing_document_view', {id: project.id, documentId: document.id, from: from}) }}"
+                          src="{{ path('backend_project_billing_document_view', {id: project.id, phase: phase.value, documentId: document.id, from: from}) }}"
                           title="{{ 'backend.billing.project.invoice_title'|trans }}"
                           referrerpolicy="no-referrer"
                           loading="lazy"
@@ -274,7 +351,7 @@
                         {{ 'backend.billing.project.invoice_modal_hint'|trans }}
                       </div>
                       <div class="d-flex gap-2 ms-auto">
-                        <a href="{{ path('backend_project_billing_document_view', {id: project.id, documentId: document.id, from: from}) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+                        <a href="{{ path('backend_project_billing_document_view', {id: project.id, phase: phase.value, documentId: document.id, from: from}) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
                           {{ 'backend.billing.project.open_new_tab'|trans }}
                         </a>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -365,8 +442,8 @@
         } %}
       {% elseif upgradeCta.mode == 'single' %}
         {% set upgradeOption = upgradeCta.options|first %}
-        <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: upgradeOption.targetTier}) }}" class="d-inline">
-          <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ upgradeOption.targetTier) }}">
+        <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: upgradeOption.phase|default(phase.value), targetTier: upgradeOption.targetTier}) }}" class="d-inline">
+          <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ (upgradeOption.phase|default(phase.value)) ~ '_' ~ upgradeOption.targetTier) }}">
           <button type="submit" class="btn btn-primary btn-sm">
             {{ upgradeOption.ctaLabel }}
           </button>

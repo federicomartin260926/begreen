@@ -383,7 +383,7 @@ class PlanController extends AbstractController
         $evidenceCount = $this->countProjectEvidenceFiles($plan);
         $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION);
         $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
-        $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project);
+        $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project, CommercialPhase::ELABORATION);
         $upgradeCta = $this->buildUpgradeCta($project, $plan, CommercialPhase::ELABORATION, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
 
         // ===== Render =====
@@ -497,6 +497,7 @@ class PlanController extends AbstractController
         MeasureRepository $measureRepository,
         ProtocolRepository $protocolRepository,
         CommercialPlanRepository $commercialPlanRepository,
+        StripeProjectCheckoutService $checkoutService,
         EntityManagerInterface $em,
         MailerInterface $mailer,
         TranslatorInterface $translator
@@ -744,7 +745,8 @@ class PlanController extends AbstractController
         $projectTier = $this->featureGate->getTier($project, $reviewPhase);
         $projectTierLabel = $this->featureGate->getPlanLabel($project, $reviewPhase);
         $projectTierSummary = $this->featureGate->getPlanDescription($project, $reviewPhase) ?? $this->t->trans('backend.plan.tier.basic_summary');
-        $upgradeCta = $this->buildUpgradeCta($project, $plan, $reviewPhase, $projectTier, [], $commercialPlanRepository, $measureRepository, false);
+        $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project, $reviewPhase);
+        $upgradeCta = $this->buildUpgradeCta($project, $plan, $reviewPhase, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
 
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,

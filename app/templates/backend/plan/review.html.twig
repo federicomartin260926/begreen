@@ -128,8 +128,9 @@
                 {% elseif upgradeCta.mode == 'single' %}
                     {% set upgradeOption = upgradeCta.options|first %}
                     {% if upgradeOption %}
-                        <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: upgradeOption.targetTier}) }}" class="flex-shrink-0 ms-lg-auto">
-                            <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ upgradeOption.targetTier) }}">
+                        {% set checkoutPhase = upgradeOption.phase|default(upgradeCta.phase) %}
+                        <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: checkoutPhase, targetTier: upgradeOption.targetTier}) }}" class="flex-shrink-0 ms-lg-auto">
+                            <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ checkoutPhase ~ '_' ~ upgradeOption.targetTier) }}">
                             <button type="submit" class="btn btn-outline-success btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 rounded-pill shadow-sm">
                                 <i class="bi bi-arrow-up-circle"></i>
                                 Mejorar plan

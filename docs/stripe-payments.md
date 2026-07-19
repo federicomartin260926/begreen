@@ -1,18 +1,19 @@
 # Stripe Payments
 
-This project uses Stripe Checkout for one-time upgrades per `Project`.
+This project uses Stripe Checkout for one-time upgrades per `Project` and commercial phase.
 
 ## Scope
 
 - `basic` remains free.
-- `standard` is purchased once per project.
-- `pro` is purchased once per project.
+- `standard` is purchased once per project and commercial phase.
+- `pro` is purchased once per project and commercial phase.
 - Checkout price IDs live on `CommercialPlan` and are configured from Super Admin.
 - `standard -> pro` uses the `CommercialPlan` data for the target tier and the price difference is derived from plan amounts.
 - Begreen does not issue its own invoices in this phase.
 - Stripe is the official source of truth for payment and invoice data.
-- `ProjectSubscription` stores the current plan/payment state.
-- `ProjectBillingDocument` stores the billing documents associated with the project, including the private local PDF copy when available.
+- `ProjectSubscription` stores the current plan/payment state for one `Project` + `CommercialPhase`.
+- `ProjectBillingDocument` stores the billing documents associated with the project subscription, including the private local PDF copy when available.
+- Checkout uses Stripe Price IDs directly. Product IDs are not stored in Begreen.
 
 ## Environment variables
 
@@ -23,37 +24,39 @@ Required:
 - `STRIPE_SUCCESS_URL`
 - `STRIPE_CANCEL_URL`
 
-The success/cancel URLs should include the `{PROJECT_ID}` placeholder. Stripe will replace `{CHECKOUT_SESSION_ID}` automatically.
+The success/cancel URLs should include `{PROJECT_ID}`, `{COMMERCIAL_PHASE}`, `{TARGET_TIER}` and `{CHECKOUT_SESSION_ID}` placeholders. Begreen replaces project, phase and target tier before creating the Checkout Session. Stripe replaces `{CHECKOUT_SESSION_ID}` on return.
 
 Example:
 
 ```env
-STRIPE_SUCCESS_URL="https://example.com/backend/project/{PROJECT_ID}/subscription/success?session_id={CHECKOUT_SESSION_ID}"
-STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription/cancel?session_id={CHECKOUT_SESSION_ID}"
+STRIPE_SUCCESS_URL="https://example.com/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/success/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}"
+STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/cancel/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}"
 ```
 
 ## Flow
 
-1. The user starts the checkout from the plan review or project view.
+1. The user starts the checkout from the plan measures page, plan review page or billing view.
 2. Begreen creates a Stripe Checkout Session in `payment` mode.
-3. The project subscription is marked as `pending_payment`.
-4. The success URL and the manual verification action reconcile the checkout against Stripe using the stored Checkout Session ID.
-5. When Stripe confirms the payment, Begreen activates the target tier on `ProjectSubscription` and creates or updates a `ProjectBillingDocument`.
-6. If Stripe provides a PDF invoice URL, Begreen downloads a private copy under `var/private/stripe-invoices` and stores only the relative path in `ProjectBillingDocument.localPath`.
-7. The billing view serves invoices and downloads only through protected Symfony routes.
-8. Stripe webhooks remain pending as the durable production fallback.
-9. The target tier must have a `stripePriceId` configured on its `CommercialPlan`.
+3. The selected phase subscription is marked as `pending_payment`.
+4. Metadata includes `project_id`, `commercial_phase`, `current_tier`, `target_tier`, `commercial_plan_code`, and upgrade metadata when applicable.
+5. The success URL and the manual verification action reconcile the checkout against Stripe using the stored Checkout Session ID and the requested commercial phase.
+6. Stripe webhooks also require the phase metadata and only update the subscription for the matching project + phase.
+7. When Stripe confirms the payment, Begreen activates the target tier on the matching `ProjectSubscription` and creates or updates a `ProjectBillingDocument` for that subscription.
+8. If Stripe provides a PDF invoice URL, Begreen downloads a private copy under `var/private/stripe-invoices` and stores only the relative path in `ProjectBillingDocument.localPath`.
+9. The billing view serves invoices and downloads only through protected Symfony routes scoped by commercial phase.
+10. The target tier must have a `stripePriceId` configured on its `CommercialPlan`; the Standard -> Pro transition uses `stripeUpgradeFromStandardPriceId`.
 
 ## Routes
 
-- `POST /backend/project/{id}/subscription/checkout/{targetTier}`
-- `POST /backend/project/{id}/subscription/confirm-pending`
-- `GET /backend/project/{id}/subscription/success`
-- `GET /backend/project/{id}/subscription/cancel`
-- `GET /backend/project/{id}/billing`
-- `GET /backend/project/{id}/billing/document/{documentId}/view`
-- `GET /backend/project/{id}/billing/document/{documentId}/download`
-- `POST /backend/project/{id}/billing/document/{documentId}/sync`
+- `POST /backend/project/{id}/subscription/{phase}/checkout/{targetTier}`
+- `POST /backend/project/{id}/subscription/{phase}/confirm-pending`
+- `GET /backend/project/{id}/subscription/{phase}/success/{targetTier}`
+- `GET /backend/project/{id}/subscription/{phase}/cancel/{targetTier}`
+- `POST /backend/project/{id}/subscription/{phase}/cancel-pending/{targetTier}`
+- `GET /backend/project/{id}/billing/{phase}`
+- `GET /backend/project/{id}/billing/{phase}/document/{documentId}/view`
+- `GET /backend/project/{id}/billing/{phase}/document/{documentId}/download`
+- `POST /backend/project/{id}/billing/{phase}/document/{documentId}/sync`
 - `POST /webhooks/stripe`
 
 ## Stored references
@@ -61,6 +64,7 @@ STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription
 `ProjectSubscription` keeps the current payment state:
 
 - tier
+- phase
 - status
 - source
 - paid amount and currency
@@ -73,12 +77,14 @@ STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription
 - current hosted invoice URL
 - current invoice PDF URL
 - current payment status
+- target tier while checkout is pending
 
 `ProjectBillingDocument` keeps the document history/details:
 
 - provider
 - type
 - status
+- project subscription
 - checkout session id
 - payment intent id
 - invoice id
@@ -114,4 +120,6 @@ If Stripe does not create an invoice for a given `payment` checkout, Begreen kee
 - The `Verificar pago en Stripe` / `Actualizar referencias desde Stripe` action is the manual/admin fallback when the browser return is missing or the project remains in `pending_payment`.
 - The billing UI shows `Ver factura` only when a private local PDF exists, and `Descargar PDF` only when the local copy exists.
 - The billing UI keeps Stripe technical identifiers collapsed by default.
+- The Stripe `cancel_url` uses the GET return route `/subscription/{phase}/cancel/{targetTier}` and only informs the user that the payment was not completed.
+- The local "Cancelar intento de pago" action uses the POST route `/subscription/{phase}/cancel-pending/{targetTier}` and clears only the pending subscription state for that phase.
 - This is a one-time payment flow, not Stripe Billing.

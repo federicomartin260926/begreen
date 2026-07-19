@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectSubscription;
+use App\Enum\CommercialPhase;
 use App\Repository\ProjectBillingDocumentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -299,6 +300,10 @@ class StripeInvoiceStorageService
             ->setIssuedAt($document->getIssuedAt() ?? $this->resolveIssuedAt($invoiceObject))
             ->setPaidAt($subscription->getPaidAt() ?? $document->getPaidAt() ?? new \DateTimeImmutable());
 
+        if ($document->getPurchaseLabel() === null) {
+            $document->setPurchaseLabel($this->resolvePurchaseLabel($normalizedSession));
+        }
+
         if ($document->getInvoicePdfUrl() !== null) {
             $this->syncInvoicePdf($document);
         }
@@ -487,6 +492,72 @@ class StripeInvoiceStorageService
         }
 
         return ProjectBillingDocument::TYPE_RECEIPT;
+    }
+
+    private function resolvePurchaseLabel(array|object $session): ?string
+    {
+        $phase = $this->resolvePurchasePhase($session);
+        if (!$phase instanceof CommercialPhase) {
+            return null;
+        }
+
+        $phaseLabel = match ($phase) {
+            CommercialPhase::ELABORATION => 'Elaboración',
+            CommercialPhase::IMPLEMENTATION => 'Implementación',
+        };
+
+        $currentTier = $this->normalizeString($this->readSessionMetadataValue($session, 'current_tier'));
+        $targetTier = $this->normalizeString($this->readSessionMetadataValue($session, 'target_tier'));
+        $upgradeType = $this->normalizeString($this->readSessionMetadataValue($session, 'upgrade_type'));
+
+        if (
+            $currentTier === ProjectSubscription::TIER_STANDARD
+            && $targetTier === ProjectSubscription::TIER_PRO
+            && $upgradeType === 'standard_to_pro'
+        ) {
+            return sprintf('Upgrade %s Standard → Pro', $phaseLabel);
+        }
+
+        if (
+            $currentTier === ProjectSubscription::TIER_BASIC
+            && $targetTier === ProjectSubscription::TIER_PRO
+            && $upgradeType === null
+        ) {
+            return sprintf('%s Pro', $phaseLabel);
+        }
+
+        if (
+            $currentTier === ProjectSubscription::TIER_BASIC
+            && $targetTier === ProjectSubscription::TIER_STANDARD
+            && $upgradeType === null
+        ) {
+            return sprintf('%s Standard', $phaseLabel);
+        }
+
+        return null;
+    }
+
+    private function resolvePurchasePhase(array|object $session): ?CommercialPhase
+    {
+        $phase = $this->normalizeString($this->readSessionMetadataValue($session, 'commercial_phase'));
+        if ($phase !== null) {
+            $resolvedPhase = CommercialPhase::tryFrom($phase);
+            if ($resolvedPhase instanceof CommercialPhase) {
+                return $resolvedPhase;
+            }
+        }
+
+        return null;
+    }
+
+    private function readSessionMetadataValue(array|object $session, string $key): mixed
+    {
+        $directValue = $this->readObjectValue($session, $key);
+        if ($directValue !== null) {
+            return $directValue;
+        }
+
+        return $this->readObjectValue($this->readObjectValue($session, 'metadata'), $key);
     }
 
     private function resolveIssuedAt(array|object|null $invoice): ?\DateTimeImmutable

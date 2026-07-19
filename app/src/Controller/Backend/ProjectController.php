@@ -563,6 +563,7 @@ class ProjectController extends AbstractController
             'projectTierSummary' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
             'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', [
                 'id' => $project->getId(),
+                'phase' => CommercialPhase::ELABORATION->value,
                 'from' => 'project',
             ]),
         ]);
@@ -589,6 +590,7 @@ class ProjectController extends AbstractController
             'projectTierSummary' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
             'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', [
                 'id' => $project->getId(),
+                'phase' => CommercialPhase::ELABORATION->value,
                 'from' => 'project',
             ]),
             'continueUrl' => $this->generateUrl('backend_project_index'),

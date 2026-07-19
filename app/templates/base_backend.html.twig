@@ -49,7 +49,7 @@
                 <div class="backend-sidebar__account-card rounded-4 p-3">
                     {% set profileSidebarHref = path('app_profile', {'_locale': app.request.locale}) %}
                     {% set planSidebarHref = activeProject and is_granted('PROJECT_VIEW', activeProject)
-                        ? path('backend_project_billing', { id: activeProject.id, '_locale': app.request.locale })
+                        ? path('backend_project_billing', { id: activeProject.id, phase: 'elaboration', '_locale': app.request.locale })
                         : null
                     %}
 

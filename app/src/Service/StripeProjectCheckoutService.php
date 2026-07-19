@@ -37,30 +37,31 @@ final class StripeProjectCheckoutService
     ) {
     }
 
-    public function getAvailableUpgradeTargets(Project $project): array
+    public function getAvailableUpgradeTargets(Project $project, CommercialPhase $phase): array
     {
-        $currentTier = $this->featureGate->getTier($project, CommercialPhase::ELABORATION);
+        $currentTier = $this->featureGate->getTier($project, $phase);
         $available = [];
 
         foreach ([ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO] as $targetTier) {
-            if (!$this->canUpgrade($currentTier, $targetTier)) {
+            if (!$this->canUpgrade($currentTier, $phase, $targetTier)) {
                 continue;
             }
 
-            $targetPlan = $this->findTargetPlan($targetTier);
+            $targetPlan = $this->findTargetPlan($phase, $targetTier);
             if (!$targetPlan instanceof CommercialPlan) {
                 continue;
             }
 
-            $priceId = $this->resolvePriceId($currentTier, $targetTier);
+            $priceId = $this->resolvePriceId($phase, $currentTier, $targetTier);
             if ($priceId === null || $priceId === '') {
                 continue;
             }
 
             $available[$targetTier] = [
                 'targetTier' => $targetTier,
-                'label' => $this->resolveTargetLabel($targetTier),
-                'amountCents' => $this->resolveAmountCents($currentTier, $targetTier),
+                'label' => $this->resolveTargetLabel($phase, $targetTier),
+                'phase' => $phase->value,
+                'amountCents' => $this->resolveAmountCents($phase, $currentTier, $targetTier),
                 'priceId' => $priceId,
             ];
         }
@@ -68,9 +69,93 @@ final class StripeProjectCheckoutService
         return $available;
     }
 
-    public function reconcilePendingCheckout(Project $project, ?string $sessionId = null): StripeCheckoutReconciliationResult
+    public function inspectPendingCheckout(Project $project, CommercialPhase $phase): StripePendingCheckoutInspection
     {
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
+        $subscription = $project->getSubscriptionForPhase($phase);
+        if (!$subscription instanceof ProjectSubscription) {
+            return StripePendingCheckoutInspection::none();
+        }
+
+        $sessionId = $this->normalizeString($subscription->getStripeCheckoutSessionId());
+        $targetTier = $this->normalizeString($subscription->getTargetTier());
+        if ($sessionId === null || $targetTier === null || $subscription->getStatus() !== ProjectSubscription::STATUS_PENDING_PAYMENT) {
+            return StripePendingCheckoutInspection::none();
+        }
+
+        try {
+            $session = $this->stripeClient->checkout->sessions->retrieve($sessionId, [
+                'expand' => [
+                    'payment_intent',
+                    'invoice',
+                    'customer',
+                ],
+            ]);
+        } catch (Throwable) {
+            return StripePendingCheckoutInspection::missing($subscription);
+        }
+
+        if (!is_object($session)) {
+            return StripePendingCheckoutInspection::missing($subscription);
+        }
+
+        $retrievedSessionId = $this->normalizeString($session->id ?? null);
+        if ($retrievedSessionId === null || $retrievedSessionId !== $sessionId) {
+            return StripePendingCheckoutInspection::missing($subscription);
+        }
+
+        $metadata = is_object($session->metadata ?? null) || is_array($session->metadata ?? null)
+            ? $session->metadata
+            : [];
+        $projectId = (int) ($this->readMetadataValue($metadata, 'project_id') ?? 0);
+        $metadataPhase = $this->resolveMetadataPhase($metadata);
+        $metadataTargetTier = $this->normalizeString($this->readMetadataValue($metadata, 'target_tier'));
+
+        if (
+            $projectId !== (int) $project->getId()
+            || !$metadataPhase instanceof CommercialPhase
+            || $metadataPhase !== $phase
+            || ($metadataTargetTier !== null && $metadataTargetTier !== $targetTier)
+        ) {
+            return StripePendingCheckoutInspection::missing($subscription);
+        }
+
+        $sessionStatus = $this->normalizeString($session->status ?? null);
+        $paymentStatus = $this->normalizeString($session->payment_status ?? null);
+        $checkoutUrl = $this->normalizeString($session->url ?? null);
+        $expiresAt = $this->normalizeTimestamp($session->expires_at ?? null);
+
+        if ($sessionStatus === 'complete' && $paymentStatus === 'paid') {
+            return StripePendingCheckoutInspection::paid($subscription, $sessionStatus, $paymentStatus);
+        }
+
+        if ($sessionStatus === 'expired') {
+            return StripePendingCheckoutInspection::expired($subscription, $sessionStatus, $paymentStatus);
+        }
+
+        if ($sessionStatus === 'complete') {
+            return StripePendingCheckoutInspection::missing($subscription, $sessionStatus, $paymentStatus);
+        }
+
+        if ($sessionStatus === 'open' && $paymentStatus === 'unpaid') {
+            if ($expiresAt !== null && $expiresAt <= time()) {
+                return StripePendingCheckoutInspection::expired($subscription, $sessionStatus, $paymentStatus);
+            }
+
+            if ($checkoutUrl !== null) {
+                return StripePendingCheckoutInspection::open($subscription, $checkoutUrl, $sessionStatus, $paymentStatus);
+            }
+        }
+
+        if ($checkoutUrl !== null && $sessionStatus === null) {
+            return StripePendingCheckoutInspection::open($subscription, $checkoutUrl, $sessionStatus, $paymentStatus);
+        }
+
+        return StripePendingCheckoutInspection::missing($subscription, $sessionStatus, $paymentStatus);
+    }
+
+    public function reconcilePendingCheckout(Project $project, CommercialPhase $phase, ?string $sessionId = null): StripeCheckoutReconciliationResult
+    {
+        $subscription = $project->getSubscriptionForPhase($phase);
         if (!$subscription instanceof ProjectSubscription) {
             return StripeCheckoutReconciliationResult::nothingToConfirm();
         }
@@ -119,6 +204,10 @@ final class StripeProjectCheckoutService
         if ($projectId !== (int) $project->getId()) {
             return StripeCheckoutReconciliationResult::mismatch($subscription);
         }
+        $metadataPhase = $this->resolveMetadataPhase($metadata);
+        if (!$metadataPhase instanceof CommercialPhase || $metadataPhase !== $phase || $subscription->getPhase() !== $phase) {
+            return StripeCheckoutReconciliationResult::mismatch($subscription);
+        }
 
         $targetTier = $this->resolveReconciledTargetTier($subscription, $metadata);
         if ($targetTier === null) {
@@ -133,7 +222,7 @@ final class StripeProjectCheckoutService
             && $storedSessionId !== null
             && $storedSessionId === $checkoutSessionId
         ) {
-            $planBecameIncompleteAfterUpgrade = $this->syncPlanCompletionAndDetectIncomplete($project);
+            $planBecameIncompleteAfterUpgrade = $this->syncPlanCompletionAndDetectIncomplete($project, $phase);
             $firstPendingVisibleMeasureIndex = $planBecameIncompleteAfterUpgrade
                 ? $this->resolveFirstPendingVisibleMeasureIndex($project)
                 : null;
@@ -156,7 +245,7 @@ final class StripeProjectCheckoutService
             return StripeCheckoutReconciliationResult::pending($subscription);
         }
 
-        if (!$this->canUpgrade($subscription->getTier(), $targetTier) && $subscription->getTier() !== $targetTier) {
+        if (!$this->canUpgrade($subscription->getTier(), $phase, $targetTier) && $subscription->getTier() !== $targetTier) {
             return StripeCheckoutReconciliationResult::mismatch($subscription);
         }
 
@@ -186,7 +275,7 @@ final class StripeProjectCheckoutService
             ->setPaidAt(new \DateTimeImmutable())
             ->setTargetTier(null);
 
-        $planBecameIncompleteAfterUpgrade = $this->syncPlanCompletionAndDetectIncomplete($project);
+        $planBecameIncompleteAfterUpgrade = $this->syncPlanCompletionAndDetectIncomplete($project, $phase);
         $firstPendingVisibleMeasureIndex = $planBecameIncompleteAfterUpgrade
             ? $this->resolveFirstPendingVisibleMeasureIndex($project)
             : null;
@@ -202,27 +291,45 @@ final class StripeProjectCheckoutService
         );
     }
 
-    public function canUpgrade(Project|string $projectOrTier, string $targetTier): bool
+    public function canUpgrade(Project|string $projectOrTier, CommercialPhase $phase, string $targetTier): bool
     {
         $currentTier = $projectOrTier instanceof Project
-            ? $this->featureGate->getTier($projectOrTier, CommercialPhase::ELABORATION)
+            ? $this->featureGate->getTier($projectOrTier, $phase)
             : $projectOrTier;
 
         return $this->isValidTargetTier($targetTier) && $this->tierRank($targetTier) > $this->tierRank($currentTier);
     }
 
-    public function startCheckout(Project $project, string $targetTier, ?User $user = null): string
+    public function startCheckout(Project $project, CommercialPhase $phase, string $targetTier, ?User $user = null): string
     {
-        $currentTier = $this->featureGate->getTier($project, CommercialPhase::ELABORATION);
-        if (!$this->canUpgrade($currentTier, $targetTier)) {
+        $subscription = $project->getSubscriptionForPhase($phase);
+        if (!$subscription instanceof ProjectSubscription) {
+            throw new \RuntimeException(sprintf('Missing project subscription for project "%s" and phase "%s".', $project->getId() ?? 'unpersisted', $phase->value));
+        }
+
+        $currentTier = $this->featureGate->getTier($project, $phase);
+        if (!$this->canUpgrade($currentTier, $phase, $targetTier)) {
             throw new \InvalidArgumentException('Upgrade not allowed for the selected tier.');
         }
 
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION) ?? new ProjectSubscription();
-        $subscription->setPhase(CommercialPhase::ELABORATION);
-        $subscription->setProject($project);
-
+        $pendingCheckout = $this->inspectPendingCheckout($project, $phase);
         if (
+            $subscription->getTargetTier() !== null
+            && $this->normalizeString($subscription->getStripeCheckoutSessionId()) !== null
+            && $subscription->getTargetTier() === $targetTier
+        ) {
+            if ($pendingCheckout->isReusable()) {
+                return (string) $pendingCheckout->getCheckoutUrl();
+            }
+
+            if ($pendingCheckout->shouldRetry()) {
+                $this->clearPendingCheckout($subscription);
+            } elseif ($pendingCheckout->shouldVerify()) {
+                throw new PendingStripeCheckoutException('A Stripe payment is already pending for this project. Verify or cancel it before starting another checkout.');
+            } else {
+                throw new PendingStripeCheckoutException('A Stripe payment is already pending for this project. Verify or cancel it before starting another checkout.');
+            }
+        } elseif (
             $subscription->getTargetTier() !== null
             && $this->normalizeString($subscription->getStripeCheckoutSessionId()) !== null
         ) {
@@ -233,6 +340,8 @@ final class StripeProjectCheckoutService
             $this->successUrlTemplate,
             'backend_project_subscription_success',
             $project,
+            $phase,
+            $targetTier,
             [
                 'session_id' => '{CHECKOUT_SESSION_ID}',
             ]
@@ -242,13 +351,15 @@ final class StripeProjectCheckoutService
             $this->cancelUrlTemplate,
             'backend_project_subscription_cancel',
             $project,
+            $phase,
+            $targetTier,
             [
                 'session_id' => '{CHECKOUT_SESSION_ID}',
             ]
         );
 
-        $targetPlan = $this->resolveTargetPlan($targetTier);
-        $priceId = $this->resolvePriceId($currentTier, $targetTier);
+        $targetPlan = $this->resolveTargetPlan($phase, $targetTier);
+        $priceId = $this->resolvePriceId($phase, $currentTier, $targetTier);
         if ($priceId === null || $priceId === '') {
             if ($currentTier === ProjectSubscription::TIER_STANDARD && $targetTier === ProjectSubscription::TIER_PRO) {
                 throw new \RuntimeException('Stripe upgrade price id is not configured for the Standard -> Pro transition.');
@@ -259,6 +370,7 @@ final class StripeProjectCheckoutService
 
         $metadata = array_filter([
             'project_id' => (string) $project->getId(),
+            'commercial_phase' => $phase->value,
             'current_tier' => $currentTier,
             'target_tier' => $targetTier,
             'commercial_plan_code' => $targetPlan->getCode(),
@@ -293,18 +405,13 @@ final class StripeProjectCheckoutService
 
         $subscription
             ->setTier($currentTier)
-            ->setStatus($subscription->getStatus() ?: ProjectSubscription::STATUS_ACTIVE)
+            ->setStatus(ProjectSubscription::STATUS_PENDING_PAYMENT)
             ->setCurrency($subscription->getCurrency() ?: 'EUR')
             ->setPaidAmountCents($subscription->getPaidAmountCents())
             ->setPaymentReference($subscription->getPaymentReference())
             ->setStripeCheckoutSessionId($session->id)
             ->setLastPaymentStatus('checkout_created')
             ->setTargetTier($targetTier);
-
-        if (!$project->getSubscriptionForPhase(CommercialPhase::ELABORATION)) {
-            $project->addSubscription($subscription);
-            $this->entityManager->persist($subscription);
-        }
 
         $this->entityManager->flush();
 
@@ -315,9 +422,26 @@ final class StripeProjectCheckoutService
         return $session->url;
     }
 
-    public function resolveTargetLabel(string $targetTier): string
+    public function clearPendingCheckout(ProjectSubscription $subscription): void
     {
-        $plan = $this->findTargetPlan($targetTier);
+        $subscription
+            ->setStripeCheckoutSessionId(null)
+            ->setTargetTier(null);
+
+        if ($subscription->getPaidAmountCents() !== null || $subscription->getPaidAt() !== null) {
+            $subscription->setLastPaymentStatus('paid');
+        } else {
+            $subscription->setLastPaymentStatus(null);
+        }
+
+        if ($subscription->getStatus() === ProjectSubscription::STATUS_PENDING_PAYMENT) {
+            $subscription->setStatus(ProjectSubscription::STATUS_ACTIVE);
+        }
+    }
+
+    public function resolveTargetLabel(CommercialPhase $phase, string $targetTier): string
+    {
+        $plan = $this->findTargetPlan($phase, $targetTier);
         if ($plan instanceof CommercialPlan && trim($plan->getName()) !== '') {
             return $plan->getName();
         }
@@ -325,23 +449,23 @@ final class StripeProjectCheckoutService
         return self::TARGET_CONFIG[$targetTier] ?? ucfirst($targetTier);
     }
 
-    public function resolveTargetAmountCents(Project|string $projectOrTier, string $targetTier): ?int
+    public function resolveTargetAmountCents(Project|string $projectOrTier, CommercialPhase $phase, string $targetTier): ?int
     {
         $currentTier = $projectOrTier instanceof Project
-            ? $this->featureGate->getTier($projectOrTier, CommercialPhase::ELABORATION)
+            ? $this->featureGate->getTier($projectOrTier, $phase)
             : $projectOrTier;
 
-        if (!$this->canUpgrade($currentTier, $targetTier)) {
+        if (!$this->canUpgrade($currentTier, $phase, $targetTier)) {
             return null;
         }
 
-        return $this->resolveAmountCents($currentTier, $targetTier);
+        return $this->resolveAmountCents($phase, $currentTier, $targetTier);
     }
 
-    private function resolveAmountCents(string $currentTier, string $targetTier): ?int
+    private function resolveAmountCents(CommercialPhase $phase, string $currentTier, string $targetTier): ?int
     {
-        $currentPlan = $this->resolveCurrentPlan($currentTier);
-        $targetPlan = $this->findTargetPlan($targetTier);
+        $currentPlan = $this->resolveCurrentPlan($phase, $currentTier);
+        $targetPlan = $this->findTargetPlan($phase, $targetTier);
 
         if (!$targetPlan instanceof CommercialPlan) {
             return null;
@@ -357,9 +481,9 @@ final class StripeProjectCheckoutService
         return max(0, $targetAmount - $currentAmount);
     }
 
-    private function resolvePriceId(string $currentTier, string $targetTier): ?string
+    private function resolvePriceId(CommercialPhase $phase, string $currentTier, string $targetTier): ?string
     {
-        $targetPlan = $this->findTargetPlan($targetTier);
+        $targetPlan = $this->findTargetPlan($phase, $targetTier);
         if (!$targetPlan instanceof CommercialPlan) {
             return null;
         }
@@ -371,9 +495,9 @@ final class StripeProjectCheckoutService
         return $targetPlan->getStripePriceId();
     }
 
-    private function resolveTargetPlan(string $targetTier): CommercialPlan
+    private function resolveTargetPlan(CommercialPhase $phase, string $targetTier): CommercialPlan
     {
-        $plan = $this->findTargetPlan($targetTier);
+        $plan = $this->findTargetPlan($phase, $targetTier);
         if ($plan instanceof CommercialPlan) {
             return $plan;
         }
@@ -381,14 +505,14 @@ final class StripeProjectCheckoutService
         throw new \RuntimeException(sprintf('Commercial plan "%s" is not available for checkout.', $targetTier));
     }
 
-    private function findTargetPlan(string $targetTier): ?CommercialPlan
+    private function findTargetPlan(CommercialPhase $phase, string $targetTier): ?CommercialPlan
     {
-        return $this->commercialPlanRepository->findActiveByPhaseAndCode(CommercialPhase::ELABORATION, $targetTier);
+        return $this->commercialPlanRepository->findActiveByPhaseAndCode($phase, $targetTier);
     }
 
-    private function resolveCurrentPlan(string $currentTier): ?CommercialPlan
+    private function resolveCurrentPlan(CommercialPhase $phase, string $currentTier): ?CommercialPlan
     {
-        return $this->findTargetPlan($currentTier);
+        return $this->findTargetPlan($phase, $currentTier);
     }
 
     private function resolveReconciledTargetTier(ProjectSubscription $subscription, array|object $metadata): ?string
@@ -414,8 +538,12 @@ final class StripeProjectCheckoutService
         return null;
     }
 
-    private function syncPlanCompletionAndDetectIncomplete(Project $project): bool
+    private function syncPlanCompletionAndDetectIncomplete(Project $project, CommercialPhase $phase): bool
     {
+        if ($phase !== CommercialPhase::ELABORATION) {
+            return false;
+        }
+
         $plan = $this->planRepository->findOneBy(['project' => $project]);
         if (!$plan instanceof Plan) {
             return false;
@@ -549,6 +677,19 @@ final class StripeProjectCheckoutService
         return null;
     }
 
+    private function normalizeTimestamp(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && preg_match('/^\d+$/', $value) === 1) {
+            return (int) $value;
+        }
+
+        return null;
+    }
+
     private function readObjectValue(mixed $value, string $key): mixed
     {
         if (is_array($value)) {
@@ -567,9 +708,30 @@ final class StripeProjectCheckoutService
         return $this->normalizeString($this->readObjectValue($metadata, $key));
     }
 
-    private function resolveUrlTemplate(?string $template, string $routeName, Project $project, array $query = []): string
+    private function resolveMetadataPhase(array|object $metadata): ?CommercialPhase
     {
-        $fallback = $this->urlGenerator->generate($routeName, ['id' => $project->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+        $phase = $this->readMetadataValue($metadata, 'commercial_phase');
+        if ($phase === null) {
+            return null;
+        }
+
+        return CommercialPhase::tryFrom($phase);
+    }
+
+    private function resolveUrlTemplate(
+        ?string $template,
+        string $routeName,
+        Project $project,
+        CommercialPhase $phase,
+        string $targetTier,
+        array $query = []
+    ): string
+    {
+        $fallback = $this->urlGenerator->generate($routeName, [
+            'id' => $project->getId(),
+            'phase' => $phase->value,
+            'targetTier' => $targetTier,
+        ], UrlGeneratorInterface::ABSOLUTE_URL);
         if ($query !== []) {
             $pairs = [];
             foreach ($query as $key => $value) {
@@ -582,9 +744,13 @@ final class StripeProjectCheckoutService
             return $fallback;
         }
 
+        if (!str_contains($template, '{COMMERCIAL_PHASE}') && !str_contains($template, '{commercial_phase}')) {
+            return $fallback;
+        }
+
         $resolved = str_replace(
-            ['{PROJECT_ID}', '{project_id}'],
-            (string) $project->getId(),
+            ['{PROJECT_ID}', '{project_id}', '{COMMERCIAL_PHASE}', '{commercial_phase}', '{TARGET_TIER}', '{target_tier}'],
+            [(string) $project->getId(), (string) $project->getId(), $phase->value, $phase->value, $targetTier, $targetTier],
             $template
         );
 

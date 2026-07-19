@@ -115,17 +115,17 @@ Esta fase deja operativos estos bloques:
 ### Pruebas recomendadas en modo test
 
 1. Configurar variables de Stripe en `.env.local` o el env del entorno de pruebas.
-2. Configurar `stripePriceId` en los planes `Standard` y `Pro` desde Super Admin o fixtures de prueba.
-3. Lanzar un checkout de prueba desde un proyecto `Basic` o `Standard`.
-4. Confirmar que el webhook activa el tier correcto.
+2. Configurar `stripePriceId` en los planes `Standard` y `Pro` de cada fase desde Super Admin o fixtures de prueba.
+3. Lanzar un checkout de prueba desde un proyecto `Basic` o `Standard` indicando fase comercial.
+4. Confirmar que el webhook activa el tier correcto solo en la fase comercial correspondiente.
 5. Confirmar que se guardan factura y enlaces.
 6. Repetir el evento para comprobar idempotencia básica.
 
 ## Rutas principales
 
-- `POST /backend/project/{id}/subscription/checkout/{targetTier}`
-- `GET /backend/project/{id}/subscription/success`
-- `GET /backend/project/{id}/subscription/cancel`
+- `POST /backend/project/{id}/subscription/{phase}/checkout/{targetTier}`
+- `GET /backend/project/{id}/subscription/{phase}/success/{targetTier}`
+- `GET /backend/project/{id}/subscription/{phase}/cancel/{targetTier}`
 - `POST /webhooks/stripe`
 - `GET /backend/plan/{id}/export/{grouping}/pdf`
 - `GET /backend/plan/{id}/export/{grouping}/excel`

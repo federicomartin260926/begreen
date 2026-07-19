@@ -12,8 +12,9 @@
     </button>
 {% elseif upgradeCta.mode == 'single' %}
     {% set upgradeOption = upgradeCta.options|first %}
-    <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: upgradeOption.targetTier}) }}" class="d-inline">
-        <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ upgradeOption.targetTier) }}">
+    {% set checkoutPhase = upgradeOption.phase|default(upgradeCta.phase|default(null)) %}
+    <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: checkoutPhase, targetTier: upgradeOption.targetTier}) }}" class="d-inline">
+        <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ checkoutPhase ~ '_' ~ upgradeOption.targetTier) }}">
         <button type="submit" class="{{ upgradeCta.buttonClass|default('btn btn-primary btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 shadow-sm') }}">
             {% if upgradeCta.buttonIcon|default(false) %}
                 <i class="bi {{ upgradeCta.buttonIcon }}"></i>
@@ -72,8 +73,9 @@
                                         </div>
                                     {% endif %}
 
-                                    <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, targetTier: option.targetTier}) }}">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ option.targetTier) }}">
+                                    {% set checkoutPhase = option.phase|default(upgradeCta.phase|default(null)) %}
+                                    <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: checkoutPhase, targetTier: option.targetTier}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ checkoutPhase ~ '_' ~ option.targetTier) }}">
                                         <button type="submit" class="btn btn-primary w-100">
                                             {{ option.ctaLabel }}
                                         </button>

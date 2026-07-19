@@ -37,6 +37,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
@@ -53,12 +54,14 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $client = $this->createFakeStripeClient();
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_success_1',
+            'status' => 'complete',
             'payment_status' => 'paid',
             'amount_total' => 2900,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_success_1'],
             'metadata' => (object) [
                 'project_id' => '42',
+                'commercial_phase' => CommercialPhase::ELABORATION->value,
                 'target_tier' => ProjectSubscription::TIER_STANDARD,
                 'commercial_plan_code' => 'standard',
             ],
@@ -75,10 +78,10 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $request = $this->createRequest(['session_id' => 'cs_success_1']);
-        $response = $controller->success($project, $request);
+        $response = $controller->success($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_STANDARD, $request);
 
         self::assertInstanceOf(RedirectResponse::class, $response);
-        self::assertStringContainsString('/backend/plan', $response->getTargetUrl());
+        self::assertStringContainsString('/backend/plan/review', $response->getTargetUrl());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
         self::assertSame('pi_success_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripePaymentIntentId());
@@ -97,12 +100,14 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $client = $this->createFakeStripeClient();
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_success_pending',
+            'status' => 'complete',
             'payment_status' => 'paid',
             'amount_total' => 2000,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_success_pending'],
             'metadata' => (object) [
                 'project_id' => '52',
+                'commercial_phase' => CommercialPhase::ELABORATION->value,
                 'target_tier' => ProjectSubscription::TIER_PRO,
                 'commercial_plan_code' => 'pro',
             ],
@@ -119,7 +124,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $request = $this->createRequest(['session_id' => 'cs_success_pending']);
-        $response = $controller->success($project, $request);
+        $response = $controller->success($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_PRO, $request);
 
         self::assertInstanceOf(RedirectResponse::class, $response);
         self::assertStringContainsString('/backend/plan/measures', $response->getTargetUrl());
@@ -136,12 +141,14 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $client = $this->createFakeStripeClient();
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_manual_1',
+            'status' => 'complete',
             'payment_status' => 'paid',
             'amount_total' => 2900,
             'currency' => 'eur',
             'payment_intent' => (object) ['id' => 'pi_manual_1'],
             'metadata' => (object) [
                 'project_id' => '43',
+                'commercial_phase' => CommercialPhase::ELABORATION->value,
                 'target_tier' => ProjectSubscription::TIER_STANDARD,
                 'commercial_plan_code' => 'standard',
             ],
@@ -158,26 +165,65 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $this->setAdminToken();
 
         $request = $this->createRequest(['from' => 'index']);
-        $token = $container->get('security.csrf.token_manager')->getToken('project_subscription_confirm_pending_43')->getValue();
+        $token = $container->get('security.csrf.token_manager')->getToken('project_subscription_confirm_pending_43_elaboration')->getValue();
         $request->request->set('_token', $token);
-        $response = $controller->confirmPending($project, $request);
+        $response = $controller->confirmPending($project, CommercialPhase::ELABORATION, $request);
 
         self::assertInstanceOf(RedirectResponse::class, $response);
-        self::assertStringContainsString('/backend/project/43/billing', $response->getTargetUrl());
+        self::assertStringContainsString('/backend/project/43/billing/elaboration', $response->getTargetUrl());
         self::assertStringContainsString('from=index', $response->getTargetUrl());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
         self::assertSame('pi_manual_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripePaymentIntentId());
     }
 
-    public function testCancelUpgradeKeepsTheActivePlanIntact(): void
+    public function testStripeCancelReturnDoesNotMutatePendingCheckout(): void
     {
         self::bootKernel();
         $container = self::getContainer();
 
-        $project = $this->createProject(44, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO, 'cs_cancel_1');
+        $project = $this->createProject(44, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO, 'cs_cancel_1');
         $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setPaidAmountCents(2900);
-        $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->setLastPaymentStatus('paid');
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('flush');
+
+        $service = $this->createCheckoutService($this->createFakeStripeClient(), $this->makeDefaultCommercialPlans());
+
+        $activeProjectService = $this->createMock(ActiveProjectService::class);
+        $activeProjectService->expects(self::once())
+            ->method('setActiveProject')
+            ->with($project);
+
+        $controller = new ProjectSubscriptionCheckoutController($service, $activeProjectService);
+        $controller->setContainer($container);
+        $this->setAdminToken();
+
+        $request = $this->createRequest(['session_id' => 'cs_cancel_1']);
+        $response = $controller->cancelReturn($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_PRO, $request);
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertStringContainsString('/backend/project/44/billing/elaboration', $response->getTargetUrl());
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
+        self::assertSame(ProjectSubscription::TIER_PRO, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
+        self::assertSame('cs_cancel_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCheckoutSessionId());
+        self::assertSame(['backend.subscription.flash.cancel_return'], $request->getSession()->getFlashBag()->all()['info'] ?? []);
+    }
+
+    public function testCancelPendingClearsOnlyTheCurrentPhaseAndRequiresCsrf(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+
+        $project = $this->createProject(46, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO, 'cs_cancel_pending');
+        $implementationSubscription = (new ProjectSubscription())
+            ->setPhase(CommercialPhase::IMPLEMENTATION)
+            ->setTier(ProjectSubscription::TIER_BASIC)
+            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+            ->setSource(ProjectSubscription::SOURCE_MANUAL)
+            ->setStripeCheckoutSessionId('cs_impl_keep');
+        $project->addSubscription($implementationSubscription);
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('flush');
@@ -193,16 +239,45 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $controller->setContainer($container);
         $this->setAdminToken();
 
-        $request = $this->createRequest(['session_id' => 'cs_cancel_1']);
-        $response = $controller->cancel($project, $request, $entityManager);
+        $request = $this->createRequest(['from' => 'project']);
+        $request->request->set('_token', $container->get('security.csrf.token_manager')->getToken('project_subscription_cancel_pending_46_elaboration_pro')->getValue());
+        $response = $controller->cancelPending($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_PRO, $request, $entityManager);
 
         self::assertInstanceOf(RedirectResponse::class, $response);
         self::assertStringContainsString('/backend/plan', $response->getTargetUrl());
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
-        self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
-        self::assertSame('paid', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getLastPaymentStatus());
         self::assertNull($project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
         self::assertNull($project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripeCheckoutSessionId());
+        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $implementationSubscription->getStatus());
+        self::assertSame('cs_impl_keep', $implementationSubscription->getStripeCheckoutSessionId());
+        self::assertSame(['backend.subscription.flash.cancelled'], $request->getSession()->getFlashBag()->all()['warning'] ?? []);
+    }
+
+    public function testCancelPendingRequiresProjectEditAccess(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+
+        $project = $this->createProject(47, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO, 'cs_cancel_denied');
+        $service = $this->createCheckoutService($this->createFakeStripeClient(), $this->makeDefaultCommercialPlans());
+
+        $controller = new ProjectSubscriptionCheckoutController($service, $this->createMock(ActiveProjectService::class));
+        $controller->setContainer($container);
+
+        $user = (new User())
+            ->setName('Viewer')
+            ->setSurnames('Only')
+            ->setEmail('viewer2@example.test')
+            ->setPassword('password')
+            ->setRoles(['ROLE_USER']);
+        $this->setEntityId($user, 1001);
+        self::getContainer()->get('security.token_storage')->setToken(new UsernamePasswordToken($user, 'main', $user->getRoles()));
+
+        $request = $this->createRequest();
+        $request->request->set('_token', 'invalid');
+
+        $this->expectException(AccessDeniedException::class);
+
+        $controller->cancelPending($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_PRO, $request, $this->createMock(EntityManagerInterface::class));
     }
 
     public function testLoginRedirectsAuthenticatedUsersToBackend(): void
@@ -229,6 +304,34 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend', $response->getTargetUrl());
     }
 
+    public function testCheckoutRequiresProjectEditAccess(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+
+        $project = $this->createProject(45, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_BASIC);
+        $service = $this->createCheckoutService($this->createFakeStripeClient(), $this->makeDefaultCommercialPlans());
+
+        $controller = new ProjectSubscriptionCheckoutController($service, $this->createMock(ActiveProjectService::class));
+        $controller->setContainer($container);
+
+        $user = (new User())
+            ->setName('Viewer')
+            ->setSurnames('Only')
+            ->setEmail('viewer@example.test')
+            ->setPassword('password')
+            ->setRoles(['ROLE_USER']);
+        $this->setEntityId($user, 1002);
+        self::getContainer()->get('security.token_storage')->setToken(new UsernamePasswordToken($user, 'main', $user->getRoles()));
+
+        $request = $this->createRequest();
+        $request->request->set('_token', 'invalid');
+
+        $this->expectException(AccessDeniedException::class);
+
+        $controller->checkout($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_STANDARD, $request);
+    }
+
     private function createCheckoutService(FakeStripeClient $client, array $plans, bool $expectFlush = false, ?array $measures = null, ?Plan $plan = null): StripeProjectCheckoutService
     {
         $gate = $this->makeProjectFeatureGate($plans);
@@ -242,14 +345,12 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $indexedPlans = [];
         foreach ($plans as $commercialPlan) {
             if ($commercialPlan instanceof CommercialPlan) {
-                $indexedPlans[strtolower(trim($commercialPlan->getCode()))] = $commercialPlan;
+                $indexedPlans[$commercialPlan->getPhase()->value . ':' . strtolower(trim($commercialPlan->getCode()))] = $commercialPlan;
             }
         }
         $planRepository->method('findActiveByPhaseAndCode')->willReturnCallback(
             static function (CommercialPhase $phase, string $code) use ($indexedPlans): ?CommercialPlan {
-                return $phase === CommercialPhase::ELABORATION
-                    ? ($indexedPlans[strtolower(trim($code))] ?? null)
-                    : null;
+                return $indexedPlans[$phase->value . ':' . strtolower(trim($code))] ?? null;
             }
         );
 
@@ -260,7 +361,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         }
 
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
-        $urlGenerator->method('generate')->willReturn('https://example.test/backend/project/42/subscription/success');
+        $urlGenerator->method('generate')->willReturn('https://example.test/backend/project/42/subscription/elaboration/success/standard');
 
         $invoiceStorage ??= $this->createMock(StripeInvoiceStorageService::class);
         $invoiceStorage->method('upsertFromStripeCheckout')->willReturn(new ProjectBillingDocument());
@@ -279,8 +380,8 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
             $entityManager,
             $invoiceStorage,
             $urlGenerator,
-            'https://example.test/backend/project/{PROJECT_ID}/subscription/success?session_id={CHECKOUT_SESSION_ID}',
-            'https://example.test/backend/project/{PROJECT_ID}/subscription/cancel?session_id={CHECKOUT_SESSION_ID}',
+            'https://example.test/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/success/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}',
+            'https://example.test/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/cancel/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}',
             $completionService,
         );
     }

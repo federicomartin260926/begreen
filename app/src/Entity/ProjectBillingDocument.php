@@ -60,6 +60,9 @@ class ProjectBillingDocument
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $paymentReference = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $purchaseLabel = null;
+
     #[ORM\Column(type: 'integer', nullable: true)]
     private ?int $amountCents = null;
 
@@ -211,6 +214,22 @@ class ProjectBillingDocument
     public function setPaymentReference(?string $paymentReference): self
     {
         $this->paymentReference = $paymentReference;
+
+        return $this;
+    }
+
+    public function getPurchaseLabel(): ?string
+    {
+        return $this->purchaseLabel;
+    }
+
+    public function setPurchaseLabel(?string $purchaseLabel): self
+    {
+        $this->purchaseLabel = $purchaseLabel !== null ? trim($purchaseLabel) : null;
+
+        if ($this->purchaseLabel === '') {
+            $this->purchaseLabel = null;
+        }
 
         return $this;
     }

@@ -44,29 +44,36 @@ final class ProjectBillingController extends AbstractController
     ) {
     }
 
-    #[Route('/{id}/billing', name: 'billing', methods: ['GET'])]
-    public function __invoke(Project $project, Request $request): Response
+    #[Route('/{id}/billing/{phase}', name: 'billing', methods: ['GET'], requirements: ['phase' => 'elaboration|implementation'])]
+    public function __invoke(Project $project, CommercialPhase $phase, Request $request): Response
     {
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
 
         $this->activeProjectService->setActiveProject($project);
 
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
+        $subscription = $project->getSubscriptionForPhase($phase);
         $plan = $this->planRepository->findOneBy(['project' => $project]);
-        $availableUpgradeTargets = $this->checkoutService->getAvailableUpgradeTargets($project);
+        $pendingCheckoutInspection = $this->checkoutService->inspectPendingCheckout($project, $phase);
+        $availableUpgradeTargets = $subscription instanceof ProjectSubscription
+            ? $this->checkoutService->getAvailableUpgradeTargets($project, $phase)
+            : [];
         $hasPendingUpgrade = $subscription
             && $subscription->getTargetTier() !== null
             && $subscription->getStripeCheckoutSessionId() !== null;
         $canVerify = $hasPendingUpgrade;
-        $upgradeCta = $this->buildUpgradeCta($project, $availableUpgradeTargets, $this->commercialPlanRepository);
+        $upgradeCta = $this->buildUpgradeCta($project, $phase, $availableUpgradeTargets, $this->commercialPlanRepository);
         $upgradeCta = $this->attachMeasureCounts($upgradeCta, $plan);
         $showUpgradeCta = $subscription === null || $subscription->getStatus() === ProjectSubscription::STATUS_CANCELLED;
         $pendingUpgrade = $this->buildPendingUpgrade($subscription, $upgradeCta);
         $origin = $this->resolveOrigin($request);
         $backUrl = $this->resolveBackUrl($project, $origin);
+        $canManageBilling = $this->isGranted(ProjectVoter::EDIT, $project);
         $billingDocuments = [];
         $hasLocalBillingDocument = false;
-        foreach ($this->billingDocumentRepository->findByProjectOrdered($project) as $document) {
+        $documents = $subscription instanceof ProjectSubscription
+            ? $this->billingDocumentRepository->findBySubscriptionOrdered($subscription)
+            : [];
+        foreach ($documents as $document) {
             $hasLocalCopy = $this->invoiceStorageService->hasLocalCopy($document);
             $hasLocalBillingDocument = $hasLocalBillingDocument || $hasLocalCopy;
 
@@ -78,8 +85,17 @@ final class ProjectBillingController extends AbstractController
 
         return $this->render('backend/project/billing.html.twig', [
             'project' => $project,
+            'phase' => $phase,
+            'phaseLabel' => $this->translator->trans('backend.commercial_phases.'.$phase->value),
             'subscription' => $subscription,
+            'pendingCheckout' => [
+                'status' => $pendingCheckoutInspection->status,
+                'isReusable' => $pendingCheckoutInspection->isReusable(),
+                'shouldRetry' => $pendingCheckoutInspection->shouldRetry(),
+                'shouldVerify' => $pendingCheckoutInspection->shouldVerify(),
+            ],
             'canVerifyPayment' => $canVerify,
+            'canManageBilling' => $canManageBilling,
             'from' => $origin,
             'backUrl' => $backUrl,
             'billingDocuments' => $billingDocuments,
@@ -90,20 +106,20 @@ final class ProjectBillingController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/billing/document/{documentId}/view', name: 'billing_document_view', methods: ['GET'])]
-    public function viewInvoice(Project $project, int $documentId, Request $request): Response
+    #[Route('/{id}/billing/{phase}/document/{documentId}/view', name: 'billing_document_view', methods: ['GET'], requirements: ['phase' => 'elaboration|implementation'])]
+    public function viewInvoice(Project $project, CommercialPhase $phase, int $documentId, Request $request): Response
     {
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
         $this->activeProjectService->setActiveProject($project);
 
-        $document = $this->getDocumentForProject($project, $documentId);
+        $document = $this->getDocumentForProject($project, $phase, $documentId);
         $origin = $this->resolveOrigin($request);
         $absolutePath = $this->invoiceStorageService->getLocalInvoiceAbsolutePath($document);
 
         if ($absolutePath === null) {
             $this->addFlash('warning', 'backend.billing.project.invoice_local_missing');
 
-            return $this->redirectToBilling($project, $origin);
+            return $this->redirectToBilling($project, $origin, $phase);
         }
 
         $response = new BinaryFileResponse($absolutePath);
@@ -113,20 +129,20 @@ final class ProjectBillingController extends AbstractController
         return $response;
     }
 
-    #[Route('/{id}/billing/document/{documentId}/download', name: 'billing_document_download', methods: ['GET'])]
-    public function downloadInvoice(Project $project, int $documentId, Request $request): Response
+    #[Route('/{id}/billing/{phase}/document/{documentId}/download', name: 'billing_document_download', methods: ['GET'], requirements: ['phase' => 'elaboration|implementation'])]
+    public function downloadInvoice(Project $project, CommercialPhase $phase, int $documentId, Request $request): Response
     {
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
         $this->activeProjectService->setActiveProject($project);
 
-        $document = $this->getDocumentForProject($project, $documentId);
+        $document = $this->getDocumentForProject($project, $phase, $documentId);
         $origin = $this->resolveOrigin($request);
         $absolutePath = $this->invoiceStorageService->getLocalInvoiceAbsolutePath($document);
 
         if ($absolutePath === null) {
             $this->addFlash('warning', 'backend.billing.project.invoice_local_missing');
 
-            return $this->redirectToBilling($project, $origin);
+            return $this->redirectToBilling($project, $origin, $phase);
         }
 
         $response = new BinaryFileResponse($absolutePath);
@@ -136,25 +152,25 @@ final class ProjectBillingController extends AbstractController
         return $response;
     }
 
-    #[Route('/{id}/billing/document/{documentId}/sync', name: 'billing_document_sync', methods: ['POST'])]
-    public function syncInvoice(Project $project, int $documentId, Request $request): RedirectResponse
+    #[Route('/{id}/billing/{phase}/document/{documentId}/sync', name: 'billing_document_sync', methods: ['POST'], requirements: ['phase' => 'elaboration|implementation'])]
+    public function syncInvoice(Project $project, CommercialPhase $phase, int $documentId, Request $request): RedirectResponse
     {
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
         $this->activeProjectService->setActiveProject($project);
 
         $origin = $this->resolveOrigin($request);
-        $document = $this->getDocumentForProject($project, $documentId);
+        $document = $this->getDocumentForProject($project, $phase, $documentId);
 
         if (!$this->isCsrfTokenValid('project_billing_document_sync_'.$project->getId().'_'.$documentId, (string) $request->request->get('_token'))) {
             $this->addFlash('danger', 'backend.subscription.flash.invalid_token');
 
-            return $this->redirectToBilling($project, $origin);
+            return $this->redirectToBilling($project, $origin, $phase);
         }
 
         if ($this->invoiceStorageService->hasLocalCopy($document)) {
             $this->addFlash('info', 'backend.billing.project.invoice_already_downloaded');
 
-            return $this->redirectToBilling($project, $origin);
+            return $this->redirectToBilling($project, $origin, $phase);
         }
 
         if ($this->invoiceStorageService->syncInvoicePdf($document)) {
@@ -172,7 +188,7 @@ final class ProjectBillingController extends AbstractController
             $this->addFlash('warning', 'backend.billing.project.invoice_sync_failed');
         }
 
-        return $this->redirectToBilling($project, $origin);
+        return $this->redirectToBilling($project, $origin, $phase);
     }
 
     private function resolveOrigin(Request $request): string
@@ -187,10 +203,11 @@ final class ProjectBillingController extends AbstractController
             : $this->generateUrl('backend_project_edit', ['id' => $project->getId()]);
     }
 
-    private function redirectToBilling(Project $project, string $origin): RedirectResponse
+    private function redirectToBilling(Project $project, string $origin, CommercialPhase $phase = CommercialPhase::ELABORATION): RedirectResponse
     {
         return $this->redirectToRoute('backend_project_billing', [
             'id' => $project->getId(),
+            'phase' => $phase->value,
             'from' => $origin,
         ]);
     }
@@ -227,19 +244,19 @@ final class ProjectBillingController extends AbstractController
         return 'backend.billing.project.invoice_sync_failed';
     }
 
-    private function getDocumentForProject(Project $project, int $documentId): ProjectBillingDocument
+    private function getDocumentForProject(Project $project, CommercialPhase $phase, int $documentId): ProjectBillingDocument
     {
         $document = $this->billingDocumentRepository->findOneByProjectAndId($project, $documentId);
-        if (!$document instanceof ProjectBillingDocument) {
+        if (!$document instanceof ProjectBillingDocument || $document->getSubscription()?->getPhase() !== $phase) {
             throw $this->createNotFoundException();
         }
 
         return $document;
     }
 
-    private function buildUpgradeCta(Project $project, array $availableUpgradeTargets, CommercialPlanRepository $commercialPlanRepository): array
+    private function buildUpgradeCta(Project $project, CommercialPhase $phase, array $availableUpgradeTargets, CommercialPlanRepository $commercialPlanRepository): array
     {
-        $projectTierCode = $this->resolveProjectTier($project);
+        $projectTierCode = $this->resolveProjectTier($project, $phase);
 
         if ($projectTierCode === ProjectSubscription::TIER_PRO) {
             return [
@@ -263,7 +280,7 @@ final class ProjectBillingController extends AbstractController
                 continue;
             }
 
-            $plan = $commercialPlanRepository->findActiveByPhaseAndCode(CommercialPhase::ELABORATION, $targetTier);
+            $plan = $commercialPlanRepository->findActiveByPhaseAndCode($phase, $targetTier);
             if (!$plan instanceof CommercialPlan) {
                 continue;
             }
@@ -274,6 +291,7 @@ final class ProjectBillingController extends AbstractController
             $priceLabel = $this->formatPlanPrice($displayAmountCents, $plan->getPriceCurrency());
             $options[] = [
                 'targetTier' => $targetTier,
+                'phase' => $phase->value,
                 'name' => $plan->getName(),
                 'description' => $plan->getDescription(),
                 'priceAmount' => $displayAmountCents,
@@ -364,9 +382,9 @@ final class ProjectBillingController extends AbstractController
         return $upgradeCta;
     }
 
-    private function resolveProjectTier(Project $project): string
+    private function resolveProjectTier(Project $project, CommercialPhase $phase): string
     {
-        return $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier() ?? ProjectSubscription::TIER_BASIC;
+        return $project->getSubscriptionForPhase($phase)?->getTier() ?? ProjectSubscription::TIER_BASIC;
     }
 
     private function formatPlanPrice(?int $priceAmount, string $currency): string

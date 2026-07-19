@@ -20,6 +20,7 @@ final class StripeProjectWebhookService
         private readonly ProjectRepository $projectRepository,
         private readonly PlanRepository $planRepository,
         private readonly SustainabilityPlanCompletionService $planCompletionService,
+        private readonly StripeInvoiceStorageService $invoiceStorageService,
         private readonly string $webhookSecret,
     ) {
     }
@@ -33,6 +34,9 @@ final class StripeProjectWebhookService
 
         $sessionId = (string) ($sessionData['id'] ?? $sessionData['session_id'] ?? '');
         $targetTier = $this->resolveTargetTier($sessionData, $subscription);
+        if ($targetTier === null) {
+            return;
+        }
         $invoice = is_array($sessionData['invoice'] ?? null) ? $sessionData['invoice'] : [];
         $paidAmountCents = isset($sessionData['amount_total']) ? (int) $sessionData['amount_total'] : null;
         $currency = strtoupper((string) ($sessionData['currency'] ?? $subscription->getCurrency() ?? 'EUR'));
@@ -43,6 +47,7 @@ final class StripeProjectWebhookService
             && $subscription->getTier() === $targetTier
         ) {
             $this->fillMissingStripeReferences($subscription, $sessionData, $invoice);
+            $this->invoiceStorageService->upsertFromStripeCheckout($subscription, $sessionData, $invoice);
             $this->entityManager->flush();
 
             return;
@@ -66,9 +71,11 @@ final class StripeProjectWebhookService
             ->setTargetTier(null);
 
         $plan = $this->planRepository->findOneBy(['project' => $subscription->getProject()]);
-        if ($plan instanceof Plan && $subscription->getProject() instanceof Project) {
+        if ($subscription->getPhase() === CommercialPhase::ELABORATION && $plan instanceof Plan && $subscription->getProject() instanceof Project) {
             $this->planCompletionService->syncStatus($plan, $subscription->getProject());
         }
+
+        $this->invoiceStorageService->upsertFromStripeCheckout($subscription, $sessionData, $invoice);
 
         $this->entityManager->flush();
     }
@@ -150,13 +157,21 @@ final class StripeProjectWebhookService
         $sessionId = (string) ($sessionData['id'] ?? $sessionData['session_id'] ?? '');
         if ($sessionId !== '') {
             $subscription = $this->subscriptionRepository->findOneByStripeCheckoutSessionId($sessionId);
-            if ($subscription) {
+            $phase = $this->resolvePhase($sessionData);
+            if ($subscription && $phase instanceof CommercialPhase && $subscription->getPhase() === $phase) {
                 return $subscription;
+            }
+            if ($subscription) {
+                return null;
             }
         }
 
         $projectId = (int) ($sessionData['project_id'] ?? 0);
         if ($projectId <= 0) {
+            return null;
+        }
+        $phase = $this->resolvePhase($sessionData);
+        if (!$phase instanceof CommercialPhase) {
             return null;
         }
 
@@ -165,15 +180,22 @@ final class StripeProjectWebhookService
             return null;
         }
 
-        return $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
+        return $this->subscriptionRepository->findOneByProjectAndPhase($project, $phase);
     }
 
-    private function resolveTargetTier(array $sessionData, ProjectSubscription $subscription): string
+    private function resolveTargetTier(array $sessionData, ProjectSubscription $subscription): ?string
     {
         $targetTier = (string) ($sessionData['target_tier'] ?? $subscription->getTargetTier() ?? $subscription->getTier());
         return in_array($targetTier, [ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO], true)
             ? $targetTier
-            : $subscription->getTier();
+            : null;
+    }
+
+    private function resolvePhase(array $sessionData): ?CommercialPhase
+    {
+        $phase = $this->normalizeString($sessionData['commercial_phase'] ?? null);
+
+        return $phase !== null ? CommercialPhase::tryFrom($phase) : null;
     }
 
     private function normalizeString(mixed $value): ?string

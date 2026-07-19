@@ -638,6 +638,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $planRepository = $this->createPlanRepositoryMock($plan);
         $protocolRepository = $this->createMock(\App\Repository\ProtocolRepository::class);
         $commercialPlanRepository = $this->createMock(\App\Repository\CommercialPlanRepository::class);
+        $checkoutService = $this->newStripeCheckoutServiceStub();
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('flush');
         $mailer = $this->createMock(\Symfony\Component\Mailer\MailerInterface::class);
@@ -651,6 +652,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             $measureRepository,
             $protocolRepository,
             $commercialPlanRepository,
+            $checkoutService,
             $entityManager,
             $mailer,
             $translator
@@ -3106,6 +3108,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         MeasureRepository $measureRepository,
         \App\Repository\ProtocolRepository $protocolRepository,
         \App\Repository\CommercialPlanRepository $commercialPlanRepository,
+        \App\Service\StripeProjectCheckoutService $checkoutService,
         EntityManagerInterface $entityManager,
         \Symfony\Component\Mailer\MailerInterface $mailer,
         \Symfony\Contracts\Translation\TranslatorInterface $translator
@@ -3118,6 +3121,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             $measureRepository,
             $protocolRepository,
             $commercialPlanRepository,
+            $checkoutService,
             $entityManager,
             $mailer,
             $translator
