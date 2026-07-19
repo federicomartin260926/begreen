@@ -55,13 +55,18 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Do not spend time cleaning residual `dump-sql` drift unless it corresponds to a real missing column, broken mapping, or functional regression.
 * While the project remains in development, schema changes may assume fixtures can be regenerated and existing development data can be discarded.
 
-## Testing
+## Testing and validation economy
 
-* Add or adjust tests when business logic changes.
-* Run PHPUnit inside Docker.
-* Prefer a focused test subset first.
-* Use `make -C app test` for the full suite only when broad validation is needed.
-* Avoid adding broad or secondary tests that are not essential to the changed behavior.
+* Treat tests as a risk-based tool, not as a mandatory step for every change.
+* Add or adjust tests only when the change affects business logic, data integrity, permissions, payments, security, state transitions, calculations, persistence, imports/exports or another core contract.
+* For minor presentation, copy, spacing, Bootstrap, Twig-only or purely visual changes, do not add automated tests by default. Validate manually in the affected screen when needed.
+* Do not add controller/render tests merely to assert labels, translated text, CSS classes, layout details, badges, modal content or other low-risk presentation output unless the view itself contains critical branching or authorization behavior.
+* Run the smallest relevant PHPUnit subset inside Docker. Prefer one focused test file or one focused test method over a broader group.
+* Do not run the full suite by default. Use `make -C app test` only when the change is cross-cutting, affects shared infrastructure, alters core business rules, touches payments/security/permissions, or when focused tests cannot provide sufficient confidence.
+* For very small low-risk changes, syntax/lint plus `git diff --check` may be sufficient and no PHPUnit run is required.
+* Do not create tests that duplicate existing coverage without protecting a distinct regression or contract.
+* Do not expand test fixtures, mocks or helper abstractions unless they materially reduce future maintenance or are necessary for the changed behavior.
+* When a full suite is skipped, report that explicitly and state the focused validation performed instead.
 
 ## Documentation
 
@@ -80,13 +85,28 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Do not introduce protocol editions, catalog editions, plan snapshots or measure historical versioning unless explicitly requested later.
 * Before changing plan states, navigation, filters, charts, execution, incidents, checklist or verification behavior, consult `docs/sustainability-plan-status-model.md` and keep elaboration, implementation and verification as separate dimensions.
 
-## CodeGraph
+## CodeGraph and repository exploration
 
-* CodeGraph is available for this repository and should be used for structural analysis before cross-file changes.
-* Use CodeGraph especially when working on measures, protocols, importers, exporters, fixtures, forms, controllers and tests.
-* Before refactors touching multiple files, check `codegraph_status`.
-* If the index is stale or relevant files were added, renamed or deleted, run `codegraph init -i`.
-* Prefer CodeGraph over broad grep/read loops for callers, callees, dependencies, impact analysis and flow tracing.
+* CodeGraph is available for structural analysis, but use it only when the task genuinely spans multiple files or requires dependency/impact tracing.
+* Prefer direct inspection of the named files for small, local changes.
+* Use CodeGraph especially for cross-cutting work involving measures, protocols, importers, exporters, fixtures, forms, controllers, services and shared tests.
+* Before substantial refactors, check `codegraph_status`.
+* Run `codegraph init -i` only when a stale index would materially affect the task.
+* Prefer one targeted CodeGraph query over broad grep/read loops, but do not perform exploratory analysis that is not needed to implement the requested change.
+
+## Token and execution economy
+
+* Optimize for the smallest reliable change and the shortest useful validation path.
+* Read only the files needed for the current task. Do not inventory the repository or inspect adjacent modules without a concrete reason.
+* Reuse established context, existing helpers and prior findings instead of rediscovering the same architecture.
+* Prefer targeted searches with exact symbols, routes, services or file names over broad repository-wide searches.
+* Do not run repeated audits, repeated full diffs, repeated test suites or repeated lints after every small edit. Validate once after the implementation stabilizes.
+* Do not request, generate or summarize large outputs when a concise result is sufficient.
+* Avoid speculative refactors, cleanup, renaming, abstraction or documentation outside the requested scope.
+* Do not fix unrelated warnings, deprecations, schema drift or technical debt unless they block the requested task.
+* Prefer existing Bootstrap, Symfony, Doctrine and project patterns over introducing new abstractions or dependencies.
+* For Codex reasoning, start with the lowest effort sufficient for the task and increase only when architecture, payments, security, concurrency, data integrity or a persistent defect requires it.
+* When reporting completion, summarize only changed behavior, relevant files, validation performed and remaining risks. Do not restate the full investigation.
 
 ## Command execution policy
 
@@ -131,11 +151,12 @@ If a command is potentially destructive, such as deleting data or resetting the 
 A change is complete when:
 
 * The implementation is minimal and aligned with the existing architecture.
-* Relevant syntax/configuration has been validated.
-* Focused tests have been run when business logic changed.
-* Frontend assets have been rebuilt when assets, Encore entrypoints or relevant Twig layouts changed.
-* `git diff` has been reviewed.
-* Documentation has been updated only if workflows, deployment behavior, assets or functional contracts changed.
+* Only validation proportional to the real risk has been executed.
+* Syntax/lint is checked for modified code or configuration when applicable.
+* Focused tests are run only when core logic or a meaningful regression risk changed.
+* Frontend assets are rebuilt only when source assets or Encore entrypoints changed; Twig-only visual edits do not require an asset build unless they alter asset loading.
+* `git diff --check` is run and the relevant diff is reviewed.
+* Documentation is updated only if workflows, deployment behavior, assets or functional contracts changed.
 * Any skipped validation is reported explicitly with the reason.
 
 ## Development-phase data compatibility
