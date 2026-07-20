@@ -14,6 +14,7 @@ use App\Repository\PlanRepository;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\CommercialPlanComparisonBuilder;
 use App\Service\StripeProjectCheckoutService;
 use App\Service\StripeInvoiceStorageService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -36,6 +37,7 @@ final class ProjectBillingController extends AbstractController
         private readonly ProjectBillingDocumentRepository $billingDocumentRepository,
         private readonly StripeInvoiceStorageService $invoiceStorageService,
         private readonly StripeProjectCheckoutService $checkoutService,
+        private readonly CommercialPlanComparisonBuilder $commercialPlanComparisonBuilder,
         private readonly CommercialPlanRepository $commercialPlanRepository,
         private readonly PlanRepository $planRepository,
         private readonly MeasureRepository $measureRepository,
@@ -103,6 +105,34 @@ final class ProjectBillingController extends AbstractController
             'upgradeCta' => $upgradeCta,
             'showUpgradeCta' => $showUpgradeCta,
             'pendingUpgrade' => $pendingUpgrade,
+        ]);
+    }
+
+    #[Route('/{id}/plans/{phase}', name: 'plan_comparison', methods: ['GET'], requirements: ['phase' => 'elaboration|implementation'])]
+    public function comparison(Project $project, CommercialPhase $phase, Request $request): Response
+    {
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $this->activeProjectService->setActiveProject($project);
+
+        $subscription = $project->getSubscriptionForPhase($phase);
+        $availableUpgradeTargets = $subscription instanceof ProjectSubscription
+            ? $this->checkoutService->getAvailableUpgradeTargets($project, $phase)
+            : [];
+        $comparison = $this->commercialPlanComparisonBuilder->build(
+            $phase,
+            $this->resolveProjectTier($project, $phase),
+            $this->planRepository->findOneBy(['project' => $project]),
+            $availableUpgradeTargets,
+        );
+        $origin = $this->resolveComparisonOrigin($request);
+
+        return $this->render('backend/commercial_plan/comparison.html.twig', [
+            'project' => $project,
+            'phase' => $phase,
+            'phaseLabel' => $this->translator->trans('backend.commercial_phases.'.$phase->value),
+            'comparison' => $comparison,
+            'origin' => $origin,
+            'backUrl' => $this->resolveComparisonBackUrl($project, $phase, $origin, $request),
         ]);
     }
 
@@ -203,6 +233,30 @@ final class ProjectBillingController extends AbstractController
             : $this->generateUrl('backend_project_edit', ['id' => $project->getId()]);
     }
 
+    private function resolveComparisonOrigin(Request $request): string
+    {
+        $origin = $request->query->getString('from');
+
+        return in_array($origin, ['measures', 'elaboration_done', 'review', 'billing'], true)
+            ? $origin
+            : 'project';
+    }
+
+    private function resolveComparisonBackUrl(Project $project, CommercialPhase $phase, string $origin, Request $request): string
+    {
+        return match ($origin) {
+            'measures' => $this->generateUrl('backend_plan_measures'),
+            'elaboration_done' => $this->generateUrl('backend_plan_done'),
+            'review' => $this->generateUrl('backend_plan_review', ['state' => 'implement']),
+            'billing' => $this->generateUrl('backend_project_billing', [
+                'id' => $project->getId(),
+                'phase' => $phase->value,
+                'from' => $request->query->getString('billing_from') === 'index' ? 'index' : 'project',
+            ]),
+            default => $this->generateUrl('backend_project_edit', ['id' => $project->getId()]),
+        };
+    }
+
     private function redirectToBilling(Project $project, string $origin, CommercialPhase $phase = CommercialPhase::ELABORATION): RedirectResponse
     {
         return $this->redirectToRoute('backend_project_billing', [
@@ -257,6 +311,13 @@ final class ProjectBillingController extends AbstractController
     private function buildUpgradeCta(Project $project, CommercialPhase $phase, array $availableUpgradeTargets, CommercialPlanRepository $commercialPlanRepository): array
     {
         $projectTierCode = $this->resolveProjectTier($project, $phase);
+        $commercialPlans = [];
+        foreach ([ProjectSubscription::TIER_BASIC, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO] as $tier) {
+            $commercialPlan = $commercialPlanRepository->findActiveByPhaseAndCode($phase, $tier);
+            if ($commercialPlan instanceof CommercialPlan) {
+                $commercialPlans[$tier] = $commercialPlan;
+            }
+        }
 
         if ($projectTierCode === ProjectSubscription::TIER_PRO) {
             return [
@@ -264,6 +325,10 @@ final class ProjectBillingController extends AbstractController
                 'label' => $this->translator->trans('backend.plan.upgrade.active_title'),
                 'title' => null,
                 'options' => [],
+                'phase' => $phase->value,
+                'currentTier' => $projectTierCode,
+                'commercialPlans' => $commercialPlans,
+                'measureCounts' => [],
             ];
         }
 
@@ -280,7 +345,7 @@ final class ProjectBillingController extends AbstractController
                 continue;
             }
 
-            $plan = $commercialPlanRepository->findActiveByPhaseAndCode($phase, $targetTier);
+            $plan = $commercialPlans[$targetTier] ?? null;
             if (!$plan instanceof CommercialPlan) {
                 continue;
             }
@@ -289,16 +354,17 @@ final class ProjectBillingController extends AbstractController
                 ? $targetData['amountCents']
                 : $plan->getPriceAmount();
             $priceLabel = $this->formatPlanPrice($displayAmountCents, $plan->getPriceCurrency());
+            $targetTierLabel = ucfirst($targetTier);
             $options[] = [
                 'targetTier' => $targetTier,
                 'phase' => $phase->value,
-                'name' => $plan->getName(),
+                'name' => $targetTierLabel,
                 'description' => $plan->getDescription(),
                 'priceAmount' => $displayAmountCents,
                 'priceCurrency' => $plan->getPriceCurrency(),
                 'priceLabel' => $priceLabel,
                 'ctaLabel' => $this->translator->trans('backend.plan.upgrade.upgrade_to', [
-                    '%name%' => $plan->getName(),
+                    '%name%' => $targetTierLabel,
                     '%price%' => $priceLabel,
                 ]),
                 'allowedScores' => $plan->getAllowedScores(),
@@ -311,6 +377,10 @@ final class ProjectBillingController extends AbstractController
                 'label' => $this->translator->trans('backend.plan.upgrade.price_id_missing'),
                 'title' => $this->translator->trans('backend.plan.upgrade.select_title'),
                 'options' => [],
+                'phase' => $phase->value,
+                'currentTier' => $projectTierCode,
+                'commercialPlans' => $commercialPlans,
+                'measureCounts' => [],
             ];
         }
 
@@ -320,14 +390,22 @@ final class ProjectBillingController extends AbstractController
                 'label' => $options[0]['ctaLabel'],
                 'title' => $this->translator->trans('backend.plan.upgrade.select_title'),
                 'options' => $options,
+                'phase' => $phase->value,
+                'currentTier' => $projectTierCode,
+                'commercialPlans' => $commercialPlans,
+                'measureCounts' => [],
             ];
         }
 
         return [
-            'mode' => 'modal',
+            'mode' => 'comparison',
             'label' => $this->translator->trans('backend.plan.upgrade.open_selector'),
             'title' => $this->translator->trans('backend.plan.upgrade.select_title'),
             'options' => $options,
+            'phase' => $phase->value,
+            'currentTier' => $projectTierCode,
+            'commercialPlans' => $commercialPlans,
+            'measureCounts' => [],
         ];
     }
 
@@ -376,6 +454,17 @@ final class ProjectBillingController extends AbstractController
             $upgradeCta['options'][$index]['measureCount'] = $this->measureRepository->countCatalogMeasuresForProtocol(
                 $protocol,
                 $option['allowedScores'] ?? []
+            );
+        }
+
+        foreach ($upgradeCta['commercialPlans'] ?? [] as $tier => $commercialPlan) {
+            if (!$commercialPlan instanceof CommercialPlan) {
+                continue;
+            }
+
+            $upgradeCta['measureCounts'][$tier] = $this->measureRepository->countCatalogMeasuresForProtocol(
+                $protocol,
+                $commercialPlan->getAllowedScores()
             );
         }
 

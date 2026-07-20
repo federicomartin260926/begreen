@@ -2859,6 +2859,20 @@ class PlanController extends AbstractController
         };
 
         $protocol = $plan->getProtocol();
+        $commercialPlans = [];
+        $measureCounts = [];
+        foreach ([ProjectSubscription::TIER_BASIC, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO] as $tier) {
+            $commercialPlan = $commercialPlanRepository->findActiveByPhaseAndCode($phase, $tier);
+            if (!$commercialPlan instanceof CommercialPlan) {
+                continue;
+            }
+
+            $commercialPlans[$tier] = $commercialPlan;
+            $measureCounts[$tier] = $protocol instanceof Protocol
+                ? $measureRepository->countCatalogMeasuresForProtocol($protocol, $commercialPlan->getAllowedScores())
+                : null;
+        }
+
         $options = [];
         foreach ($candidateTiers as $targetTier) {
             $targetData = $availableUpgradeTargets[$targetTier] ?? null;
@@ -2866,7 +2880,7 @@ class PlanController extends AbstractController
                 continue;
             }
 
-            $commercialPlan = $commercialPlanRepository->findActiveByPhaseAndCode($phase, $targetTier);
+            $commercialPlan = $commercialPlans[$targetTier] ?? null;
             if (!$commercialPlan instanceof CommercialPlan) {
                 continue;
             }
@@ -2875,23 +2889,21 @@ class PlanController extends AbstractController
                 ? $targetData['amountCents']
                 : $commercialPlan->getPriceAmount();
             $priceLabel = $this->formatPlanPrice($displayAmountCents, $commercialPlan->getPriceCurrency());
-            $measureCount = $protocol instanceof Protocol
-                ? $measureRepository->countCatalogMeasuresForProtocol($protocol, $commercialPlan->getAllowedScores())
-                : null;
+            $targetTierLabel = ucfirst($targetTier);
             $options[] = [
                 'targetTier' => $targetTier,
                 'phase' => $phase->value,
-                'name' => $commercialPlan->getName(),
+                'name' => $targetTierLabel,
                 'description' => $commercialPlan->getDescription(),
                 'priceAmount' => $displayAmountCents,
                 'priceCurrency' => $commercialPlan->getPriceCurrency(),
                 'priceLabel' => $priceLabel,
                 'ctaLabel' => $this->t->trans('backend.plan.upgrade.upgrade_to', [
-                    '%name%' => $commercialPlan->getName(),
+                    '%name%' => $targetTierLabel,
                     '%price%' => $priceLabel,
                 ]),
                 'allowedScores' => $commercialPlan->getAllowedScores(),
-                'measureCount' => $measureCount,
+                'measureCount' => $measureCounts[$targetTier] ?? null,
             ];
         }
 
@@ -2902,6 +2914,9 @@ class PlanController extends AbstractController
                 'label' => $this->t->trans('backend.plan.upgrade.price_id_missing'),
                 'title' => $this->t->trans('backend.plan.upgrade.select_title'),
                 'options' => [],
+                'currentTier' => $projectTier,
+                'commercialPlans' => $commercialPlans,
+                'measureCounts' => $measureCounts,
             ];
         }
 
@@ -2912,15 +2927,21 @@ class PlanController extends AbstractController
                 'label' => $options[0]['ctaLabel'],
                 'title' => $this->t->trans('backend.plan.upgrade.select_title'),
                 'options' => $options,
+                'currentTier' => $projectTier,
+                'commercialPlans' => $commercialPlans,
+                'measureCounts' => $measureCounts,
             ];
         }
 
         return [
-            'mode' => 'modal',
+            'mode' => 'comparison',
             'phase' => $phase->value,
             'label' => $this->t->trans('backend.plan.upgrade.open_selector'),
             'title' => $this->t->trans('backend.plan.upgrade.select_title'),
             'options' => $options,
+            'currentTier' => $projectTier,
+            'commercialPlans' => $commercialPlans,
+            'measureCounts' => $measureCounts,
         ];
     }
 

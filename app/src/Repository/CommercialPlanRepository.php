@@ -40,4 +40,18 @@ class CommercialPlanRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * @return CommercialPlan[]
+     */
+    public function findByPhaseOrdered(CommercialPhase $phase): array
+    {
+        return $this->createQueryBuilder('p')
+            ->andWhere('p.phase = :phase')
+            ->setParameter('phase', $phase)
+            ->orderBy('p.sortOrder', 'ASC')
+            ->addOrderBy('p.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

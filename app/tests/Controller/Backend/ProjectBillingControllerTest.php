@@ -14,6 +14,7 @@ use App\Repository\MeasureRepository;
 use App\Repository\PlanRepository;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Service\ActiveProjectService;
+use App\Service\CommercialPlanComparisonBuilder;
 use App\Service\StripeProjectCheckoutService;
 use App\Service\StripeInvoiceStorageService;
 use App\Tests\Support\CommercialPlanTestHelpers;
@@ -33,6 +34,45 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 final class ProjectBillingControllerTest extends KernelTestCase
 {
     use CommercialPlanTestHelpers;
+
+    public function testPlanComparisonPageKeepsSafeOriginAndCheckoutTargets(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $this->setAdminToken();
+
+        $project = $this->createProject(96, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_BASIC);
+        $request = $this->pushRequest(
+            'backend_project_plan_comparison',
+            ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value],
+            ['from' => 'measures']
+        );
+        $twig = $container->get('twig');
+        $twig->addGlobal('userProjects', [$project]);
+        $twig->addGlobal('activeProject', $project);
+
+        $activeProjectService = $this->createMock(ActiveProjectService::class);
+        $activeProjectService->expects(self::once())
+            ->method('setActiveProject')
+            ->with($project);
+
+        $controller = $this->createBillingController(
+            $activeProjectService,
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(StripeInvoiceStorageService::class),
+            $this->createMock(EntityManagerInterface::class)
+        );
+        $controller->setContainer($container);
+
+        $response = $controller->comparison($project, CommercialPhase::ELABORATION, $request);
+        $content = $response->getContent();
+
+        self::assertIsString($content);
+        self::assertStringContainsString('href="/backend/plan/measures"', $content);
+        self::assertStringContainsString('/backend/project/96/subscription/elaboration/checkout/standard', $content);
+        self::assertStringContainsString('/backend/project/96/subscription/elaboration/checkout/pro', $content);
+        self::assertStringNotContainsString('/backend/project/96/subscription/elaboration/checkout/basic', $content);
+    }
 
     public function testBillingPageShowsDocumentsAndActions(): void
     {
@@ -102,10 +142,11 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $content = $response->getContent();
 
         self::assertIsString($content);
-        self::assertStringContainsString('Plan de Elaboración contratado', $content);
         self::assertStringContainsString('Fases', $content);
         self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/elaboration', $content);
         self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/implementation', $content);
+        self::assertStringContainsString('/backend/project/' . $project->getId() . '/plans/elaboration?from=billing', $content);
+        self::assertStringContainsString('billing_from=index', $content);
         self::assertStringContainsString('Documentos de facturación', $content);
         self::assertStringContainsString('Ver factura', $content);
         self::assertStringContainsString('Descargar PDF', $content);
@@ -228,6 +269,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         self::assertStringContainsString('Fases', $implementationContent);
         self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/elaboration', $implementationContent);
         self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/implementation', $implementationContent);
+        self::assertStringContainsString('/backend/project/' . $project->getId() . '/plans/implementation?from=billing', $implementationContent);
         self::assertStringContainsString('Implementación Standard', $implementationContent);
         self::assertStringNotContainsString('Elaboración Standard', $implementationContent);
     }
@@ -429,7 +471,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         self::assertIsString($content);
         self::assertStringContainsString('No hay un plan activo para este proyecto.', $content);
         self::assertStringContainsString('Stripe Price ID no configurado', $content);
-        self::assertStringNotContainsString('projectBillingUpgradeModal', $content);
+        self::assertStringNotContainsString('/backend/project/' . $project->getId() . '/plans/elaboration', $content);
         self::assertStringNotContainsString('Actualizar a Standard', $content);
         self::assertStringNotContainsString('Actualizar a Pro', $content);
     }
@@ -889,9 +931,25 @@ final class ProjectBillingControllerTest extends KernelTestCase
                 return $plans[$key] ?? null;
             }
         );
+        $commercialPlanRepository->method('findByPhaseOrdered')->willReturnCallback(
+            static function (CommercialPhase $phase) use ($plans): array {
+                $prefix = $phase === CommercialPhase::IMPLEMENTATION ? 'implementation_' : '';
+
+                return array_values(array_filter([
+                    $plans[$prefix.'basic'] ?? null,
+                    $plans[$prefix.'standard'] ?? null,
+                    $plans[$prefix.'pro'] ?? null,
+                ]));
+            }
+        );
         $planRepository = $this->createMock(PlanRepository::class);
         $planRepository->method('findOneBy')->willReturn(null);
         $measureRepository = self::getContainer()->get(MeasureRepository::class);
+        $comparisonBuilder = new CommercialPlanComparisonBuilder(
+            $commercialPlanRepository,
+            $measureRepository,
+            self::getContainer()->get('translator'),
+        );
 
         $checkoutService ??= new StripeProjectCheckoutService(
             new \Stripe\StripeClient('sk_test_dummy'),
@@ -911,6 +969,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
             $billingRepository,
             $invoiceStorage,
             $checkoutService,
+            $comparisonBuilder,
             $commercialPlanRepository,
             $planRepository,
             $measureRepository,

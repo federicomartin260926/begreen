@@ -49,7 +49,13 @@
   {% set billingDocuments = billingDocuments ?? [] %}
   {% set billingUpgradeCta = upgradeCta %}
   {% if subscription and subscription.tier|lower != 'pro' and upgradeCta.options is not empty %}
-    {% set billingUpgradeCta = upgradeCta|merge({'mode': 'modal', 'label': 'Mejorar plan', 'buttonLabel': 'Mejorar plan'}) %}
+    {% set billingUpgradeCta = upgradeCta|merge({
+      'mode': 'comparison',
+      'label': 'Mejorar plan',
+      'buttonLabel': 'Mejorar plan',
+      'comparisonFrom': 'billing',
+      'comparisonBillingFrom': from
+    }) %}
   {% endif %}
 
   {% if subscription %}
@@ -435,19 +441,16 @@
         </div>
         <div>{{ 'backend.billing.project.no_active_plan_help'|trans }}</div>
       </div>
-      {% if upgradeCta.mode == 'modal' %}
+      {% if upgradeCta.mode in ['comparison', 'single'] %}
         {% include 'backend/plan/_upgrade_cta.html.twig' with {
-          upgradeCta: upgradeCta|merge({'label': 'Actualizar plan', 'buttonLabel': 'Actualizar plan', 'modalId': 'projectBillingUpgradeModal'}),
+          upgradeCta: upgradeCta|merge({
+            'label': 'Actualizar plan',
+            'buttonLabel': 'Actualizar plan',
+            'comparisonFrom': 'billing',
+            'comparisonBillingFrom': from
+          }),
           project: project
         } %}
-      {% elseif upgradeCta.mode == 'single' %}
-        {% set upgradeOption = upgradeCta.options|first %}
-        <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: upgradeOption.phase|default(phase.value), targetTier: upgradeOption.targetTier}) }}" class="d-inline">
-          <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ (upgradeOption.phase|default(phase.value)) ~ '_' ~ upgradeOption.targetTier) }}">
-          <button type="submit" class="btn btn-primary btn-sm">
-            {{ upgradeOption.ctaLabel }}
-          </button>
-        </form>
       {% elseif upgradeCta.mode == 'unavailable' %}
         <span class="badge bg-warning text-dark border border-warning-subtle">
           {{ upgradeCta.label }}

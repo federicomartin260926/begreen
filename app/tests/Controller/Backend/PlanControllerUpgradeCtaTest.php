@@ -17,7 +17,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
 {
     use CommercialPlanTestHelpers;
 
-    public function testBasicProjectShowsModalWithStandardAndProOptions(): void
+    public function testBasicProjectShowsComparisonWithStandardAndProOptions(): void
     {
         $controller = $this->getController();
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -40,7 +40,7 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
             $this->makeMeasureRepository()
         );
 
-        self::assertSame('modal', $result['mode']);
+        self::assertSame('comparison', $result['mode']);
         self::assertSame('Mejorar plan', $result['label']);
         self::assertCount(2, $result['options']);
         self::assertSame(ProjectSubscription::TIER_STANDARD, $result['options'][0]['targetTier']);

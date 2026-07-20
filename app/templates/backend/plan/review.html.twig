@@ -114,29 +114,18 @@
                     {% endif %}
                 </div>
 
-                {% if upgradeCta.mode == 'modal' %}
+                {% if upgradeCta.mode in ['comparison', 'single'] %}
                     <div class="flex-shrink-0 ms-lg-auto">
                         {% include 'backend/plan/_upgrade_cta.html.twig' with {
                             upgradeCta: upgradeCta|merge({
                                 buttonLabel: 'backend.plan.upgrade.implementation'|trans,
                                 buttonClass: 'btn btn-outline-success btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 rounded-pill shadow-sm',
-                                buttonIcon: 'bi-arrow-up-circle'
+                                buttonIcon: 'bi-arrow-up-circle',
+                                comparisonFrom: 'review'
                             }),
                             project: project
                         } %}
                     </div>
-                {% elseif upgradeCta.mode == 'single' %}
-                    {% set upgradeOption = upgradeCta.options|first %}
-                    {% if upgradeOption %}
-                        {% set checkoutPhase = upgradeOption.phase|default(upgradeCta.phase) %}
-                        <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: checkoutPhase, targetTier: upgradeOption.targetTier}) }}" class="flex-shrink-0 ms-lg-auto">
-                            <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ checkoutPhase ~ '_' ~ upgradeOption.targetTier) }}">
-                            <button type="submit" class="btn btn-outline-success btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 rounded-pill shadow-sm">
-                                <i class="bi bi-arrow-up-circle"></i>
-                                {{ 'backend.plan.upgrade.implementation'|trans }}
-                            </button>
-                        </form>
-                    {% endif %}
                 {% endif %}
 
                 <a href="{{ path('backend_project_billing', {id: project.id, phase: 'implementation'}) }}"

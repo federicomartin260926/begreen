@@ -1,0 +1,62 @@
+{% extends 'base_backend.html.twig' %}
+
+{% set comparisonTitle = 'backend.commercial_plan_comparison.title'|trans({'%phase%': phaseLabel}) %}
+
+{% block title %}{{ comparisonTitle }} · {{ project.name }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .commercial-plan-comparison__column,
+        .commercial-plan-comparison__card,
+        .commercial-plan-comparison__card .card-header > .d-flex > div {
+            min-width: 0;
+        }
+
+        .commercial-plan-comparison__card .card-body .border-top > div:last-child {
+            overflow-wrap: anywhere;
+        }
+
+        .commercial-plan-comparison__footer {
+            min-height: 6rem;
+        }
+    </style>
+{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item">
+        <a href="{{ path('backend_project_edit', {id: project.id}) }}" class="text-decoration-none">{{ project.name }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{{ comparisonTitle }}</li>
+{% endblock %}
+
+{% block body %}
+    <div class="container-fluid px-0 backend-client-shell">
+        <div class="backend-client-content">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+                <div>
+                    <h1 class="h3 mb-2">{{ comparisonTitle }}</h1>
+                    <p class="text-muted mb-0">{{ 'backend.plan.upgrade.help'|trans }}</p>
+                </div>
+                <a href="{{ backUrl }}" class="btn btn-outline-secondary text-decoration-none flex-shrink-0">
+                    <i class="bi bi-arrow-left me-1"></i>{{ 'backend.common.back'|trans }}
+                </a>
+            </div>
+
+            <div class="bg-light border rounded-4 p-2 p-md-3">
+                {% if phase.value == 'implementation' %}
+                    {% include 'backend/commercial_plan/_comparison_implementation.html.twig' with {
+                        project: project,
+                        comparison: comparison
+                    } only %}
+                {% else %}
+                    {% include 'backend/commercial_plan/_comparison_elaboration.html.twig' with {
+                        project: project,
+                        comparison: comparison
+                    } only %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

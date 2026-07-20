@@ -41,11 +41,12 @@
                 : 'backend.plan.done.implementation.open'|trans }}
             </a>
 
-            {% if implementationUpgradeCta.mode in ['modal', 'single'] %}
+            {% if implementationUpgradeCta.mode in ['comparison', 'single'] %}
               {% include 'backend/plan/_upgrade_cta.html.twig' with {
                 upgradeCta: implementationUpgradeCta|merge({
                   buttonLabel: 'backend.plan.upgrade.implementation'|trans,
-                  buttonClass: 'btn btn-outline-success'
+                  buttonClass: 'btn btn-outline-success',
+                  comparisonFrom: 'elaboration_done'
                 }),
                 project: project
               } %}

@@ -76,26 +76,12 @@
                             </strong>
                         </div>
                         {% if canOpenProjectBilling %}
-                            <div class="backend-sidebar__actions dropdown pt-2">
-                                <button type="button"
-                                    class="backend-sidebar__billing-link btn btn-sm dropdown-toggle w-100"
-                                    data-bs-toggle="dropdown"
-                                    aria-expanded="false">
+                            <div class="backend-sidebar__actions pt-2">
+                                <a href="{{ path('backend_project_billing', {id: activeProject.id, phase: 'elaboration'}) }}"
+                                    class="backend-sidebar__billing-link btn btn-sm w-100 text-decoration-none">
                                     <i class="bi bi-receipt me-1"></i>
                                     <span>Facturación</span>
-                                </button>
-                                <ul class="dropdown-menu w-100 shadow">
-                                    <li>
-                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_billing', { id: activeProject.id, phase: 'elaboration', '_locale': app.request.locale }) }}">
-                                            {{ 'backend.navigation.billing_elaboration'|trans }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_billing', { id: activeProject.id, phase: 'implementation', '_locale': app.request.locale }) }}">
-                                            {{ 'backend.navigation.billing_implementation'|trans }}
-                                        </a>
-                                    </li>
-                                </ul>
+                                </a>
                             </div>
                         {% endif %}
                     </div>
