@@ -188,6 +188,9 @@ backend:
     title: "Pagination"
     previous: "Previous"
     next: "Next"
+  navigation:
+    billing_elaboration: "Elaboration billing"
+    billing_implementation: "Implementation billing"
   menu:
     admin: "Administration"
     users: "Users"
@@ -261,7 +264,12 @@ backend:
       updated: "Commercial plan updated successfully."
   commercial_phases:
     elaboration: "Elaboration"
+    signage: "Signage"
     implementation: "Implementation"
+    co2: "CO₂"
+    report: "Report"
+    compensation: "Compensation"
+    certification: "Certification"
   measures:
     flash:
       created: "Measure created successfully."
@@ -409,6 +417,26 @@ backend:
       help: "The selected project will remain active during the session."
       placeholder: "Choose a project"
     active_project: "Active project"
+    dashboard:
+      phases:
+        common:
+          coming_soon: "Coming soon"
+          completed: "Completed"
+          in_progress: "In progress"
+          pending: "Pending"
+          billing: "Billing"
+        elaboration:
+          create: "Create Elaboration"
+          continue: "Continue Elaboration"
+          view_close: "View Elaboration completion"
+        implementation:
+          available_after_elaboration: "Available after Elaboration"
+          ready: "Ready"
+          open: "Go to Implementation"
+          continue: "Continue Implementation"
+        co2:
+          no_records: "No records"
+          open: "Open CO₂"
     flash:
       created: "Project created successfully."
       updated: "Project updated successfully."
@@ -792,6 +820,7 @@ backend:
     project:
       title: "Project billing"
       plan_context: "Elaboration plan contracted"
+      phase_plan: "%phase% plan"
       manage: "Manage billing"
       documents_title: "Billing documents"
       documents_description: "Invoices and receipts associated with this project."
@@ -855,6 +884,15 @@ backend:
     title: "Sustainability plan"
     breadcrumb: "Sustainability plan"
     h2: "Sustainability plan: <strong>%project%</strong>"
+    elaboration:
+      title: "Plan Elaboration"
+      breadcrumb: "Plan Elaboration"
+      h2: "Plan Elaboration: <strong>%project%</strong>"
+    implementation:
+      title: "Plan Implementation"
+      breadcrumb: "Plan Implementation"
+      h2: "Plan Implementation: <strong>%project%</strong>"
+      billing: "Implementation billing"
     status:
       completo: "complete"
       incompleto: "incomplete"
@@ -908,6 +946,7 @@ backend:
       spinner_pdf: "Generating PDF…"
     tier:
       current: "Current tier"
+      phase_current: "%phase% plan: %tier%"
       basic_notice: "Available in Standard or Pro to unlock the full catalog and remove the watermark."
       standard_notice: "Available in Pro for advanced features."
       basic_summary: "Includes 50 priority measures."
@@ -922,6 +961,8 @@ backend:
     features_blocked_panel_close: "Hide advanced features"
     upgrade:
       title: "Upgrade your plan"
+      elaboration: "Upgrade Elaboration plan"
+      implementation: "Upgrade Implementation plan"
       help: "Payment is handled by Stripe and the invoice will be available in your project."
       open_selector: "Upgrade plan"
       select_title: "Choose your plan"
@@ -1027,6 +1068,7 @@ backend:
       add_custom_measure: "Add custom measure"
       continue_without_adding: "Continue without adding"
       continue: "Continue"
+      go_to_elaboration_close: "Go to Elaboration completion"
       custom_measures_title: "Added measures"
       custom_measures_empty: "You haven’t added any custom measures yet."
       custom_measure_badge: "Custom"
@@ -1125,6 +1167,7 @@ backend:
     errors:
       not_complete: "The plan is not complete yet. Finish answering the measures."
       not_found: "The sustainability plan does not exist"
+      implementation_requires_completed_elaboration: "You must complete Elaboration before changing Implementation."
     email:
       select_member: "You must select at least one crew member."
       members_not_found: "No selected members were found."
@@ -1176,10 +1219,17 @@ backend:
       helper_text: "We need a bit more information about your project. Tell us which measures apply and get your plan now."
       continue: "Continue"
     done:
-      title: "Plan completed"
-      h1: "Congratulations! 🎉"
-      lead: "You now have your sustainability plan for the project <strong>%project%</strong>."
+      title: "Elaboration completed"
+      breadcrumb: "Elaboration completion"
+      h1: "Elaboration completed"
+      lead: "You have completed Plan Elaboration for the project <strong>%project%</strong>."
       view_btn: "View now"
+      implementation:
+        ready: "Ready to start"
+        in_progress: "In progress"
+        open: "Go to Implementation"
+        continue: "Continue Implementation"
+        billing: "Implementation billing"
     review:
       title: "Sustainability plan"
       breadcrumb: "Sustainability plan"

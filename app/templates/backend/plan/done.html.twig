@@ -2,15 +2,61 @@
 
 {% block title %}{{ 'backend.plan.done.title'|trans }}{% endblock %}
 
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item active" aria-current="page">{{ 'backend.plan.done.breadcrumb'|trans }}</li>
+{% endblock %}
+
 {% block body %}
-<div class="container my-5">
-  <div class="row justify-content-center">
-    <div class="col-12 col-md-8 bg-white p-5 rounded shadow text-center">
-      <h1 class="mb-3">{{ 'backend.plan.done.h1'|trans }}</h1>
-      <p class="lead mb-4">
-        {{ 'backend.plan.done.lead'|trans({'%project%': project.name})|raw }}
-      </p>
-      <a href="{{ path('backend_plan_review', { is_applicable: '1', will_implement: '1' }) }}" class="btn btn-primary text-decoration-none">{{ 'backend.plan.done.view_btn'|trans }}</a>
+<div class="container-fluid px-0 backend-client-shell">
+  <div class="backend-client-content">
+    <div class="alert alert-success border-0 shadow-sm mb-4">
+      <h1 class="h3 mb-2">{{ 'backend.plan.done.h1'|trans }}</h1>
+      <p class="lead mb-2">{{ 'backend.plan.done.lead'|trans({'%project%': project.name})|raw }}</p>
+      <span class="badge bg-success-subtle text-success border border-success-subtle">
+        {{ 'backend.plan.tier.phase_current'|trans({'%phase%': 'backend.commercial_phases.elaboration'|trans, '%tier%': elaborationTierLabel}) }}
+      </span>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-4">
+          <div>
+            <div class="text-uppercase small text-muted fw-semibold mb-1">{{ 'backend.commercial_phases.implementation'|trans }}</div>
+            <h2 class="h4 mb-2">
+              {{ 'backend.plan.tier.phase_current'|trans({'%phase%': 'backend.commercial_phases.implementation'|trans, '%tier%': implementationTierLabel}) }}
+            </h2>
+            <span class="badge {{ hasImplementationActivity ? 'bg-warning text-dark' : 'bg-info text-dark' }}">
+              {{ hasImplementationActivity
+                ? 'backend.plan.done.implementation.in_progress'|trans
+                : 'backend.plan.done.implementation.ready'|trans }}
+            </span>
+          </div>
+
+          <div class="d-flex flex-column align-items-stretch align-items-lg-end gap-2">
+            <a href="{{ path('backend_plan_review', { state: 'implement' }) }}" class="btn btn-primary text-decoration-none">
+              <i class="bi {{ hasImplementationActivity ? 'bi-arrow-right-circle' : 'bi-play-circle' }} me-1"></i>
+              {{ hasImplementationActivity
+                ? 'backend.plan.done.implementation.continue'|trans
+                : 'backend.plan.done.implementation.open'|trans }}
+            </a>
+
+            {% if implementationUpgradeCta.mode in ['modal', 'single'] %}
+              {% include 'backend/plan/_upgrade_cta.html.twig' with {
+                upgradeCta: implementationUpgradeCta|merge({
+                  buttonLabel: 'backend.plan.upgrade.implementation'|trans,
+                  buttonClass: 'btn btn-outline-success'
+                }),
+                project: project
+              } %}
+            {% endif %}
+
+            <a href="{{ path('backend_project_billing', {id: project.id, phase: 'implementation'}) }}" class="btn btn-outline-secondary text-decoration-none">
+              <i class="bi bi-receipt me-1"></i>{{ 'backend.plan.done.implementation.billing'|trans }}
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

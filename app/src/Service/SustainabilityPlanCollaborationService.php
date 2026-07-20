@@ -26,7 +26,8 @@ final class SustainabilityPlanCollaborationService
      *     responsibles:int,
      *     publicComments:int,
      *     internalNotes:int,
-     *     customMeasures:int
+     *     customMeasures:int,
+     *     hasImplementationActivity:bool
      * }
      */
     public function buildProgressSummary(Plan $plan, Project $project): array
@@ -40,6 +41,7 @@ final class SustainabilityPlanCollaborationService
             'publicComments' => 0,
             'internalNotes' => 0,
             'customMeasures' => count($this->customMeasureParser->parse($plan->getCustomMeasures())),
+            'hasImplementationActivity' => $this->containsImplementationActivity($plan),
         ];
 
         $uniqueEvidence = [];
@@ -88,11 +90,39 @@ final class SustainabilityPlanCollaborationService
             foreach ($this->extractEvidenceFiles($planMeasure->getEvidence()) as $path) {
                 $uniqueEvidence[$path] = true;
             }
+
         }
 
         $summary['evidenceFiles'] = count($uniqueEvidence);
 
         return $summary;
+    }
+
+    public function hasImplementationActivity(Plan $plan): bool
+    {
+        return $this->containsImplementationActivity($plan);
+    }
+
+    private function containsImplementationActivity(Plan $plan): bool
+    {
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            if ($planMeasure instanceof PlanMeasure && $this->planMeasureHasImplementationActivity($planMeasure)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function planMeasureHasImplementationActivity(PlanMeasure $planMeasure): bool
+    {
+        return $planMeasure->hasActionTaken()
+            || $planMeasure->hasEvidence()
+            || !$planMeasure->getResponsibleCrewMembers()->isEmpty()
+            || trim((string) $planMeasure->getPublicComment()) !== ''
+            || trim((string) $planMeasure->getInternalNotes()) !== ''
+            || $planMeasure->isImplemented() === true
+            || $planMeasure->isVerification();
     }
 
     /**

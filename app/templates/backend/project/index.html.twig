@@ -264,39 +264,36 @@
 
                                         {% for phase in project.phases %}
                                             {% set phaseHref = null %}
-                                            {% if phase.code == '01' %}
-                                                {% set phaseHref = path('backend_project_select_project', {id: project.id, target: 'plan'}) %}
-                                            {% elseif phase.code == '03' %}
-                                                {% set phaseHref = path('backend_project_select_project', {id: project.id, target: 'emissions'}) %}
+                                            {% if phase.primaryTarget|default(null) %}
+                                                {% set phaseHref = path('backend_project_select_project', {id: project.id, target: phase.primaryTarget}) %}
                                             {% endif %}
 
                                             <td class="dashboard-phase-cell text-center">
-                                                {% if phaseHref %}
-                                                    <a href="{{ phaseHref }}"
-                                                       title="{{ phase.title }}"
-                                                       aria-label="{{ phase.title }}"
-                                                       class="backend-phase-tile backend-phase-tile--link text-decoration-none">
-                                                        <div class="backend-phase-node {{ phase.stateClass }}">
-                                                            <i class="bi {{ phase.icon }}"></i>
-                                                        </div>
-                                                        <div class="backend-phase-tile__state">{{ phase.stateLabel }}</div>
-                                                        {% if phase.note is not empty %}
-                                                            <div class="backend-phase-tile__note">{{ phase.note }}</div>
-                                                        {% endif %}
-                                                    </a>
-                                                {% else %}
-                                                    <div title="{{ phase.title }}"
-                                                         aria-label="{{ phase.title }}"
-                                                         class="backend-phase-tile">
-                                                        <div class="backend-phase-node {{ phase.stateClass }}">
-                                                            <i class="bi {{ phase.icon }}"></i>
-                                                        </div>
-                                                        <div class="backend-phase-tile__state">{{ phase.stateLabel }}</div>
-                                                        {% if phase.note is not empty %}
-                                                            <div class="backend-phase-tile__note">{{ phase.note }}</div>
-                                                        {% endif %}
+                                                <div title="{{ phase.title }}"
+                                                     aria-label="{{ phase.title }}"
+                                                     class="backend-phase-tile">
+                                                    <div class="backend-phase-node {{ phase.stateClass }}">
+                                                        <i class="bi {{ phase.icon }}"></i>
                                                     </div>
-                                                {% endif %}
+                                                    <div class="backend-phase-tile__state">{{ phase.stateLabel }}</div>
+                                                    {% if phase.tierLabel|default(null) %}
+                                                        <span class="badge bg-light text-dark border mt-1">{{ phase.tierLabel }}</span>
+                                                    {% endif %}
+                                                    {% if phase.note is not empty %}
+                                                        <div class="backend-phase-tile__note">{{ phase.note }}</div>
+                                                    {% endif %}
+                                                    {% if phaseHref %}
+                                                        <a href="{{ phaseHref }}" class="btn btn-link btn-sm p-0 mt-1 text-decoration-none">
+                                                            {{ phase.primaryLabel }}
+                                                        </a>
+                                                    {% endif %}
+                                                    {% if phase.billingPhase|default(null) %}
+                                                        <a href="{{ path('backend_project_billing', {id: project.id, phase: phase.billingPhase, from: 'index'}) }}"
+                                                           class="d-block small text-decoration-none mt-1">
+                                                            {{ 'backend.projects.dashboard.phases.common.billing'|trans }}
+                                                        </a>
+                                                    {% endif %}
+                                                </div>
                                             </td>
                                         {% endfor %}
 
@@ -318,7 +315,12 @@
                                                     </li>
                                                     <li>
                                                         <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_billing', {id: project.id, phase: 'elaboration', from: 'index'}) }}">
-                                                            <i class="bi bi-receipt me-2"></i>Facturación
+                                                            <i class="bi bi-receipt me-2"></i>{{ 'backend.navigation.billing_elaboration'|trans }}
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_billing', {id: project.id, phase: 'implementation', from: 'index'}) }}">
+                                                            <i class="bi bi-receipt me-2"></i>{{ 'backend.navigation.billing_implementation'|trans }}
                                                         </a>
                                                     </li>
                                                     <li>

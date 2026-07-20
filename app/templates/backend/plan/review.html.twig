@@ -1,10 +1,10 @@
 {% extends 'base_backend.html.twig' %}
 
-{% block title %}{{ 'backend.plan.review.title'|trans }}{% endblock %}
+{% block title %}{{ 'backend.plan.implementation.title'|trans }}{% endblock %}
 
 {% block breadcrumb %}
     {{ parent() }}
-    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.plan.review.breadcrumb'|trans }}</li>
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.plan.implementation.breadcrumb'|trans }}</li>
 {% endblock %}
 
 {% block body %}
@@ -45,7 +45,7 @@
     <div class="backend-client-content">
             <div class="mb-4">
                 <h2 class="mb-0">
-                    {{ 'backend.plan.h2'|trans({'%project%': project.name})|raw }}
+                    {{ 'backend.plan.implementation.h2'|trans({'%project%': project.name})|raw }}
                 </h2>
             </div>
 
@@ -118,7 +118,7 @@
                     <div class="flex-shrink-0 ms-lg-auto">
                         {% include 'backend/plan/_upgrade_cta.html.twig' with {
                             upgradeCta: upgradeCta|merge({
-                                buttonLabel: 'Mejorar plan',
+                                buttonLabel: 'backend.plan.upgrade.implementation'|trans,
                                 buttonClass: 'btn btn-outline-success btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 rounded-pill shadow-sm',
                                 buttonIcon: 'bi-arrow-up-circle'
                             }),
@@ -133,11 +133,16 @@
                             <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ checkoutPhase ~ '_' ~ upgradeOption.targetTier) }}">
                             <button type="submit" class="btn btn-outline-success btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 rounded-pill shadow-sm">
                                 <i class="bi bi-arrow-up-circle"></i>
-                                Mejorar plan
+                                {{ 'backend.plan.upgrade.implementation'|trans }}
                             </button>
                         </form>
                     {% endif %}
                 {% endif %}
+
+                <a href="{{ path('backend_project_billing', {id: project.id, phase: 'implementation'}) }}"
+                   class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill text-decoration-none flex-shrink-0">
+                    <i class="bi bi-receipt me-1"></i>{{ 'backend.plan.implementation.billing'|trans }}
+                </a>
             </div>
 
             {% if customMeasures is not empty %}

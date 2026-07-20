@@ -123,7 +123,10 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $response = $controller->done(
             $this->createActiveProjectServiceMock($project),
-            $this->createPlanRepositoryMock($plan)
+            $this->createPlanRepositoryMock($plan),
+            (new \ReflectionClass(\App\Service\StripeProjectCheckoutService::class))->newInstanceWithoutConstructor(),
+            self::getContainer()->get(CommercialPlanRepository::class),
+            self::getContainer()->get(MeasureRepository::class)
         );
 
         self::assertSame(302, $response->getStatusCode());
@@ -179,7 +182,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertNotNull($plan->getCustomMeasuresCompletedAt());
     }
 
-    public function testCustomMeasuresContinueButtonChangesWhenMeasuresAlreadyExist(): void
+    public function testCustomMeasuresContinueButtonPointsToElaborationClose(): void
     {
         self::bootKernel();
         $this->setAdminToken();
@@ -242,9 +245,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ],
         ]);
 
-        self::assertStringContainsString('Continuar sin añadir', $emptyHtml);
-        self::assertStringContainsString('Continuar', $filledHtml);
-        self::assertStringNotContainsString('Continuar sin añadir', $filledHtml);
+        self::assertStringContainsString('Ir al cierre de Elaboración', $emptyHtml);
+        self::assertStringContainsString('Ir al cierre de Elaboración', $filledHtml);
 
         $requestStack->pop();
     }
@@ -776,7 +778,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->setStatus('completo');
 
         $planMeasure = (new PlanMeasure())
             ->setMeasure($measure)
@@ -850,7 +853,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->setStatus('completo');
 
         $planMeasure = (new PlanMeasure())
             ->setMeasure($measure)
@@ -928,7 +932,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->setStatus('completo');
 
         $planMeasure = (new PlanMeasure())
             ->setMeasure($measure)
@@ -1008,7 +1013,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->setStatus('completo');
 
         for ($i = 1; $i <= 10; $i++) {
             $existingMeasure = (new Measure())
@@ -1110,7 +1116,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->setStatus('completo');
 
         $request = $this->createRequest([
             'measureId' => (string) $measure->getId(),
@@ -1188,7 +1195,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->setStatus('completo');
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
         self::assertNotFalse($tmpFile);
@@ -2978,7 +2986,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->setStatus('completo');
 
         $measure = (new Measure())
             ->setProtocol($protocol)

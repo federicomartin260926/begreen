@@ -125,6 +125,92 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         self::assertSame(1, $summary['internalNotes']);
     }
 
+    public function testImplementationActivityIsFalseForNullImplementedWithoutOperationalData(): void
+    {
+        $service = $this->createService();
+        [$plan, , $protocol] = $this->createPlanContext();
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($this->createMeasure(801, $protocol))
+                ->setImplemented(null)
+        );
+
+        self::assertFalse($service->hasImplementationActivity($plan));
+    }
+
+    public function testImplementationActivityIsFalseForFalseImplementedWithoutOperationalData(): void
+    {
+        $service = $this->createService();
+        [$plan, , $protocol] = $this->createPlanContext();
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($this->createMeasure(802, $protocol))
+                ->setImplemented(false)
+        );
+
+        self::assertFalse($service->hasImplementationActivity($plan));
+    }
+
+    public function testImplementationActivityIsFalseForSeedLikeElaborationData(): void
+    {
+        $service = $this->createService();
+        [$plan, , $protocol] = $this->createPlanContext();
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($this->createMeasure(803, $protocol))
+                ->setIsApplicable(true)
+                ->setWillImplement(true)
+                ->setIsCritical(true)
+                ->setCriticalReason('Motivo de Elaboración')
+                ->setImplemented(false)
+        );
+
+        self::assertFalse($service->hasImplementationActivity($plan));
+    }
+
+    public function testImplementationActivityIsTrueForFalseImplementedWithOperationalData(): void
+    {
+        $service = $this->createService();
+        [$plan, $project, $protocol] = $this->createPlanContext();
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure($this->createMeasure(804, $protocol))
+            ->setImplemented(false);
+        $plan->addPlanMeasure($planMeasure);
+
+        $planMeasure->setActionTaken('Acción ejecutada');
+        self::assertTrue($service->hasImplementationActivity($plan));
+        $planMeasure->setActionTaken(null);
+
+        $planMeasure->setEvidence('/uploads/evidences/test.pdf');
+        self::assertTrue($service->hasImplementationActivity($plan));
+        $planMeasure->setEvidence(null);
+
+        $responsible = $this->createCrewMember(805, 'Ana', 'García', null, $project);
+        $planMeasure->addResponsibleCrewMember($responsible);
+        self::assertTrue($service->hasImplementationActivity($plan));
+        $planMeasure->removeResponsibleCrewMember($responsible);
+
+        $planMeasure->setPublicComment('Observación operativa');
+        self::assertTrue($service->hasImplementationActivity($plan));
+        $planMeasure->setPublicComment(null);
+
+        $planMeasure->setInternalNotes('Nota operativa');
+        self::assertTrue($service->hasImplementationActivity($plan));
+    }
+
+    public function testImplementationActivityIsTrueForImplementedTrue(): void
+    {
+        $service = $this->createService();
+        [$plan, , $protocol] = $this->createPlanContext();
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($this->createMeasure(806, $protocol))
+                ->setImplemented(true)
+        );
+
+        self::assertTrue($service->hasImplementationActivity($plan));
+    }
+
     public function testSortCrewMembersForMeasurePrioritizesMatchingDepartments(): void
     {
         $service = $this->createService();

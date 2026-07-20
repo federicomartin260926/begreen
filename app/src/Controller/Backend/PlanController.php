@@ -41,6 +41,19 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[IsGranted('ROLE_USER')]
 class PlanController extends AbstractController
 {
+    private const IMPLEMENTATION_FIELDS = [
+        'implemented',
+        'verification',
+        'action_taken',
+        'evidence',
+        'evidence_metadata',
+        'evidenceMetadata',
+        'observations',
+        'internalNotes',
+        'internal_notes',
+        'responsibles',
+    ];
+
     public function __construct(
         private TranslatorInterface $t,
         private PlanMeasureCatalogResolver $catalogResolver,
@@ -432,18 +445,47 @@ class PlanController extends AbstractController
     #[Route('/done', name: 'done', methods: ['GET'])]
     public function done(
         ActiveProjectService $activeProjectService,
-        PlanRepository $planRepository
+        PlanRepository $planRepository,
+        StripeProjectCheckoutService $checkoutService,
+        CommercialPlanRepository $commercialPlanRepository,
+        MeasureRepository $measureRepository
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) return $this->redirectToRoute('app_backend');
 
         $plan = $planRepository->findOneBy(['project' => $project]);
+        if (!$plan instanceof Plan) {
+            return $this->redirectToRoute('backend_plan_welcome');
+        }
+
         if ($plan instanceof Plan && $this->shouldShowCustomMeasuresStep($plan)) {
             return $this->redirectToRoute('backend_plan_measures');
         }
 
+        if ($plan->getStatus() !== 'completo') {
+            return $this->redirectToRoute('backend_plan_measures');
+        }
+
+        $implementationPhase = CommercialPhase::IMPLEMENTATION;
+        $implementationTier = $this->featureGate->getTier($project, $implementationPhase);
+        $implementationUpgradeCta = $this->buildUpgradeCta(
+            $project,
+            $plan,
+            $implementationPhase,
+            $implementationTier,
+            $checkoutService->getAvailableUpgradeTargets($project, $implementationPhase),
+            $commercialPlanRepository,
+            $measureRepository
+        );
+        $hasImplementationActivity = $this->collaborationService->hasImplementationActivity($plan);
+
         return $this->render('backend/plan/done.html.twig', [
             'project' => $project,
+            'elaborationTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
+            'implementationTier' => $implementationTier,
+            'implementationTierLabel' => $this->featureGate->getPlanLabel($project, $implementationPhase),
+            'hasImplementationActivity' => $hasImplementationActivity,
+            'implementationUpgradeCta' => $implementationUpgradeCta,
         ]);
     }
 
@@ -848,6 +890,10 @@ class PlanController extends AbstractController
 
         // Asegura Plan
         $plan = $planRepo->findOneBy(['project' => $project]);
+        if ($this->isImplementationField($field) && (!$plan instanceof Plan || $plan->getStatus() !== 'completo')) {
+            return $this->implementationNotReadyResponse();
+        }
+
         if (!$plan) {
             // Vas a CREAR plan -> requiere EDIT del proyecto
             $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
@@ -1346,6 +1392,19 @@ class PlanController extends AbstractController
         return $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, $fieldFeatureMap[$field]);
     }
 
+    private function isImplementationField(string $field): bool
+    {
+        return in_array($field, self::IMPLEMENTATION_FIELDS, true);
+    }
+
+    private function implementationNotReadyResponse(): JsonResponse
+    {
+        return new JsonResponse([
+            'success' => false,
+            'error' => $this->t->trans('backend.plan.errors.implementation_requires_completed_elaboration'),
+        ], 409);
+    }
+
 
     /**
      * Devuelve true si TODAS las medidas del protocolo seleccionado están contestadas:
@@ -1438,6 +1497,10 @@ class PlanController extends AbstractController
 
         // VOTER: vas a modificar evidencias del plan -> EDIT
         $this->denyAccessUnlessGranted(PlanVoter::EDIT, $plan);
+
+        if ($plan->getStatus() !== 'completo') {
+            return $this->implementationNotReadyResponse();
+        }
 
         if (!$this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.evidence_upload')) {
             return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
@@ -1563,9 +1626,12 @@ class PlanController extends AbstractController
         if (!$plan) {
             return new JsonResponse(['success' => false, 'error' => 'Plan not found'], 404);
         }
-
         // VOTER: vas a modificar evidencias del plan -> EDIT
         $this->denyAccessUnlessGranted(PlanVoter::EDIT, $plan);
+
+        if ($plan->getStatus() !== 'completo') {
+            return $this->implementationNotReadyResponse();
+        }
 
         $pm = $pmRepo->findOneBy(['plan' => $plan, 'measure' => $measure]);
         if (!$pm) {

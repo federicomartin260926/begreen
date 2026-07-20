@@ -251,6 +251,7 @@ final class ProjectControllerFormTest extends KernelTestCase
             $container->get(ProjectFeatureGate::class),
             $this->createMock(ProjectBillingDocumentRepository::class),
             $this->createMock(StripeInvoiceStorageService::class),
+            $container->get(\App\Service\SustainabilityPlanCollaborationService::class),
         );
         $controller->setContainer($container);
 

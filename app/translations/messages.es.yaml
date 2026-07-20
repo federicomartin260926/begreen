@@ -190,6 +190,9 @@ backend:
     title: "Paginación"
     previous: "Previo"
     next: "Siguiente"
+  navigation:
+    billing_elaboration: "Facturación de Elaboración"
+    billing_implementation: "Facturación de Implementación"
   menu:
     admin: "Administración"
     users: "Usuarios"
@@ -263,7 +266,12 @@ backend:
       updated: "Plan comercial actualizado correctamente."
   commercial_phases:
     elaboration: "Elaboración"
+    signage: "Cartelería"
     implementation: "Implementación"
+    co2: "CO₂"
+    report: "Informe"
+    compensation: "Compensación"
+    certification: "Certificación"
   measures:
     flash:
       created: "Medida creada correctamente."
@@ -411,6 +419,26 @@ backend:
       help: "El proyecto seleccionado se mantendrá activo durante la sesión."
       placeholder: "Selecciona un proyecto"
     active_project: "Proyecto activo"
+    dashboard:
+      phases:
+        common:
+          coming_soon: "Próximamente"
+          completed: "Completada"
+          in_progress: "En curso"
+          pending: "Pendiente"
+          billing: "Facturación"
+        elaboration:
+          create: "Crear Elaboración"
+          continue: "Continuar Elaboración"
+          view_close: "Ver cierre de Elaboración"
+        implementation:
+          available_after_elaboration: "Disponible al finalizar Elaboración"
+          ready: "Lista"
+          open: "Ir a Implementación"
+          continue: "Continuar Implementación"
+        co2:
+          no_records: "Sin registros"
+          open: "Abrir CO₂"
     flash:
       created: "Proyecto creado correctamente."
       updated: "Proyecto actualizado correctamente."
@@ -794,6 +822,7 @@ backend:
     project:
       title: "Facturación del proyecto"
       plan_context: "Plan de Elaboración contratado"
+      phase_plan: "Plan de %phase%"
       manage: "Gestionar facturación"
       documents_title: "Documentos de facturación"
       documents_description: "Facturas y recibos asociados a este proyecto."
@@ -857,6 +886,15 @@ backend:
     title: "Plan de sostenibilidad"
     breadcrumb: "Plan de sostenibilidad"
     h2: "Plan de sostenibilidad: <strong>%project%</strong>"
+    elaboration:
+      title: "Elaboración del plan"
+      breadcrumb: "Elaboración del plan"
+      h2: "Elaboración del plan: <strong>%project%</strong>"
+    implementation:
+      title: "Implementación del plan"
+      breadcrumb: "Implementación del plan"
+      h2: "Implementación del plan: <strong>%project%</strong>"
+      billing: "Facturación de Implementación"
     status:
       completo: "completo"
       incompleto: "incompleto"
@@ -910,6 +948,7 @@ backend:
       spinner_pdf: "Generando PDF…"
     tier:
       current: "Tier actual"
+      phase_current: "Plan de %phase%: %tier%"
       basic_notice: "Disponible en Standard o Pro para ampliar catálogo y quitar marca de agua."
       standard_notice: "Disponible en Pro para funciones avanzadas."
       basic_summary: "Incluye 50 medidas prioritarias."
@@ -925,6 +964,8 @@ backend:
     features_blocked_panel_close: "Ocultar funciones avanzadas"
     upgrade:
       title: "Mejora tu plan"
+      elaboration: "Mejorar plan de Elaboración"
+      implementation: "Mejorar plan de Implementación"
       help: "El pago se gestiona con Stripe y la factura quedará disponible en tu proyecto."
       open_selector: "Mejorar plan"
       select_title: "Elige tu plan"
@@ -1030,6 +1071,7 @@ backend:
       add_custom_measure: "Añadir medida personalizada"
       continue_without_adding: "Continuar sin añadir"
       continue: "Continuar"
+      go_to_elaboration_close: "Ir al cierre de Elaboración"
       custom_measures_title: "Medidas añadidas"
       custom_measures_empty: "Aún no has añadido ninguna medida personalizada."
       custom_measure_badge: "Personalizada"
@@ -1128,6 +1170,7 @@ backend:
     errors:
       not_complete: "El plan aún no está completo. Termina de responder las medidas."
       not_found: "El plan de sostenibilidad no existe"
+      implementation_requires_completed_elaboration: "Debes completar la Elaboración antes de modificar la Implementación."
     email:
       select_member: "Debes seleccionar al menos un miembro del equipo técnico."
       members_not_found: "No se encontraron miembros seleccionados."
@@ -1181,10 +1224,17 @@ backend:
       single_protocol_copy: "Comienza el Plan de Sostenibilidad Be Green My Film para tu proyecto."
       single_protocol_button: "Comenzar plan"
     done:
-      title: "Plan finalizado"
-      h1: "¡Enhorabuena! 🎉"
-      lead: "Ya tienes tu plan de sostenibilidad para el proyecto <strong>%project%</strong>."
+      title: "Elaboración completada"
+      breadcrumb: "Cierre de Elaboración"
+      h1: "Elaboración completada"
+      lead: "Has completado la Elaboración del plan para el proyecto <strong>%project%</strong>."
       view_btn: "Ver ahora"
+      implementation:
+        ready: "Lista para comenzar"
+        in_progress: "En curso"
+        open: "Ir a Implementación"
+        continue: "Continuar Implementación"
+        billing: "Facturación de Implementación"
     review:
       title: "Plan de sostenibilidad"
       breadcrumb: "Plan de sostenibilidad"

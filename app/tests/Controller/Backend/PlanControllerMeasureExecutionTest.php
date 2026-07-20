@@ -31,6 +31,61 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
 {
     use CommercialPlanTestHelpers;
 
+    public function testUpdateSelectionRejectsOperationalFieldBeforeElaborationIsComplete(): void
+    {
+        $scenario = $this->buildScenario([
+            'measure_id' => 993,
+            'plan_status' => 'incompleto',
+        ]);
+        $request = $this->createRequest([
+            'measureId' => (string) $scenario['measure']->getId(),
+            'field' => 'action_taken',
+            'value' => 'Acción prematura',
+        ]);
+
+        $response = $this->invokeUpdateSelection(
+            $scenario['controller'],
+            $request,
+            $scenario['measureRepository'],
+            $scenario['planMeasureRepository'],
+            $scenario['planRepository'],
+            $scenario['blockAnswerRepository'],
+            $scenario['activeProjectService'],
+            $this->createMock(EntityManagerInterface::class)
+        );
+
+        self::assertSame(409, $response->getStatusCode());
+        self::assertNull($scenario['planMeasure']->getActionTaken());
+    }
+
+    public function testUpdateSelectionAllowsElaborationFieldBeforeElaborationIsComplete(): void
+    {
+        $scenario = $this->buildScenario([
+            'measure_id' => 992,
+            'plan_status' => 'incompleto',
+            'will_implement' => false,
+        ]);
+        $request = $this->createRequest([
+            'measureId' => (string) $scenario['measure']->getId(),
+            'field' => 'decision',
+            'value' => 'true',
+        ]);
+
+        $response = $this->invokeUpdateSelection(
+            $scenario['controller'],
+            $request,
+            $scenario['measureRepository'],
+            $scenario['planMeasureRepository'],
+            $scenario['planRepository'],
+            $scenario['blockAnswerRepository'],
+            $scenario['activeProjectService'],
+            $this->createEntityManagerMock($scenario['planMeasure'])
+        );
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertTrue($scenario['planMeasure']->willImplement());
+    }
+
     public function testUpdateSelectionAllowsImplementedWhenActionAndEvidenceExist(): void
     {
         $scenario = $this->buildScenario([
@@ -388,7 +443,8 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->setStatus((string) ($options['plan_status'] ?? 'completo'));
 
         $planMeasure = (new PlanMeasure())
             ->setMeasure($measure)

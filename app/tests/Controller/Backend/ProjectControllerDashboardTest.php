@@ -68,7 +68,8 @@ final class ProjectControllerDashboardTest extends KernelTestCase
             $container->get('translator'),
             $container->get(ProjectFeatureGate::class),
             $billingRepository,
-            $invoiceStorage
+            $invoiceStorage,
+            $container->get(\App\Service\SustainabilityPlanCollaborationService::class)
         );
         $controller->setContainer($container);
 

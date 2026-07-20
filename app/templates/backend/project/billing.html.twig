@@ -1,6 +1,6 @@
 {% extends 'base_backend.html.twig' %}
 
-{% block title %}{{ 'backend.billing.project.plan_context'|trans }} · {{ project.name }}{% endblock %}
+{% block title %}{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }} · {{ project.name }}{% endblock %}
 
 {% block breadcrumb %}
   {{ parent() }}
@@ -10,14 +10,14 @@
   <li class="breadcrumb-item">
     <a href="{{ path('backend_project_edit', {id: project.id}) }}" class="text-decoration-none">{{ project.name }}</a>
   </li>
-  <li class="breadcrumb-item active">{{ 'backend.billing.project.plan_context'|trans }}</li>
+  <li class="breadcrumb-item active">{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}</li>
 {% endblock %}
 
 {% block body %}
 <div class="container-fluid px-0 backend-client-shell">
   <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
-      <h2 class="mb-1">{{ 'backend.billing.project.plan_context'|trans }}: {{ phaseLabel }}</h2>
+      <h2 class="mb-1">{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}</h2>
       <div class="text-muted">{{ project.name }}</div>
     </div>
     <div class="d-flex gap-2">
@@ -56,7 +56,7 @@
     <div class="row g-3">
       <div class="col-12 col-md-6">
         <div class="border rounded p-3 h-100 bg-light">
-          <div class="small text-muted">{{ 'backend.billing.project.plan_context'|trans }}</div>
+          <div class="small text-muted">{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}</div>
           <div class="fw-semibold">{{ phaseLabel }}</div>
         </div>
       </div>
@@ -68,7 +68,7 @@
       </div>
       <div class="col-12 col-md-6">
         <div class="border rounded p-3 h-100 bg-light">
-          <div class="small text-muted">{{ 'backend.billing.project.plan_context'|trans }}</div>
+          <div class="small text-muted">{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}</div>
           <div class="fw-semibold">{{ subscription.tier|upper }}</div>
           {% if subscription.tier|lower == 'pro' %}
             <div class="mt-2">

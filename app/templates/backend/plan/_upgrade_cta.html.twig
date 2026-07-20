@@ -19,7 +19,7 @@
             {% if upgradeCta.buttonIcon|default(false) %}
                 <i class="bi {{ upgradeCta.buttonIcon }}"></i>
             {% endif %}
-            {{ upgradeOption.ctaLabel }}
+            {{ upgradeCta.buttonLabel|default(upgradeOption.ctaLabel) }}
         </button>
     </form>
 {% elseif upgradeCta.mode == 'unavailable' %}

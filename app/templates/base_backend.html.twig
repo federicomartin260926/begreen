@@ -48,10 +48,7 @@
             <div class="backend-sidebar__account d-none d-md-block px-3 pb-3">
                 <div class="backend-sidebar__account-card rounded-4 p-3">
                     {% set profileSidebarHref = path('app_profile', {'_locale': app.request.locale}) %}
-                    {% set planSidebarHref = activeProject and is_granted('PROJECT_VIEW', activeProject)
-                        ? path('backend_project_billing', { id: activeProject.id, phase: 'elaboration', '_locale': app.request.locale })
-                        : null
-                    %}
+                    {% set canOpenProjectBilling = activeProject and is_granted('PROJECT_VIEW', activeProject) %}
 
                     <a href="{{ profileSidebarHref }}" class="backend-sidebar__identity-link d-flex align-items-center gap-3 min-w-0 text-decoration-none">
                         <div class="backend-sidebar__avatar rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
@@ -78,15 +75,27 @@
                                 {{ app.user.createdAt ? app.user.createdAt|date('d/m/Y') : '—' }}
                             </strong>
                         </div>
-                        {% if planSidebarHref %}
-                            <div class="backend-sidebar__actions pt-2">
-                                <a
-                                    href="{{ planSidebarHref }}"
-                                    title="Abrir facturación del proyecto activo"
-                                    class="backend-sidebar__billing-link btn btn-sm text-decoration-none w-100">
+                        {% if canOpenProjectBilling %}
+                            <div class="backend-sidebar__actions dropdown pt-2">
+                                <button type="button"
+                                    class="backend-sidebar__billing-link btn btn-sm dropdown-toggle w-100"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
                                     <i class="bi bi-receipt me-1"></i>
                                     <span>Facturación</span>
-                                </a>
+                                </button>
+                                <ul class="dropdown-menu w-100 shadow">
+                                    <li>
+                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_billing', { id: activeProject.id, phase: 'elaboration', '_locale': app.request.locale }) }}">
+                                            {{ 'backend.navigation.billing_elaboration'|trans }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item text-decoration-none" href="{{ path('backend_project_billing', { id: activeProject.id, phase: 'implementation', '_locale': app.request.locale }) }}">
+                                            {{ 'backend.navigation.billing_implementation'|trans }}
+                                        </a>
+                                    </li>
+                                </ul>
                             </div>
                         {% endif %}
                     </div>
@@ -159,9 +168,13 @@
                         <i class="bi bi-folder-fill flex-shrink-0"></i>
                         <span class="ms-2">{{ 'backend.menu.projects'|trans }}</span>
                     </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_plan' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.sustainability_plan'|trans }}">
+                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_plan' and app.request.attributes.get('_route') != 'backend_plan_review' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_measures', {'_locale': app.request.locale}) }}" title="{{ 'backend.commercial_phases.elaboration'|trans }}">
                         <i class="bi bi-pie-chart-fill flex-shrink-0"></i>
-                        <span class="ms-2">{{ 'backend.menu.sustainability_plan'|trans }}</span>
+                        <span class="ms-2">{{ 'backend.commercial_phases.elaboration'|trans }}</span>
+                    </a>
+                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') == 'backend_plan_review' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_review', {'_locale': app.request.locale, state: 'implement'}) }}" title="{{ 'backend.commercial_phases.implementation'|trans }}">
+                        <i class="bi bi-list-check flex-shrink-0"></i>
+                        <span class="ms-2">{{ 'backend.commercial_phases.implementation'|trans }}</span>
                     </a>
                     <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_emission' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_emission_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.emissions'|trans }}">
                         <i class="bi bi-cloud-arrow-up flex-shrink-0"></i>
@@ -239,7 +252,8 @@
                             <i class="bi bi-pie-chart-fill fs-4"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.sustainability_plan'|trans }}">{{ 'backend.menu.sustainability_plan'|trans }}</a></li>
+                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_measures', {'_locale': app.request.locale}) }}">{{ 'backend.commercial_phases.elaboration'|trans }}</a></li>
+                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_review', {'_locale': app.request.locale, state: 'implement'}) }}">{{ 'backend.commercial_phases.implementation'|trans }}</a></li>
                         </ul>
                     </div>
 
