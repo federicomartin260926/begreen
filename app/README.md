@@ -80,6 +80,110 @@ Entrar al contenedor PHP:
 make php
 ```
 
+## Despliegue en producción
+
+El despliegue habitual en el VPS se ejecuta desde la raíz del repositorio:
+
+```bash
+cd ~/www/begreen
+make deploy-prod-build
+```
+
+Este target actualiza el código desde Git, reconstruye las imágenes Docker, instala las dependencias de producción, compila los assets, limpia la caché y muestra el SQL pendiente de Doctrine sin aplicarlo automáticamente.
+
+Después del despliegue se recomienda comprobar el estado de los contenedores:
+
+```bash
+make ps-prod
+```
+
+### Despliegue cuando cambian los fixtures
+
+Mientras la aplicación continúe en fase de desarrollo, algunos cambios de catálogo, planes comerciales o datos base se distribuyen regenerando los fixtures locales y reemplazando la base de datos de producción con un dump limpio.
+
+> **Advertencia:** este procedimiento purga y reemplaza los datos actuales de producción. Es temporal y sólo debe utilizarse durante la fase de desarrollo, cuando la pérdida de los datos existentes esté expresamente asumida. No debe emplearse cuando producción contenga información real que sea necesario conservar.
+
+#### 1. Regenerar la base local
+
+Desde el entorno local:
+
+```bash
+cd ~/www/begreenmyfriend
+
+make schema-update
+make fixtures
+```
+
+Opcionalmente, comprobar los servicios y el mapping de Doctrine:
+
+```bash
+make ps
+make console ARGS="doctrine:schema:validate"
+```
+
+Durante esta fase puede existir drift global entre el schema y el mapping. Antes de continuar, el mapping debe ser correcto y `schema-update` y `fixtures` deben haber terminado sin errores.
+
+#### 2. Crear el dump limpio
+
+```bash
+make db-dump-fixtures
+```
+
+El dump se crea en `backups/` con un nombre similar a:
+
+```text
+backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql
+```
+
+Comprobar su tamaño y que termina con `Dump completed`:
+
+```bash
+ls -lhtr backups/*.sql | tail -5
+tail -10 backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql
+```
+
+#### 3. Subir el dump al VPS
+
+```bash
+scp backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql \
+  fede@194.163.142.134:/home/fede/www/begreen/backups/
+```
+
+#### 4. Desplegar el código
+
+En el VPS:
+
+```bash
+ssh fede@194.163.142.134
+cd ~/www/begreen
+
+make deploy-prod-build
+```
+
+#### 5. Importar el dump en producción
+
+Una vez desplegado el código:
+
+```bash
+make db-import-prod \
+  DUMP=backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql
+```
+
+`db-import-prod` crea primero un backup SQL de la base de producción actual y después importa el dump indicado.
+
+No ejecutar `make fixtures` directamente en producción.
+
+#### 6. Verificar producción
+
+```bash
+make ps-prod
+make console-prod ARGS="about"
+```
+
+Después se debe realizar una comprobación funcional breve de los flujos afectados en la aplicación.
+
+Los backups generados antes de cada importación quedan en `backups/` y deben conservarse hasta confirmar que el despliegue es correcto.
+
 ## Comandos útiles
 
 La mayoría de comandos Symfony se ejecutan con `make console ARGS='...'`.
