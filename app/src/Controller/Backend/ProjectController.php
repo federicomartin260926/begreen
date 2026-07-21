@@ -38,16 +38,6 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[IsGranted('ROLE_USER')]
 class ProjectController extends AbstractController
 {
-    private const DASHBOARD_PHASE_HEADERS = [
-        ['code' => '01', 'translationKey' => 'backend.commercial_phases.elaboration'],
-        ['code' => '02', 'translationKey' => 'backend.commercial_phases.signage'],
-        ['code' => '03', 'translationKey' => 'backend.commercial_phases.implementation'],
-        ['code' => '04', 'translationKey' => 'backend.commercial_phases.co2'],
-        ['code' => '05', 'translationKey' => 'backend.commercial_phases.report'],
-        ['code' => '06', 'translationKey' => 'backend.commercial_phases.compensation'],
-        ['code' => '07', 'translationKey' => 'backend.commercial_phases.certification'],
-    ];
-
     public function __construct(
         private readonly TranslatorInterface $t,
         private readonly ProjectFeatureGate $featureGate,
@@ -76,6 +66,10 @@ class ProjectController extends AbstractController
         $owner    = trim((string) $request->query->get('owner', ''));
         $dateFrom = (string) $request->query->get('date_from', '');
         $dateTo   = (string) $request->query->get('date_to', '');
+        $sort     = (string) $request->query->get('sort', 'date_desc');
+        if (!in_array($sort, ['date_desc', 'date_asc', 'name_asc', 'name_desc'], true)) {
+            $sort = 'date_desc';
+        }
 
         // Paginación
         $page    = max(1, (int) $request->query->get('page', 1));
@@ -135,15 +129,12 @@ class ProjectController extends AbstractController
         // Lista filtrada completa para métricas y paginado consistente
         $query = $qb->select('DISTINCT p');
 
-        if ($activeProject?->getId()) {
-            $query
-                ->addSelect('CASE WHEN p.id = :activeProjectId THEN 0 ELSE 1 END AS HIDDEN activeProjectOrder')
-                ->setParameter('activeProjectId', $activeProject->getId())
-                ->orderBy('activeProjectOrder', 'ASC')
-                ->addOrderBy('p.name', 'ASC');
-        } else {
-            $query->orderBy('p.name', 'ASC');
-        }
+        match ($sort) {
+            'date_asc' => $query->orderBy('p.createdAt', 'ASC')->addOrderBy('p.name', 'ASC'),
+            'name_asc' => $query->orderBy('p.name', 'ASC'),
+            'name_desc' => $query->orderBy('p.name', 'DESC'),
+            default => $query->orderBy('p.createdAt', 'DESC')->addOrderBy('p.name', 'ASC'),
+        };
 
         $dashboardProjects = [];
         $dashboardEmissionProjects = [];
@@ -281,10 +272,6 @@ class ProjectController extends AbstractController
                 'activeFilters' => count($activeFilters),
                 'hasActiveFilters' => count($activeFilters) > 0,
             ],
-            'dashboardPhaseHeaders' => array_map(fn (array $phase): array => [
-                'code' => $phase['code'],
-                'label' => $this->t->trans($phase['translationKey']),
-            ], self::DASHBOARD_PHASE_HEADERS),
             'dashboardEmissionChartHasMore' => $dashboardEmissionChartHasMore,
             'filters'       => [
                 'name'      => $name,
@@ -293,6 +280,7 @@ class ProjectController extends AbstractController
                 'owner'     => $owner,
                 'date_from' => $dateFrom,
                 'date_to'   => $dateTo,
+                'sort'      => $sort,
             ],
             'is_admin'     => $isAdmin,
             'currentPage'  => $page,
@@ -316,13 +304,13 @@ class ProjectController extends AbstractController
         $planPhaseLabel = match ($planStatus) {
             'completo' => $this->t->trans('backend.projects.dashboard.phases.common.completed'),
             'incompleto' => $this->t->trans('backend.projects.dashboard.phases.common.in_progress'),
-            default => $this->t->trans('backend.projects.dashboard.phases.common.pending'),
+            default => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
         };
 
-        $planClass = match ($planStatus) {
-            'completo' => 'bg-success',
-            'incompleto' => 'bg-warning text-dark',
-            default => 'bg-light text-muted border',
+        $planState = match ($planStatus) {
+            'completo' => 'completed',
+            'incompleto' => 'in_progress',
+            default => 'not_started',
         };
 
         $emissionPhaseLabel = $emissionCount > 0
@@ -331,29 +319,24 @@ class ProjectController extends AbstractController
         $emissionPhaseNote = $emissionCount > 0
             ? 'kgCO₂e'
             : $this->t->trans('backend.projects.dashboard.phases.co2.no_records');
-        $implementationTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::IMPLEMENTATION);
-        $hasImplementationActivity = $plan instanceof Plan
-            && $this->collaborationService->hasImplementationActivity($plan);
+        $implementationProgress = $plan instanceof Plan
+            ? $this->collaborationService->buildProgressSummary($plan, $project)
+            : null;
+        $hasImplementationActivity = $implementationProgress['hasImplementationActivity'] ?? false;
+        $implementationCompleted = $implementationProgress !== null
+            && $implementationProgress['toImplement'] > 0
+            && $implementationProgress['implemented'] >= $implementationProgress['toImplement'];
         $elaborationComplete = $planStatus === 'completo';
 
-        if (!$elaborationComplete) {
-            $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.implementation.available_after_elaboration');
-            $implementationStateClass = 'bg-light text-muted border';
-            $implementationIcon = 'bi-lock';
-            $implementationActionLabel = $this->t->trans('backend.projects.dashboard.phases.elaboration.continue');
-            $implementationActionTarget = 'plan';
+        if ($implementationCompleted) {
+            $implementationState = 'completed';
+            $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.common.completed');
         } elseif ($hasImplementationActivity) {
+            $implementationState = 'in_progress';
             $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.common.in_progress');
-            $implementationStateClass = 'bg-warning text-dark';
-            $implementationIcon = 'bi-hourglass-split';
-            $implementationActionLabel = $this->t->trans('backend.projects.dashboard.phases.implementation.continue');
-            $implementationActionTarget = 'implementation';
         } else {
-            $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.implementation.ready');
-            $implementationStateClass = 'bg-info text-dark';
-            $implementationIcon = 'bi-play-fill';
-            $implementationActionLabel = $this->t->trans('backend.projects.dashboard.phases.implementation.open');
-            $implementationActionTarget = 'implementation';
+            $implementationState = 'not_started';
+            $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.common.not_started');
         }
 
         return [
@@ -383,7 +366,7 @@ class ProjectController extends AbstractController
                 'exists' => $plan !== null,
                 'status' => $planStatus,
                 'label' => $planLabel,
-                'class' => $planClass,
+                'class' => $planState,
                 'measureCount' => $plan?->getPlanMeasures()->count() ?? 0,
                 'statusChangedAt' => $plan?->getStatusChangedAt(),
             ],
@@ -393,97 +376,68 @@ class ProjectController extends AbstractController
             'phases' => [
                 [
                     'code' => '01',
-                    'label' => $this->t->trans('backend.commercial_phases.elaboration'),
+                    'label' => $this->t->trans('backend.projects.dashboard.phase_names.elaboration'),
                     'stateLabel' => $planPhaseLabel,
-                    'stateClass' => $planClass,
-                    'icon' => $plan?->getStatus() === 'completo'
-                        ? 'bi-check-lg'
-                        : ($plan ? 'bi-hourglass-split' : 'bi-dash-lg'),
-                    'note' => '',
-                    'title' => '01 · '.$this->t->trans('backend.commercial_phases.elaboration').' · '.$planPhaseLabel,
-                    'isReal' => $plan !== null,
-                    'tierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
+                    'state' => $planState,
+                    'icon' => 'bi-clipboard-check',
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.elaboration').' · '.$planPhaseLabel,
                     'primaryTarget' => $elaborationComplete ? 'elaboration_done' : 'plan',
-                    'primaryLabel' => $this->t->trans($plan === null
-                        ? 'backend.projects.dashboard.phases.elaboration.create'
-                        : ($elaborationComplete
-                            ? 'backend.projects.dashboard.phases.elaboration.view_close'
-                            : 'backend.projects.dashboard.phases.elaboration.continue')),
-                    'billingPhase' => CommercialPhase::ELABORATION->value,
                 ],
-                // TODO: Implementar estado real de Cartelería cuando exista módulo funcional.
                 [
                     'code' => '02',
-                    'label' => $this->t->trans('backend.commercial_phases.signage'),
-                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.coming_soon'),
-                    'stateClass' => 'bg-light text-muted border',
-                    'icon' => 'bi-download',
-                    'note' => '',
-                    'title' => '02 · '.$this->t->trans('backend.commercial_phases.signage').' · '.$this->t->trans('backend.projects.dashboard.phases.common.coming_soon'),
-                    'isReal' => false,
+                    'label' => $this->t->trans('backend.projects.dashboard.phase_names.signage'),
+                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'state' => 'not_started',
+                    'icon' => 'bi-megaphone',
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.signage').' · '.$this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'primaryTarget' => null,
                 ],
                 [
                     'code' => '03',
-                    'label' => $this->t->trans('backend.commercial_phases.implementation'),
+                    'label' => $this->t->trans('backend.projects.dashboard.phase_names.implementation'),
                     'stateLabel' => $implementationStateLabel,
-                    'stateClass' => $implementationStateClass,
-                    'icon' => $implementationIcon,
-                    'note' => '',
-                    'title' => '03 · '.$this->t->trans('backend.commercial_phases.implementation').' · '.$implementationStateLabel,
-                    'isReal' => $elaborationComplete,
-                    'tierLabel' => $implementationTierLabel,
-                    'primaryTarget' => $implementationActionTarget,
-                    'primaryLabel' => $implementationActionLabel,
-                    'billingPhase' => CommercialPhase::IMPLEMENTATION->value,
+                    'state' => $implementationState,
+                    'icon' => 'bi-list-check',
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.implementation').' · '.$implementationStateLabel,
+                    'primaryTarget' => 'implementation',
                 ],
                 [
                     'code' => '04',
-                    'label' => $this->t->trans('backend.commercial_phases.co2'),
-                    'stateLabel' => $emissionPhaseLabel,
-                    'stateClass' => $emissionCount > 0
-                        ? 'bg-info text-dark'
-                        : 'bg-light text-muted border',
-                    'icon' => 'bi-cloud-arrow-up-fill',
-                    'note' => $emissionPhaseNote,
-                    'title' => '04 · '.$this->t->trans('backend.commercial_phases.co2').' · ' . ($emissionCount > 0
-                        ? $this->t->trans('backend.projects.dashboard.phases.common.in_progress').' · '.$emissionPhaseLabel.' '.$emissionPhaseNote
-                        : $this->t->trans('backend.projects.dashboard.phases.common.pending').' · '.$emissionPhaseNote),
-                    'isReal' => $emissionCount > 0,
+                    'label' => $this->t->trans('backend.projects.dashboard.phase_names.co2'),
+                    'stateLabel' => $this->t->trans($emissionCount > 0
+                        ? 'backend.projects.dashboard.phases.common.in_progress'
+                        : 'backend.projects.dashboard.phases.common.not_started'),
+                    'state' => $emissionCount > 0 ? 'in_progress' : 'not_started',
+                    'icon' => 'bi-cloud-arrow-up',
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.co2').' · '.$emissionPhaseLabel.' '.$emissionPhaseNote,
                     'primaryTarget' => 'emissions',
-                    'primaryLabel' => $this->t->trans('backend.projects.dashboard.phases.co2.open'),
                 ],
-                // TODO: Implementar estado real de Informe final cuando exista generación/cierre de informe.
                 [
                     'code' => '05',
-                    'label' => $this->t->trans('backend.commercial_phases.report'),
-                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.coming_soon'),
-                    'stateClass' => 'bg-light text-muted border',
+                    'label' => $this->t->trans('backend.projects.dashboard.phase_names.report'),
+                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'state' => 'not_started',
                     'icon' => 'bi-file-earmark-text',
-                    'note' => '',
-                    'title' => '05 · '.$this->t->trans('backend.commercial_phases.report').' · '.$this->t->trans('backend.projects.dashboard.phases.common.coming_soon'),
-                    'isReal' => false,
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.report').' · '.$this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'primaryTarget' => 'report',
                 ],
-                // TODO: Implementar estado real de Compensación cuando exista flujo de compensación.
                 [
                     'code' => '06',
-                    'label' => $this->t->trans('backend.commercial_phases.compensation'),
-                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.coming_soon'),
-                    'stateClass' => 'bg-light text-muted border',
+                    'label' => $this->t->trans('backend.projects.dashboard.phase_names.compensation'),
+                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'state' => 'not_started',
                     'icon' => 'bi-tree',
-                    'note' => '',
-                    'title' => '06 · '.$this->t->trans('backend.commercial_phases.compensation').' · '.$this->t->trans('backend.projects.dashboard.phases.common.coming_soon'),
-                    'isReal' => false,
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.compensation').' · '.$this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'primaryTarget' => null,
                 ],
-                // TODO: Implementar estado real de Certificación cuando exista flujo/cierre de certificación.
                 [
                     'code' => '07',
-                    'label' => $this->t->trans('backend.commercial_phases.certification'),
-                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.coming_soon'),
-                    'stateClass' => 'bg-light text-muted border',
+                    'label' => $this->t->trans('backend.projects.dashboard.phase_names.certification'),
+                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'state' => 'not_started',
                     'icon' => 'bi-award',
-                    'note' => '',
-                    'title' => '07 · '.$this->t->trans('backend.commercial_phases.certification').' · '.$this->t->trans('backend.projects.dashboard.phases.common.coming_soon'),
-                    'isReal' => false,
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.certification').' · '.$this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'primaryTarget' => null,
                 ],
             ],
         ];
@@ -1614,6 +1568,7 @@ class ProjectController extends AbstractController
             'elaboration_done' => $this->redirectToRoute('backend_plan_done'),
             'implementation' => $this->redirectToRoute('backend_plan_review', ['state' => 'implement']),
             'emissions' => $this->redirectToRoute('backend_emission_index'),
+            'report' => $this->redirectToRoute('report_emission_overview_pdf'),
             default => $this->redirectToRoute('app_backend'),
         };
     }

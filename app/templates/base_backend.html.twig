@@ -23,8 +23,6 @@
     {% block stylesheets %}{% endblock %}
     {{ encore_entry_link_tags('app') }}
 </head>
-{% set activeProject = activeProject ?? null %}
-
 <body class="backend-shell d-flex flex-column min-vh-100">
     <div class="d-flex flex-grow-1">
         {# Menú izquierdo #}
@@ -48,7 +46,6 @@
             <div class="backend-sidebar__account d-none d-md-block px-3 pb-3">
                 <div class="backend-sidebar__account-card rounded-4 p-3">
                     {% set profileSidebarHref = path('app_profile', {'_locale': app.request.locale}) %}
-                    {% set canOpenProjectBilling = activeProject and is_granted('PROJECT_VIEW', activeProject) %}
 
                     <a href="{{ profileSidebarHref }}" class="backend-sidebar__identity-link d-flex align-items-center gap-3 min-w-0 text-decoration-none">
                         <div class="backend-sidebar__avatar rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
@@ -75,15 +72,6 @@
                                 {{ app.user.createdAt ? app.user.createdAt|date('d/m/Y') : '—' }}
                             </strong>
                         </div>
-                        {% if canOpenProjectBilling %}
-                            <div class="backend-sidebar__actions pt-2">
-                                <a href="{{ path('backend_project_billing', {id: activeProject.id, phase: 'elaboration'}) }}"
-                                    class="backend-sidebar__billing-link btn btn-sm w-100 text-decoration-none">
-                                    <i class="bi bi-receipt me-1"></i>
-                                    <span>Facturación</span>
-                                </a>
-                            </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -222,8 +210,6 @@
 
                     {% endif %}
 
-                    {% include 'backend/_project_selector.html.twig' with { variant: 'mobile' } %}
-
                     <div class="dropdown my-2">
                         <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.projects'|trans }}">
                             <i class="bi bi-folder-fill fs-4"></i>
@@ -304,13 +290,7 @@
 
                 </nav>
 
-                {% set activeProject = activeProject ?? null %}
-
                 <div class="d-flex align-items-center flex-wrap gap-2 min-w-0">
-                    <div class="d-none d-md-flex align-items-center min-w-0">
-                        {% include 'backend/_project_selector.html.twig' with { variant: 'header' } %}
-                    </div>
-
                     {# Selector de idioma #}
                     {% set currentRoute = app.request.attributes.get('_route') %}
                     {% set routeParams  = app.request.attributes.get('_route_params')|default({}) %}

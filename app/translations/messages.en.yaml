@@ -473,11 +473,35 @@ backend:
       placeholder: "Choose a project"
     active_project: "Active project"
     dashboard:
+      sort:
+        label: "Sort by"
+        date_desc: "Date (newest)"
+        date_asc: "Date (oldest)"
+        name_asc: "Name (A–Z)"
+        name_desc: "Name (Z–A)"
+      filters: "Filters"
+      empty: "No projects match the selected filters."
+      create_first: "Create a project"
+      companies: "Companies involved"
+      more_companies: "%count% more companies"
+      phases_label: "Project phases"
+      actions: "Project actions"
+      crew: "Crew"
+      duplicate: "Duplicate"
+      phase_names:
+        elaboration: "Plan elaboration"
+        signage: "Signage"
+        implementation: "Plan implementation"
+        co2: "CO₂ calculator"
+        report: "Final report"
+        compensation: "Compensation"
+        certification: "Certification"
       phases:
         common:
           coming_soon: "Coming soon"
           completed: "Completed"
           in_progress: "In progress"
+          not_started: "Not started"
           pending: "Pending"
           billing: "Billing"
         elaboration:
