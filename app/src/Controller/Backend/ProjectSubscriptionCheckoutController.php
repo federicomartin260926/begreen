@@ -51,13 +51,13 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
                 $this->activeProjectService->setActiveProject($project);
                 $this->addFlash('success', 'backend.subscription.flash.success_confirmed');
 
-                return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => 'project']);
+                return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
             }
 
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('info', 'backend.subscription.flash.success_pending');
 
-            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => 'project']);
+            return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
         }
 
         try {
@@ -96,7 +96,7 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
                 }
                 $this->addFlash('warning', 'backend.subscription.flash.checkout_expired');
 
-                return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => 'project']);
+                return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
             }
 
             $reconciliation = $this->checkoutService->reconcilePendingCheckout($project, $phase, $sessionId);
@@ -143,9 +143,8 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
         $this->addFlash('info', 'backend.subscription.flash.cancel_return');
 
         return $this->redirectToRoute('backend_project_billing', [
-            'id' => $project->getId(),
             'phase' => $phase->value,
-            'from' => $request->query->getString('from') === 'index' ? 'index' : 'project',
+            '_fragment' => 'billing-project-'.$project->getId(),
         ]);
     }
 
@@ -153,12 +152,10 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
     public function confirmPending(Project $project, CommercialPhase $phase, Request $request): RedirectResponse
     {
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
-        $returnFrom = $request->query->getString('from') === 'index' ? 'index' : 'project';
-
         if (!$this->isCsrfTokenValid('project_subscription_confirm_pending_'.$project->getId().'_'.$phase->value, (string) $request->request->get('_token'))) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.invalid_token');
-            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => $returnFrom]);
+            return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
         }
 
         $inspection = $this->checkoutService->inspectPendingCheckout($project, $phase);
@@ -168,7 +165,7 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
                 $this->checkoutService->clearPendingCheckout($subscription);
                 $this->activeProjectService->setActiveProject($project);
                 $this->addFlash('warning', 'backend.subscription.flash.checkout_expired');
-                return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => $returnFrom]);
+                return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
             }
         }
 
@@ -176,31 +173,31 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
         if ($reconciliation->isConfirmed()) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('success', 'backend.subscription.flash.success_confirmed');
-            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => $returnFrom]);
+            return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
         }
 
         if ($reconciliation->status === StripeCheckoutReconciliationResult::STATUS_PENDING) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('info', 'backend.subscription.flash.success_pending');
-            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => $returnFrom]);
+            return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
         }
 
         if ($reconciliation->status === StripeCheckoutReconciliationResult::STATUS_MISMATCH) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.reconcile_mismatch');
-            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => $returnFrom]);
+            return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
         }
 
         if ($reconciliation->status === StripeCheckoutReconciliationResult::STATUS_ERROR) {
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.reconcile_failed');
-            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => $returnFrom]);
+            return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
         }
 
         $this->activeProjectService->setActiveProject($project);
         $this->addFlash('info', 'backend.subscription.flash.success_received');
 
-        return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => $returnFrom]);
+        return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
     }
 
     #[Route('/{id}/subscription/{phase}/cancel-pending/{targetTier}', name: 'subscription_cancel_pending', methods: ['POST'], requirements: ['phase' => 'elaboration|implementation', 'targetTier' => 'standard|pro'])]
@@ -213,7 +210,7 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
             $this->activeProjectService->setActiveProject($project);
             $this->addFlash('danger', 'backend.subscription.flash.invalid_token');
 
-            return $this->redirectToRoute('backend_project_billing', ['id' => $project->getId(), 'phase' => $phase->value, 'from' => $request->query->getString('from') === 'index' ? 'index' : 'project']);
+            return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
         }
 
         if ($subscription instanceof ProjectSubscription && $subscription->getTargetTier() === $targetTier) {

@@ -908,6 +908,16 @@ backend:
   billing:
     project:
       title: "Facturación del proyecto"
+      global_subtitle: "Todas las facturas y recibos de tus proyectos."
+      project_label: "Proyecto"
+      contracted_plan: "Plan contratado"
+      documents_count: "Documentos de facturación (%count%)"
+      view_details: "Ver detalles"
+      invoice_detail: "Detalle de factura"
+      document_reference: "Referencia del documento"
+      document_date: "Fecha del documento"
+      actions: "Acciones"
+      no_activity: "No hay actividad de facturación para esta fase."
       plan_context: "Plan de Elaboración contratado"
       phase_plan: "Plan de %phase%"
       manage: "Gestionar facturación"

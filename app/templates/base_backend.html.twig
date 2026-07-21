@@ -72,6 +72,13 @@
                                 {{ app.user.createdAt ? app.user.createdAt|date('d/m/Y') : '—' }}
                             </strong>
                         </div>
+                        <div class="backend-sidebar__actions pt-2">
+                            <a href="{{ path('backend_project_billing', {phase: 'elaboration'}) }}"
+                               class="backend-sidebar__billing-link btn btn-sm w-100 text-decoration-none">
+                                <i class="bi bi-receipt me-1"></i>
+                                <span>{{ 'backend.subscription.card.title'|trans }}</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

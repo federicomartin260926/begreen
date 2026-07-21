@@ -4,9 +4,6 @@
         phase: upgradeCta.phase,
         from: upgradeCta.comparisonFrom|default('project')
     } %}
-    {% if upgradeCta.comparisonFrom|default(null) == 'billing' %}
-        {% set comparisonParams = comparisonParams|merge({billing_from: upgradeCta.comparisonBillingFrom|default('project')}) %}
-    {% endif %}
     <a
         href="{{ path('backend_project_plan_comparison', comparisonParams) }}"
         class="{{ upgradeCta.buttonClass|default('btn btn-primary btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 shadow-sm') }} text-decoration-none">

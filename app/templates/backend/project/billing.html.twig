@@ -1,467 +1,293 @@
 {% extends 'base_backend.html.twig' %}
 
-{% block title %}{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }} · {{ project.name }}{% endblock %}
+{% block title %}{{ 'backend.subscription.card.title'|trans }} · {{ phaseLabel }}{% endblock %}
 
 {% block breadcrumb %}
   {{ parent() }}
   <li class="breadcrumb-item">
     <a href="{{ path('backend_project_index') }}" class="text-decoration-none">{{ 'backend.projects.list.breadcrumb'|trans }}</a>
   </li>
-  <li class="breadcrumb-item">
-    <a href="{{ path('backend_project_edit', {id: project.id}) }}" class="text-decoration-none">{{ project.name }}</a>
-  </li>
-  <li class="breadcrumb-item active">{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}</li>
+  <li class="breadcrumb-item active">{{ 'backend.subscription.card.title'|trans }}</li>
 {% endblock %}
 
 {% block body %}
 <div class="container-fluid px-0 backend-client-shell">
-  <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
     <div>
-      <h2 class="mb-1">{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}</h2>
-      <div class="text-muted">{{ project.name }}</div>
+      <h1 class="h3 mb-1">{{ 'backend.subscription.card.title'|trans }}</h1>
+      <div class="text-muted">{{ 'backend.billing.project.global_subtitle'|trans }}</div>
     </div>
-    <div class="d-flex gap-2">
-      <a href="{{ backUrl }}" class="btn btn-outline-secondary">
-        {{ 'backend.common.back'|trans }}
-      </a>
-    </div>
+    <a href="{{ backUrl }}" class="btn btn-outline-secondary">{{ 'backend.common.back'|trans }}</a>
   </div>
 
   <div class="small text-muted mb-2">{{ 'backend.billing.project.phase_tabs'|trans }}</div>
   <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
       <a class="nav-link {% if phase.value == 'elaboration' %}active{% endif %}"
-         href="{{ path('backend_project_billing', {id: project.id, phase: 'elaboration'}) }}">
+         href="{{ path('backend_project_billing', {phase: 'elaboration'}) }}">
         {{ 'backend.commercial_phases.elaboration'|trans }}
       </a>
     </li>
     <li class="nav-item">
       <a class="nav-link {% if phase.value == 'implementation' %}active{% endif %}"
-         href="{{ path('backend_project_billing', {id: project.id, phase: 'implementation'}) }}">
+         href="{{ path('backend_project_billing', {phase: 'implementation'}) }}">
         {{ 'backend.commercial_phases.implementation'|trans }}
       </a>
     </li>
   </ul>
 
-  {% set subscription = subscription ?? null %}
-  {% set stripeReference = subscription ? (subscription.paymentReference ?: subscription.stripePaymentIntentId ?: subscription.stripeCheckoutSessionId) : null %}
   {% set canSeeStripeAdminActions = app.user and ('ROLE_ADMIN' in app.user.roles or 'ROLE_SUPER_ADMIN' in app.user.roles) %}
-  {% set billingDocuments = billingDocuments ?? [] %}
-  {% set billingUpgradeCta = upgradeCta %}
-  {% if subscription and subscription.tier|lower != 'pro' and upgradeCta.options is not empty %}
-    {% set billingUpgradeCta = upgradeCta|merge({
-      'mode': 'comparison',
-      'label': 'Mejorar plan',
-      'buttonLabel': 'Mejorar plan',
-      'comparisonFrom': 'billing',
-      'comparisonBillingFrom': from
-    }) %}
-  {% endif %}
 
-  {% if subscription %}
-    <div class="row g-3">
-      <div class="col-12 col-md-6">
-        <div class="border rounded p-3 h-100 bg-light">
-          <div class="small text-muted">{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}</div>
-          <div class="fw-semibold">{{ phaseLabel }}</div>
-        </div>
-      </div>
-      <div class="col-12 col-md-6">
-        <div class="border rounded p-3 h-100 bg-light">
-          <div class="small text-muted">{{ 'backend.billing.project.payment_status'|trans }}</div>
-          <div class="fw-semibold">{{ ('backend.subscription.status.' ~ subscription.status)|trans }}</div>
-        </div>
-      </div>
-      <div class="col-12 col-md-6">
-        <div class="border rounded p-3 h-100 bg-light">
-          <div class="small text-muted">{{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}</div>
-          <div class="fw-semibold">{{ subscription.tier|upper }}</div>
-          {% if subscription.tier|lower == 'pro' %}
-            <div class="mt-2">
-              <span class="badge bg-success-subtle text-success border border-success-subtle">
-                {{ 'backend.plan.upgrade.active_title'|trans }}
-              </span>
+  {% for billing in projectBillings %}
+    {% set project = billing.project %}
+    {% set subscription = billing.subscription %}
+    {% set pendingCheckout = billing.pendingCheckout %}
+    {% set upgradeCta = billing.upgradeCta %}
+    {% set pendingUpgrade = billing.pendingUpgrade %}
+    {% set billingUpgradeCta = upgradeCta %}
+    {% if subscription and subscription.tier|lower != 'pro' and upgradeCta.options is not empty %}
+      {% set billingUpgradeCta = upgradeCta|merge({
+        mode: 'comparison',
+        label: 'Mejorar plan',
+        buttonLabel: 'Mejorar plan',
+        comparisonFrom: 'billing'
+      }) %}
+    {% endif %}
+
+    <article id="billing-project-{{ project.id }}" class="card shadow-sm mb-3">
+      <div class="card-body p-3 p-lg-4">
+        <div class="row g-4 align-items-start">
+          <div class="col-12 col-lg-4">
+            <h2 class="h5 mb-2">{{ project.name }}</h2>
+            <div class="text-muted mb-1">
+              {{ 'backend.billing.project.phase_plan'|trans({'%phase%': phaseLabel}) }}:
+              <strong class="text-body">{{ subscription ? subscription.tier|upper : '—' }}</strong>
             </div>
-          {% elseif billingUpgradeCta.mode != 'unavailable' and billingUpgradeCta.options is not empty %}
-            <div class="mt-2">
+            <div class="mb-3">
+              <span class="text-muted">{{ 'backend.billing.project.payment_status'|trans }}:</span>
+              <strong class="{% if subscription and subscription.status == 'active' %}text-success{% endif %}">
+                {{ subscription ? ('backend.subscription.status.' ~ subscription.status)|trans : '—' }}
+              </strong>
+            </div>
+
+            {% if subscription and subscription.tier|lower != 'pro' and billingUpgradeCta.mode != 'unavailable' and billingUpgradeCta.options is not empty %}
               {% include 'backend/plan/_upgrade_cta.html.twig' with {
                 upgradeCta: billingUpgradeCta,
                 project: project
               } %}
-            </div>
-          {% endif %}
-        </div>
-      </div>
-      <div class="col-12 col-md-4">
-        <div class="border rounded p-3 h-100 bg-light">
-          <div class="small text-muted">{{ 'backend.subscription.card.amount'|trans }}</div>
-          <div class="fw-semibold">
-            {% if subscription.paidAmountCents is not null %}
-              {{ (subscription.paidAmountCents / 100)|number_format(2, ',', '.') }} {{ subscription.currency|default('EUR') }}
-            {% else %}
-              —
+            {% elseif billing.showUpgradeCta and upgradeCta.mode in ['comparison', 'single'] %}
+              {% include 'backend/plan/_upgrade_cta.html.twig' with {
+                upgradeCta: upgradeCta|merge({
+                  label: 'Actualizar plan',
+                  buttonLabel: 'Actualizar plan',
+                  comparisonFrom: 'billing'
+                }),
+                project: project
+              } %}
             {% endif %}
-          </div>
-        </div>
-      </div>
-      <div class="col-12 col-md-4">
-        <div class="border rounded p-3 h-100 bg-light">
-          <div class="small text-muted">{{ 'backend.subscription.card.paid_at'|trans }}</div>
-          <div class="fw-semibold">
-            {% if subscription.paidAt %}
-              {{ subscription.paidAt|date('d/m/Y H:i') }}
-            {% elseif subscription.lastPaymentStatus %}
-              {{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}
-            {% else %}
-              —
-            {% endif %}
-          </div>
-        </div>
-      </div>
-      <div class="col-12 col-md-4">
-        <div class="border rounded p-3 h-100 bg-light">
-          <div class="small text-muted">{{ 'backend.billing.project.invoice_status'|trans }}</div>
-          <div class="fw-semibold">
-            {% if hasLocalBillingDocument %}
-              {{ 'backend.billing.project.invoice_available'|trans }}
-            {% else %}
-              {{ 'backend.billing.project.no_invoice_yet'|trans }}
-            {% endif %}
-          </div>
-        </div>
-      </div>
-      {% if subscription.lastPaymentStatus %}
-        <div class="col-12">
-          <div class="border rounded p-3 bg-light">
-            <div class="small text-muted">{{ 'backend.billing.project.last_payment_status'|trans }}</div>
-            <div class="fw-semibold">{{ ('backend.subscription.last_payment_status.' ~ subscription.lastPaymentStatus)|trans }}</div>
-          </div>
-        </div>
-      {% endif %}
-      {% if pendingUpgrade %}
-        <div class="col-12">
-          <div class="border rounded p-3 bg-warning-subtle">
-            <div class="small text-muted">{{ 'backend.billing.project.upgrade_pending_title'|trans }}</div>
-            <div class="fw-semibold">
-              {{ pendingUpgrade.label }}
-              {% if pendingUpgrade.priceLabel %}
-                — {{ pendingUpgrade.priceLabel }} <span class="small text-muted">+ IVA</span>
-              {% endif %}
-            </div>
-            {% if pendingUpgrade.description %}
-              <div class="small text-muted">{{ pendingUpgrade.description }}</div>
-            {% endif %}
-            <div class="small text-muted mt-1">
-              {% if pendingCheckout.shouldVerify %}
-                {{ 'backend.billing.project.payment_pending_paid'|trans }}
-              {% elseif pendingCheckout.isReusable %}
-                {{ 'backend.billing.project.payment_pending_open'|trans }}
-              {% elseif pendingCheckout.shouldRetry %}
-                {{ 'backend.billing.project.payment_pending_retry'|trans }}
-              {% else %}
-                {{ 'backend.billing.project.upgrade_pending_status'|trans }}
-              {% endif %}
-            </div>
-            {% if canManageBilling %}
-              <div class="d-flex flex-wrap gap-2 mt-3">
-                {% if pendingCheckout.isReusable %}
-                  <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
-                    <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
-                    <button type="submit" class="btn btn-success">
-                      {{ 'backend.subscription.actions.continue_payment'|trans }}
-                    </button>
-                  </form>
-                {% elseif pendingCheckout.shouldRetry %}
-                  <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
-                    <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
-                    <button type="submit" class="btn btn-warning text-dark">
-                      {{ 'backend.subscription.actions.retry_payment'|trans }}
-                    </button>
-                  </form>
-                {% elseif pendingCheckout.shouldVerify %}
-                  <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, phase: phase.value, from: from}) }}">
-                    <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id ~ '_' ~ phase.value) }}">
-                    <button type="submit" class="btn btn-primary">
-                      {{ 'backend.subscription.actions.verify_status'|trans }}
-                    </button>
-                  </form>
-                {% endif %}
-                <form method="post" action="{{ path('backend_project_subscription_cancel_pending', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
-                  <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_cancel_pending_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
-                  <button type="submit" class="btn btn-outline-danger">
-                    {{ 'backend.subscription.actions.cancel_payment_attempt'|trans }}
-                  </button>
-                </form>
-                <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, phase: phase.value, from: from}) }}">
-                  <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id ~ '_' ~ phase.value) }}">
-                  <button type="submit" class="btn btn-outline-secondary">
-                    {{ 'backend.subscription.actions.verify_payment'|trans }}
-                  </button>
-                </form>
-              </div>
-            {% endif %}
-          </div>
-        </div>
-      {% endif %}
-      <div class="col-12">
-        <div class="d-flex flex-wrap gap-2">
-          {% if canSeeStripeAdminActions and canVerifyPayment and (pendingUpgrade is not defined or pendingCheckout.shouldVerify) %}
-            <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, phase: phase.value, from: from}) }}">
-              <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id ~ '_' ~ phase.value) }}">
-              <button type="submit" class="btn btn-warning text-dark fw-semibold">
-                {% if subscription.status == 'pending_payment' %}
-                  {{ 'backend.subscription.actions.verify_payment'|trans }}
-                {% else %}
-                  {{ 'backend.billing.project.refresh_references'|trans }}
-                {% endif %}
-              </button>
-            </form>
-          {% endif %}
-        </div>
-      </div>
-    </div>
 
-    <div class="mt-4">
-      <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
-        <div>
-          <h3 class="h5 mb-1">{{ 'backend.billing.project.documents_title'|trans }}</h3>
-          <div class="text-muted small">{{ 'backend.billing.project.documents_description'|trans }}</div>
-        </div>
-      </div>
-
-      {% if billingDocuments is not empty %}
-        <div class="row g-3">
-          {% for item in billingDocuments %}
-            {% set document = item.document %}
-            {% set hasLocalCopy = item.hasLocalCopy %}
-            {% set documentDate = document.paidAt ?: document.issuedAt %}
-            {% set paymentReference = document.paymentReference ?: document.stripeInvoiceId ?: document.stripeCheckoutSessionId ?: document.stripePaymentIntentId %}
-            {% set shortPaymentReference = paymentReference %}
-            {% if paymentReference and paymentReference|length > 20 %}
-              {% set shortPaymentReference = paymentReference|slice(0, 12) ~ '...' ~ paymentReference|slice(-6) %}
-            {% endif %}
-            <div class="col-12">
-              <div class="border rounded p-3 bg-white">
-                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
-                  <div>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                      <span class="badge bg-secondary">{{ ('backend.billing.document.type.' ~ document.type)|trans }}</span>
-                      <span class="badge {% if document.status == 'paid' %}bg-success{% elseif document.status == 'void' %}bg-danger{% elseif document.status == 'open' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}">
-                        {{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}
-                      </span>
-                      <span class="badge bg-info-subtle text-info border border-info-subtle">
-                        {{ ('backend.commercial_phases.' ~ (document.subscription ? document.subscription.phase.value : phase.value))|trans }}
-                      </span>
-                    </div>
-                    {% if shortPaymentReference %}
-                      <div class="small text-muted">{{ 'backend.billing.project.payment_reference'|trans }}</div>
-                      <div class="fw-semibold text-break">{{ shortPaymentReference }}</div>
+            {% if pendingUpgrade %}
+              <div class="alert alert-warning py-2 px-3 mt-3 mb-0">
+                <div class="small fw-semibold">{{ 'backend.billing.project.upgrade_pending_title'|trans }}</div>
+                <div class="small">{{ pendingUpgrade.label }}</div>
+                {% if billing.canManageBilling %}
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    {% if pendingCheckout.isReusable %}
+                      <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
+                        <button type="submit" class="btn btn-success btn-sm">{{ 'backend.subscription.actions.continue_payment'|trans }}</button>
+                      </form>
+                    {% elseif pendingCheckout.shouldRetry %}
+                      <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
+                        <button type="submit" class="btn btn-warning btn-sm">{{ 'backend.subscription.actions.retry_payment'|trans }}</button>
+                      </form>
                     {% endif %}
-                    <div class="text-muted small">
-                      {% if documentDate %}
-                        {{ documentDate|date('d/m/Y H:i') }}
-                      {% else %}
-                        {{ 'backend.billing.project.no_date'|trans }}
-                      {% endif %}
-                    </div>
+                    <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, phase: phase.value, from: 'billing'}) }}">
+                      <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id ~ '_' ~ phase.value) }}">
+                      <button type="submit" class="btn btn-outline-secondary btn-sm">{{ 'backend.subscription.actions.verify_payment'|trans }}</button>
+                    </form>
+                    <form method="post" action="{{ path('backend_project_subscription_cancel_pending', {id: project.id, phase: phase.value, targetTier: pendingUpgrade.targetTier}) }}">
+                      <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_cancel_pending_' ~ project.id ~ '_' ~ phase.value ~ '_' ~ pendingUpgrade.targetTier) }}">
+                      <button type="submit" class="btn btn-outline-danger btn-sm">{{ 'backend.subscription.actions.cancel_payment_attempt'|trans }}</button>
+                    </form>
                   </div>
-                  <div class="text-md-end">
-                    <div class="small text-muted">{{ 'backend.billing.project.amount'|trans }}</div>
-                    <div class="fw-semibold">
-                      {% if document.amountCents is not null %}
-                        {{ (document.amountCents / 100)|number_format(2, ',', '.') }} {{ document.currency|default('EUR') }}
-                      {% else %}
-                        —
-                      {% endif %}
-                    </div>
-                  </div>
-                </div>
+                {% endif %}
+              </div>
+            {% elseif canSeeStripeAdminActions and billing.canVerifyPayment %}
+              <form method="post" action="{{ path('backend_project_subscription_confirm_pending', {id: project.id, phase: phase.value, from: 'billing'}) }}" class="mt-3">
+                <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_confirm_pending_' ~ project.id ~ '_' ~ phase.value) }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">{{ 'backend.subscription.actions.verify_payment'|trans }}</button>
+              </form>
+            {% endif %}
+          </div>
 
-                <div class="row g-3 mt-2">
-                  <div class="col-12 col-md-4">
-                    <div class="border rounded p-3 h-100 bg-light">
-                      <div class="small text-muted">{{ 'backend.billing.project.invoice_status'|trans }}</div>
-                      <div class="fw-semibold">
-                        {% if hasLocalCopy %}
-                          {{ 'backend.billing.project.invoice_available'|trans }}
+          <div class="col-12 col-lg-8">
+            <div class="small text-muted mb-2">
+              {{ 'backend.billing.project.documents_count'|trans({'%count%': billing.billingDocuments|length}) }}
+            </div>
+
+            {% if billing.billingDocuments is empty %}
+              <div class="alert alert-light border mb-0">{{ 'backend.billing.project.no_documents'|trans }}</div>
+            {% else %}
+              <div class="vstack gap-2">
+                {% for item in billing.billingDocuments %}
+                  {% set document = item.document %}
+                  {% set hasLocalCopy = item.hasLocalCopy %}
+                  {% set documentDate = document.paidAt ?: document.issuedAt %}
+                  {% set documentReference = document.stripeInvoiceId ?: document.paymentReference ?: document.stripeCheckoutSessionId ?: document.stripePaymentIntentId %}
+                  {% set paymentReference = subscription ? (subscription.paymentReference ?: subscription.stripePaymentIntentId ?: subscription.stripeCheckoutSessionId) : document.paymentReference %}
+                  {% set paidAmountCents = document.amountCents is not null ? document.amountCents : (subscription ? subscription.paidAmountCents : null) %}
+                  {% set paidCurrency = document.currency ?: (subscription ? subscription.currency : 'EUR') %}
+                  {% set paidDate = document.paidAt ?: (subscription ? subscription.paidAt : null) %}
+                  {% set lastPaymentStatus = subscription and subscription.lastPaymentStatus ? subscription.lastPaymentStatus : document.status %}
+                  {% set documentPlan = document.subscription ? document.subscription.tier : (subscription ? subscription.tier : null) %}
+
+                  <div class="border rounded-3 p-3">
+                    <div class="row g-2 align-items-center">
+                      <div class="col-6 col-md-2">
+                        <span class="badge {% if document.status == 'paid' %}bg-success{% elseif document.status == 'void' %}bg-danger{% elseif document.status == 'open' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                          {{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}
+                        </span>
+                      </div>
+                      <div class="col-6 col-md-2 small text-muted">
+                        {{ documentDate ? documentDate|date('d/m/Y') : '—' }}
+                      </div>
+                      <div class="col-12 col-md-3">
+                        <div class="small text-muted text-truncate" title="{{ documentReference ?: '—' }}">
+                          {{ documentReference ?: '—' }}
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-2 fw-semibold">
+                        {% if document.amountCents is not null %}
+                          {{ (document.amountCents / 100)|number_format(2, ',', '.') }} {{ document.currency|default('EUR') }}
                         {% else %}
-                          {{ 'backend.billing.project.no_invoice_yet'|trans }}
+                          —
                         {% endif %}
                       </div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-md-4">
-                    <div class="border rounded p-3 h-100 bg-light">
-                      <div class="small text-muted">{{ 'backend.billing.project.document_status'|trans }}</div>
-                      <div class="fw-semibold">{{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}</div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-md-4">
-                    <div class="border rounded p-3 h-100 bg-light">
-                      <div class="small text-muted">{{ 'backend.billing.project.concept'|trans }}</div>
-                      <div class="fw-semibold text-break">{{ document.purchaseLabel ?: '—' }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                  {% if hasLocalCopy %}
-                    <button type="button"
-                            class="btn btn-primary"
-                            data-bs-toggle="modal"
-                            data-bs-target="#billingDocumentModal{{ document.id }}">
-                      {{ 'backend.subscription.actions.view_invoice'|trans }}
-                    </button>
-                    <a href="{{ path('backend_project_billing_document_download', {id: project.id, phase: phase.value, documentId: document.id, from: from}) }}" class="btn btn-outline-success" target="_blank" rel="noopener">
-                      {{ 'backend.subscription.actions.download_pdf'|trans }}
-                    </a>
-                  {% endif %}
-                  {% if canSeeStripeAdminActions and document.hostedInvoiceUrl %}
-                    <a href="{{ document.hostedInvoiceUrl }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
-                      {{ 'backend.billing.project.open_invoice_in_stripe'|trans }}
-                    </a>
-                  {% endif %}
-                  {% set hasUsefulInvoiceRefs = document.invoicePdfUrl or document.stripeInvoiceId or document.stripeCheckoutSessionId or document.paymentReference %}
-                  {% if canSeeStripeAdminActions and not hasLocalCopy and hasUsefulInvoiceRefs %}
-                    <form method="post" action="{{ path('backend_project_billing_document_sync', {id: project.id, phase: phase.value, documentId: document.id, from: from}) }}">
-                      <input type="hidden" name="_token" value="{{ csrf_token('project_billing_document_sync_' ~ project.id ~ '_' ~ document.id) }}">
-                      <button type="submit" class="btn btn-primary">
-                        {{ 'backend.billing.project.try_download_invoice'|trans }}
-                      </button>
-                    </form>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-
-            {% if hasLocalCopy %}
-              <div class="modal fade" id="billingDocumentModal{{ document.id }}" tabindex="-1" aria-labelledby="billingDocumentModalLabel{{ document.id }}" aria-hidden="true">
-                <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <h5 class="modal-title" id="billingDocumentModalLabel{{ document.id }}">{{ 'backend.billing.project.invoice_title'|trans }}</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
-                    </div>
-                    <div class="modal-body p-0">
-                      <div class="ratio ratio-16x9" style="min-height: 70vh;">
-                        <iframe
-                          src="{{ path('backend_project_billing_document_view', {id: project.id, phase: phase.value, documentId: document.id, from: from}) }}"
-                          title="{{ 'backend.billing.project.invoice_title'|trans }}"
-                          referrerpolicy="no-referrer"
-                          loading="lazy"
-                          class="border-0 w-100 h-100"></iframe>
-                      </div>
-                    </div>
-                    <div class="modal-footer justify-content-between">
-                      <div class="small text-muted d-none d-md-block">
-                        {{ 'backend.billing.project.invoice_modal_hint'|trans }}
-                      </div>
-                      <div class="d-flex gap-2 ms-auto">
-                        <a href="{{ path('backend_project_billing_document_view', {id: project.id, phase: phase.value, documentId: document.id, from: from}) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
-                          {{ 'backend.billing.project.open_new_tab'|trans }}
-                        </a>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                          {{ 'backend.common.close'|trans }}
+                      <div class="col-6 col-md-3 text-md-end">
+                        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#billingDetailModal{{ document.id }}">
+                          {{ 'backend.billing.project.view_details'|trans }}
                         </button>
                       </div>
                     </div>
+                    <div class="small text-muted mt-2">
+                      {{ hasLocalCopy ? 'backend.billing.project.invoice_available'|trans : 'backend.billing.project.no_invoice_yet'|trans }}
+                    </div>
                   </div>
-                </div>
+
+                  <div class="modal fade" id="billingDetailModal{{ document.id }}" tabindex="-1" aria-labelledby="billingDetailModalLabel{{ document.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                      <div class="modal-content">
+                        <div class="modal-header px-3 px-md-4 py-3">
+                          <h2 class="modal-title h5" id="billingDetailModalLabel{{ document.id }}">{{ 'backend.billing.project.invoice_detail'|trans }}</h2>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                        </div>
+                        <div class="modal-body p-3 p-md-4">
+                          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-3 border-bottom">
+                            <span class="badge {% if document.status == 'paid' %}bg-success{% elseif document.status == 'void' %}bg-danger{% elseif document.status == 'open' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                              {{ ('backend.billing.document.status.' ~ (document.status ?: 'unknown'))|trans }}
+                            </span>
+                            <span class="text-muted small">{{ hasLocalCopy ? 'backend.billing.project.invoice_available'|trans : 'backend.billing.project.no_invoice_yet'|trans }}</span>
+                          </div>
+
+                          <div class="py-3 border-bottom">
+                            <div class="small text-muted">{{ 'backend.billing.project.project_label'|trans }}</div>
+                            <div class="fw-semibold">{{ project.name }}</div>
+                          </div>
+
+                          <div class="row g-3 py-3 border-bottom">
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.billing.project.phase_tabs'|trans }}</div>
+                              <div class="fw-semibold">{{ phaseLabel }}</div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.billing.project.contracted_plan'|trans }}</div>
+                              <div class="fw-semibold">{{ documentPlan ? documentPlan|upper : '—' }}</div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.billing.project.payment_status'|trans }}</div>
+                              <div class="fw-semibold">{{ subscription ? ('backend.subscription.status.' ~ subscription.status)|trans : '—' }}</div>
+                            </div>
+                          </div>
+
+                          <div class="row g-3 py-3 border-bottom">
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.subscription.card.amount'|trans }}</div>
+                              <div class="fw-semibold">
+                                {{ paidAmountCents is not null ? (paidAmountCents / 100)|number_format(2, ',', '.') ~ ' ' ~ paidCurrency|default('EUR') : '—' }}
+                              </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.subscription.card.paid_at'|trans }}</div>
+                              <div class="fw-semibold">{{ paidDate ? paidDate|date('d/m/Y H:i') : '—' }}</div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.billing.project.last_payment_status'|trans }}</div>
+                              <div class="fw-semibold">
+                                {{ lastPaymentStatus ? ('backend.subscription.last_payment_status.' ~ lastPaymentStatus)|trans : '—' }}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="border rounded-3 p-3 mt-3">
+                            <div class="small text-muted">{{ 'backend.billing.project.payment_reference'|trans }}</div>
+                            <div class="small text-muted" style="overflow-wrap: anywhere;">{{ paymentReference ?: '—' }}</div>
+                          </div>
+
+                          <div class="row g-3 border rounded-3 p-3 mx-0 mt-3">
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.billing.project.document_reference'|trans }}</div>
+                              <div class="small text-muted" style="overflow-wrap: anywhere;">{{ documentReference ?: '—' }}</div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.billing.project.document_date'|trans }}</div>
+                              <div class="fw-semibold">{{ documentDate ? documentDate|date('d/m/Y') : '—' }}</div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                              <div class="small text-muted">{{ 'backend.billing.project.concept'|trans }}</div>
+                              <div class="fw-semibold text-break">{{ document.purchaseLabel ?: '—' }}</div>
+                            </div>
+                          </div>
+
+                        </div>
+                        <div class="modal-footer justify-content-between px-3 px-md-4 py-3">
+                          <div class="small fw-semibold me-auto">{{ 'backend.billing.project.actions'|trans }}</div>
+                          <div class="d-flex flex-wrap gap-2">
+                            {% if hasLocalCopy %}
+                              <a href="{{ path('backend_project_billing_document_view', {id: project.id, phase: phase.value, documentId: document.id}) }}" class="btn btn-primary" target="_blank" rel="noopener">
+                                {{ 'backend.subscription.actions.view_invoice'|trans }}
+                              </a>
+                              <a href="{{ path('backend_project_billing_document_download', {id: project.id, phase: phase.value, documentId: document.id}) }}" class="btn btn-outline-success" target="_blank" rel="noopener">
+                                {{ 'backend.subscription.actions.download_pdf'|trans }}
+                              </a>
+                            {% endif %}
+                            {% if canSeeStripeAdminActions and document.hostedInvoiceUrl %}
+                              <a href="{{ document.hostedInvoiceUrl }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+                                {{ 'backend.billing.project.open_invoice_in_stripe'|trans }}
+                              </a>
+                            {% endif %}
+                            {% set hasUsefulInvoiceRefs = document.invoicePdfUrl or document.stripeInvoiceId or document.stripeCheckoutSessionId or document.paymentReference %}
+                            {% if canSeeStripeAdminActions and not hasLocalCopy and hasUsefulInvoiceRefs %}
+                              <form method="post" action="{{ path('backend_project_billing_document_sync', {id: project.id, phase: phase.value, documentId: document.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('project_billing_document_sync_' ~ project.id ~ '_' ~ document.id) }}">
+                                <button type="submit" class="btn btn-primary">{{ 'backend.billing.project.try_download_invoice'|trans }}</button>
+                              </form>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
               </div>
             {% endif %}
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="alert alert-info mb-0">
-          {{ 'backend.billing.project.no_documents'|trans }}
-        </div>
-      {% endif %}
-    </div>
-
-    {% if canSeeStripeAdminActions %}
-      <div class="col-12 mt-4">
-        <div class="accordion" id="stripeBillingDetailsAccordion">
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="stripeBillingDetailsHeading">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#stripeBillingDetailsCollapse" aria-expanded="false" aria-controls="stripeBillingDetailsCollapse">
-                {{ 'backend.billing.project.stripe_technical_details'|trans }}
-              </button>
-            </h2>
-            <div id="stripeBillingDetailsCollapse" class="accordion-collapse collapse" aria-labelledby="stripeBillingDetailsHeading" data-bs-parent="#stripeBillingDetailsAccordion">
-              <div class="accordion-body">
-                <div class="row g-3">
-                  <div class="col-12 col-md-6">
-                    <div class="border rounded p-3 h-100 bg-light">
-                      <div class="small text-muted">{{ 'backend.billing.project.checkout_session_id'|trans }}</div>
-                      <div class="fw-semibold text-break">{{ subscription.stripeCheckoutSessionId ?: '—' }}</div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="border rounded p-3 h-100 bg-light">
-                      <div class="small text-muted">{{ 'backend.billing.project.payment_intent_id'|trans }}</div>
-                      <div class="fw-semibold text-break">{{ subscription.stripePaymentIntentId ?: '—' }}</div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="border rounded p-3 h-100 bg-light">
-                      <div class="small text-muted">{{ 'backend.billing.project.invoice_id'|trans }}</div>
-                      <div class="fw-semibold text-break">{{ subscription.stripeInvoiceId ?: '—' }}</div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="border rounded p-3 h-100 bg-light">
-                      <div class="small text-muted">{{ 'backend.billing.project.customer_id'|trans }}</div>
-                      <div class="fw-semibold text-break">{{ subscription.stripeCustomerId ?: '—' }}</div>
-                    </div>
-                  </div>
-                  <div class="col-12">
-                    <div class="border rounded p-3 h-100 bg-light">
-                      <div class="small text-muted">{{ 'backend.billing.project.payment_reference'|trans }}</div>
-                      <div class="fw-semibold text-break">{{ stripeReference ?: '—' }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
-    {% endif %}
+    </article>
   {% else %}
-    <div class="alert alert-secondary mb-0">
-      {{ 'backend.billing.project.no_subscription'|trans }}
-    </div>
-  {% endif %}
-
-  {% if showUpgradeCta %}
-    <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4 mb-0">
-      <div class="d-flex flex-column gap-1">
-        <div>
-          <strong>{{ 'backend.billing.project.no_active_plan'|trans }}</strong>
-        </div>
-        <div>{{ 'backend.billing.project.no_active_plan_help'|trans }}</div>
-      </div>
-      {% if upgradeCta.mode in ['comparison', 'single'] %}
-        {% include 'backend/plan/_upgrade_cta.html.twig' with {
-          upgradeCta: upgradeCta|merge({
-            'label': 'Actualizar plan',
-            'buttonLabel': 'Actualizar plan',
-            'comparisonFrom': 'billing',
-            'comparisonBillingFrom': from
-          }),
-          project: project
-        } %}
-      {% elseif upgradeCta.mode == 'unavailable' %}
-        <span class="badge bg-warning text-dark border border-warning-subtle">
-          {{ upgradeCta.label }}
-        </span>
-      {% else %}
-        <span class="badge bg-success-subtle text-success border border-success-subtle">
-          {{ 'backend.plan.upgrade.active_title'|trans }}
-        </span>
-      {% endif %}
-    </div>
-  {% endif %}
-
+    <div class="alert alert-secondary mb-0">{{ 'backend.billing.project.no_activity'|trans }}</div>
+  {% endfor %}
 </div>
 {% endblock %}

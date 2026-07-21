@@ -906,6 +906,16 @@ backend:
   billing:
     project:
       title: "Project billing"
+      global_subtitle: "All invoices and receipts for your projects."
+      project_label: "Project"
+      contracted_plan: "Contracted plan"
+      documents_count: "Billing documents (%count%)"
+      view_details: "View details"
+      invoice_detail: "Invoice details"
+      document_reference: "Document reference"
+      document_date: "Document date"
+      actions: "Actions"
+      no_activity: "There is no billing activity for this phase."
       plan_context: "Elaboration plan contracted"
       phase_plan: "%phase% plan"
       manage: "Manage billing"

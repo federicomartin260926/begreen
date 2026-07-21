@@ -128,7 +128,7 @@
                     </div>
                 {% endif %}
 
-                <a href="{{ path('backend_project_billing', {id: project.id, phase: 'implementation'}) }}"
+                <a href="{{ path('backend_project_billing', {phase: 'implementation', _fragment: 'billing-project-' ~ project.id}) }}"
                    class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill text-decoration-none flex-shrink-0">
                     <i class="bi bi-receipt me-1"></i>{{ 'backend.plan.implementation.billing'|trans }}
                 </a>

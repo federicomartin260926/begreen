@@ -648,7 +648,7 @@ class ProjectController extends AbstractController
                     'projectTier' => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
                     'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
                     'projectTierSummary' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
-                    'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value, 'from' => 'project']),
+                    'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', ['phase' => CommercialPhase::ELABORATION->value, '_fragment' => 'billing-project-'.$project->getId()]),
                 ]);
             }
 
@@ -678,9 +678,8 @@ class ProjectController extends AbstractController
             'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
             'projectTierSummary' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
             'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', [
-                'id' => $project->getId(),
                 'phase' => CommercialPhase::ELABORATION->value,
-                'from' => 'project',
+                '_fragment' => 'billing-project-'.$project->getId(),
             ]),
         ]);
     }
@@ -705,9 +704,8 @@ class ProjectController extends AbstractController
             'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
             'projectTierSummary' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
             'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', [
-                'id' => $project->getId(),
                 'phase' => CommercialPhase::ELABORATION->value,
-                'from' => 'project',
+                '_fragment' => 'billing-project-'.$project->getId(),
             ]),
             'continueUrl' => $this->generateUrl('backend_project_index'),
         ]);
