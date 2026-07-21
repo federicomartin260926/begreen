@@ -11,6 +11,10 @@
 {% endblock %}
 
 {% block body %}
+{% set wizardInitialStep = edit
+  ? app.request.request.get('_wizard_step')|default(app.request.query.get('step')|default(1))
+  : 1
+%}
 <div class="container-fluid px-0 backend-client-shell">
   <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
     <div>
@@ -62,6 +66,8 @@
         'data-project-wizard-summary-empty-label-value': 'backend.projects.form.wizard.summary_empty'|trans,
         'data-project-wizard-no-companies-label-value': 'backend.projects.form.wizard.no_companies'|trans,
         'data-project-wizard-no-funding-label-value': 'backend.projects.form.wizard.no_funding'|trans,
+        'data-project-wizard-edit-mode-value': edit ? 'true' : 'false',
+        'data-project-wizard-initial-step-value': wizardInitialStep,
 
         'data-project-label-pre-event-value': 'backend.projects.phases.pre_event'|trans,
         'data-project-label-pre-filming-value': 'backend.projects.phases.pre_filming'|trans,
@@ -73,6 +79,10 @@
         'data-project-log-cannot-insert-value': 'backend.projects.form.log_cannot_insert'|trans
     }
   }) }}
+    <input type="hidden"
+           name="_wizard_step"
+           value="{{ wizardInitialStep }}"
+           data-project-wizard-target="currentStepInput">
 
     {% if form.vars.errors|length %}
       <div class="alert alert-danger mb-4">
@@ -247,17 +257,24 @@
         </div>
 
         {% set companyPrototype %}
-            <div class="card mb-3 p-3 border position-relative" data-collection-id="__company__">
-                <div class="row g-3 align-items-end">
-                    <div class="col-12 col-md-4">
+            <div class="card mb-2 p-2 p-lg-3 border" data-collection-id="__company__">
+                <div class="row g-2 align-items-lg-start">
+                    <div class="col-12 col-md-4 col-lg-3">
                         {{ form_row(form.projectCompanies.vars.prototype.type, { row_attr: { class: 'mb-0' } }) }}
                     </div>
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-8 col-lg-4">
                         {{ form_row(form.projectCompanies.vars.prototype.name, { row_attr: { class: 'mb-0' } }) }}
                     </div>
-                    <div class="col-12 col-md-2 d-flex">
-                        <button type="button" class="btn btn-outline-danger w-100" data-action="project-collection#removeItem">
-                            <i class="bi bi-trash"></i> {{ 'backend.common.delete'|trans }}
+                    <div class="col-12 col-md-10 col-lg-4">
+                        {{ form_row(form.projectCompanies.vars.prototype.logoFile, { row_attr: { class: 'mb-0' } }) }}
+                    </div>
+                    <div class="col-12 col-md-2 col-lg-1 d-flex justify-content-end align-self-lg-center">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger"
+                                data-action="project-collection#removeItem"
+                                aria-label="{{ 'backend.common.delete'|trans }}"
+                                title="{{ 'backend.common.delete'|trans }}">
+                            <i class="bi bi-trash" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -272,17 +289,66 @@
             <h6 class="text-muted mb-3">{{ 'backend.projects.form.wizard.companies_label'|trans }}</h6>
             <div data-project-collection-target="list">
                 {% for companyForm in form.projectCompanies %}
-                    <div class="card mb-3 p-3 border position-relative" data-collection-id="{{ loop.index0 }}">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-12 col-md-4">
+                    <div class="card mb-2 p-2 p-lg-3 border" data-collection-id="{{ loop.index0 }}">
+                        <div class="row g-2 align-items-lg-start">
+                            <div class="col-12 col-md-4 col-lg-3">
                                 {{ form_row(companyForm.type, { row_attr: { class: 'mb-0' } }) }}
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-8 col-lg-4">
                                 {{ form_row(companyForm.name, { row_attr: { class: 'mb-0' } }) }}
                             </div>
-                            <div class="col-12 col-md-2 d-flex">
-                                <button type="button" class="btn btn-outline-danger w-100" data-action="project-collection#removeItem">
-                                    <i class="bi bi-trash"></i> {{ 'backend.common.delete'|trans }}
+                            <div class="col-12 col-md-10 col-lg-4">
+                                {{ form_label(companyForm.logoFile) }}
+                                <div class="d-flex align-items-start gap-2">
+                                    {% if companyForm.vars.data.hasLogo %}
+                                        {% set logoRemovalPending = companyForm.removeLogo.vars.data %}
+                                        <div class="d-flex flex-column align-items-center flex-shrink-0">
+                                            <div data-logo-preview{% if logoRemovalPending %} class="opacity-50"{% endif %}>
+                                                <img src="{{ asset(companyForm.vars.data.logoUrl) }}"
+                                                     alt="{{ 'backend.projects.form.project_company.current_logo_alt'|trans({ '%company%': companyForm.vars.data.name }) }}"
+                                                     class="rounded-circle border object-fit-contain bg-white"
+                                                     width="48" height="48">
+                                            </div>
+                                            <button type="button"
+                                                    class="btn btn-link btn-sm {{ logoRemovalPending ? 'text-secondary' : 'text-danger' }} text-decoration-none p-0 mt-1"
+                                                    data-action="project-collection#toggleLogoRemoval"
+                                                    data-logo-remove-button
+                                                    data-remove-label="{{ 'backend.projects.form.project_company.remove_logo'|trans }}"
+                                                    data-undo-label="{{ 'backend.projects.form.project_company.undo_remove_logo'|trans }}"
+                                                    aria-pressed="{{ logoRemovalPending ? 'true' : 'false' }}">
+                                                {{ (logoRemovalPending
+                                                    ? 'backend.projects.form.project_company.undo_remove_logo'
+                                                    : 'backend.projects.form.project_company.remove_logo')|trans }}
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                    <div class="flex-grow-1">
+                                        {{ form_widget(companyForm.logoFile) }}
+                                        {{ form_help(companyForm.logoFile) }}
+                                        {{ form_errors(companyForm.logoFile) }}
+                                        {% if companyForm.vars.data.hasLogo %}
+                                            <div class="d-none">
+                                                {{ form_row(companyForm.removeLogo, {
+                                                    label: false,
+                                                    attr: {
+                                                        'data-logo-remove-field': '1',
+                                                        tabindex: '-1'
+                                                    }
+                                                }) }}
+                                            </div>
+                                        {% else %}
+                                            <div class="d-none">{{ form_widget(companyForm.removeLogo) }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-2 col-lg-1 d-flex justify-content-end align-self-lg-center">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        data-action="project-collection#removeItem"
+                                        aria-label="{{ 'backend.common.delete'|trans }}"
+                                        title="{{ 'backend.common.delete'|trans }}">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
@@ -602,7 +668,10 @@
             <button type="button" class="btn btn-primary" data-project-wizard-target="nextButton">
               {{ 'backend.projects.form.wizard.next'|trans }}
             </button>
-            <button type="submit" class="btn btn-primary d-none" data-project-wizard-target="submitButton">
+            <button type="submit"
+                    class="btn btn-primary d-none"
+                    data-project-wizard-target="submitButton"
+                    {% if edit %}formnovalidate{% endif %}>
               <i class="bi bi-save"></i> {{ edit ? 'backend.projects.form.wizard.save_changes'|trans : 'backend.projects.form.wizard.create_project'|trans }}
             </button>
           </div>

@@ -11,6 +11,7 @@ use App\Repository\ProjectBillingDocumentRepository;
 use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
 use App\Service\ProjectFeatureGate;
+use App\Service\ProjectCompanyLogoStorage;
 use App\Service\StripeInvoiceStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -44,6 +45,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringNotContainsString('Tier comercial', $content);
         self::assertStringNotContainsString('Facturación del proyecto', $content);
         self::assertStringNotContainsString('Gestionar facturación', $content);
+        self::assertStringContainsString('data-project-wizard-edit-mode-value="false"', $content);
         self::assertStringNotContainsString('Tier actual', $content);
     }
 
@@ -96,6 +98,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringNotContainsString('Tier comercial', $content);
         self::assertStringNotContainsString('Facturación del proyecto', $content);
         self::assertStringNotContainsString('Gestionar facturación', $content);
+        self::assertStringContainsString('data-project-wizard-edit-mode-value="true"', $content);
     }
 
     public function testEditDoesNotOverwriteImplementationSubscription(): void
@@ -252,6 +255,7 @@ final class ProjectControllerFormTest extends KernelTestCase
             $this->createMock(ProjectBillingDocumentRepository::class),
             $this->createMock(StripeInvoiceStorageService::class),
             $container->get(\App\Service\SustainabilityPlanCollaborationService::class),
+            $container->get(ProjectCompanyLogoStorage::class),
         );
         $controller->setContainer($container);
 

@@ -8,9 +8,12 @@ export default class extends Controller {
     "previousButton",
     "nextButton",
     "submitButton",
+    "currentStepInput",
   ];
 
   static values = {
+    editMode: Boolean,
+    initialStep: Number,
     overviewLabel: String,
     projectLabel: String,
     generalLabel: String,
@@ -99,6 +102,14 @@ export default class extends Controller {
   }
 
   submit(event) {
+    if (this.editModeValue) {
+      if (!this.isStepValid(this.currentStep)) {
+        event.preventDefault();
+        this.focusFirstInvalidControl(this.currentStep);
+      }
+      return;
+    }
+
     if (!this.isReadyForSubmit()) {
       event.preventDefault();
       this.goToStep(this.firstInvalidStep() || this.currentStep, { focus: true });
@@ -107,6 +118,9 @@ export default class extends Controller {
 
   refresh() {
     this.currentStep = this.clampStep(this.currentStep || 1);
+    if (this.hasCurrentStepInputTarget) {
+      this.currentStepInputTarget.value = String(this.currentStep);
+    }
     this.updatePanels();
     this.updateStepButtons();
     this.updateNavigation();
@@ -116,7 +130,7 @@ export default class extends Controller {
   goToStep(step, { focus = false, allowForward = false } = {}) {
     const targetStep = this.clampStep(step);
 
-    if (!allowForward && targetStep > this.currentStep) {
+    if (!this.editModeValue && !allowForward && targetStep > this.currentStep) {
       return false;
     }
 
@@ -167,6 +181,8 @@ export default class extends Controller {
         button.classList.add("btn-success", "text-white", "border-success", "shadow-sm");
       } else if (state === "completed") {
         button.classList.add("bg-success-subtle", "text-success", "border-success");
+      } else if (state === "available") {
+        button.classList.add("bg-white", "text-success", "border-success");
       } else {
         button.classList.add("bg-white", "text-muted", "border-secondary-subtle", "opacity-50");
       }
@@ -189,15 +205,17 @@ export default class extends Controller {
     }
 
     if (this.hasNextButtonTarget) {
-      const showNext = this.currentStep < this.totalSteps;
+      const showNext = !this.editModeValue && this.currentStep < this.totalSteps;
       this.nextButtonTarget.classList.toggle("d-none", !showNext);
       this.nextButtonTarget.disabled = !showNext || !this.isStepValid(this.currentStep);
     }
 
     if (this.hasSubmitButtonTarget) {
-      const showSubmit = this.currentStep === this.totalSteps;
+      const showSubmit = this.editModeValue || this.currentStep === this.totalSteps;
       this.submitButtonTarget.classList.toggle("d-none", !showSubmit);
-      this.submitButtonTarget.disabled = !this.isReadyForSubmit();
+      this.submitButtonTarget.disabled = this.editModeValue
+        ? !this.isStepValid(this.currentStep)
+        : !this.isReadyForSubmit();
     }
   }
 
@@ -884,6 +902,10 @@ export default class extends Controller {
   }
 
   findInitialStep() {
+    if (this.editModeValue && this.hasInitialStepValue) {
+      return this.clampStep(this.initialStepValue);
+    }
+
     return this.firstInvalidStep() || 1;
   }
 
@@ -897,10 +919,10 @@ export default class extends Controller {
     }
 
     if (step < this.currentStep) {
-      return "completed";
+      return this.editModeValue ? "available" : "completed";
     }
 
-    return "future";
+    return this.editModeValue ? "available" : "future";
   }
 
   clampStep(step) {

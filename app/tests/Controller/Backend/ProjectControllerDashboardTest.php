@@ -14,6 +14,7 @@ use App\Repository\ProjectRepository;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Service\ActiveProjectService;
 use App\Service\ProjectFeatureGate;
+use App\Service\ProjectCompanyLogoStorage;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -69,7 +70,8 @@ final class ProjectControllerDashboardTest extends KernelTestCase
             $container->get(ProjectFeatureGate::class),
             $billingRepository,
             $invoiceStorage,
-            $container->get(\App\Service\SustainabilityPlanCollaborationService::class)
+            $container->get(\App\Service\SustainabilityPlanCollaborationService::class),
+            $container->get(ProjectCompanyLogoStorage::class),
         );
         $controller->setContainer($container);
 

@@ -71,6 +71,64 @@ export default class extends Controller {
     this.emitChanged();
   }
 
+  validateLogoFile(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.setCustomValidity("");
+
+    if (!file) {
+      return;
+    }
+
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
+    const allowedExtensions = ["png", "jpg", "jpeg", "webp"];
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(extension)) {
+      input.setCustomValidity(input.dataset.logoFormatError || "Invalid image format.");
+      input.reportValidity();
+      return;
+    }
+
+    if (file.size > Number(input.dataset.logoMaxSize || 2097152)) {
+      input.setCustomValidity(input.dataset.logoSizeError || "File is too large.");
+      input.reportValidity();
+      return;
+    }
+
+    const item = input.closest("[data-collection-id]");
+    if (item) {
+      this.updateLogoRemovalState(item, false);
+    }
+  }
+
+  toggleLogoRemoval(event) {
+    event.preventDefault();
+    const item = event.currentTarget.closest("[data-collection-id]");
+    const field = item?.querySelector("[data-logo-remove-field]");
+    if (!item || !field) {
+      return;
+    }
+
+    this.updateLogoRemovalState(item, !field.checked);
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  updateLogoRemovalState(item, active) {
+    const field = item.querySelector("[data-logo-remove-field]");
+    const button = item.querySelector("[data-logo-remove-button]");
+    const preview = item.querySelector("[data-logo-preview]");
+    if (!field || !button) {
+      return;
+    }
+
+    field.checked = active;
+    button.textContent = active ? button.dataset.undoLabel : button.dataset.removeLabel;
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+    button.classList.toggle("text-danger", !active);
+    button.classList.toggle("text-secondary", active);
+    preview?.classList.toggle("opacity-50", active);
+  }
+
   updateFundingSummary() {
     if (this.kindValue !== "funding") {
       return;

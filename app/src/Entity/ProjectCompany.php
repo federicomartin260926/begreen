@@ -30,6 +30,9 @@ class ProjectCompany
     #[ORM\Column(type: 'integer', nullable: true)]
     private ?int $position = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $logoPath = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -81,6 +84,28 @@ class ProjectCompany
         $this->position = $position;
 
         return $this;
+    }
+
+    public function getLogoPath(): ?string
+    {
+        return $this->logoPath;
+    }
+
+    public function setLogoPath(?string $logoPath): self
+    {
+        $this->logoPath = $logoPath;
+
+        return $this;
+    }
+
+    public function hasLogo(): bool
+    {
+        return $this->logoPath !== null && $this->logoPath !== '';
+    }
+
+    public function getLogoUrl(): ?string
+    {
+        return $this->logoPath;
     }
 
     public function __toString(): string

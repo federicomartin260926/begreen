@@ -45,6 +45,10 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
 
+    App\Service\ProjectCompanyLogoStorage:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     Stripe\StripeClient:
         arguments:
             - { api_key: '%stripe.secret_key%' }

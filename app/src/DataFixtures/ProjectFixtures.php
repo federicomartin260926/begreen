@@ -7,6 +7,7 @@ use App\Entity\ProjectMembership;
 use App\Entity\ProjectPhaseDate;
 use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
+use App\Enum\ProjectCatalog;
 use App\Repository\UserRepository;
 use App\Repository\OdsRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -46,14 +47,18 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
             throw new \RuntimeException('No se encontró ningún usuario en la base de datos.');
         }
 
-        foreach ($users as $user) {
+        foreach ($users as $index => $user) {
             $userName = $user->getName() ?: $user->getEmail();
+            $filmingType = ProjectCatalog::FILMING_TYPES[$index % count(ProjectCatalog::FILMING_TYPES)];
+            $distributionMedium = ProjectCatalog::DISTRIBUTION_MEDIA[$index % count(ProjectCatalog::DISTRIBUTION_MEDIA)];
 
             // Crear proyecto base
             $project = (new Project())
                 ->setName("Proyecto $userName")
                 ->setCountry('ES')
                 ->setType('rodaje')
+                ->setFilmingType($filmingType)
+                ->setDistributionMedia([$distributionMedium])
                 ->setUser($user)
                 ->setEmissionSourceName('MITECO'); // Valor por defecto
 

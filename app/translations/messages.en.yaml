@@ -758,6 +758,14 @@ backend:
       project_company:
         type: "Type"
         name: "Name"
+        logo: "Logo"
+        logo_help: "PNG, JPG or WebP. Maximum 2 MB."
+        current_logo_alt: "Current logo for %company%"
+        remove_logo: "Remove logo"
+        undo_remove_logo: "Undo removal"
+        logo_size_error: "The logo cannot exceed 2 MB."
+        logo_format_error: "Select a PNG, JPG or WebP image."
+        storage_error: "The logo could not be saved. Please try again."
 
       project_company_type:
         options:

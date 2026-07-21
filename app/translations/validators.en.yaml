@@ -32,3 +32,5 @@ backend:
       end_required: "The end date is required."
       end_before_start: "The end date cannot be earlier than the start date."
       overlap: "Phases must be in chronological order and must not overlap."
+backend.project_company.logo.max_size: "The logo cannot exceed 2 MB."
+backend.project_company.logo.invalid_format: "The logo must be a valid PNG, JPG or WebP file."

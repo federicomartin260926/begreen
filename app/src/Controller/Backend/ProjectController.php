@@ -10,6 +10,7 @@ use App\Enum\CommercialPhase;
 use App\Service\ActiveProjectService;
 use App\Entity\ProjectSubscription;
 use App\Service\ProjectFeatureGate;
+use App\Service\ProjectCompanyLogoStorage;
 use App\Service\StripeInvoiceStorageService;
 use App\Service\SustainabilityPlanCollaborationService;
 use Gedmo\Translatable\Entity\Translation;
@@ -26,6 +27,9 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{ Request, Response, RedirectResponse, StreamedResponse, ResponseHeaderBag };
+use Symfony\Component\Form\FormError;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -50,6 +54,7 @@ class ProjectController extends AbstractController
         private readonly ProjectBillingDocumentRepository $billingDocumentRepository,
         private readonly StripeInvoiceStorageService $invoiceStorageService,
         private readonly SustainabilityPlanCollaborationService $collaborationService,
+        private readonly ProjectCompanyLogoStorage $companyLogoStorage,
     ) {}
 
     #[Route('/', name: 'index')]
@@ -84,7 +89,8 @@ class ProjectController extends AbstractController
             ->leftJoin('pm.user', 'mu') // miembro
             ->leftJoin('p.user', 'cu')  // creador
             ->leftJoin('p.subscriptions', 'sub')
-            ->addSelect('pm', 'mu', 'cu', 'sub');
+            ->leftJoin('p.projectCompanies', 'pc')
+            ->addSelect('pm', 'mu', 'cu', 'sub', 'pc');
 
         // Alcance por rol
         if (!$isAdmin) {
@@ -355,6 +361,17 @@ class ProjectController extends AbstractController
             'name' => $project->getName(),
             'typeKey' => $project->getType(),
             'typeLabel' => $this->translateProjectType($project->getType() ?? ''),
+            'modalityKey' => $project->getType() === 'rodaje'
+                ? $project->getFilmingType()
+                : $project->getEventTypePrimary(),
+            'modalityLabel' => $this->translateProjectModality($project),
+            'companies' => array_map(fn (ProjectCompany $company): array => [
+                'id' => $company->getId(),
+                'typeKey' => $company->getType(),
+                'typeLabel' => $this->t->trans('backend.projects.form.project_company_type.options.' . $company->getType()),
+                'name' => $company->getName(),
+                'logoUrl' => $company->getLogoUrl(),
+            ], $project->getProjectCompanies()->toArray()),
             'country' => $project->getCountry(),
             'ownerLabel' => $this->formatProjectOwner($project),
             'tierCode' => $projectTierCode,
@@ -481,6 +498,22 @@ class ProjectController extends AbstractController
         };
     }
 
+    private function translateProjectModality(Project $project): ?string
+    {
+        $key = $project->getType() === 'rodaje'
+            ? $project->getFilmingType()
+            : $project->getEventTypePrimary();
+        if ($key === null || $key === '') {
+            return null;
+        }
+
+        $prefix = $project->getType() === 'rodaje'
+            ? 'backend.projects.form.filming_type.options.'
+            : 'backend.projects.form.event_type_primary.options.';
+
+        return $this->t->trans($prefix . $key);
+    }
+
     private function formatProjectOwner(Project $project): string
     {
         $owner = $project->getUser();
@@ -541,9 +574,31 @@ class ProjectController extends AbstractController
 
             $this->ensureBasicSubscriptions($project);
 
-            $em->persist($project);
-            $em->persist($membership);
-            $em->flush();
+            $newLogoPaths = [];
+            $connection = $em->getConnection();
+            $connection->beginTransaction();
+
+            try {
+                $em->persist($project);
+                $em->persist($membership);
+                $em->flush();
+                [, $newLogoPaths] = $this->processCompanyLogos($form);
+                $em->flush();
+                $connection->commit();
+            } catch (\Throwable $exception) {
+                if ($connection->isTransactionActive()) {
+                    $connection->rollBack();
+                }
+                foreach ($newLogoPaths as $path) {
+                    $this->companyLogoStorage->delete($path);
+                }
+                $form->addError(new FormError('backend.projects.form.project_company.storage_error'));
+
+                return $this->render('backend/project/form.html.twig', [
+                    'form' => $form->createView(),
+                    'edit' => false,
+                ]);
+            }
 
             $activeProjectService->setActiveProject($project);
 
@@ -561,6 +616,7 @@ class ProjectController extends AbstractController
     public function edit(Project $project, Request $request, EntityManagerInterface $em): Response
     {
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $wizardStep = min(5, max(1, (int) $request->request->get('_wizard_step', $request->query->get('step', 1))));
 
         $this->reorderPhases($project);
 
@@ -569,6 +625,11 @@ class ProjectController extends AbstractController
         foreach ($project->getPhaseDates() as $phaseDate) {
             $originalPhases->add($phaseDate);
         }
+        $originalCompanies = new ArrayCollection($project->getProjectCompanies()->toArray());
+        $originalLogoPaths = [];
+        foreach ($originalCompanies as $company) {
+            $originalLogoPaths[spl_object_id($company)] = $company->getLogoPath();
+        }
 
         $form = $this->createForm(ProjectType::class, $project, [
             'show_commercial_tier' => false,
@@ -576,7 +637,13 @@ class ProjectController extends AbstractController
         $form->handleRequest($request);
         $this->normalizeProject($project);
 
-        if ($form->isSubmitted() && $form->isValid()) {
+        $canSaveCurrentStep = false;
+        if ($form->isSubmitted()) {
+            $canSaveCurrentStep = $form->isValid()
+                || ($wizardStep < 5 && !$this->hasErrorsForWizardStep($form, $wizardStep));
+        }
+
+        if ($canSaveCurrentStep) {
 
             // Eliminar fases eliminadas en el formulario
             foreach ($originalPhases as $originalPhase) {
@@ -585,10 +652,61 @@ class ProjectController extends AbstractController
                 }
             }
 
-            $em->flush();
+            $removedLogoPaths = [];
+            foreach ($originalCompanies as $originalCompany) {
+                if (!$project->getProjectCompanies()->contains($originalCompany) && $originalCompany->hasLogo()) {
+                    $removedLogoPaths[] = $originalCompany->getLogoPath();
+                }
+            }
+
+            $newLogoPaths = [];
+            $replacedLogoPaths = [];
+            $connection = $em->getConnection();
+            $connection->beginTransaction();
+
+            try {
+                $em->flush();
+                [$replacedLogoPaths, $newLogoPaths] = $this->processCompanyLogos($form);
+                $em->flush();
+                $connection->commit();
+            } catch (\Throwable $exception) {
+                if ($connection->isTransactionActive()) {
+                    $connection->rollBack();
+                }
+                foreach ($newLogoPaths as $path) {
+                    $this->companyLogoStorage->delete($path);
+                }
+                foreach ($project->getProjectCompanies() as $company) {
+                    $company->setLogoPath($originalLogoPaths[spl_object_id($company)] ?? null);
+                }
+                $form->addError(new FormError('backend.projects.form.project_company.storage_error'));
+                $lockedPhases = [];
+                foreach ($project->getPhaseDates() as $phaseDate) {
+                    $lockedPhases[$phaseDate->getId()] = $em->getRepository(EmissionRecord::class)
+                        ->count(['phase' => $phaseDate]) > 0;
+                }
+
+                return $this->render('backend/project/form.html.twig', [
+                    'form' => $form->createView(),
+                    'edit' => true,
+                    'project' => $project,
+                    'lockedPhases' => $lockedPhases,
+                    'projectTier' => $this->featureGate->getTier($project, CommercialPhase::ELABORATION),
+                    'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
+                    'projectTierSummary' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
+                    'projectUpgradeUrl' => $this->generateUrl('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value, 'from' => 'project']),
+                ]);
+            }
+
+            foreach (array_unique([...$removedLogoPaths, ...$replacedLogoPaths]) as $path) {
+                $this->companyLogoStorage->delete($path);
+            }
 
             $this->addFlash('success', 'backend.projects.flash.updated');
-            return $this->redirectToRoute('backend_project_index');
+            return $this->redirectToRoute('backend_project_edit', [
+                'id' => $project->getId(),
+                'step' => $wizardStep,
+            ]);
         }
 
         $lockedPhases = [];
@@ -1365,8 +1483,15 @@ class ProjectController extends AbstractController
                     }
                 }
 
+                $companyLogoPaths = array_map(
+                    static fn (ProjectCompany $company): ?string => $company->getLogoPath(),
+                    $project->getProjectCompanies()->toArray(),
+                );
                 $em->remove($project);
                 $em->flush();
+                foreach ($companyLogoPaths as $companyLogoPath) {
+                    $this->companyLogoStorage->delete($companyLogoPath);
+                }
                 $this->addFlash('success', 'backend.projects.flash.deleted');
             } catch (\Throwable $e) {
                 $this->addFlash('danger', 'backend.projects.flash.delete_failed');
@@ -1374,6 +1499,98 @@ class ProjectController extends AbstractController
         }
 
         return $this->redirectToRoute('backend_project_index');
+    }
+
+    /** @return array{0: list<string>, 1: list<string>} */
+    private function processCompanyLogos(FormInterface $form): array
+    {
+        $oldPaths = [];
+        $newPaths = [];
+
+        foreach ($form->get('projectCompanies')->all() as $companyForm) {
+            $company = $companyForm->getData();
+            if (!$company instanceof ProjectCompany) {
+                continue;
+            }
+
+            $oldPath = $company->getLogoPath();
+            $file = $companyForm->get('logoFile')->getData();
+            if ($file instanceof UploadedFile) {
+                $newPaths[] = $this->companyLogoStorage->store($company, $file);
+                if ($oldPath !== null) {
+                    $oldPaths[] = $oldPath;
+                }
+                continue;
+            }
+
+            if ($companyForm->get('removeLogo')->getData() && $oldPath !== null) {
+                $company->setLogoPath(null);
+                $oldPaths[] = $oldPath;
+            }
+        }
+
+        return [$oldPaths, $newPaths];
+    }
+
+    private function hasErrorsForWizardStep(FormInterface $form, int $wizardStep): bool
+    {
+        $fieldSteps = [
+            'name' => 1,
+            'country' => 1,
+            'type' => 1,
+            'emissionSourceName' => 1,
+            'commercialTier' => 1,
+            'filmingType' => 1,
+            'filmingGenre' => 1,
+            'distributionMedia' => 1,
+            'episodios' => 1,
+            'duracionEpisodio' => 1,
+            'eventTypePrimary' => 1,
+            'eventModality' => 1,
+            'eventAttendeesCount' => 1,
+            'eventOnlineConnections' => 1,
+            'mainLocation' => 2,
+            'presupuesto' => 2,
+            'projectCompanies' => 2,
+            'phaseDates' => 3,
+            'projectFundingSources' => 4,
+            'ecoManagerStatus' => 4,
+        ];
+
+        foreach ($form->getErrors(true, true) as $error) {
+            $origin = $error->getOrigin();
+            if (!$origin instanceof FormInterface) {
+                return true;
+            }
+
+            while ($origin->getParent() !== null && $origin->getParent() !== $form) {
+                $origin = $origin->getParent();
+            }
+
+            if ($origin === $form) {
+                $template = $error->getMessageTemplate();
+                if ($template === 'backend.projects.form.validation.funding_total_invalid') {
+                    if ($wizardStep === 4) {
+                        return true;
+                    }
+                    continue;
+                }
+                if (str_starts_with($template, 'backend.project.validation.')) {
+                    if ($wizardStep === 3) {
+                        return true;
+                    }
+                    continue;
+                }
+
+                return true;
+            }
+
+            if (($fieldSteps[$origin->getName()] ?? 0) === $wizardStep) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     #[Route('/select-project/{id}', name: 'select_project', methods: ['POST','GET'], requirements: ['id' => '\d+'])]

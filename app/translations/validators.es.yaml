@@ -31,3 +31,5 @@ backend:
       import:
         mime_invalid: "Por favor, sube un archivo Excel válido (.xlsx)."
         max_size: "El archivo es demasiado grande (máx. 5 MB)."
+backend.project_company.logo.max_size: "El logo no puede superar los 2 MB."
+backend.project_company.logo.invalid_format: "El logo debe ser un archivo PNG, JPG o WebP válido."
