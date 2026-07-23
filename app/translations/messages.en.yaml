@@ -484,6 +484,7 @@ backend:
       create_first: "Create a project"
       companies: "Companies involved"
       more_companies: "%count% more companies"
+      creator: "Creator"
       phases_label: "Project phases"
       actions: "Project actions"
       crew: "Crew"
@@ -819,6 +820,10 @@ backend:
       funding_complete: "Funding adds up to 100%."
       funding_missing: "Missing"
       funding_excess: "Excess"
+
+      common:
+        episodios: "Number of episodes"
+        duracion_episodio: "Duration per episode"
 
     post_create:
       title: "Project created successfully"

@@ -62,6 +62,12 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
                 ->setUser($user)
                 ->setEmissionSourceName('MITECO'); // Valor por defecto
 
+            if ($filmingType === 'tv_series') {
+                $project
+                    ->setEpisodios(8)
+                    ->setDuracionEpisodio(45);
+            }
+
             foreach ([CommercialPhase::ELABORATION, CommercialPhase::IMPLEMENTATION] as $commercialPhase) {
                 $subscription = (new ProjectSubscription())
                     ->setPhase($commercialPhase)

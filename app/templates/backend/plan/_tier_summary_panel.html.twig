@@ -1,25 +1,11 @@
-<div class="alert {% if projectTier != 'pro' %}alert-info{% else %}alert-success{% endif %} d-flex justify-content-between align-items-center flex-wrap gap-3">
-    <div class="d-flex flex-column gap-1">
-        <div>
-            <strong>{{ 'backend.plan.tier.phase_current'|trans({'%phase%': phaseLabel, '%tier%': projectTierLabel}) }}</strong>
-        </div>
-        <div>{{ projectTierSummary }}</div>
-        <div>
-            {% if evidenceLimit is not null %}
-                {{ 'backend.plan.tier.evidence_used'|trans({'%used%': evidenceCount, '%limit%': evidenceLimit}) }}
-            {% else %}
-                {{ 'backend.plan.tier.evidence_unlimited'|trans({'%used%': evidenceCount}) }}
-            {% endif %}
-        </div>
-    </div>
+<div id="plan-commercial-summary" class="card border shadow-sm mb-3">
+    <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <strong>{{ 'backend.plan.tier.phase_current'|trans({'%phase%': phaseLabel, '%tier%': projectTierLabel}) }}</strong>
     {% if projectTier != 'pro' %}
         {% include 'backend/plan/_upgrade_cta.html.twig' with {
-            upgradeCta: upgradeCta|merge({buttonLabel: phaseUpgradeLabel, comparisonFrom: 'measures'}),
+            upgradeCta: upgradeCta|merge({buttonLabel: phaseUpgradeLabel, comparisonFrom: 'measures', buttonClass: 'btn btn-outline-success btn-sm rounded-pill px-3'}),
             project: project
         } %}
-    {% else %}
-        <span class="badge bg-success-subtle text-success border border-success-subtle">
-            {{ 'backend.plan.upgrade.active_title'|trans }}
-        </span>
     {% endif %}
+    </div>
 </div>

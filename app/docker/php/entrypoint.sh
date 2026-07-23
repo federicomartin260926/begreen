@@ -10,7 +10,7 @@ mkdir -p \
   /app/public/uploads/evidences \
   /app/public/build
 
-if [ -d /opt/begreen-build ]; then
+if [ "${RESTORE_BUILD_ASSETS:-1}" = "1" ] && [ -d /opt/begreen-build ]; then
   find /app/public/build -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
   cp -a /opt/begreen-build/. /app/public/build/
 fi

@@ -816,6 +816,9 @@ html.backend-sidebar-collapsed #sidebar #adminCollapse,
 
 .backend-project-sort {
     min-width: 12rem;
+    min-height: 2.5rem;
+    padding-inline: 1rem 2.25rem;
+    border-width: 1px;
 }
 
 .backend-project-sort-form,
@@ -832,7 +835,7 @@ html.backend-sidebar-collapsed #sidebar #adminCollapse,
 .backend-project-toolbar .backend-filters-toggle {
     min-height: 2.5rem;
     padding-inline: 1rem;
-    border-radius: .45rem;
+    border-width: 1px;
 }
 
 .backend-project-filters-panel {
@@ -921,9 +924,44 @@ html.backend-sidebar-collapsed #sidebar #adminCollapse,
 
 .backend-project-companies {
     display: flex;
-    min-height: 2rem;
     align-items: center;
     gap: .3rem;
+}
+
+.backend-project-pill__people {
+    display: flex;
+    flex-wrap: wrap;
+    min-height: 2rem;
+    align-items: center;
+    gap: .6rem;
+    min-width: 0;
+}
+
+.backend-project-creator {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-width: 0;
+    color: #39463e;
+    font-size: .82rem;
+}
+
+.backend-project-creator__avatar {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #e8f3eb;
+    color: #215b3f;
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.backend-project-creator__name {
+    max-width: 9rem;
 }
 
 .backend-company-logo {

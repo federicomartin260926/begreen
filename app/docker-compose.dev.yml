@@ -17,6 +17,7 @@ services:
       XDEBUG_TRIGGER: ${XDEBUG_TRIGGER:-1}
       XDEBUG_CONFIG: client_host=${XDEBUG_CLIENT_HOST:-host.docker.internal} client_port=${XDEBUG_CLIENT_PORT:-9003}
       PHP_IDE_CONFIG: serverName=${PHP_IDE_CONFIG_SERVER_NAME:-begreen}
+      RESTORE_BUILD_ASSETS: "0"
 
   nginx:
     ports:

@@ -342,6 +342,10 @@ class ProjectController extends AbstractController
         return [
             'id' => $project->getId(),
             'name' => $project->getName(),
+            'creator' => $project->getUser() ? [
+                'name' => trim(sprintf('%s %s', $project->getUser()->getName() ?? '', $project->getUser()->getSurnames() ?? '')),
+                'email' => $project->getUser()->getEmail(),
+            ] : null,
             'typeKey' => $project->getType(),
             'typeLabel' => $this->translateProjectType($project->getType() ?? ''),
             'modalityKey' => $project->getType() === 'rodaje'

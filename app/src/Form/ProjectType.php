@@ -150,6 +150,8 @@ class ProjectType extends AbstractType
                 'attr' => [
                     'min' => 1,
                     'step' => 1,
+                    'data-project-target' => 'episodios',
+                    'data-required-when' => 'filmingType:tv_series,filmingType:tv_program',
                 ],
             ])
             ->add('duracionEpisodio', IntegerType::class, [
@@ -159,6 +161,8 @@ class ProjectType extends AbstractType
                 'attr' => [
                     'min' => 1,
                     'step' => 1,
+                    'data-project-target' => 'duracionEpisodio',
+                    'data-required-when' => 'filmingType:tv_series,filmingType:tv_program',
                 ],
             ])
 

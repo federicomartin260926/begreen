@@ -55,7 +55,12 @@ export default class extends Controller {
       const visible = this.matchesRule(rule, projectType);
       row.classList.toggle("d-none", !visible);
       const inputs = row.querySelectorAll("input, select, textarea, button");
-      inputs.forEach((el) => (el.disabled = !visible && el.type !== "hidden"));
+      inputs.forEach((el) => {
+        el.disabled = !visible && el.type !== "hidden";
+        if (el.dataset.requiredWhen) {
+          el.required = visible && this.matchesRule(el.dataset.requiredWhen, projectType);
+        }
+      });
     });
   }
 

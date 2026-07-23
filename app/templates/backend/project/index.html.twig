@@ -117,7 +117,7 @@
         <div class="backend-dashboard-hero mb-3">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <h1 class="h3 mb-0">{{ 'backend.projects.list.h2'|trans }}</h1>
-                <a href="{{ path('backend_project_new') }}" class="btn btn-success text-decoration-none backend-new-project-btn">
+                <a href="{{ path('backend_project_new') }}" class="btn btn-success text-decoration-none rounded-pill backend-new-project-btn">
                     <i class="bi bi-plus-lg me-1"></i>{{ 'backend.projects.actions.new'|trans }}
                 </a>
             </div>
@@ -131,7 +131,7 @@
                     {% endif %}
                 {% endfor %}
                 <label for="projects-sort" class="mb-0">{{ 'backend.projects.dashboard.sort.label'|trans }}</label>
-                <select id="projects-sort" name="sort" class="form-select backend-project-sort">
+                <select id="projects-sort" name="sort" class="form-select border-success rounded-pill backend-project-sort">
                     <option value="date_desc" {{ filters.sort == 'date_desc' ? 'selected' : '' }}>{{ 'backend.projects.dashboard.sort.date_desc'|trans }}</option>
                     <option value="date_asc" {{ filters.sort == 'date_asc' ? 'selected' : '' }}>{{ 'backend.projects.dashboard.sort.date_asc'|trans }}</option>
                     <option value="name_asc" {{ filters.sort == 'name_asc' ? 'selected' : '' }}>{{ 'backend.projects.dashboard.sort.name_asc'|trans }}</option>
@@ -139,7 +139,7 @@
                 </select>
             </form>
             <button type="button"
-                    class="btn btn-outline-success backend-filters-toggle"
+                    class="btn {{ dashboardSummary.hasActiveFilters ? 'btn-success' : 'btn-outline-success' }} rounded-pill backend-filters-toggle"
                     data-bs-toggle="collapse"
                     data-bs-target="#projectsFilters"
                     aria-expanded="{{ dashboardSummary.hasActiveFilters ? 'true' : 'false' }}"
@@ -219,7 +219,19 @@
                                     <div class="backend-project-pill__type text-muted">
                                         {{ project.typeLabel }}{% if project.modalityLabel %} {{ project.modalityLabel }}{% endif %}
                                     </div>
-                                    <div class="backend-project-companies" aria-label="{{ 'backend.projects.dashboard.companies'|trans }}">
+                                    <div class="backend-project-pill__people">
+                                        {% if project.creator %}
+                                            {% set creatorName = project.creator.name ?: project.creator.email %}
+                                            {% set creatorInitials = '' %}
+                                            {% for namePart in creatorName|trim|split(' ')|slice(0, 2) %}
+                                                {% set creatorInitials = creatorInitials ~ namePart|slice(0, 1)|upper %}
+                                            {% endfor %}
+                                            <span class="backend-project-creator" title="{{ 'backend.projects.dashboard.creator'|trans }}: {{ creatorName }}">
+                                                <span class="backend-project-creator__avatar" aria-hidden="true">{{ creatorInitials ?: '?' }}</span>
+                                                <span class="backend-project-creator__name text-truncate">{{ creatorName }}</span>
+                                            </span>
+                                        {% endif %}
+                                        <div class="backend-project-companies" aria-label="{{ 'backend.projects.dashboard.companies'|trans }}">
                                         {% set visibleCompanies = project.companies|slice(0, 4) %}
                                         {% for company in visibleCompanies %}
                                             {% if company.logoUrl %}
@@ -236,6 +248,7 @@
                                             {% set hiddenCompanies = project.companies|length - visibleCompanies|length %}
                                             <span class="backend-company-logo backend-company-logo--more" title="{{ 'backend.projects.dashboard.more_companies'|trans({ '%count%': hiddenCompanies }) }}">+{{ hiddenCompanies }}</span>
                                         {% endif %}
+                                        </div>
                                     </div>
                                 </div>
 
