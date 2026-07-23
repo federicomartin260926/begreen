@@ -2,6 +2,45 @@
 
 Plataforma SaaS para gestión de sostenibilidad, cálculo de huella de carbono, planes de mejora y reporting operativo.
 
+## Estado actual
+
+La aplicación Symfony está operativa y cubre, entre otros, estos ámbitos:
+
+- gestión de proyectos y wizard de alta;
+- Home/dashboard y proyecto activo por sesión;
+- elaboración e implementación del plan de sostenibilidad como fases diferenciadas;
+- medidas, seguimiento, evidencias y exportaciones según el plan comercial;
+- planes comerciales por fase, Stripe Checkout y facturación de proyecto;
+- cálculo y gestión de emisiones;
+- administración de catálogos, planes y usuarios;
+- acceso a proyectos mediante membresías de usuario.
+
+Los detalles funcionales, límites y trabajo pendiente se documentan en los documentos enlazados a continuación. El modelo actual de usuarios no incluye todavía organizaciones/equipos, roles efectivos por proyecto ni invitaciones de colaboradores.
+
+## Documentación funcional y técnica
+
+### Arquitectura y entorno
+
+- Este README: entorno local, Docker, comandos y depuración.
+- [Emails del proyecto](../docs/emails.md): configuración y flujos de correo.
+
+### Plan de sostenibilidad
+
+- [Modelo funcional de estados del plan](../docs/sustainability-plan-status-model.md): elaboración, implementación, verificación e incidencias.
+- [Importación de la plantilla de medidas](../docs/measure-template-import.md): formato, validación y aplicación del catálogo.
+- [QA y despliegue del plan de sostenibilidad](../docs/sustainability-plan-qa-and-deploy.md): cierre técnico histórico y checklist de la fase.
+
+### Planes comerciales y pagos
+
+- [Tiers comerciales](../docs/commercial-tiers.md): acceso y reglas por nivel.
+- [Funciones de planes comerciales](../docs/commercial-plan-features.md): inventario de funcionalidades visibles.
+- [Comparativas de planes comerciales](../docs/commercial-plan-comparisons.md): criterios de comparación.
+- [Stripe Payments](../docs/stripe-payments.md): Checkout, suscripciones de proyecto y facturación.
+
+### Usuarios, roles y permisos
+
+- [Usuarios, membresías de proyecto e invitaciones](../docs/users-project-memberships-and-invitations.md): modelo actual, limitaciones y alternativas de colaboración.
+
 ## Stack técnico
 
 - Symfony 7.3
@@ -12,433 +51,139 @@ Plataforma SaaS para gestión de sostenibilidad, cálculo de huella de carbono, 
 - Bootstrap 5 + Stimulus + Webpack Encore
 - Gedmo / Stof Doctrine Extensions para traducciones
 - Dompdf para PDF
-- PhpSpreadsheet para importaciones/exportaciones
+- PhpSpreadsheet para importaciones y exportaciones
 
 ## Estructura del repositorio
 
-- `src/`: dominio, controladores, formularios, servicios, seguridad
-- `config/`: configuración Symfony
-- `templates/`: vistas Twig
-- `assets/`: Bootstrap, Stimulus y recursos frontend
-- `translations/`: mensajes ES/EN
-- `public/`: frontend público, assets compilados y subidas
-- `docker/legacy/`: stack Docker anterior, conservado como referencia
-- los antiguos `compose.yaml` y `compose.override.yaml` han sido archivados en `docker/legacy/`
-- este repositorio es autosuficiente y no depende de redes Docker externas ni de otros proyectos del workspace
+El repositorio raíz contiene el Makefile y el envoltorio de despliegue. La aplicación Symfony vive en `app/`.
+
+- `app/src/`: dominio, controladores, formularios, servicios y seguridad.
+- `app/config/`: configuración Symfony.
+- `app/templates/`: vistas Twig.
+- `app/assets/`: Bootstrap, Stimulus y recursos frontend.
+- `app/translations/`: mensajes ES/EN.
+- `app/public/`: frontend público, assets compilados y subidas.
+- `app/docker/legacy/`: stack Docker anterior conservado como referencia.
+- `docs/`: documentación funcional y técnica especializada.
 
 ## Entornos Docker
 
-El stack oficial de esta fase usa MariaDB como base de datos y se separa en:
+El flujo oficial se ejecuta desde la raíz del repositorio mediante el `Makefile`. Este combina:
 
-- `docker-compose.yml`: base común
-- `docker-compose.dev.yml`: desarrollo local
-- `docker-compose.prod.yml`: producción
+- `app/docker-compose.yml`: servicios base.
+- `app/docker-compose.dev.yml`: desarrollo local.
+- `app/docker-compose.prod.yml`: producción.
 
-Servicios:
+Servicios principales:
 
-- `begreen-php`: PHP 8.3 FPM
-- `begreen-nginx`: Nginx sirviendo `public/`
-- `begreen-db`: MariaDB 11.3
-- `begreen-phpmyadmin`: solo dev
-- `begreen-mailpit`: solo dev
+- `begreen-php`: PHP 8.3 FPM.
+- `begreen-nginx`: Nginx sirviendo `app/public/`.
+- `begreen-db`: MariaDB 11.3.
+- `begreen-phpmyadmin`: solo desarrollo.
+- `begreen-mailpit`: solo desarrollo.
 
-No existe dependencia operativa de `proxy`, Nginx Proxy Manager ni de servicios compartidos con otros repositorios. Si se coloca un reverse proxy externo, se hace fuera de este compose y sin ser requisito del proyecto.
+Desarrollo usa `app/.env` y `app/.env.local`; producción usa `app/.env` y `app/.env.prod`.
 
-Para un despliegue de producción en VPS, el compose `docker-compose.prod.yml` conecta `begreen-nginx` a una red Docker externa `proxy` y monta `app/.env.local` en el contenedor PHP en modo lectura. Eso permite usar Nginx Proxy Manager o un proxy equivalente sin publicar puertos del backend al host.
+## Desarrollo local
 
-## Cómo levantar el entorno
-
-Desde la raíz de `app/`:
+Desde la raíz del repositorio:
 
 ```bash
 make up
 ```
 
-Para producción local:
-
-```bash
-make up-prod
-```
-
-En VPS, si usas Nginx Proxy Manager como en otros proyectos, crea primero la red Docker externa `proxy` y apunta el host a `begreen-nginx:80` dentro de esa red. El fichero `.env.local` debe existir en `app/` con los valores de producción reales.
-
-Parar servicios:
+Comandos habituales:
 
 ```bash
 make down
-```
-
-Logs:
-
-```bash
+make ps
 make logs
+make shell
+make console ARGS='about'
+make composer-install
+make assets-install
+make assets-build
+make cache-clear
+make schema-update
+make fixtures
+make test
+make doctor
 ```
 
-Entrar al contenedor PHP:
+URLs locales por defecto:
+
+- Aplicación: `http://127.0.0.1:8080`
+- phpMyAdmin: `http://127.0.0.1:8081`
+- Mailpit: `http://127.0.0.1:8025`
+- MariaDB: `127.0.0.1:3307`
+
+Los puertos pueden ajustarse mediante `APP_HTTP_PORT`, `APP_DB_PORT`, `APP_PMA_PORT`, `APP_MAILPIT_SMTP_PORT` y `APP_MAILPIT_WEB_PORT` en `app/.env.local`.
+
+### Fixtures y esquema
+
+En desarrollo, el flujo de esquema oficial es `doctrine:schema:update`:
 
 ```bash
-make php
-```
-
-## Despliegue en producción
-
-El despliegue habitual en el VPS se ejecuta desde la raíz del repositorio:
-
-```bash
-cd ~/www/begreen
-make deploy-prod-build
-```
-
-Este target actualiza el código desde Git, reconstruye las imágenes Docker, instala las dependencias de producción, compila los assets, limpia la caché y muestra el SQL pendiente de Doctrine sin aplicarlo automáticamente.
-
-Después del despliegue se recomienda comprobar el estado de los contenedores:
-
-```bash
-make ps-prod
-```
-
-### Despliegue cuando cambian los fixtures
-
-Mientras la aplicación continúe en fase de desarrollo, algunos cambios de catálogo, planes comerciales o datos base se distribuyen regenerando los fixtures locales y reemplazando la base de datos de producción con un dump limpio.
-
-> **Advertencia:** este procedimiento purga y reemplaza los datos actuales de producción. Es temporal y sólo debe utilizarse durante la fase de desarrollo, cuando la pérdida de los datos existentes esté expresamente asumida. No debe emplearse cuando producción contenga información real que sea necesario conservar.
-
-#### 1. Regenerar la base local
-
-Desde el entorno local:
-
-```bash
-cd ~/www/begreenmyfriend
-
 make schema-update
 make fixtures
 ```
 
-Opcionalmente, comprobar los servicios y el mapping de Doctrine:
-
-```bash
-make ps
-make console ARGS="doctrine:schema:validate"
-```
-
-Durante esta fase puede existir drift global entre el schema y el mapping. Antes de continuar, el mapping debe ser correcto y `schema-update` y `fixtures` deben haber terminado sin errores.
-
-#### 2. Crear el dump limpio
+Para crear un dump de la base local cargada con fixtures:
 
 ```bash
 make db-dump-fixtures
 ```
 
-El dump se crea en `backups/` con un nombre similar a:
+`make fixtures` reemplaza los datos de la base de desarrollo. No debe ejecutarse directamente en producción.
 
-```text
-backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql
-```
+### Assets y pruebas
 
-Comprobar su tamaño y que termina con `Dump completed`:
-
-```bash
-ls -lhtr backups/*.sql | tail -5
-tail -10 backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql
-```
-
-#### 3. Subir el dump al VPS
-
-```bash
-scp backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql \
-  fede@194.163.142.134:/home/fede/www/begreen/backups/
-```
-
-#### 4. Desplegar el código
-
-En el VPS:
-
-```bash
-ssh fede@194.163.142.134
-cd ~/www/begreen
-
-make deploy-prod-build
-```
-
-#### 5. Importar el dump en producción
-
-Una vez desplegado el código:
-
-```bash
-make db-import-prod \
-  DUMP=backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql
-```
-
-`db-import-prod` crea primero un backup SQL de la base de producción actual y después importa el dump indicado.
-
-No ejecutar `make fixtures` directamente en producción.
-
-#### 6. Verificar producción
-
-```bash
-make ps-prod
-make console-prod ARGS="about"
-```
-
-Después se debe realizar una comprobación funcional breve de los flujos afectados en la aplicación.
-
-Los backups generados antes de cada importación quedan en `backups/` y deben conservarse hasta confirmar que el despliegue es correcto.
-
-## Comandos útiles
-
-La mayoría de comandos Symfony se ejecutan con `make console ARGS='...'`.
-
-Crear un plan de sostenibilidad de prueba con medidas aleatorias:
-
-```bash
-make console ARGS='app:seed-sustainability-plan 123 25'
-```
-
-Si omites el segundo argumento, el comando crea todas las medidas disponibles para el plan comercial asignado al proyecto:
-
-```bash
-make console ARGS='app:seed-sustainability-plan 123'
-```
-
-Validar o transformar la plantilla estándar de medidas:
-
-```bash
-make console ARGS='app:import:be-green-my-film-v23 /ruta/al/archivo.xlsx --dry-run'
-make console ARGS='app:build-measure-fixture-from-v31 public/fixtures/be_green_my_film_measures.xlsx'
-make console ARGS='app:extract-measure-template-v31 public/fixtures/be_green_my_film_measures.xlsx'
-```
-
-Comandos de utilidad y diagnóstico:
-
-```bash
-make console ARGS='app:send-test-email test@example.com'
-make console ARGS='app:user:test'
-make console ARGS='app:test-ods-translations'
-```
-
-Instalar dependencias PHP:
-
-```bash
-make composer-install
-```
-
-Instalar dependencias frontend:
+El frontend usa npm y Webpack Encore:
 
 ```bash
 make assets-install
-```
-
-Compilar assets:
-
-```bash
 make assets-build
 ```
 
-Instalación frontend determinista:
-
-```bash
-make assets-install
-```
-
-Limpiar caché:
-
-```bash
-make cache-clear
-```
-
-Ejecutar Symfony Console:
-
-```bash
-make console ARGS=about
-```
-
-Actualizar esquema Doctrine:
-
-```bash
-make schema-update
-```
-
-Cargar fixtures:
-
-```bash
-make fixtures
-```
-
-Ejecutar tests:
+La suite PHPUnit se ejecuta con:
 
 ```bash
 make test
 ```
 
-Diagnóstico básico:
+## Despliegue
+
+Los comandos de producción se ejecutan desde la raíz:
 
 ```bash
-make doctor
+make up-prod
+make up-prod-build
+make deploy-prod
+make deploy-prod-build
+make ps-prod
 ```
+
+`deploy-prod` y `deploy-prod-build` actualizan el código, instalan dependencias de producción, compilan assets, limpian caché y muestran el SQL pendiente de Doctrine. No aplican el esquema automáticamente. `deploy-prod-full` sí ejecuta la actualización de esquema y debe utilizarse únicamente tras revisar el cambio esperado.
+
+Durante la fase de desarrollo, el procedimiento de reemplazo de datos por fixtures requiere una decisión explícita porque sobrescribe la base de producción. Los comandos disponibles son `make db-backup-prod` y `make db-import-prod DUMP=backups/archivo.sql`.
 
 ## Proyecto activo
 
-La plataforma trabaja con un `active project` para el backend. El comportamiento actual es:
-
-- el proyecto activo se guarda en la sesión de Symfony con la clave `active_project_id`;
-- no existe una cookie propia para el proyecto activo;
-- el navegador sólo conserva la cookie estándar de sesión de Symfony/PHP;
-- si el usuario entra sin proyecto activo en sesión, `ActiveProjectSubscriber` selecciona por defecto el primer proyecto disponible;
-- para usuarios normales, ese primer proyecto se obtiene de sus proyectos ordenados por fecha de creación descendente;
-- para administradores, el primer proyecto sale del listado completo de proyectos, también ordenado por fecha de creación descendente;
-- ciertas rutas del backend, como facturación o cambio de proyecto, actualizan el proyecto activo en sesión al entrar.
+El backend trabaja con un proyecto activo almacenado en la sesión Symfony (`active_project_id`). Si no existe uno válido, `ActiveProjectSubscriber` selecciona el primer proyecto accesible para el usuario. Para usuarios normales, el acceso se determina mediante sus membresías de proyecto; Administradores ven el listado completo.
 
 ## Xdebug
 
-La depuración PHP queda habilitada en el stack de desarrollo cuando reconstruyes la imagen:
+La depuración PHP está habilitada en desarrollo al reconstruir la imagen:
 
 ```bash
 make up-build
 ```
 
-La configuración de VS Code está en [`.vscode/launch.json`](../.vscode/launch.json) y define dos perfiles:
+La configuración de VS Code está en [`.vscode/launch.json`](.vscode/launch.json). Abre el workspace desde la raíz y utiliza los perfiles `Listen for Xdebug (CLI)` o `Listen for Xdebug (Web)`.
 
-- `Listen for Xdebug (CLI)` para comandos Symfony ejecutados con `make console`
-- `Listen for Xdebug (Web)` para requests desde el navegador
+## Seguridad y configuración
 
-Para que funcione en este proyecto:
-
-1. Abre VS Code en la raíz del repositorio, no sólo en `app/`.
-2. Ejecuta `Run and Debug`.
-3. Selecciona `Listen for Xdebug (CLI)` o `Listen for Xdebug (Web)`.
-4. Inicia el listener.
-5. Lanza el comando o abre la URL que quieras depurar.
-
-El stack de desarrollo arranca PHP con:
-
-```bash
-XDEBUG_MODE=debug,develop
-XDEBUG_TRIGGER=1
-XDEBUG_CLIENT_HOST=host.docker.internal
-XDEBUG_CLIENT_PORT=9003
-```
-
-Ejemplo para depurar el comando nuevo:
-
-```bash
-make console ARGS='app:seed-sustainability-plan 402 45'
-```
-
-Ejemplo para depurar la web:
-
-```text
-http://localhost:18080/backend/plan/measures
-```
-
-Notas útiles:
-
-- si abres el workspace en la raíz, el mapping correcto es `/app -> ${workspaceFolder}/app`
-- si tu IDE usa otro `serverName`, ajusta `PHP_IDE_CONFIG_SERVER_NAME` en `app/.env` o `app/.env.local`
-- si cambias configuración de Docker, vuelve a levantar con `make up-build`
-
-La configuración ya está preparada para CLI y navegador con el mismo listener de Xdebug.
-
-## URLs locales
-
-En desarrollo:
-
-- Aplicación: `http://127.0.0.1:18080`
-- phpMyAdmin: `http://127.0.0.1:8081`
-- Mailpit: `http://127.0.0.1:8025`
-
-Base de datos:
-
-- Host interno Docker: `db:3306`
-- Puerto expuesto local: `127.0.0.1:3307`
-
-Si esos puertos están ocupados, ajusta `APP_HTTP_PORT`, `APP_DB_PORT`, `APP_PMA_PORT`, `APP_MAILPIT_SMTP_PORT` y `APP_MAILPIT_WEB_PORT` antes de levantar el stack.
-
-Ejemplo de `DATABASE_URL`:
-
-```env
-DATABASE_URL="mysql://begreen:begreen@db:3306/begreenmyfriend?serverVersion=11.3&charset=utf8mb4"
-```
-
-## Doctrine
-
-En esta fase el flujo oficial sigue siendo `doctrine:schema:update`.
-
-No se ha convertido el proyecto a un flujo de migraciones como parte de este saneamiento.
-
-## Multiidioma
-
-- Idiomas: ES / EN
-- Configuración basada en Symfony Translator
-- Traducciones de entidades con Gedmo + Stof Doctrine Extensions
-
-## Importación de medidas
-
-- La fase técnica actual se apoya en la plantilla estándar de medidas.
-- El flujo de lectura, validación y `--apply` está documentado en [docs/measure-template-import.md](../docs/measure-template-import.md).
-- La importación es idempotente por `protocol + sourceRow`, con `importHash` como trazabilidad adicional.
-- El admin de medidas ya permite revisar y ajustar manualmente el catálogo importado, incluyendo taxonomías múltiples y fuentes de verificación por prioridad.
-- En el flujo del plan, el protocolo canónico de esta fase consume solo las medidas activas definidas para el plan; las medidas legacy del mismo protocolo quedan excluidas del recorrido canónico.
-- El review/listado del plan ya expone filtros básicos por departamento, ODS, área de impacto, triple balance y alcance, usando taxonomías múltiples cuando existen.
-- El orden de las medidas cambia según la vista:
-  - en la vista operativa de creación del plan se ordenan por `categoría` o `departamento` según el `groupingBy` del protocolo, después por bloque, y finalmente por `sort_order` de la medida;
-  - cuando el protocolo agrupa por departamento, la medida usa como departamento de agrupación el `measure.department` singular; si la medida no tiene departamento, cae en el grupo `Sin departamento` y queda al final del orden de departamentos;
-  - en la vista tabular/review, ya con el plan creado, se ordenan por estado del plan de la medida (`rank`) y después por `nameReview` si existe, o por `name`;
-  - en las exportaciones agrupadas, el agrupado se hace por la taxonomía elegida y dentro de cada grupo se ordena por nombre visible (`displayName`).
-- Las exportaciones del plan ya siguen el modelo Basic / Standard / Pro: Basic solo descarga el PDF unificado, Standard añade PDF agrupado por departamentos y Pro añade PDF/Excel agrupados por categorías, departamentos, áreas de impacto, triple balance y ODS.
-- La capa Pro de colaboración añade comentarios visibles, notas internas, responsables por medida, resumen de validación y medidas personalizadas de proyecto.
-- El review del plan también muestra niveles de compromiso basados en puntos oficiales del catálogo de medidas:
-  - compromiso previsto desde las medidas marcadas para implementar;
-  - compromiso real desde las medidas ya implementadas;
-  - niveles: Semilla, Planta, Árbol, Bosque y Selva;
-  - cálculo por puntos oficiales, no por número de medidas;
-  - las medidas personalizadas no entran en este nivel;
-  - es un indicador motivacional, no una certificación formal.
-- La inclusión de medidas por plan comercial es por puntuación, no por IDs fijos:
-  - `Basic`: medidas de 4 y 5 puntos;
-  - `Standard`: medidas de 3, 4 y 5 puntos;
-  - `Pro`: medidas de 1, 2, 3, 4 y 5 puntos.
-  - Este filtro se aplica sobre el catálogo oficial visible del protocolo y después de excluir bloques saltados.
-  - No existe una lista estática medida-por-medida en la documentación: la fuente de verdad funcional es el catálogo activo + la lógica de resolver el tier.
-- Los bloques de medidas son una subclasificación opcional dentro de un protocolo:
-  - no son categorías principales ni tienen subbloques;
-  - pueden tener una pregunta previa opcional;
-  - si se responde "No", el flujo marca automáticamente como `No aplica` las medidas visibles del bloque y deja trazabilidad del salto;
-  - si se responde "Sí", las medidas auto-descartadas por ese bloque vuelven a estado pendiente para poder responderse;
-  - los bloques descartados no computan en la puntuación máxima aplicable del plan.
-  - el campo `Orden` del bloque es interno y no gobierna el recorrido del plan; el recorrido operativo lo determinan las medidas.
-- Stripe Checkout ya activa `standard` y `pro` por proyecto con facturas emitidas por Stripe; la integración está documentada en [docs/stripe-payments.md](../docs/stripe-payments.md).
-
-## Tiers comerciales
-
-- Los tiers internos por proyecto son `basic`, `standard` y `pro`.
-- El detalle de reglas y bloqueo de funcionalidades está en [docs/commercial-tiers.md](../docs/commercial-tiers.md).
-- El inventario funcional de las opciones visibles en la ficha comercial está en [docs/commercial-plan-features.md](../docs/commercial-plan-features.md).
-- Los upgrades de pago único por proyecto se gestionan con Stripe Checkout y generan referencias de factura almacenadas en `ProjectSubscription`.
-- La suite PHPUnit ahora incluye `tests/Service` además de `Smoke` e `Import`.
-
-## Seguridad
-
-- No commitear secretos reales
-- Usar `.env.local` para overrides locales
-- `.env.example` contiene solo valores de ejemplo
-
-## Estado de la Fase 0
-
-Normalizado:
-
-- stack Docker oficial unificado
-- MariaDB como base de datos oficial
-- PHP 8.3 con extensiones necesarias
-- Nginx para Symfony
-- archivos legacy aislados
-- `.env.example` creado
-- Makefile operativo
-
-Pendiente:
-
-- validación end-to-end completa en una base nueva
-- tests automáticos
-- la suite actual es mínima y de tipo smoke
-- saneamiento de secretos ya existentes en `.env` y `.env.local`
-- refactor funcional de controladores grandes
-- ampliar tests de cálculo de emisiones, membresías/seguridad y PDFs
+- No incluir secretos reales en Git.
+- Usar `app/.env.local` para overrides locales y `app/.env.prod` para producción.
+- `app/.env.example` contiene únicamente valores de ejemplo.
+- Las variables y el flujo de Stripe están documentados en [Stripe Payments](../docs/stripe-payments.md).
