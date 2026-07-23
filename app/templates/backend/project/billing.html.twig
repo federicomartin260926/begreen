@@ -267,8 +267,7 @@
                                 {{ 'backend.billing.project.open_invoice_in_stripe'|trans }}
                               </a>
                             {% endif %}
-                            {% set hasUsefulInvoiceRefs = document.invoicePdfUrl or document.stripeInvoiceId or document.stripeCheckoutSessionId or document.paymentReference %}
-                            {% if canSeeStripeAdminActions and not hasLocalCopy and hasUsefulInvoiceRefs %}
+                            {% if canSeeStripeAdminActions and not hasLocalCopy and document.invoicePdfUrl %}
                               <form method="post" action="{{ path('backend_project_billing_document_sync', {id: project.id, phase: phase.value, documentId: document.id}) }}">
                                 <input type="hidden" name="_token" value="{{ csrf_token('project_billing_document_sync_' ~ project.id ~ '_' ~ document.id) }}">
                                 <button type="submit" class="btn btn-primary">{{ 'backend.billing.project.try_download_invoice'|trans }}</button>
