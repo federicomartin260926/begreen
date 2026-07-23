@@ -20,12 +20,12 @@
                             </div>
                             <div class="d-flex flex-column align-items-end gap-1">
                                 {% if plan.current %}
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">
                                         {{ 'backend.commercial_plan_comparison.current_plan'|trans }}
                                     </span>
                                 {% endif %}
                                 {% if not plan.active %}
-                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                    <span class="badge rounded-pill bg-secondary-subtle text-secondary border border-secondary-subtle">
                                         {{ 'backend.commercial_plan_comparison.inactive_plan'|trans }}
                                     </span>
                                 {% endif %}

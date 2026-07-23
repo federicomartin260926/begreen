@@ -117,7 +117,7 @@
         <div class="backend-dashboard-hero mb-3">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <h1 class="h3 mb-0">{{ 'backend.projects.list.h2'|trans }}</h1>
-                <a href="{{ path('backend_project_new') }}" class="btn btn-success text-decoration-none rounded-pill backend-new-project-btn">
+                <a href="{{ path('backend_project_new') }}" class="btn btn-success text-decoration-none">
                     <i class="bi bi-plus-lg me-1"></i>{{ 'backend.projects.actions.new'|trans }}
                 </a>
             </div>
@@ -131,7 +131,7 @@
                     {% endif %}
                 {% endfor %}
                 <label for="projects-sort" class="mb-0">{{ 'backend.projects.dashboard.sort.label'|trans }}</label>
-                <select id="projects-sort" name="sort" class="form-select border-success rounded-pill backend-project-sort">
+                <select id="projects-sort" name="sort" class="form-select border-success backend-project-sort">
                     <option value="date_desc" {{ filters.sort == 'date_desc' ? 'selected' : '' }}>{{ 'backend.projects.dashboard.sort.date_desc'|trans }}</option>
                     <option value="date_asc" {{ filters.sort == 'date_asc' ? 'selected' : '' }}>{{ 'backend.projects.dashboard.sort.date_asc'|trans }}</option>
                     <option value="name_asc" {{ filters.sort == 'name_asc' ? 'selected' : '' }}>{{ 'backend.projects.dashboard.sort.name_asc'|trans }}</option>
@@ -139,7 +139,7 @@
                 </select>
             </form>
             <button type="button"
-                    class="btn {{ dashboardSummary.hasActiveFilters ? 'btn-success' : 'btn-outline-success' }} rounded-pill backend-filters-toggle"
+                    class="btn {{ dashboardSummary.hasActiveFilters ? 'btn-success' : 'btn-outline-success' }} backend-filters-toggle"
                     data-bs-toggle="collapse"
                     data-bs-target="#projectsFilters"
                     aria-expanded="{{ dashboardSummary.hasActiveFilters ? 'true' : 'false' }}"
