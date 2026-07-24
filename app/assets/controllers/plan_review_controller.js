@@ -41,7 +41,7 @@ export default class extends Controller {
         e.preventDefault();
         filtersForm.querySelectorAll('select').forEach(s => { s.value = ''; });
         filtersForm.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-        const defaultState = filtersForm.querySelector('input[name="state"][value="implement"]');
+        const defaultState = filtersForm.querySelector('input[name="state"][value="pending"]');
         if (defaultState) {
           defaultState.checked = true;
         }
@@ -332,9 +332,9 @@ export default class extends Controller {
     const currentQuery = window.location.search.replace(/^\?/, '');
 
     if (nextQuery === currentQuery) {
-      window.location.reload();
+      window.location.assign(`${window.location.pathname}?${nextQuery}#implementation-filters`);
     } else {
-      window.location.search = nextQuery;
+      window.location.assign(`${window.location.pathname}?${nextQuery}#implementation-filters`);
     }
   }
 

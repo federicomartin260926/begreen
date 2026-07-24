@@ -18,7 +18,7 @@ final class SustainabilityPlanDiscardedMeasureServiceTest extends TestCase
 {
     use CommercialPlanTestHelpers;
 
-    public function testGetDiscardedMeasuresReturnsManualDiscardsAndBlockSkips(): void
+    public function testGetDiscardedMeasuresReturnsOnlyApplicableMeasuresNotSelectedForImplementation(): void
     {
         $service = $this->createService();
         $project = $this->makeProjectWithTier(\App\Entity\ProjectSubscription::TIER_PRO);
@@ -62,13 +62,11 @@ final class SustainabilityPlanDiscardedMeasureServiceTest extends TestCase
 
         $discarded = $service->getDiscardedMeasures($plan, $project);
 
-        self::assertCount(3, $discarded);
+        self::assertCount(1, $discarded);
         self::assertSame($notImplemented->getId(), $discarded[0]->getMeasure()?->getId());
-        self::assertSame($notApplicable->getId(), $discarded[1]->getMeasure()?->getId());
-        self::assertSame($blockSkipped->getId(), $discarded[2]->getMeasure()?->getId());
     }
 
-    public function testRecoverDiscardedMeasureRestoresNoAndNoApplicableStates(): void
+    public function testRecoverDiscardedMeasureRestoresOnlyDiscardedMeasures(): void
     {
         $service = $this->createService();
         $project = $this->makeProjectWithTier(\App\Entity\ProjectSubscription::TIER_PRO);
@@ -112,19 +110,8 @@ final class SustainabilityPlanDiscardedMeasureServiceTest extends TestCase
         self::assertNull($planMeasureNo->getCriticalReason());
         self::assertSame('manual', $planMeasureNo->getApplicabilitySource());
 
-        self::assertSame($planMeasureNa, $service->recoverDiscardedMeasure($plan, $project, $notApplicable->getId() ?? 0));
-        self::assertTrue($planMeasureNa->isApplicable());
-        self::assertTrue($planMeasureNa->willImplement());
-        self::assertFalse($planMeasureNa->isCritical());
-        self::assertNull($planMeasureNa->getCriticalReason());
-        self::assertSame('manual', $planMeasureNa->getApplicabilitySource());
-
-        self::assertSame($planMeasureBlockSkipped, $service->recoverDiscardedMeasure($plan, $project, $blockSkipped->getId() ?? 0));
-        self::assertTrue($planMeasureBlockSkipped->isApplicable());
-        self::assertTrue($planMeasureBlockSkipped->willImplement());
-        self::assertFalse($planMeasureBlockSkipped->isCritical());
-        self::assertNull($planMeasureBlockSkipped->getCriticalReason());
-        self::assertSame('manual', $planMeasureBlockSkipped->getApplicabilitySource());
+        self::assertNull($service->recoverDiscardedMeasure($plan, $project, $notApplicable->getId() ?? 0));
+        self::assertNull($service->recoverDiscardedMeasure($plan, $project, $blockSkipped->getId() ?? 0));
     }
 
     private function createService(): SustainabilityPlanDiscardedMeasureService

@@ -34,7 +34,7 @@
           </div>
 
           <div class="d-flex flex-column align-items-stretch align-items-lg-end gap-2">
-            <a href="{{ path('backend_plan_review', { state: 'implement' }) }}" class="btn btn-primary text-decoration-none">
+            <a href="{{ path('backend_plan_review', { state: 'pending' }) }}" class="btn btn-primary text-decoration-none">
               <i class="bi {{ hasImplementationActivity ? 'bi-arrow-right-circle' : 'bi-play-circle' }} me-1"></i>
               {{ hasImplementationActivity
                 ? 'backend.plan.done.implementation.continue'|trans

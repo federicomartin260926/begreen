@@ -153,7 +153,7 @@
                         <i class="bi bi-pie-chart-fill flex-shrink-0"></i>
                         <span class="ms-2">{{ 'backend.commercial_phases.elaboration'|trans }}</span>
                     </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') == 'backend_plan_review' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_review', {'_locale': app.request.locale, state: 'implement'}) }}" title="{{ 'backend.commercial_phases.implementation'|trans }}">
+                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') == 'backend_plan_review' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_review', {'_locale': app.request.locale, state: 'pending'}) }}" title="{{ 'backend.commercial_phases.implementation'|trans }}">
                         <i class="bi bi-list-check flex-shrink-0"></i>
                         <span class="ms-2">{{ 'backend.commercial_phases.implementation'|trans }}</span>
                     </a>
@@ -232,7 +232,7 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
                             <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_measures', {'_locale': app.request.locale}) }}">{{ 'backend.commercial_phases.elaboration'|trans }}</a></li>
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_review', {'_locale': app.request.locale, state: 'implement'}) }}">{{ 'backend.commercial_phases.implementation'|trans }}</a></li>
+                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_review', {'_locale': app.request.locale, state: 'pending'}) }}">{{ 'backend.commercial_phases.implementation'|trans }}</a></li>
                         </ul>
                     </div>
 

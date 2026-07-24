@@ -114,25 +114,21 @@
                     {% endif %}
                 </div>
 
-                {% if upgradeCta.mode in ['comparison', 'single'] %}
-                    <div class="flex-shrink-0 ms-lg-auto">
-                        {% include 'backend/plan/_upgrade_cta.html.twig' with {
-                            upgradeCta: upgradeCta|merge({
-                                buttonLabel: 'backend.plan.upgrade.implementation'|trans,
-                                buttonClass: 'btn btn-outline-success btn-sm px-3 py-2 d-inline-flex align-items-center gap-1 shadow-sm',
-                                buttonIcon: 'bi-arrow-up-circle',
-                                comparisonFrom: 'review'
-                            }),
-                            project: project
-                        } %}
-                    </div>
-                {% endif %}
-
-                <a href="{{ path('backend_project_billing', {phase: 'implementation', _fragment: 'billing-project-' ~ project.id}) }}"
-                   class="btn btn-outline-secondary btn-sm px-3 py-2 text-decoration-none flex-shrink-0">
-                    <i class="bi bi-receipt me-1"></i>{{ 'backend.plan.implementation.billing'|trans }}
-                </a>
             </div>
+
+            {% include 'backend/plan/_tier_summary_panel.html.twig' with {
+                phaseLabel: 'backend.commercial_phases.implementation'|trans,
+                phaseUpgradeLabel: 'backend.plan.upgrade.implementation'|trans,
+                comparisonFrom: 'review'
+            } %}
+
+            {% if not is_granted('ROLE_MANAGER') or is_granted('ROLE_SUPER_ADMIN') %}
+                <div class="d-flex justify-content-end mb-3">
+                    <form action="{{ path('backend_plan_delete') }}" method="post" onsubmit="return confirm('{{ 'backend.plan.delete.confirm'|trans|e('js') }}');">
+                        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> {{ 'backend.plan.delete.btn'|trans }}</button>
+                    </form>
+                </div>
+            {% endif %}
 
             {% if customMeasures is not empty %}
                 <div class="card border-0 shadow-sm mb-4">
@@ -167,70 +163,14 @@
                 </div>
             {% endif %}
 
-            {# ACCIONES #}
-            <div class="d-flex flex-column gap-3 mb-4">
-                <div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="button"
-                                class="btn btn-outline-secondary"
-                                title="{{ 'backend.plan.review.actions.preview_title'|trans }}"
-                                data-action="plan-review#loadPreview">
-                            <i class="bi bi-eye"></i> {{ 'backend.plan.review.actions.preview'|trans }}
-                        </button>
-
-                        <button type="button"
-                                class="btn btn-outline-primary"
-                                data-bs-toggle="modal"
-                                data-bs-target="#export-options-review"
-                                aria-expanded="false"
-                                aria-controls="export-options-review">
-                            <i class="bi bi-download"></i> {{ 'backend.plan.review.actions.download'|trans }}
-                        </button>
-
-                        {# Spinner overlay (descarga) #}
-                        <div data-plan-review-target="spinner"
-                             class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-                             style="background: rgba(255,255,255,0.6); z-index: 2000;">
-                            <div class="text-center">
-                                <div class="spinner-border" role="status"></div>
-                                <div class="mt-2 small text-muted">{{ 'backend.plan.review.generating_pdf'|trans }}</div>
-                            </div>
-                        </div>
-
-                        <button type="button"
-                                class="btn btn-outline-success"
-                                data-bs-toggle="modal"
-                                data-bs-target="#etEmailModal">
-                            <i class="bi bi-envelope-paper"></i> {{ 'backend.plan.review.actions.send_to_crew'|trans }}
-                        </button>
-
-
-                        {# Permitimos eliminar el plan a cualquiera menos al Gestor #}
-                        {% if not is_granted('ROLE_MANAGER') or is_granted('ROLE_SUPER_ADMIN') %}
-                            <form action="{{ path('backend_plan_delete') }}" method="post" onsubmit="return confirm('{{ 'backend.plan.delete.confirm'|trans|e('js') }}');">
-                                <button class="btn btn-outline-danger">
-                                    <i class="bi bi-trash"></i> {{ 'backend.plan.delete.btn'|trans }}
-                                </button>
-                            </form>
-                        {% endif %}
-                    </div>
-                </div>
-
-                {% include 'backend/plan/_export_options_panel.html.twig' with {
-                    projectTier: projectTier,
-                    projectTierLabel: projectTierLabel,
-                    plan: plan,
-                    panelId: 'export-options-review',
+            {# FILTROS #}
+            <div id="implementation-filters">
+                {% include 'backend/plan/_measure_filters_panel.html.twig' with {
+                    filters: filters,
+                    panelId: 'measure-filters-review',
                     compact: true
                 } %}
             </div>
-
-            {# FILTROS #}
-            {% include 'backend/plan/_measure_filters_panel.html.twig' with {
-                filters: filters,
-                panelId: 'measure-filters-review',
-                compact: true
-            } %}
 
             {# TABLA DE MEDIDAS #}
             {% include 'backend/plan/_list.html.twig' %}

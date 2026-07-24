@@ -24,7 +24,8 @@
                     {% endif %}
                 {% endfor %}
 
-                <tr>
+                {% set operationalState = pm ? operationalStateResolver.resolve(pm) : 'pending' %}
+                <tr class="plan-measure-row--{{ operationalState }}">
                     <td class="text-center">
                         <button class="btn btn-sm {{ isOpen ? 'btn-primary' : 'btn-outline-primary' }}"
                                 type="button"
@@ -37,34 +38,9 @@
                         </button>
                     </td>
 
-                    {# Determinar color y estrella según reglas #}
-                    {% set statusColor = 'plan-measure-status-dot--discarded' %}
-                    {% set statusTitle = 'backend.common.no_answer'|trans %}
-                    {% set showStar = false %}
-                    {% set evidencePaths = pm and pm.evidence ? pm.evidence|trim : '' %}
-                    {% set hasEvidence = evidencePaths is not same as('') %}
-                    {% if pm %}
-                        {% if pm.isApplicable is same as(true) and pm.willImplement is same as(true) %}
-                            {% if pm.isImplemented is same as(true) %}
-                                {% if hasEvidence %}
-                                    {% set statusColor = 'plan-measure-status-dot--executed-with-evidence' %}
-                                    {% set statusTitle = 'backend.plan.review.status_executed_with_evidence'|trans %}
-                                {% else %}
-                                    {% set statusColor = 'plan-measure-status-dot--executed-no-evidence' %}
-                                    {% set statusTitle = 'backend.plan.review.status_executed_without_evidence'|trans %}
-                                {% endif %}
-                            {% else %}
-                                {% set statusColor = 'plan-measure-status-dot--not-executed' %}
-                                {% set statusTitle = 'backend.plan.review.status_not_executed'|trans %}
-                            {% endif %}
-                            {% if pm.isCritical is same as(true) %}
-                                {% set showStar = true %}
-                            {% endif %}
-                        {% elseif pm.isApplicable is same as(false) or (pm.isApplicable is same as(true) and pm.willImplement is same as(false)) %}
-                            {% set statusColor = 'plan-measure-status-dot--discarded' %}
-                            {% set statusTitle = 'backend.plan.review.status_discarded'|trans %}
-                        {% endif %}
-                    {% endif %}
+                    {% set statusColor = 'plan-measure-status-dot--' ~ operationalState %}
+                    {% set statusTitle = ('backend.plan.review.status_' ~ operationalState)|trans %}
+                    {% set showStar = pm and pm.isCritical is same as(true) %}
 
                     <td class="text-muted text-nowrap">
                         <span class="d-inline-flex align-items-center flex-nowrap">
@@ -106,9 +82,9 @@
                 </tr>
 
                 {# Fila plegable con detalles de la medida #}
-                <tr class="collapse {{ isOpen ? 'show' : '' }}" id="{{ collapseId }}">
+                <tr class="collapse plan-measure-row--{{ operationalState }} {{ isOpen ? 'show' : '' }}" id="{{ collapseId }}">
                     <td colspan="3">
-                        <div class="p-3 p-lg-4 border rounded-4 bg-white shadow-sm"
+                        <div class="plan-measure-detail p-3 p-lg-4 border rounded-4 shadow-sm"
                              data-plan-measure-row
                              data-measure-id="{{ measure.id }}">
                             <div class="row g-3">

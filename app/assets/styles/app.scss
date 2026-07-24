@@ -2028,6 +2028,27 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
 }
 
 #backend_plan_review{
+    #implementation-filters {
+        scroll-margin-top: 110px;
+    }
+    .green_table_1 > tbody > tr.plan-measure-row--pending > *,
+    .green_table_1 > tbody > tr.plan-measure-row--in_progress > *,
+    .green_table_1 > tbody > tr.plan-measure-row--implemented > *,
+    .green_table_1 > tbody > tr.plan-measure-row--discarded > *,
+    .green_table_1 > tbody > tr.plan-measure-row--not_applicable > * {
+        border-color: rgba(0, 0, 0, .08);
+    }
+    .green_table_1 > tbody > tr.plan-measure-row--pending > * { background-color: #fff1f1; }
+    .green_table_1 > tbody > tr.plan-measure-row--in_progress > * { background-color: #fff4e5; }
+    .green_table_1 > tbody > tr.plan-measure-row--implemented > * { background-color: #eaf8ef; }
+    .green_table_1 > tbody > tr.plan-measure-row--discarded > * { background-color: #f1f3f5; }
+    .green_table_1 > tbody > tr.plan-measure-row--not_applicable > * { background-color: #f8f9fa; }
+    .green_table_1 > tbody > tr.plan-measure-row--pending:hover > * { --bs-table-bg-state: #ffe3e3 !important; }
+    .green_table_1 > tbody > tr.plan-measure-row--in_progress:hover > * { --bs-table-bg-state: #ffead0 !important; }
+    .green_table_1 > tbody > tr.plan-measure-row--implemented:hover > * { --bs-table-bg-state: #d9f3e2 !important; }
+    .green_table_1 > tbody > tr.plan-measure-row--discarded:hover > * { --bs-table-bg-state: #e5e7eb !important; }
+    .green_table_1 > tbody > tr.plan-measure-row--not_applicable:hover > * { --bs-table-bg-state: #eef0f2 !important; }
+    .plan-measure-detail { background-color: inherit; }
     .backend-plan-filter-summary-card {
         margin-bottom: 1rem;
     }
@@ -2103,17 +2124,20 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         height: 10px;
         border-radius: 50%;
     }
-    .plan-measure-status-dot--executed-with-evidence {
+    .plan-measure-status-dot--implemented {
         background-color: #198754;
     }
-    .plan-measure-status-dot--executed-no-evidence {
+    .plan-measure-status-dot--in_progress {
         background-color: #f28c28;
     }
-    .plan-measure-status-dot--not-executed {
+    .plan-measure-status-dot--pending {
         background-color: #d9534f;
     }
     .plan-measure-status-dot--discarded {
         background-color: #9aa0a6;
+    }
+    .plan-measure-status-dot--not_applicable {
+        background-color: #ced4da;
     }
     .measure-card .classification-toggle[aria-expanded="true"] {
         background: #fff !important;

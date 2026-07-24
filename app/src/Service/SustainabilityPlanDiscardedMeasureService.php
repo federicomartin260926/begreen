@@ -88,10 +88,6 @@ final class SustainabilityPlanDiscardedMeasureService
             return false;
         }
 
-        if ($planMeasure->isApplicable() === false) {
-            return true;
-        }
-
         return $planMeasure->isApplicable() === true && $planMeasure->willImplement() === false;
     }
 

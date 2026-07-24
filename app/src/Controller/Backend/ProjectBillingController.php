@@ -280,7 +280,7 @@ final class ProjectBillingController extends AbstractController
         return match ($origin) {
             'measures' => $this->generateUrl('backend_plan_measures'),
             'elaboration_done' => $this->generateUrl('backend_plan_done'),
-            'review' => $this->generateUrl('backend_plan_review', ['state' => 'implement']),
+            'review' => $this->generateUrl('backend_plan_review', ['state' => 'pending']),
             'billing' => $this->generateUrl('backend_project_billing', [
                 'phase' => $phase->value,
                 '_fragment' => 'billing-project-'.$project->getId(),

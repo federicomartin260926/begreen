@@ -145,30 +145,42 @@
                         class="btn-check"
                         type="radio"
                         name="state"
-                        id="filter-state-implement"
-                        value="implement"
-                        {{ filters.state|default('implement') == 'implement' ? 'checked' : '' }}
+                        id="filter-state-all"
+                        value="all"
+                        {{ filters.state|default('pending') == 'all' ? 'checked' : '' }}
                         data-dt-filter="state">
                     <label
-                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('implement') == 'implement' ? 'btn-success' : 'btn-outline-success' }}"
-                        for="filter-state-implement">
-                        <i class="bi bi-check2-circle"></i>
-                        {{ 'backend.plan.filters.state_implement'|trans }}
+                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('pending') == 'all' ? 'btn-success' : 'btn-outline-success' }}"
+                        for="filter-state-all">
+                        <i class="bi bi-list-ul"></i>
+                        {{ 'backend.plan.filters.state_all'|trans }}
                     </label>
 
                     <input
                         class="btn-check"
                         type="radio"
                         name="state"
-                        id="filter-state-executed"
-                        value="executed"
-                        {{ filters.state|default('implement') == 'executed' ? 'checked' : '' }}
+                        id="filter-state-pending"
+                        value="pending"
+                        {{ filters.state|default('pending') == 'pending' ? 'checked' : '' }}
                         data-dt-filter="state">
                     <label
-                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('implement') == 'executed' ? 'btn-success' : 'btn-outline-success' }}"
-                        for="filter-state-executed">
-                        <i class="bi bi-check-circle"></i>
-                        {{ 'backend.plan.filters.state_executed'|trans }}
+                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('pending') == 'pending' ? 'btn-success' : 'btn-outline-success' }}"
+                        for="filter-state-pending">
+                        <i class="bi bi-clock"></i>
+                        {{ 'backend.plan.filters.state_pending'|trans }}
+                    </label>
+
+                    <input class="btn-check" type="radio" name="state" id="filter-state-in-progress" value="in_progress"
+                        {{ filters.state|default('pending') == 'in_progress' ? 'checked' : '' }} data-dt-filter="state">
+                    <label class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('pending') == 'in_progress' ? 'btn-success' : 'btn-outline-success' }}" for="filter-state-in-progress">
+                        <i class="bi bi-arrow-repeat"></i>{{ 'backend.plan.filters.state_in_progress'|trans }}
+                    </label>
+
+                    <input class="btn-check" type="radio" name="state" id="filter-state-implemented" value="implemented"
+                        {{ filters.state|default('pending') == 'implemented' ? 'checked' : '' }} data-dt-filter="state">
+                    <label class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('pending') == 'implemented' ? 'btn-success' : 'btn-outline-success' }}" for="filter-state-implemented">
+                        <i class="bi bi-check-circle"></i>{{ 'backend.plan.filters.state_implemented'|trans }}
                     </label>
 
                     <input
@@ -177,13 +189,19 @@
                         name="state"
                         id="filter-state-discarded"
                         value="discarded"
-                        {{ filters.state|default('implement') == 'discarded' ? 'checked' : '' }}
+                        {{ filters.state|default('pending') == 'discarded' ? 'checked' : '' }}
                         data-dt-filter="state">
                     <label
-                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('implement') == 'discarded' ? 'btn-success' : 'btn-outline-success' }}"
+                        class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('pending') == 'discarded' ? 'btn-success' : 'btn-outline-success' }}"
                         for="filter-state-discarded">
                         <i class="bi bi-slash-circle"></i>
                         {{ 'backend.plan.filters.state_discarded'|trans }}
+                    </label>
+
+                    <input class="btn-check" type="radio" name="state" id="filter-state-not-applicable" value="not_applicable"
+                        {{ filters.state|default('pending') == 'not_applicable' ? 'checked' : '' }} data-dt-filter="state">
+                    <label class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('pending') == 'not_applicable' ? 'btn-success' : 'btn-outline-success' }}" for="filter-state-not-applicable">
+                        <i class="bi bi-dash-circle"></i>{{ 'backend.plan.filters.state_not_applicable'|trans }}
                     </label>
                 </div>
             </div>

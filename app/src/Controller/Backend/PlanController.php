@@ -13,7 +13,7 @@ use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanCustomMeasureService;
-use App\Service\SustainabilityPlanDiscardedMeasureService;
+use App\Service\PlanMeasureOperationalStateResolver;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
 use App\Service\StripeProjectCheckoutService;
@@ -65,7 +65,7 @@ class PlanController extends AbstractController
         private SustainabilityPlanMeasureOrderer $measureOrderer,
         private SustainabilityPlanCollaborationService $collaborationService,
         private SustainabilityPlanCustomMeasureService $customMeasureService,
-        private SustainabilityPlanDiscardedMeasureService $discardedMeasureService,
+        private PlanMeasureOperationalStateResolver $operationalStateResolver,
         private SustainabilityCommitmentLevelService $commitmentLevelService
     ) {}
 
@@ -622,18 +622,16 @@ class PlanController extends AbstractController
         $isCritical       = $request->query->get('is_critical');
         $state            = $request->query->get('state');
 
-        if (!is_string($state) || $state === '') {
-            if (filter_var($onlyImplemented, FILTER_VALIDATE_BOOLEAN)) {
-                $state = 'executed';
-            } elseif (
-                filter_var($isApplicable, FILTER_VALIDATE_BOOLEAN)
-                || filter_var($willImplement, FILTER_VALIDATE_BOOLEAN)
-                || filter_var($pendingSelection, FILTER_VALIDATE_BOOLEAN)
-            ) {
-                $state = 'implement';
-            } else {
-                $state = 'implement';
-            }
+        $allowedStates = [
+            PlanMeasureOperationalStateResolver::ALL,
+            PlanMeasureOperationalStateResolver::PENDING,
+            PlanMeasureOperationalStateResolver::IN_PROGRESS,
+            PlanMeasureOperationalStateResolver::IMPLEMENTED,
+            PlanMeasureOperationalStateResolver::DISCARDED,
+            PlanMeasureOperationalStateResolver::NOT_APPLICABLE,
+        ];
+        if (!is_string($state) || !in_array($state, $allowedStates, true)) {
+            $state = PlanMeasureOperationalStateResolver::PENDING;
         }
 
         $paginationQuery = $request->query->all();
@@ -708,19 +706,24 @@ class PlanController extends AbstractController
         $qb->addOrderBy('rank', 'ASC')
         ->addOrderBy('sortName', 'ASC');
 
-        if ($state === 'implement') {
-            $qb->andWhere('pm.isApplicable = true')->andWhere('pm.willImplement = true');
-        } elseif ($state === 'executed') {
-            $qb->andWhere('pm.implemented = true');
-        } elseif ($state === 'discarded') {
-            $qb->andWhere('(pm.isApplicable = false OR (pm.isApplicable = true AND pm.willImplement = false))');
-        }
         if ($isCritical) {
             $qb->andWhere('pm.isCritical = true');
         }
 
-        // Total y orden por ranking
-        $allMeasures = $qb->getQuery()->getResult();
+        $planMeasuresByMeasureId = [];
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            $planMeasureId = $planMeasure->getMeasure()?->getId();
+            if ($planMeasureId !== null) {
+                $planMeasuresByMeasureId[(int) $planMeasureId] = $planMeasure;
+            }
+        }
+
+        // La fase de implementación debe incluir los block_skip como "No aplica".
+        $allMeasures = array_values(array_filter(
+            $qb->getQuery()->getResult(),
+            fn (Measure $measure): bool => isset($planMeasuresByMeasureId[(int) $measure->getId()])
+                && $this->operationalStateResolver->matches($planMeasuresByMeasureId[(int) $measure->getId()], $state)
+        ));
         $total = count($allMeasures);
 
         $page    = max(1, (int)$request->query->get('page', 1));
@@ -845,6 +848,7 @@ class PlanController extends AbstractController
             'scoreMax'         => $scoreMax,
             'scoreGained'      => $scoreGained,
             'openId'           => $openId,
+            'operationalStateResolver' => $this->operationalStateResolver,
         ]);
     }
 
@@ -1950,7 +1954,7 @@ class PlanController extends AbstractController
         $filterImplement       = $filters['will_implement']     ?? null;
         $filterPending         = $filters['pending_selection']  ?? null;
         $filterOnlyImplemented = $filters['only_implemented']   ?? null;
-        $filterState           = $filters['state']              ?? 'implement';
+        $filterState           = $filters['state']              ?? PlanMeasureOperationalStateResolver::PENDING;
         $filterCritical        = $filters['is_critical']        ?? null;
 
         $filtersArr = [
@@ -2032,9 +2036,12 @@ class PlanController extends AbstractController
 
         $activeFlags = [];
         $stateLabels = [
-            'implement' => $translator->trans('backend.plan.filters.state_implement'),
-            'executed' => $translator->trans('backend.plan.filters.state_executed'),
+            PlanMeasureOperationalStateResolver::ALL => $translator->trans('backend.plan.filters.state_all'),
+            PlanMeasureOperationalStateResolver::PENDING => $translator->trans('backend.plan.filters.state_pending'),
+            PlanMeasureOperationalStateResolver::IN_PROGRESS => $translator->trans('backend.plan.filters.state_in_progress'),
+            PlanMeasureOperationalStateResolver::IMPLEMENTED => $translator->trans('backend.plan.filters.state_implemented'),
             'discarded' => $translator->trans('backend.plan.filters.state_discarded'),
+            PlanMeasureOperationalStateResolver::NOT_APPLICABLE => $translator->trans('backend.plan.filters.state_not_applicable'),
         ];
         if (isset($stateLabels[$filterState])) {
             $activeFlags[$stateLabels[$filterState]] = $translator->trans('backend.common.yes');
@@ -2107,19 +2114,9 @@ class PlanController extends AbstractController
     private function getFilteredPlanMeasures(Plan $plan, Project $project, array $filters): array
     {
         $result = [];
-        $state = $filters['state'] ?? 'implement';
-        $discardedMeasures = [];
-        if ($state === 'discarded') {
-            $discardedMeasures = array_fill_keys(
-                array_map(
-                    static fn (PlanMeasure $planMeasure): int => (int) $planMeasure->getMeasure()?->getId(),
-                    $this->discardedMeasureService->getDiscardedMeasures($plan, $project)
-                ),
-                true
-            );
-        }
+        $state = $filters['state'] ?? PlanMeasureOperationalStateResolver::PENDING;
 
-        foreach ($this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan) as $pm) {
+        foreach ($plan->getPlanMeasures() as $pm) {
             $m = $pm->getMeasure();
             if (!$m || !$this->catalogResolver->isCatalogMeasure($m, $project)) {
                 continue;
@@ -2144,18 +2141,8 @@ class PlanController extends AbstractController
                 continue;
             }
 
-            if ($state === 'implement') {
-                if ($pm->isApplicable() !== true || $pm->willImplement() !== true) {
-                    continue;
-                }
-            } elseif ($state === 'executed') {
-                if (!$pm->isImplemented()) {
-                    continue;
-                }
-            } elseif ($state === 'discarded') {
-                if (!isset($discardedMeasures[(int) $m->getId()])) {
-                    continue;
-                }
+            if (!$this->operationalStateResolver->matches($pm, (string) $state)) {
+                continue;
             }
 
             $result[] = $pm;
@@ -2766,7 +2753,7 @@ class PlanController extends AbstractController
     private function reviewDefaultFilters(): array
     {
         return [
-            'state' => 'implement',
+            'state' => PlanMeasureOperationalStateResolver::PENDING,
         ];
     }
 

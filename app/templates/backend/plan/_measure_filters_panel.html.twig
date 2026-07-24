@@ -28,13 +28,21 @@
 {% if filters.scope|default('') is not empty %}
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.scope'|trans]) %}
 {% endif %}
-{% set stateValue = filters.state|default('implement') %}
-{% if stateValue == 'executed' %}
-    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_executed'|trans]) %}
+{% set stateValue = filters.state|default('pending') %}
+{% if stateValue == 'all' %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_all'|trans]) %}
+{% elseif stateValue == 'pending' %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_pending'|trans]) %}
+{% elseif stateValue == 'in_progress' %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_in_progress'|trans]) %}
+{% elseif stateValue == 'implemented' %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_implemented'|trans]) %}
 {% elseif stateValue == 'discarded' %}
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_discarded'|trans]) %}
+{% elseif stateValue == 'not_applicable' %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_not_applicable'|trans]) %}
 {% else %}
-    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_implement'|trans]) %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_pending'|trans]) %}
 {% endif %}
 {% if filters.is_critical|default(false) %}
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.critical'|trans]) %}

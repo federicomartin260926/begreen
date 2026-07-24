@@ -67,7 +67,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $filters = $this->invokeReviewDefaultFilters($controller);
 
         self::assertSame([
-            'state' => 'implement',
+            'state' => 'pending',
         ], $filters);
     }
 
@@ -586,6 +586,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'canUseChecklist' => false,
             'canUseResponsibles' => false,
             'canUseInternalNotes' => false,
+            'operationalStateResolver' => self::getContainer()->get(\App\Service\PlanMeasureOperationalStateResolver::class),
         ]);
 
         self::assertMatchesRegularExpression('/<input[^>]*name="implement-' . $measure->getId() . '"[^>]*value="true"[^>]*checked[^>]*>/', $html);
