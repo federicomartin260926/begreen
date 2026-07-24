@@ -490,13 +490,13 @@ backend:
       crew: "Crew"
       duplicate: "Duplicate"
       phase_names:
-        elaboration: "Plan elaboration"
-        signage: "Signage"
-        implementation: "Plan implementation"
-        co2: "CO₂ calculator"
-        report: "Final report"
-        compensation: "Compensation"
-        certification: "Certification"
+        elaboration: "Sustainability plan elaboration"
+        signage: "Sustainable signage"
+        implementation: "Sustainability plan implementation"
+        co2: "Carbon footprint calculator"
+        report: "Final sustainability report"
+        compensation: "Final compensation"
+        certification: "Final certification"
       phases:
         common:
           coming_soon: "Coming soon"
@@ -1010,6 +1010,8 @@ backend:
       total_popover: "<strong>%gained%</strong> is the score obtained out of the total possible (%max%) with the selected measures"
       current_popover: "<strong>%score%</strong> is the score of the current measure"
       current_label: "Current measure score"
+      total_inline: "%gained% points / %max% points"
+      current_inline: "Current measure value: %score% points"
     commitment:
       title: "Commitment level"
       orientative: "Guidance"

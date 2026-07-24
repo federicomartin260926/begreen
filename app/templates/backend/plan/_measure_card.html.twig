@@ -85,44 +85,15 @@
         </div>
 
         {% if measureNavigation is defined and measureNavigation.total|default(0) > 0 %}
-            {% set prevNavigationDisabled = not (measureNavigation.hasPrev|default(false)) %}
-            {% set nextNavigationDisabled = not (measureNavigation.nextEnabled|default(false)) %}
-
-            <div class="d-inline-flex align-items-center overflow-hidden rounded-pill border border-success-subtle bg-light ms-auto flex-shrink-0 small">
-                <a
-                    class="btn btn-sm border-0 rounded-0 px-1 py-0 text-success d-inline-flex align-items-center justify-content-center {% if prevNavigationDisabled %}disabled{% endif %}"
-                    {% if measureNavigation.hasPrev %}
-                        href="{{ measureNavigation.prevHref }}"
-                    {% else %}
-                        href="#"
-                        aria-disabled="true"
-                        tabindex="-1"
-                    {% endif %}
-                    title="{{ 'backend.common.prev'|trans }}"
-                    aria-label="{{ 'backend.common.prev'|trans }}">
-                    <i class="bi bi-chevron-left"></i>
-                </a>
-
-                <span class="px-2 py-0 fw-semibold text-success text-nowrap border-start border-end border-success-subtle">
+            <div class="measure-card__progress text-end ms-auto flex-shrink-0 small">
+                <div class="fw-semibold text-success text-nowrap">
                     {{ 'backend.plan.progress_applicable'|trans({
                         '%current%': measureNavigation.current + 1,
                         '%total%': measureNavigation.total
                     }) }}
-                </span>
-
-                <a
-                    class="btn btn-sm border-0 rounded-0 px-1 py-0 text-success d-inline-flex align-items-center justify-content-center {% if nextNavigationDisabled %}disabled{% endif %}"
-                    {% if measureNavigation.nextEnabled %}
-                        href="{{ measureNavigation.nextHref }}"
-                    {% else %}
-                        href="#"
-                        aria-disabled="true"
-                        tabindex="-1"
-                    {% endif %}
-                    title="{{ 'backend.common.next'|trans }}"
-                    aria-label="{{ 'backend.common.next'|trans }}">
-                    <i class="bi bi-chevron-right"></i>
-                </a>
+                </div>
+                <div class="text-muted text-nowrap">{{ 'backend.plan.score.total_inline'|trans({'%gained%': scoreGained|default(0), '%max%': scoreMax|default(0)}) }}</div>
+                <div class="text-muted text-nowrap">{{ 'backend.plan.score.current_inline'|trans({'%score%': measure.score is not null ? measure.score : 0}) }}</div>
             </div>
         {% endif %}
     </div>

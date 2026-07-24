@@ -88,4 +88,8 @@ $(function () {
   document
     .querySelectorAll('[data-bs-toggle="popover"]')
     .forEach(el => new window.bootstrap.Popover(el));
+
+  document
+    .querySelectorAll('[data-bs-toggle="tooltip"]')
+    .forEach(el => new window.bootstrap.Tooltip(el));
 });

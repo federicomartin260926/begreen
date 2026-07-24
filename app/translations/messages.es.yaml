@@ -492,13 +492,13 @@ backend:
       crew: "Equipo técnico"
       duplicate: "Duplicar"
       phase_names:
-        elaboration: "Elaboración del plan"
-        signage: "Cartelería"
-        implementation: "Implementación del plan"
-        co2: "Calculadora CO₂"
-        report: "Informe final"
-        compensation: "Compensación"
-        certification: "Certificación"
+        elaboration: "Elaboración del plan de sostenibilidad"
+        signage: "Cartelería sostenible"
+        implementation: "Implementación del plan de sostenibilidad"
+        co2: "Calculadora de huella de carbono"
+        report: "Informe final de sostenibilidad"
+        compensation: "Compensación final"
+        certification: "Certificación final"
       phases:
         common:
           coming_soon: "Próximamente"
@@ -1012,6 +1012,8 @@ backend:
       total_popover: "<strong>%gained%</strong> es la puntuación ganada del total posible (%max%) con las medidas seleccionadas"
       current_popover: "<strong>%score%</strong> es la puntuación de la medida actual"
       current_label: "Valor medida actual"
+      total_inline: "%gained% puntos / %max% puntos"
+      current_inline: "Valor medida actual: %score% puntos"
     commitment:
       title: "Nivel de compromiso"
       orientative: "Orientativo"

@@ -32,15 +32,10 @@
             class="backend-sidebar border-end d-none d-md-flex flex-column position-relative position-md-relative transition-width"
             style="width: 260px; min-width: 260px; max-width: 260px; z-index: 1050;">
 
-            <div class="backend-sidebar__brand d-flex align-items-center gap-3 py-3 px-3">
-                <a class="navbar-brand d-inline-flex align-items-center justify-content-center flex-shrink-0 m-0" href="{{ path('home', {'_locale': app.request.locale}) }}">
-                    <img src="{{ asset('build/images/logo-white.svg') }}" alt="Logo" class="img-fluid backend-sidebar__brand-logo d-none d-md-inline-block" style="max-height: 42px;">
-                    <span class="backend-sidebar__brand-mark d-inline-flex d-md-none align-items-center justify-content-center">B</span>
+            <div class="backend-sidebar__brand d-flex align-items-center justify-content-center py-3 px-3">
+                <a class="navbar-brand d-inline-flex align-items-center justify-content-center flex-shrink-0 m-0" href="{{ path('backend_project_index', {'_locale': app.request.locale}) }}">
+                    <img src="{{ asset('build/images/logo-white.svg') }}" alt="Be Green My Friend" class="img-fluid backend-sidebar__brand-logo" style="max-height: 42px;">
                 </a>
-                <div class="backend-sidebar__brand-copy min-w-0">
-                    <div class="backend-sidebar__brand-title text-uppercase fw-bold">Be green my friend</div>
-                    <div class="backend-sidebar__brand-subtitle text-white-50 small">Plataforma de sostenibilidad</div>
-                </div>
             </div>
 
             <div class="backend-sidebar__account d-none d-md-block px-3 pb-3">
@@ -95,6 +90,7 @@
             %}
 
             {# VERSIÓN COMPLETA (pantallas md y mayores) #}
+            {% if 'ROLE_SUPER_ADMIN' in app.user.roles %}
             <nav class="nav flex-column px-3 pb-3 pt-1 d-none d-md-flex">
                 <div class="">
                     {% if 'ROLE_SUPER_ADMIN' in app.user.roles %}
@@ -104,10 +100,11 @@
                             href="#adminCollapse"
                             role="button"
                             aria-controls="adminCollapse"
+                            aria-expanded="{{ adminExpanded ? 'true' : 'false' }}"
                             title="{{ 'backend.menu.admin'|trans }}">
                             <i class="bi bi-shield-lock flex-shrink-0"></i>
                             <span class="ms-2">{{ 'backend.menu.admin'|trans }}</span>
-                            <i class="bi bi-caret-down ms-auto"></i>
+                            <i class="bi bi-caret-down ms-auto backend-sidebar__admin-caret"></i>
                         </a>
 
                         <div class="collapse {% if adminExpanded %}show{% endif %}" id="adminCollapse">
@@ -145,36 +142,21 @@
                         </div>
                     </div>
                     {% endif %}
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_project' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_project_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.projects'|trans }}">
-                        <i class="bi bi-folder-fill flex-shrink-0"></i>
-                        <span class="ms-2">{{ 'backend.menu.projects'|trans }}</span>
-                    </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_plan' and app.request.attributes.get('_route') != 'backend_plan_review' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_measures', {'_locale': app.request.locale}) }}" title="{{ 'backend.commercial_phases.elaboration'|trans }}">
-                        <i class="bi bi-pie-chart-fill flex-shrink-0"></i>
-                        <span class="ms-2">{{ 'backend.commercial_phases.elaboration'|trans }}</span>
-                    </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') == 'backend_plan_review' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_plan_review', {'_locale': app.request.locale, state: 'pending'}) }}" title="{{ 'backend.commercial_phases.implementation'|trans }}">
-                        <i class="bi bi-list-check flex-shrink-0"></i>
-                        <span class="ms-2">{{ 'backend.commercial_phases.implementation'|trans }}</span>
-                    </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_emission' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_emission_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.emissions'|trans }}">
-                        <i class="bi bi-cloud-arrow-up flex-shrink-0"></i>
-                        <span class="ms-2">{{ 'backend.menu.emissions'|trans }}</span>
-                    </a>
-                    <a class="nav-link d-flex align-items-start my-2 text-decoration-none {% if app.request.attributes.get('_route') starts with 'backend_communication' %}active bg_green_2 fw-bold{% endif %}" href="{{ path('backend_communication_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.communication'|trans }}">
-                        <i class="bi bi-file-earmark-text flex-shrink-0"></i>
-                        <span class="ms-2">{{ 'backend.menu.communication'|trans }}</span>
-                    </a>
                 </div>
             </nav>
+            {% endif %}
 
             {# VERSIÓN SOLO ICONOS (pantallas pequeñas) #}
             <nav class="nav flex-column p-1 d-md-none">
                 <div class="">
+                    <a class="nav-link text-decoration-none d-flex align-items-center justify-content-center py-2 backend-sidebar__mobile-project-link" href="{{ path('backend_project_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.projects'|trans }}" aria-label="{{ 'backend.menu.projects'|trans }}">
+                        <i class="bi bi-house-fill fs-4" aria-hidden="true"></i>
+                    </a>
+
                     {% if 'ROLE_SUPER_ADMIN' in app.user.roles %}
                     <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="{{ adminExpanded ? 'true' : 'false' }}" title="{{ 'backend.menu.admin'|trans }}">
-                            <i class="bi bi-shield-lock fs-4"></i>
+                        <a class="nav-link text-decoration-none dropdown-toggle d-flex align-items-center justify-content-center py-2 backend-sidebar__admin-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.admin'|trans }}" aria-label="{{ 'backend.menu.admin'|trans }}">
+                            <i class="bi bi-shield-lock fs-4" aria-hidden="true"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow text-start">
                             <li>
@@ -216,52 +198,6 @@
                     </div>
 
                     {% endif %}
-
-                    <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.projects'|trans }}">
-                            <i class="bi bi-folder-fill fs-4"></i>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_project_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.projects'|trans }}">{{ 'backend.menu.projects'|trans }}</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.sustainability_plan'|trans }}">
-                            <i class="bi bi-pie-chart-fill fs-4"></i>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_measures', {'_locale': app.request.locale}) }}">{{ 'backend.commercial_phases.elaboration'|trans }}</a></li>
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_plan_review', {'_locale': app.request.locale, state: 'pending'}) }}">{{ 'backend.commercial_phases.implementation'|trans }}</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.emissions'|trans }}">
-                            <i class="bi bi-cloud-arrow-up flex-shrink-0"></i>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_emission_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.emissions'|trans }}">{{ 'backend.menu.emissions'|trans }}</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ 'backend.menu.communication'|trans }}">
-                            <i class="bi bi-file-earmark-text flex-shrink-0"></i>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('backend_communication_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.communication'|trans }}">{{ 'backend.menu.communication'|trans }}</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="dropdown my-2">
-                        <a class="nav-link text-decoration-none dropdown-toggle d-flex justify-content-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-box-arrow-right fs-4"></i>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item text-decoration-none ms-2" href="{{ path('app_logout', {'_locale': app.request.locale}) }}">{{ 'auth.logout'|trans }}</a></li>
-                        </ul>
-                    </div>
                 </div>
             </nav>
 

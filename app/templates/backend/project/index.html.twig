@@ -226,9 +226,8 @@
                                             {% for namePart in creatorName|trim|split(' ')|slice(0, 2) %}
                                                 {% set creatorInitials = creatorInitials ~ namePart|slice(0, 1)|upper %}
                                             {% endfor %}
-                                            <span class="backend-project-creator" title="{{ 'backend.projects.dashboard.creator'|trans }}: {{ creatorName }}">
+                                            <span class="backend-project-creator" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ 'backend.projects.dashboard.creator'|trans }}: {{ creatorName }}" aria-label="{{ 'backend.projects.dashboard.creator'|trans }}: {{ creatorName }}" tabindex="0">
                                                 <span class="backend-project-creator__avatar" aria-hidden="true">{{ creatorInitials ?: '?' }}</span>
-                                                <span class="backend-project-creator__name text-truncate">{{ creatorName }}</span>
                                             </span>
                                         {% endif %}
                                         <div class="backend-project-companies" aria-label="{{ 'backend.projects.dashboard.companies'|trans }}">
