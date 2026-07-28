@@ -630,6 +630,13 @@ html.backend-sidebar-collapsed #sidebar #adminCollapse,
         linear-gradient(180deg, #f7fafc 0%, #edf2f7 100%);
 }
 
+.plan-measures-page .plan-commercial-summary--sticky {
+    position: sticky;
+    top: calc(var(--backend-topbar-height, 60px) + 1rem);
+    z-index: 20;
+    background-color: var(--bs-body-bg, #fff);
+}
+
 .backend-dashboard-shell {
     max-width: 100%;
 }
@@ -1805,6 +1812,10 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
 
     .measure-action-group .btn.w-100 {
         flex-basis: 100%;
+    }
+
+    .plan-measures-page .plan-commercial-summary--sticky {
+        top: calc(var(--backend-topbar-height, 60px) + 0.75rem);
     }
 }
 

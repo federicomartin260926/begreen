@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -16,5 +17,14 @@ class PlanMeasureRepository extends ServiceEntityRepository
         parent::__construct($registry, PlanMeasure::class);
     }
 
-    // Podés agregar métodos personalizados acá si lo necesitás.
+    public function countFirstDecisionsForPlan(Plan $plan): int
+    {
+        return (int) $this->createQueryBuilder('pm')
+            ->select('COUNT(pm.id)')
+            ->andWhere('pm.plan = :plan')
+            ->andWhere('pm.firstDecisionAnsweredAt IS NOT NULL')
+            ->setParameter('plan', $plan)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

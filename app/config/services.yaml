@@ -39,6 +39,8 @@ services:
 
     Twig\Extra\String\StringExtension: ~
 
+    Symfony\Component\Translation\TranslatorBagInterface: '@translator'
+
     App\Service\PdfService: ~
 
     App\Service\StripeInvoiceStorageService:

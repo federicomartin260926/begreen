@@ -1,24 +1,5 @@
 {# Se espera: measure y planMeasures #}
 <div class="measure-card mb-3 bg_green_1 shadow py-3" id="measure-card">
-    {# Aviso de cambio de grupo (categoría/departamento) #}
-    {% if groupChanged == 'si' and prevGroupName and nextGroupName %}
-    {% set isDept = (groupingBy == 'department') %}
-    {% set doneKey = isDept
-        ? 'backend.plan.group.completed.department'
-        : 'backend.plan.group.completed.category' %}
-    {% set nextKey = isDept
-        ? 'backend.plan.group.next.department'
-        : 'backend.plan.group.next.category' %}
-
-    <div
-        class="alert alert-success text-center"
-        data-plan-measures-target="groupAlert"
-        tabindex="-1">
-        {{ doneKey|trans({'%prev%': prevGroupName})|raw }}
-        {{ nextKey|trans({'%next%': nextGroupName})|raw }}
-    </div>
-    {% endif %}
-
     {% set categoryIcons = {
         'Alojamientos':'bi-house-door',
         'Transporte':'bi-truck',

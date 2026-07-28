@@ -78,6 +78,12 @@ class PlanMeasure
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $evidenceMetadata = null;
 
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $firstDecisionAnsweredAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $criticalGamificationHandledAt = null;
+
     #[ORM\Column(type: 'boolean')]
     private bool $verification = false;
 
@@ -102,6 +108,49 @@ class PlanMeasure
 
     public function getEsg(): ?EsG { return $this->esg; }
     public function setEsg(?EsG $esg): static { $this->esg = $esg; return $this; }
+
+    public function hasPrimaryDecision(): bool
+    {
+        return $this->isApplicable === false
+            || ($this->isApplicable === true && $this->willImplement !== null);
+    }
+
+    public function getPrimaryDecision(): ?string
+    {
+        if ($this->isApplicable === false) {
+            return 'na';
+        }
+
+        if ($this->isApplicable !== true || $this->willImplement === null) {
+            return null;
+        }
+
+        return $this->willImplement ? 'true' : 'false';
+    }
+
+    public function getFirstDecisionAnsweredAt(): ?\DateTimeImmutable
+    {
+        return $this->firstDecisionAnsweredAt;
+    }
+
+    public function markFirstDecisionAnswered(?\DateTimeImmutable $answeredAt = null): static
+    {
+        $this->firstDecisionAnsweredAt ??= $answeredAt ?? new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function getCriticalGamificationHandledAt(): ?\DateTimeImmutable
+    {
+        return $this->criticalGamificationHandledAt;
+    }
+
+    public function markCriticalGamificationHandled(?\DateTimeImmutable $handledAt = null): static
+    {
+        $this->criticalGamificationHandledAt ??= $handledAt ?? new \DateTimeImmutable();
+
+        return $this;
+    }
 
     // isApplicable tri-estado
     public function isApplicable(): ?bool { return $this->isApplicable; }

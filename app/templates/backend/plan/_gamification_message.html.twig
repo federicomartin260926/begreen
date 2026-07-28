@@ -1,0 +1,9 @@
+{% if gamificationMessage|default(null) %}
+    <div
+        class="alert alert-success border-0 shadow-sm d-flex align-items-start gap-2 mb-3"
+        role="status"
+        data-gamification-message="{{ gamificationMessage.type }}">
+        <i class="bi bi-stars flex-shrink-0" aria-hidden="true"></i>
+        <span>{{ gamificationMessage.text }}</span>
+    </div>
+{% endif %}

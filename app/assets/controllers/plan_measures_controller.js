@@ -2,23 +2,15 @@
 import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
-    static targets = ['actionBtn', 'criticalReason', 'categoryAlert', 'errorAlert'];
+    static targets = ['actionBtn', 'criticalReason', 'errorAlert'];
     static scrollOffset = 96;
 
     connect() {
         this.currentIndex = Number(this.element.dataset.currentIndex || '0');
         this.totalMeasures = Number(this.element.dataset.totalMeasures || '0');
+        this.updateUrl = this.element.dataset.updateUrl || '/index.php/backend/plan/update-selection';
         this.reviewUrl = this.element.dataset.reviewUrl || '/index.php/backend/plan/review';
         this.criticalReasonError = this.element.dataset.criticalReasonError || 'Debes escribir un motivo cuando la medida es crítica.';
-
-        // --- Scroll al aviso de cambio de categoría, si existe ---
-        if (this.hasCategoryAlertTarget) {
-            this.scrollToElement(this.categoryAlertTarget);
-            // foco breve para accesibilidad (no molesta al usuario)
-            try {
-                this.categoryAlertTarget.focus({ preventScroll: true });
-            } catch (_) {}
-        }
 
         // --- Listeners de botones ---
         this.element.querySelectorAll('[data-plan-measures-target="actionBtn"]').forEach(btn => {
@@ -59,8 +51,9 @@ export default class extends Controller {
 
         try {
             let lastResponse = null;
+            let nextUrl = null;
             for (const update of updates) {
-                const res = await fetch('/index.php/backend/plan/update-selection', {
+                const res = await fetch(this.updateUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -74,10 +67,11 @@ export default class extends Controller {
                     throw new Error(data.error || 'No se pudo guardar');
                 }
                 lastResponse = data;
+                nextUrl = data.nextUrl || nextUrl;
             }
 
             let sectionToScroll = null;
-            if (field === 'decision') {
+            if (field === 'decision' && !lastResponse?.unchangedDecision) {
                 this.applyDecisionState(measureId, value);
                 sectionToScroll = this.syncMeasureState(measureId);
                 if (String(value) === 'true') {
@@ -104,8 +98,8 @@ export default class extends Controller {
                 this.scrollToSection(sectionToScroll);
             }
 
-            if (lastResponse?.nextUrl) {
-                window.location.assign(lastResponse.nextUrl);
+            if (nextUrl) {
+                window.location.assign(nextUrl);
             } else if (shouldAdvance) {
                 this.navigateAfterSave(field, value);
             }

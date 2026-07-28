@@ -203,9 +203,9 @@
 
         </aside>
 
-        <div class="flex-grow-1 d-flex flex-column" style="min-width: 0;">
+        <div class="flex-grow-1 d-flex flex-column" style="min-width: 0; --backend-topbar-height: 60px;">
             {# Header #}
-            <header class="backend-topbar d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom bg-white px-4 sticky-top shadow-sm" style="height: 60px; z-index: 100; min-width: 0;">
+            <header class="backend-topbar d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom bg-white px-4 sticky-top shadow-sm" style="height: var(--backend-topbar-height); z-index: 100; min-width: 0;">
                 <button class="btn d-md-none me-2"
                         id="toggleSidebar"
                         type="button"

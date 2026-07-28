@@ -10,6 +10,8 @@
 {% block body %}
 <div class="container-fluid px-0 backend-client-shell">
   <div class="backend-client-content">
+    {% include 'backend/plan/_gamification_message.html.twig' %}
+
     <div class="alert alert-success border-0 shadow-sm mb-4">
       <h1 class="h3 mb-2">{{ 'backend.plan.done.h1'|trans }}</h1>
       <p class="lead mb-2">{{ 'backend.plan.done.lead'|trans({'%project%': project.name})|raw }}</p>

@@ -1053,6 +1053,10 @@ backend:
     tier:
       current: "Tier actual"
       phase_current: "Plan de %phase%: %tier%"
+      level:
+        basic: "Basic"
+        standard: "Standard"
+        pro: "Pro"
       basic_notice: "Disponible en Standard o Pro para ampliar catálogo y quitar marca de agua."
       standard_notice: "Disponible en Pro para funciones avanzadas."
       basic_summary: "Incluye 50 medidas prioritarias."
@@ -1193,9 +1197,6 @@ backend:
       critical_reason_required: "Debes escribir un motivo cuando la medida es crítica."
     progress_applicable: "Medida %current% de %total%"
     progress_applicable_details: " · %total% aplicables"
-    category:
-      done: "¡Ya has terminado todas las medidas de <strong>%prev%</strong>!"
-      next: "Vamos a continuar con la categoría <strong>%next%</strong>"
     measure:
       implementation: "Implementación"
       description: "Descripción"
@@ -1596,13 +1597,6 @@ backend:
         title: "Puntuación alcanzada:"
         value: "%gained% de %max% (%pct%)"
         na: "No disponible"
-    group:
-      completed:
-        category: "¡Ya has terminado todas las medidas de <strong>%prev%</strong>!"
-        department: "¡Ya has terminado todas las medidas del departamento <strong>%prev%</strong>!"
-      next:
-        category: "Vamos a continuar con la categoría <strong>%next%</strong>"
-        department: "Vamos a continuar con el departamento <strong>%next%</strong>"
   emission:
     phase:
       preproduccion: "Preproducción"

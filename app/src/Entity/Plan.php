@@ -50,6 +50,24 @@ class Plan
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $customMeasuresCompletedAt = null;
 
+    /** @var string[] */
+    #[ORM\Column(type: Types::JSON)]
+    private array $presentedGamificationLevels = [];
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $gamificationCompleted100At = null;
+
+    #[ORM\Column(length: 191, nullable: true)]
+    private ?string $lastGamificationProgressKey = null;
+
+    #[ORM\Column(length: 191, nullable: true)]
+    private ?string $pendingGamificationKey = null;
+
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $pendingGamificationType = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $pendingGamificationSourceMeasureId = null;
 
     public function __construct()
     {
@@ -141,6 +159,98 @@ class Plan
     public function clearCustomMeasuresCompletion(): static
     {
         $this->customMeasuresCompletedAt = null;
+
+        return $this;
+    }
+
+    /** @return string[] */
+    public function getPresentedGamificationLevels(): array
+    {
+        return $this->presentedGamificationLevels;
+    }
+
+    public function hasPresentedGamificationLevel(string $level): bool
+    {
+        return in_array($level, $this->presentedGamificationLevels, true);
+    }
+
+    public function markGamificationLevelPresented(string $level): static
+    {
+        if (!$this->hasPresentedGamificationLevel($level)) {
+            $this->presentedGamificationLevels[] = $level;
+        }
+
+        return $this;
+    }
+
+    public function getGamificationCompleted100At(): ?\DateTimeImmutable
+    {
+        return $this->gamificationCompleted100At;
+    }
+
+    public function markGamificationCompleted100(?\DateTimeImmutable $handledAt = null): static
+    {
+        $this->gamificationCompleted100At ??= $handledAt ?? new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function getLastGamificationProgressKey(): ?string
+    {
+        return $this->lastGamificationProgressKey;
+    }
+
+    public function setLastGamificationProgressKey(?string $messageKey): static
+    {
+        $this->lastGamificationProgressKey = $messageKey;
+
+        return $this;
+    }
+
+    public function getPendingGamificationKey(): ?string
+    {
+        return $this->pendingGamificationKey;
+    }
+
+    public function getPendingGamificationType(): ?string
+    {
+        return $this->pendingGamificationType;
+    }
+
+    public function getPendingGamificationSourceMeasureId(): ?int
+    {
+        return $this->pendingGamificationSourceMeasureId;
+    }
+
+    public function hasPendingGamificationMessage(): bool
+    {
+        return $this->pendingGamificationKey !== null
+            && $this->pendingGamificationType !== null;
+    }
+
+    public function queueGamificationMessage(string $key, string $type, ?int $sourceMeasureId = null): static
+    {
+        if (!$this->hasPendingGamificationMessage()) {
+            $this->pendingGamificationKey = $key;
+            $this->pendingGamificationType = $type;
+            $this->pendingGamificationSourceMeasureId = $sourceMeasureId;
+        }
+
+        return $this;
+    }
+
+    public function replacePendingGamificationMessage(string $key, string $type, ?int $sourceMeasureId = null): static
+    {
+        return $this
+            ->clearPendingGamificationMessage()
+            ->queueGamificationMessage($key, $type, $sourceMeasureId);
+    }
+
+    public function clearPendingGamificationMessage(): static
+    {
+        $this->pendingGamificationKey = null;
+        $this->pendingGamificationType = null;
+        $this->pendingGamificationSourceMeasureId = null;
 
         return $this;
     }

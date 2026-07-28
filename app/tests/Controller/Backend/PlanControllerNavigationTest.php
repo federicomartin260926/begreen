@@ -126,7 +126,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
             $this->createPlanRepositoryMock($plan),
             (new \ReflectionClass(\App\Service\StripeProjectCheckoutService::class))->newInstanceWithoutConstructor(),
             self::getContainer()->get(CommercialPlanRepository::class),
-            self::getContainer()->get(MeasureRepository::class)
+            self::getContainer()->get(MeasureRepository::class),
+            $this->createMock(EntityManagerInterface::class)
         );
 
         self::assertSame(302, $response->getStatusCode());
@@ -143,6 +144,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setName('Be Green My Film')
             ->setType(Protocol::TYPE_RODAJE)
             ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
 
         $plan = (new Plan())
             ->setProject($project)
@@ -220,10 +222,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'canGoNext' => false,
             'planComplete' => true,
             'currentBlockAnswer' => null,
-            'groupChanged' => 'no',
-            'prevGroupName' => null,
-            'nextGroupName' => null,
-            'groupingBy' => null,
             'planChartsConfig' => [],
             'scoreGained' => 0,
             'scoreMax' => 0,
@@ -247,6 +245,61 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         self::assertStringContainsString('Ir al cierre de Elaboración', $emptyHtml);
         self::assertStringContainsString('Ir al cierre de Elaboración', $filledHtml);
+
+        $requestStack->pop();
+    }
+
+    public function testGamificationMessageUsesIntegratedNonBlockingAlert(): void
+    {
+        self::bootKernel();
+        $html = self::getContainer()->get('twig')->render(
+            'backend/plan/_gamification_message.html.twig',
+            [
+                'gamificationMessage' => [
+                    'key' => 'welcome.seed.001',
+                    'type' => 'welcome',
+                    'text' => 'Mensaje integrado de bienvenida',
+                ],
+            ]
+        );
+
+        self::assertStringContainsString('role="status"', $html);
+        self::assertStringContainsString('data-gamification-message="welcome"', $html);
+        self::assertStringContainsString('Mensaje integrado de bienvenida', $html);
+        self::assertStringNotContainsString('modal', $html);
+        self::assertStringNotContainsString('<button', $html);
+        self::assertStringNotContainsString('Continuar', $html);
+    }
+
+    public function testElaborationTierSummaryUsesOnlyTheCanonicalTierCodeAndIsSticky(): void
+    {
+        self::bootKernel();
+        $requestStack = self::getContainer()->get('request_stack');
+        $request = Request::create('/');
+        $request->setLocale('es');
+        $requestStack->push($request);
+        $twig = self::getContainer()->get('twig');
+
+        foreach (['basic' => 'Basic', 'standard' => 'Standard', 'pro' => 'Pro'] as $tier => $label) {
+            $html = $twig->render('backend/plan/_tier_summary_panel.html.twig', [
+                'project' => new Project(),
+                'projectTier' => $tier,
+                'projectTierLabel' => 'Elaboración ' . $label,
+                'projectTierDisplayLabel' => $label,
+                'phaseLabel' => 'Elaboración',
+                'phaseUpgradeLabel' => 'Mejorar plan',
+                'upgradeCta' => [
+                    'mode' => 'unavailable',
+                    'label' => 'No disponible',
+                    'options' => [],
+                ],
+                'stickyTierSummary' => true,
+            ]);
+
+            self::assertStringContainsString('Plan de Elaboración: ' . $label, $html);
+            self::assertStringNotContainsString('Plan de Elaboración: Elaboración ' . $label, $html);
+            self::assertStringContainsString('plan-commercial-summary--sticky', $html);
+        }
 
         $requestStack->pop();
     }
@@ -376,10 +429,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'planMeasures' => [],
             'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
             'projectType' => null,
-            'groupChanged' => null,
-            'prevGroupName' => null,
-            'nextGroupName' => null,
-            'groupingBy' => null,
             'currentBlockAnswer' => null,
             'nextCategoryName' => null,
             'prevCategoryName' => null,
@@ -418,10 +467,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'planMeasures' => [$planMeasure],
             'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
             'projectType' => null,
-            'groupChanged' => null,
-            'prevGroupName' => null,
-            'nextGroupName' => null,
-            'groupingBy' => null,
             'currentBlockAnswer' => null,
             'nextCategoryName' => null,
             'prevCategoryName' => null,
@@ -453,10 +498,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'planMeasures' => [$planMeasure],
             'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
             'projectType' => null,
-            'groupChanged' => null,
-            'prevGroupName' => null,
-            'nextGroupName' => null,
-            'groupingBy' => null,
             'currentBlockAnswer' => null,
             'nextCategoryName' => null,
             'prevCategoryName' => null,
@@ -485,10 +526,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'planMeasures' => [$planMeasure],
             'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
             'projectType' => null,
-            'groupChanged' => null,
-            'prevGroupName' => null,
-            'nextGroupName' => null,
-            'groupingBy' => null,
             'currentBlockAnswer' => null,
             'nextCategoryName' => null,
             'prevCategoryName' => null,
@@ -517,10 +554,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'planMeasures' => [$planMeasure],
             'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
             'projectType' => null,
-            'groupChanged' => null,
-            'prevGroupName' => null,
-            'nextGroupName' => null,
-            'groupingBy' => null,
             'currentBlockAnswer' => null,
             'nextCategoryName' => null,
             'prevCategoryName' => null,
@@ -574,10 +607,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'canGoNext' => false,
             'planComplete' => true,
             'currentBlockAnswer' => null,
-            'groupChanged' => 'no',
-            'prevGroupName' => null,
-            'nextGroupName' => null,
-            'groupingBy' => null,
             'planChartsConfig' => [],
             'scoreGained' => 0,
             'scoreMax' => 0,
@@ -1497,6 +1526,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setName('Be Green My Film')
             ->setType(Protocol::TYPE_RODAJE)
             ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
 
         $plan = (new Plan())
             ->setProject($project)
@@ -1588,6 +1618,41 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($currentPlanMeasure->willImplement());
     }
 
+    public function testSavingTheSameYesDecisionPreservesCriticalDataAndDoesNotGenerateMessage(): void
+    {
+        [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('true');
+        $answeredAt = new \DateTimeImmutable('2026-07-28 10:00:00');
+        $criticalHandledAt = new \DateTimeImmutable('2026-07-28 10:05:00');
+        $currentPlanMeasure
+            ->setIsApplicable(true)
+            ->setWillImplement(true)
+            ->setIsCritical(true)
+            ->setCriticalReason('Motivo conservado')
+            ->markFirstDecisionAnswered($answeredAt)
+            ->markCriticalGamificationHandled($criticalHandledAt);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertTrue($data['unchangedDecision']);
+        self::assertArrayNotHasKey('gamification', $data);
+        self::assertNull($data['nextUrl']);
+        self::assertTrue($currentPlanMeasure->isCritical());
+        self::assertSame('Motivo conservado', $currentPlanMeasure->getCriticalReason());
+        self::assertSame($answeredAt, $currentPlanMeasure->getFirstDecisionAnsweredAt());
+        self::assertSame($criticalHandledAt, $currentPlanMeasure->getCriticalGamificationHandledAt());
+    }
+
     public function testUpdateSelectionDecisionNoMarksMeasureAsApplicableButNotIncluded(): void
     {
         [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('false');
@@ -1608,9 +1673,39 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($data['success']);
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertArrayNotHasKey('gamification', $data);
+        self::assertSame('welcome', $currentPlanMeasure->getPlan()->getPendingGamificationType());
+        self::assertStringStartsWith(
+            'welcome.seed.',
+            (string) $currentPlanMeasure->getPlan()->getPendingGamificationKey()
+        );
         self::assertTrue($currentPlanMeasure->isApplicable());
         self::assertNull($currentPlanMeasure->isCritical());
         self::assertFalse($currentPlanMeasure->willImplement());
+    }
+
+    public function testUpdateSelectionKeepsImmediateNavigationWhenNoGamificationMessageIsDue(): void
+    {
+        [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('false');
+        $currentPlanMeasure->getPlan()->markGamificationLevelPresented('seed');
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertArrayNotHasKey('gamification', $data);
+        self::assertFalse($currentPlanMeasure->getPlan()->hasPendingGamificationMessage());
+        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
     }
 
     public function testUpdateSelectionDecisionNotApplicableClearsApplicability(): void

@@ -9,10 +9,11 @@
 
 {% block body %}
 <div
-    class="container-fluid px-0 backend-client-shell"
+    class="container-fluid px-0 backend-client-shell plan-measures-page"
     data-controller="plan-measures"
     data-current-index="{{ index }}"
     data-total-measures="{{ total }}"
+    data-update-url="{{ path('backend_plan_update_selection') }}"
     data-review-url="{{ path('backend_plan_review', { is_applicable: '1', will_implement: '1' }) }}"
     data-critical-reason-error="{{ 'backend.plan.measures.critical_reason_required'|trans|e('html_attr') }}">
     <div class="backend-client-content">
@@ -78,16 +79,20 @@
 
             </div>
 
+            {% include 'backend/plan/_gamification_message.html.twig' %}
+
             {% include 'backend/plan/_tier_summary_panel.html.twig' with {
                 projectTier: projectTier,
                 projectTierLabel: projectTierLabel,
+                projectTierDisplayLabel: projectTierDisplayLabel|default(projectTierLabel),
                 projectTierSummary: projectTierSummary,
                 evidenceCount: evidenceCount,
                 evidenceLimit: evidenceLimit,
                 upgradeCta: upgradeCta,
                 project: project,
                 phaseLabel: 'backend.commercial_phases.elaboration'|trans,
-                phaseUpgradeLabel: 'backend.plan.upgrade.elaboration'|trans
+                phaseUpgradeLabel: 'backend.plan.upgrade.elaboration'|trans,
+                stickyTierSummary: true
             } %}
 
             {# ---- CONTENIDO PRINCIPAL ---- #}

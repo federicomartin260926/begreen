@@ -1,6 +1,7 @@
-<div id="plan-commercial-summary" class="card border shadow-sm mb-3">
+{% set summaryTierLabel = projectTierDisplayLabel|default(projectTierLabel) %}
+<div id="plan-commercial-summary" class="card border shadow-sm mb-3{% if stickyTierSummary|default(false) %} plan-commercial-summary--sticky{% endif %}">
     <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <strong>{{ 'backend.plan.tier.phase_current'|trans({'%phase%': phaseLabel, '%tier%': projectTierLabel}) }}</strong>
+        <strong>{{ 'backend.plan.tier.phase_current'|trans({'%phase%': phaseLabel, '%tier%': summaryTierLabel}) }}</strong>
         <div class="d-flex align-items-center flex-wrap gap-2">
             {% if projectTier != 'pro' %}
                 {% include 'backend/plan/_upgrade_cta.html.twig' with {

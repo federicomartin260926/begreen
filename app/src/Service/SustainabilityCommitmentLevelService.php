@@ -10,6 +10,8 @@ use App\Repository\MeasureRepository;
 
 final class SustainabilityCommitmentLevelService
 {
+    private const LEVEL_ORDER = ['seed', 'plant', 'tree', 'forest', 'jungle'];
+
     public function __construct(
         private readonly MeasureRepository $measureRepository,
         private readonly PlanMeasureCatalogResolver $catalogResolver,
@@ -98,6 +100,25 @@ final class SustainabilityCommitmentLevelService
             'planned' => $this->buildLevelBlock($plannedPoints, $totalOfficialPoints),
             'implemented' => $this->buildLevelBlock($implementedPoints, $totalOfficialPoints),
         ];
+    }
+
+    /**
+     * @param array{totalOfficialPoints:int, planned:array{points:int}} $summary
+     */
+    public function hasReachedExactPlannedMaximum(array $summary): bool
+    {
+        return $summary['totalOfficialPoints'] > 0
+            && $summary['planned']['points'] === $summary['totalOfficialPoints'];
+    }
+
+    public function isHigherLevel(string $previousLevel, string $resultingLevel): bool
+    {
+        $previousIndex = array_search($previousLevel, self::LEVEL_ORDER, true);
+        $resultingIndex = array_search($resultingLevel, self::LEVEL_ORDER, true);
+
+        return is_int($previousIndex)
+            && is_int($resultingIndex)
+            && $resultingIndex > $previousIndex;
     }
 
     /**

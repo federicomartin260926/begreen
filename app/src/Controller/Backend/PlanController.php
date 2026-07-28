@@ -15,6 +15,7 @@ use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanCustomMeasureService;
 use App\Service\PlanMeasureOperationalStateResolver;
 use App\Service\SustainabilityCommitmentLevelService;
+use App\Service\SustainabilityGamificationService;
 use App\Service\ProjectFeatureGate;
 use App\Service\StripeProjectCheckoutService;
 use App\Security\PlanVoter;
@@ -66,7 +67,8 @@ class PlanController extends AbstractController
         private SustainabilityPlanCollaborationService $collaborationService,
         private SustainabilityPlanCustomMeasureService $customMeasureService,
         private PlanMeasureOperationalStateResolver $operationalStateResolver,
-        private SustainabilityCommitmentLevelService $commitmentLevelService
+        private SustainabilityCommitmentLevelService $commitmentLevelService,
+        private SustainabilityGamificationService $gamificationService,
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -208,8 +210,6 @@ class PlanController extends AbstractController
 
         $protocol     = $plan->getProtocol();
         $groupingBy   = $protocol->getGroupingBy(); // 'category' | 'department'
-        $isDept       = ($groupingBy === Protocol::GROUP_BY_DEPARTMENT);
-        $groupNullLbl = $isDept ? 'Sin departamento' : 'Sin categoría';
         $navigationQuery = $request->query->all();
         unset($navigationQuery['i']);
         unset($navigationQuery['only_pending']);
@@ -290,56 +290,6 @@ class PlanController extends AbstractController
         $progressIndex = $currentMeasure ? $this->findVisibleMeasureIndex($allMeasures, $currentMeasure) : null;
         $catalogMeasuresTotal = count($allMeasures);
 
-        // ===== START mensajes de "cambios de grupo" (categoría/departamento) =====
-        $session   = $request->getSession();
-        $project   = $activeProjectService->getActiveProject();
-        $projectId = $project?->getId() ?? 0;
-
-        // Clave de sesión por proyecto + tipo de agrupación para no mezclar modos
-        $sessionKey = sprintf('plan_prev_group_%d_%s', $projectId, $groupingBy);
-
-        // Valor previo del grupo (cat/dep) en esta vista
-        $prevGroupName = $session->get($sessionKey);
-
-        // Nombre del grupo actual (dep/cat)
-        $currentGroupName = null;
-        if ($currentMeasure) {
-            $currentGroupName = $isDept
-                ? ($currentMeasure->getDepartment()?->getName() ?? $groupNullLbl)
-                : ($currentMeasure->getCategory()?->getName() ?? $groupNullLbl);
-        }
-
-        // Buscar el siguiente nombre de grupo distinto (si existe)
-        $nextGroupName = null;
-        if ($currentGroupName !== null) {
-            for ($j = $index + 1; $j < $total; $j++) {
-                $nameJ = $isDept
-                    ? ($measures[$j]->getDepartment()?->getName() ?? $groupNullLbl)
-                    : ($measures[$j]->getCategory()?->getName() ?? $groupNullLbl);
-
-                if ($nameJ !== $currentGroupName) {
-                    $nextGroupName = $nameJ;
-                    break;
-                }
-            }
-        }
-
-        // ¿Cambió el grupo respecto al guardado?
-        $groupChanged = ($prevGroupName !== null && $currentGroupName !== null && $prevGroupName !== $currentGroupName);
-
-        // Guardar grupo actual para el próximo render
-        if ($currentGroupName !== null) {
-            $session->set($sessionKey, $currentGroupName);
-        }
-
-        /**
-         * Qué nombre mostrar en el mensaje "vamos a continuar con ..."
-         * - Si ACABAMOS de cambiar de grupo (groupChanged === true), el destino es el GRUPO ACTUAL.
-         * - Si NO hubo cambio, el destino (si existe) es el siguiente grupo distinto al actual.
-         */
-        $displayNextGroupName = $groupChanged ? $currentGroupName : $nextGroupName;
-        // ===== END mensajes de "cambios de grupo" (categoría/departamento) =====
-
         // ===== PM actual (si existe) y lógica de navegación =====
         $currentPm = $currentMeasure
             ? $planMeasureRepository->findOneBy(['plan' => $plan, 'measure' => $currentMeasure])
@@ -395,9 +345,16 @@ class PlanController extends AbstractController
         $evidenceLimit = $this->featureGate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION);
         $evidenceCount = $this->countProjectEvidenceFiles($plan);
         $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION);
+        $projectTierDisplayLabel = $this->t->trans('backend.plan.tier.level.' . $projectTier);
         $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project, CommercialPhase::ELABORATION);
         $upgradeCta = $this->buildUpgradeCta($project, $plan, CommercialPhase::ELABORATION, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
+        $gamificationMessage = $this->gamificationService->claimPendingMessageForDisplayWithLock(
+            $em,
+            $plan,
+            $project,
+            $planComplete ? null : $currentMeasure?->getId()
+        );
 
         // ===== Render =====
         return $this->render('backend/plan/measures.html.twig', [
@@ -405,6 +362,7 @@ class PlanController extends AbstractController
             'plan'             => $plan,
             'projectTier'      => $projectTier,
             'projectTierLabel'  => $projectTierLabel,
+            'projectTierDisplayLabel' => $projectTierDisplayLabel,
             'projectTierSummary'=> $projectTierSummary,
             'evidenceCount'    => $evidenceCount,
             'evidenceLimit'    => $evidenceLimit,
@@ -418,6 +376,7 @@ class PlanController extends AbstractController
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
             'navigationQuery'  => $navigationQuery,
             'showCustomMeasuresStep' => $showCustomMeasuresStep,
+            'gamificationMessage' => $gamificationMessage,
 
             // navegación y medida actual
             'index'            => $index,
@@ -429,12 +388,6 @@ class PlanController extends AbstractController
             'canGoNext'        => !$planComplete && $canGoNext,
             'planComplete'     => $planComplete,
             'currentBlockAnswer' => $currentBlockAnswer,
-
-            // sesión/categorías para twig (ahora representan el grupo activo)
-            'groupChanged'   => $groupChanged ? 'si' : 'no',
-            'prevGroupName'  => $prevGroupName,
-            'nextGroupName'  => $displayNextGroupName,
-            'groupingBy'     => $groupingBy,
 
             // puntuación
             'scoreGained'      => $scoreGained,
@@ -448,7 +401,8 @@ class PlanController extends AbstractController
         PlanRepository $planRepository,
         StripeProjectCheckoutService $checkoutService,
         CommercialPlanRepository $commercialPlanRepository,
-        MeasureRepository $measureRepository
+        MeasureRepository $measureRepository,
+        EntityManagerInterface $em,
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) return $this->redirectToRoute('app_backend');
@@ -478,6 +432,12 @@ class PlanController extends AbstractController
             $measureRepository
         );
         $hasImplementationActivity = $this->collaborationService->hasImplementationActivity($plan);
+        $gamificationMessage = $this->gamificationService->claimPendingMessageForDisplayWithLock(
+            $em,
+            $plan,
+            $project,
+            null
+        );
 
         return $this->render('backend/plan/done.html.twig', [
             'project' => $project,
@@ -486,6 +446,7 @@ class PlanController extends AbstractController
             'implementationTierLabel' => $this->featureGate->getPlanLabel($project, $implementationPhase),
             'hasImplementationActivity' => $hasImplementationActivity,
             'implementationUpgradeCta' => $implementationUpgradeCta,
+            'gamificationMessage' => $gamificationMessage,
         ]);
     }
 
@@ -512,16 +473,8 @@ class PlanController extends AbstractController
         $this->denyAccessUnlessGranted(PlanVoter::EDIT, $plan);
 
         try {
-            // 1) Eliminar plan (con orphanRemoval, se van PlanMeasure asociados)
             $em->remove($plan);
             $em->flush();
-
-            // 2) Limpiar variables de sesión relacionadas con la navegación por grupos
-            $session   = $request->getSession();
-            $projectId = $project->getId();
-
-            $session->remove(sprintf('plan_prev_group_%d_category', $projectId));
-            $session->remove(sprintf('plan_prev_group_%d_department', $projectId));
 
             $this->addFlash('success', 'backend.plan.flash.deleted');
         } catch (\Throwable $e) {
@@ -921,6 +874,13 @@ class PlanController extends AbstractController
             // Deja el resto en NULL hasta respuesta explícita del usuario
         }
 
+        $gamificationFields = ['decision', 'critical', 'criticalReason', 'critical_reason', 'willImplement'];
+        $samePrimaryDecision = $field === 'decision'
+            && $planMeasure->getPrimaryDecision() === (string) $value;
+        $gamificationBefore = in_array((string) $field, $gamificationFields, true) && !$samePrimaryDecision
+            ? $this->gamificationService->captureTransition($plan, $project, $planMeasure)
+            : null;
+
         // --- Mutaciones por campo ---
         $nextUrl = null;
         $implementedError = null;
@@ -1016,6 +976,10 @@ class PlanController extends AbstractController
 
             case 'decision':
                 $decision = (string) $value;
+                if ($samePrimaryDecision) {
+                    break;
+                }
+
                 if ($decision === 'true' || $decision === 'false') {
                     $planMeasure->setIsApplicable(true);
                     $planMeasure->setWillImplement($decision === 'true');
@@ -1188,6 +1152,17 @@ class PlanController extends AbstractController
         $em->persist($planMeasure);
         $em->flush();
 
+        if ($gamificationBefore !== null && !$samePrimaryDecision) {
+            $this->gamificationService->evaluateWithLock(
+                $em,
+                $plan,
+                $project,
+                $planMeasure,
+                $gamificationBefore,
+                (string) $field
+            );
+        }
+
         // Estado del plan
         $complete = $this->planCompletionService->syncStatus($plan, $project, $measureRepo);
         $em->flush();
@@ -1244,6 +1219,7 @@ class PlanController extends AbstractController
         return new JsonResponse([
             'success' => true,
             'nextUrl' => $nextUrl,
+            'unchangedDecision' => $samePrimaryDecision,
             'implemented' => $planMeasure->isImplemented(),
         ]);
     }

@@ -1051,6 +1051,10 @@ backend:
     tier:
       current: "Current tier"
       phase_current: "%phase% plan: %tier%"
+      level:
+        basic: "Basic"
+        standard: "Standard"
+        pro: "Pro"
       basic_notice: "Available in Standard or Pro to unlock the full catalog and remove the watermark."
       standard_notice: "Available in Pro for advanced features."
       basic_summary: "Includes 50 priority measures."
@@ -1190,9 +1194,6 @@ backend:
       critical_reason_required: "You must write a reason when the measure is critical."
     progress_applicable: "Measure %current% of %total%"
     progress_applicable_details: " · %total% applicable"
-    category:
-      done: "You’ve finished all measures for <strong>%prev%</strong>!"
-      next: "Let’s continue with the category <strong>%next%</strong>"
     measure:
       implementation: "Implementation"
       description: "Description"
@@ -1587,13 +1588,6 @@ backend:
         title: "Score achieved:"
         value: "%gained% of %max% (%pct%)"
         na: "Not available"
-    group:
-        completed:
-            category: "You have completed all the measures in <strong>%prev%</strong>!"
-            department: "You have completed all the measures in the department <strong>%prev%</strong>!"
-        next:
-            category: "Let's continue with the category <strong>%next%</strong>"
-            department: "Let's continue with the department <strong>%next%</strong>"
   emission:
     phase:
       preproduccion: "Pre-production"
