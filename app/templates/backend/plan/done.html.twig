@@ -8,25 +8,258 @@
 {% endblock %}
 
 {% block body %}
+{% set commitment = closureSummary.commitment %}
+{% set plannedCommitment = commitment.planned %}
+{% set measureSummary = closureSummary.measures %}
+{% set pdfActions = [
+  {
+    title: 'backend.plan.closure.pdf_general',
+    help: 'backend.plan.closure.pdf_general_help',
+    icon: 'bi-file-earmark-pdf',
+    feature: closureFeatures.unifiedPdf,
+    href: path('backend_plan_closure_download_pdf')
+  },
+  {
+    title: 'backend.plan.closure.pdf_department',
+    help: 'backend.plan.closure.pdf_department_help',
+    icon: 'bi-diagram-3',
+    feature: closureFeatures.departmentPdf,
+    href: path('backend_plan_closure_export_pdf', {id: plan.id, grouping: 'department'})
+  },
+  {
+    title: 'backend.plan.closure.pdf_triple_balance',
+    help: 'backend.plan.closure.pdf_triple_balance_help',
+    icon: 'bi-circle-square',
+    feature: closureFeatures.tripleBalancePdf,
+    href: path('backend_plan_closure_export_pdf', {id: plan.id, grouping: 'triple_balance'})
+  },
+  {
+    title: 'backend.plan.closure.pdf_ods',
+    help: 'backend.plan.closure.pdf_ods_help',
+    icon: 'bi-globe2',
+    feature: closureFeatures.odsPdf,
+    href: path('backend_plan_closure_export_pdf', {id: plan.id, grouping: 'ods'})
+  },
+  {
+    title: 'backend.plan.closure.pdf_impact_area',
+    help: 'backend.plan.closure.pdf_impact_area_help',
+    icon: 'bi-bullseye',
+    feature: closureFeatures.impactAreaPdf,
+    href: path('backend_plan_closure_export_pdf', {id: plan.id, grouping: 'impact_area'})
+  }
+] %}
+{% set emailCrewMembers = crewMembers|filter(member => member.email|default('')|trim != '') %}
+
 <div class="container-fluid px-0 backend-client-shell">
-  <div class="backend-client-content">
+  <div class="backend-client-content py-2">
     {% include 'backend/plan/_gamification_message.html.twig' %}
 
-    <div class="alert alert-success border-0 shadow-sm mb-4">
-      <h1 class="h3 mb-2">{{ 'backend.plan.done.h1'|trans }}</h1>
-      <p class="lead mb-2">{{ 'backend.plan.done.lead'|trans({'%project%': project.name})|raw }}</p>
-      <span class="badge bg-success-subtle text-success border border-success-subtle">
-        {{ 'backend.plan.tier.phase_current'|trans({'%phase%': 'backend.commercial_phases.elaboration'|trans, '%tier%': elaborationTierLabel}) }}
-      </span>
+    <div class="alert alert-success border-0 shadow-sm mb-3 py-3">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+          <h1 class="h4 mb-1">{{ 'backend.plan.done.h1'|trans }}</h1>
+          <p class="mb-0">{{ 'backend.plan.done.lead'|trans({'%project%': project.name})|raw }}</p>
+        </div>
+        <span class="badge bg-success-subtle text-success border border-success-subtle fs-6 align-self-start">
+          {{ 'backend.plan.tier.phase_current'|trans({
+            '%phase%': 'backend.commercial_phases.elaboration'|trans,
+            '%tier%': elaborationTierLabel
+          }) }}
+        </span>
+      </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
-      <div class="card-body p-4">
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-4">
+    <section class="card border-0 shadow-sm mb-3" aria-labelledby="closure-commitment-title">
+      <div class="card-body p-3">
+        <h2 id="closure-commitment-title" class="h6 mb-2">{{ 'backend.plan.closure.commitment_title'|trans }}</h2>
+        <div class="row row-cols-1 row-cols-md-3 g-2">
+          <div class="col">
+            <div class="h-100 rounded-3 bg-light border px-3 py-2">
+              <div class="small text-muted mb-1">{{ 'backend.plan.closure.points'|trans }}</div>
+              <div class="fs-5 fw-semibold">{{ plannedCommitment.points }} / {{ commitment.totalOfficialPoints }}</div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="h-100 rounded-3 bg-light border px-3 py-2">
+              <div class="small text-muted mb-1">{{ 'backend.plan.closure.percentage'|trans }}</div>
+              <div class="fs-5 fw-semibold">{{ plannedCommitment.percentageRounded }}%</div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="h-100 rounded-3 bg-light border px-3 py-2">
+              <div class="small text-muted mb-1">{{ 'backend.plan.closure.level'|trans }}</div>
+              <div class="fs-5 fw-semibold">{{ plannedCommitment.labelKey|trans }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card border-0 shadow-sm mb-3" aria-labelledby="closure-measures-title">
+      <div class="card-body p-3">
+        <h2 id="closure-measures-title" class="h6 mb-2">{{ 'backend.plan.closure.measures_title'|trans }}</h2>
+        <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-2">
+          {% for item in [
+            {label: 'backend.plan.closure.official_total', value: measureSummary.official, class: 'text-dark'},
+            {label: 'backend.plan.closure.selected', value: measureSummary.selected, class: 'text-success'},
+            {label: 'backend.plan.closure.discarded', value: measureSummary.discarded, class: 'text-secondary'},
+            {label: 'backend.plan.closure.not_applicable', value: measureSummary.notApplicable, class: 'text-warning'},
+            {label: 'backend.plan.closure.critical', value: measureSummary.critical, class: 'text-danger'},
+            {label: 'backend.plan.closure.custom', value: measureSummary.custom, class: 'text-primary'}
+          ] %}
+            <div class="col">
+              <div class="h-100 rounded-3 border px-2 py-2 text-center">
+                <div class="fs-4 fw-bold {{ item.class }}">{{ item.value }}</div>
+                <div class="small text-muted">{{ item.label|trans }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="small text-muted mt-2">{{ 'backend.plan.closure.custom_points_note'|trans }}</div>
+      </div>
+    </section>
+
+    <section class="card border-0 shadow-sm mb-3" aria-labelledby="closure-share-title">
+      <div class="card-body p-3">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-1">
+          <div>
+            <h2 id="closure-share-title" class="small fw-semibold mb-1">{{ 'backend.plan.closure.share_title'|trans }}</h2>
+            <div class="small text-muted">{{ 'backend.plan.closure.share_help'|trans }}</div>
+          </div>
+          <div class="d-flex flex-wrap align-items-center justify-content-lg-end gap-2">
+            <span class="badge bg-light text-dark border">{{ elaborationTierLabel }}</span>
+            {% if elaborationUpgradeCta.mode in ['comparison', 'single'] %}
+              {% include 'backend/plan/_upgrade_cta.html.twig' with {
+                upgradeCta: elaborationUpgradeCta|merge({
+                  buttonLabel: 'backend.plan.upgrade.elaboration'|trans,
+                  buttonClass: 'btn btn-outline-success btn-sm py-1 px-2',
+                  comparisonFrom: 'elaboration_done'
+                }),
+                project: project
+              } %}
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-2">
+          {% for action in pdfActions %}
+            <div class="col">
+              <div class="h-100 border rounded-3 p-2 d-flex flex-column {{ action.feature.enabled ? 'bg-white' : 'bg-light' }}">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                  <span class="d-inline-flex align-items-center justify-content-center fs-5 {{ action.feature.enabled ? 'text-primary' : 'text-muted' }}" aria-hidden="true"><i class="bi {{ action.icon }}"></i></span>
+                  <span class="badge {{ action.feature.enabled ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border' }}">
+                    {{ (action.feature.enabled ? 'backend.plan.closure.available' : 'backend.plan.closure.locked')|trans }}
+                  </span>
+                </div>
+                <h3 class="small fw-semibold mb-1">{{ action.title|trans }}</h3>
+                <p class="small text-muted mb-2">{{ action.help|trans }}</p>
+                <div class="mt-auto">
+                  {% if action.feature.enabled %}
+                    <a
+                      href="{{ action.href }}"
+                      class="btn btn-outline-primary btn-sm py-1 px-2 text-decoration-none"
+                      data-controller="download-state"
+                      data-action="click->download-state#start"
+                      data-download-state-loading-label-value="Generando PDF…">
+                      <i class="bi bi-download me-1" aria-hidden="true"></i>{{ 'backend.plan.closure.download'|trans }}
+                    </a>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary border fw-normal small">
+                      <i class="bi bi-lock me-1" aria-hidden="true"></i>
+                      {{ 'backend.plan.closure.available_from'|trans({
+                        '%tier%': ('backend.plan.tier.level.' ~ action.feature.requiredTier)|trans
+                      }) }}
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+
+          <div class="col">
+            <div class="h-100 border rounded-3 p-2 d-flex flex-column {{ closureFeatures.excel.enabled ? 'bg-white' : 'bg-light' }}">
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                <span class="d-inline-flex align-items-center justify-content-center fs-5 {{ closureFeatures.excel.enabled ? 'text-success' : 'text-muted' }}" aria-hidden="true"><i class="bi bi-file-earmark-excel"></i></span>
+                <span class="badge {{ closureFeatures.excel.enabled ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border' }}">
+                  {{ (closureFeatures.excel.enabled ? 'backend.plan.closure.available' : 'backend.plan.closure.locked')|trans }}
+                </span>
+              </div>
+              <h3 class="small fw-semibold mb-1">{{ 'backend.plan.closure.excel'|trans }}</h3>
+              <p class="small text-muted mb-2">{{ 'backend.plan.closure.excel_help'|trans }}</p>
+              <div class="mt-auto">
+                {% if closureFeatures.excel.enabled %}
+                  <div class="dropdown">
+                    <button class="btn btn-outline-success btn-sm py-1 px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      {{ 'backend.plan.closure.choose_grouping'|trans }}
+                    </button>
+                    <ul class="dropdown-menu">
+                      {% for grouping, label in {
+                        department: 'backend.plan.exports.grouping.department',
+                        triple_balance: 'backend.plan.exports.grouping.triple_balance',
+                        ods: 'backend.plan.exports.grouping.ods',
+                        impact_area: 'backend.plan.exports.grouping.impact_area'
+                      } %}
+                        <li>
+                          <a class="dropdown-item" href="{{ path('backend_plan_closure_export_excel', {id: plan.id, grouping: grouping}) }}">
+                            {{ label|trans }}
+                          </a>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary border fw-normal small">
+                    <i class="bi bi-lock me-1" aria-hidden="true"></i>
+                    {{ 'backend.plan.closure.available_from'|trans({
+                      '%tier%': ('backend.plan.tier.level.' ~ closureFeatures.excel.requiredTier)|trans
+                    }) }}
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="h-100 border rounded-3 p-2 d-flex flex-column {{ closureFeatures.email.enabled ? 'bg-white' : 'bg-light' }}">
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                <span class="d-inline-flex align-items-center justify-content-center fs-5 {{ closureFeatures.email.enabled ? 'text-primary' : 'text-muted' }}" aria-hidden="true"><i class="bi bi-envelope"></i></span>
+                <span class="badge {{ closureFeatures.email.enabled ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border' }}">
+                  {{ (closureFeatures.email.enabled ? 'backend.plan.closure.available' : 'backend.plan.closure.locked')|trans }}
+                </span>
+              </div>
+              <h3 class="small fw-semibold mb-1">{{ 'backend.plan.closure.email_action'|trans }}</h3>
+              <p class="small text-muted mb-2">{{ 'backend.plan.closure.email_help'|trans }}</p>
+              <div class="mt-auto">
+                {% if closureFeatures.email.enabled %}
+                  <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2" data-bs-toggle="modal" data-bs-target="#closureEmailModal">
+                    <i class="bi bi-people me-1" aria-hidden="true"></i>{{ 'backend.plan.closure.email_open'|trans }}
+                  </button>
+                {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary border fw-normal small">
+                    <i class="bi bi-lock me-1" aria-hidden="true"></i>
+                    {{ 'backend.plan.closure.available_from'|trans({
+                      '%tier%': ('backend.plan.tier.level.' ~ closureFeatures.email.requiredTier)|trans
+                    }) }}
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="card border-0 shadow-sm mb-2">
+      <div class="card-body p-3">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
           <div>
             <div class="text-uppercase small text-muted fw-semibold mb-1">{{ 'backend.commercial_phases.implementation'|trans }}</div>
-            <h2 class="h4 mb-2">
-              {{ 'backend.plan.tier.phase_current'|trans({'%phase%': 'backend.commercial_phases.implementation'|trans, '%tier%': implementationTierLabel}) }}
+            <h2 class="h5 mb-1">
+              {{ 'backend.plan.tier.phase_current'|trans({
+                '%phase%': 'backend.commercial_phases.implementation'|trans,
+                '%tier%': ('backend.plan.tier.level.' ~ implementationTier)|trans
+              }) }}
             </h2>
             <span class="badge {{ hasImplementationActivity ? 'bg-warning text-dark' : 'bg-info text-dark' }}">
               {{ hasImplementationActivity
@@ -36,8 +269,8 @@
           </div>
 
           <div class="d-flex flex-column align-items-stretch align-items-lg-end gap-2">
-            <a href="{{ path('backend_plan_review', { state: 'pending' }) }}" class="btn btn-primary text-decoration-none">
-              <i class="bi {{ hasImplementationActivity ? 'bi-arrow-right-circle' : 'bi-play-circle' }} me-1"></i>
+            <a href="{{ path('backend_plan_review', {state: 'pending'}) }}" class="btn btn-primary btn-sm text-decoration-none">
+              <i class="bi {{ hasImplementationActivity ? 'bi-arrow-right-circle' : 'bi-play-circle' }} me-1" aria-hidden="true"></i>
               {{ hasImplementationActivity
                 ? 'backend.plan.done.implementation.continue'|trans
                 : 'backend.plan.done.implementation.open'|trans }}
@@ -47,20 +280,69 @@
               {% include 'backend/plan/_upgrade_cta.html.twig' with {
                 upgradeCta: implementationUpgradeCta|merge({
                   buttonLabel: 'backend.plan.upgrade.implementation'|trans,
-                  buttonClass: 'btn btn-outline-success',
+                  buttonClass: 'btn btn-outline-success btn-sm',
                   comparisonFrom: 'elaboration_done'
                 }),
                 project: project
               } %}
             {% endif %}
 
-            <a href="{{ path('backend_project_billing', {phase: 'implementation', _fragment: 'billing-project-' ~ project.id}) }}" class="btn btn-outline-secondary text-decoration-none">
-              <i class="bi bi-receipt me-1"></i>{{ 'backend.plan.done.implementation.billing'|trans }}
+            <a href="{{ path('backend_project_billing', {phase: 'implementation', _fragment: 'billing-project-' ~ project.id}) }}" class="btn btn-outline-secondary btn-sm text-decoration-none">
+              <i class="bi bi-receipt me-1" aria-hidden="true"></i>{{ 'backend.plan.done.implementation.billing'|trans }}
             </a>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 </div>
+
+{% if closureFeatures.email.enabled %}
+  <div class="modal fade" id="closureEmailModal" tabindex="-1" aria-labelledby="closureEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title h5" id="closureEmailModalLabel">{{ 'backend.plan.closure.email_title'|trans }}</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+        </div>
+        <form method="post" action="{{ path('backend_plan_closure_send_email') }}">
+          <div class="modal-body">
+            <p class="text-muted small">{{ 'backend.plan.closure.email_intro'|trans }}</p>
+            <input type="hidden" name="_token" value="{{ csrf_token('closure_send_plan_email') }}">
+
+            {% if emailCrewMembers is empty %}
+              <div class="alert alert-warning mb-0">{{ 'backend.plan.closure.email_no_crew'|trans }}</div>
+            {% else %}
+              <div class="row row-cols-1 row-cols-md-2 g-2">
+                {% for member in emailCrewMembers %}
+                  <div class="col">
+                    <div class="form-check border rounded-3 p-3 ps-5 h-100">
+                      <input class="form-check-input" type="checkbox" name="crew_ids[]" value="{{ member.id }}" id="closure-crew-{{ member.id }}">
+                      <label class="form-check-label" for="closure-crew-{{ member.id }}">
+                        <span class="d-block fw-semibold">{{ member.name|default(member.email) }} {{ member.lastName|default('') }}</span>
+                        <span class="d-block small text-muted">{{ member.email }}</span>
+                      </label>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ 'backend.common.close'|trans }}</button>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              data-controller="download-state"
+              data-action="click->download-state#start"
+              data-download-state-loading-label-value="Enviando PDF…"
+              {{ emailCrewMembers is empty ? 'disabled' : '' }}>
+              <i class="bi bi-send me-1" aria-hidden="true"></i>{{ 'backend.plan.closure.email_send'|trans }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
 {% endblock %}

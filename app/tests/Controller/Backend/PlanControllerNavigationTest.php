@@ -71,6 +71,46 @@ final class PlanControllerNavigationTest extends KernelTestCase
         ], $filters);
     }
 
+    public function testClosureEmailAttachesGeneralPdfAndPreservesSuccessResult(): void
+    {
+        $controller = $this->getController();
+        $project = (new Project())->setName('Proyecto email');
+        $member = (new \App\Entity\CrewMember())
+            ->setProject($project)
+            ->setName('Ana')
+            ->setEmail('ana@example.test');
+        $mailer = $this->createMock(\Symfony\Component\Mailer\MailerInterface::class);
+        $mailer->expects(self::once())
+            ->method('send')
+            ->with(self::callback(static function (\Symfony\Component\Mime\RawMessage $message): bool {
+                if (!$message instanceof \Symfony\Component\Mime\Email) {
+                    return false;
+                }
+
+                $attachments = $message->getAttachments();
+
+                return count($attachments) === 1
+                    && $attachments[0]->getPreparedHeaders()->getHeaderParameter(
+                        'Content-Disposition',
+                        'filename'
+                    ) === 'plan.pdf';
+            }));
+
+        $method = new \ReflectionMethod($controller, 'sendPlanPdfEmails');
+        $method->setAccessible(true);
+        $result = $method->invoke(
+            $controller,
+            [$member],
+            '%PDF-closure',
+            'plan.pdf',
+            $project,
+            $mailer,
+            self::getContainer()->get('translator')
+        );
+
+        self::assertSame([1, 0], $result);
+    }
+
     public function testReviewInlineFieldsUseImplementationPhase(): void
     {
         $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
@@ -115,6 +155,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
     public function testDoneRedirectsToMeasuresWhenCustomMeasuresStepIsPending(): void
     {
         $controller = $this->getController();
+        $this->setAdminToken();
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
         $plan = (new Plan())
             ->setProject($project)
@@ -125,6 +166,57 @@ final class PlanControllerNavigationTest extends KernelTestCase
             $this->createActiveProjectServiceMock($project),
             $this->createPlanRepositoryMock($plan),
             (new \ReflectionClass(\App\Service\StripeProjectCheckoutService::class))->newInstanceWithoutConstructor(),
+            self::getContainer()->get(CommercialPlanRepository::class),
+            self::getContainer()->get(MeasureRepository::class),
+            $this->createMock(EntityManagerInterface::class)
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/plan/measures', (string) $response->headers->get('Location'));
+    }
+
+    public function testDoneRequiresProjectAndPlanViewPermission(): void
+    {
+        $controller = $this->getController();
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $this->setEntityId($project, 991);
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setStatus('completo')
+            ->markCustomMeasuresCompleted();
+
+        $user = (new User())->setEmail('non-member@example.test');
+        $this->setEntityId($user, 992);
+        self::getContainer()->get('security.token_storage')->setToken(
+            new UsernamePasswordToken($user, 'main', ['ROLE_USER'])
+        );
+
+        $this->expectException(\Symfony\Component\Security\Core\Exception\AccessDeniedException::class);
+        $controller->done(
+            $this->createActiveProjectServiceMock($project),
+            $this->createPlanRepositoryMock($plan),
+            $this->newStripeCheckoutServiceStub(),
+            self::getContainer()->get(CommercialPlanRepository::class),
+            self::getContainer()->get(MeasureRepository::class),
+            $this->createMock(EntityManagerInterface::class)
+        );
+    }
+
+    public function testDoneRequiresACompletePlan(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setStatus('incompleto');
+
+        $response = $controller->done(
+            $this->createActiveProjectServiceMock($project),
+            $this->createPlanRepositoryMock($plan),
+            $this->newStripeCheckoutServiceStub(),
             self::getContainer()->get(CommercialPlanRepository::class),
             self::getContainer()->get(MeasureRepository::class),
             $this->createMock(EntityManagerInterface::class)
@@ -243,8 +335,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ],
         ]);
 
-        self::assertStringContainsString('Ir al cierre de Elaboración', $emptyHtml);
-        self::assertStringContainsString('Ir al cierre de Elaboración', $filledHtml);
+        self::assertStringContainsString('Finalizar Elaboración y ver resumen', $emptyHtml);
+        self::assertStringContainsString('Finalizar Elaboración y ver resumen', $filledHtml);
 
         $requestStack->pop();
     }
@@ -695,6 +787,68 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/measures', (string) $response->headers->get('Location'));
         self::assertStringContainsString('i=1', (string) $response->headers->get('Location'));
         self::assertStringNotContainsString('only_pending=1', (string) $response->headers->get('Location'));
+    }
+
+    public function testReviewDoesNotProcessLegacySendEtEmailsAction(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD)
+            ->setType(Protocol::TYPE_RODAJE);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $measure = (new Measure())
+            ->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)
+            ->setName('Medida completa');
+        $this->setEntityId($measure, 903);
+
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol)
+            ->setStatus('completo')
+            ->markCustomMeasuresCompleted();
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($measure)
+                ->setIsApplicable(true)
+                ->setIsCritical(false)
+                ->setWillImplement(true)
+                ->markAsManual()
+        );
+
+        $measureRepository = $this->createMock(MeasureRepository::class);
+        $measureRepository->expects(self::once())
+            ->method('createQueryBuilder')
+            ->willThrowException(new \LogicException('review continued normally'));
+        $protocolRepository = $this->createMock(\App\Repository\ProtocolRepository::class);
+        $protocolRepository->method('getNamesForProjectType')->willReturn([]);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('flush');
+        $mailer = $this->createMock(\Symfony\Component\Mailer\MailerInterface::class);
+        $mailer->expects(self::never())->method('send');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('review continued normally');
+
+        $controller->review(
+            $this->createRequest(['action' => 'send' . '_et_' . 'emails']),
+            $this->createActiveProjectServiceMock($project),
+            $this->createPlanRepositoryMock($plan),
+            $measureRepository,
+            $protocolRepository,
+            $this->createMock(CommercialPlanRepository::class),
+            $this->newStripeCheckoutServiceStub(),
+            $entityManager,
+            $mailer,
+            $this->createMock(\Symfony\Contracts\Translation\TranslatorInterface::class)
+        );
     }
 
     public function testUpdateSelectionIgnoresInternalNotesWhenFeatureIsUnavailable(): void

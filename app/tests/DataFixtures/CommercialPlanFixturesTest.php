@@ -116,12 +116,20 @@ final class CommercialPlanFixturesTest extends TestCase
             'implementation:pro' => 'price_1Ttu8IRudvqjmqq9DxbI41sP',
         ], $stripeUpgradePriceIds);
 
+        $elaborationPlans = [];
         $implementationPlans = [];
         foreach ($persistedPlans as $plan) {
+            if ($plan->getPhase() === CommercialPhase::ELABORATION) {
+                $elaborationPlans[$plan->getCode()] = $plan;
+            }
             if ($plan->getPhase() === CommercialPhase::IMPLEMENTATION) {
                 $implementationPlans[$plan->getCode()] = $plan;
             }
         }
+
+        self::assertFalse($elaborationPlans['basic']->getFeature('sustainability_plan.export.email'));
+        self::assertTrue($elaborationPlans['standard']->getFeature('sustainability_plan.export.email'));
+        self::assertTrue($elaborationPlans['pro']->getFeature('sustainability_plan.export.email'));
 
         self::assertTrue($implementationPlans['basic']->getFeature('sustainability_plan.evidence_upload'));
         self::assertFalse($implementationPlans['basic']->getFeature('sustainability_plan.checklist'));

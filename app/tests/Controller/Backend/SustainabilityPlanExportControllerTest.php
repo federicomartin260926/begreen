@@ -30,6 +30,32 @@ final class SustainabilityPlanExportControllerTest extends TestCase
         self::assertTrue($this->invokeExportAllowed($controller, $project, 'category', 'excel'));
     }
 
+    public function testClosureExportsUseElaborationPhaseAndExpectedMatrix(): void
+    {
+        $controller = $this->makeControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
+
+        $basic = $this->makeProjectWithTiers(ProjectSubscription::TIER_BASIC, ProjectSubscription::TIER_PRO);
+        self::assertFalse($this->invokeClosureExportAllowed($controller, $basic, 'department', 'pdf'));
+        self::assertFalse($this->invokeClosureExportAllowed($controller, $basic, 'ods', 'pdf'));
+        self::assertFalse($this->invokeClosureExportAllowed($controller, $basic, 'department', 'excel'));
+
+        $standard = $this->makeProjectWithTiers(ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO);
+        self::assertTrue($this->invokeClosureExportAllowed($controller, $standard, 'department', 'pdf'));
+        self::assertFalse($this->invokeClosureExportAllowed($controller, $standard, 'triple_balance', 'pdf'));
+        self::assertFalse($this->invokeClosureExportAllowed($controller, $standard, 'department', 'excel'));
+
+        $pro = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_BASIC);
+        foreach (['department', 'triple_balance', 'ods', 'impact_area'] as $grouping) {
+            self::assertTrue($this->invokeClosureExportAllowed($controller, $pro, $grouping, 'pdf'));
+            self::assertTrue($this->invokeClosureExportAllowed($controller, $pro, $grouping, 'excel'));
+        }
+
+        self::assertFalse($this->invokeClosureExportAllowed($controller, $pro, 'category', 'pdf'));
+        self::assertFalse($this->invokeClosureExportAllowed($controller, $pro, 'category', 'excel'));
+    }
+
     private function makeControllerWithFeatureGate(ProjectFeatureGate $featureGate): SustainabilityPlanExportController
     {
         $reflection = new \ReflectionClass(SustainabilityPlanExportController::class);
@@ -53,5 +79,24 @@ final class SustainabilityPlanExportControllerTest extends TestCase
         $reflection->setAccessible(true);
 
         return (bool) $reflection->invoke($controller, $project, $grouping, $format);
+    }
+
+    private function invokeClosureExportAllowed(
+        SustainabilityPlanExportController $controller,
+        Project $project,
+        string $grouping,
+        string $format
+    ): bool {
+        $reflection = new \ReflectionMethod($controller, 'isExportAllowed');
+        $reflection->setAccessible(true);
+
+        return (bool) $reflection->invoke(
+            $controller,
+            $project,
+            $grouping,
+            $format,
+            CommercialPhase::ELABORATION,
+            true
+        );
     }
 }

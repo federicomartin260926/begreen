@@ -15,6 +15,8 @@ use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanCustomMeasureService;
 use App\Service\PlanMeasureOperationalStateResolver;
 use App\Service\SustainabilityCommitmentLevelService;
+use App\Service\SustainabilityPlanClosureSummaryService;
+use App\Service\SustainabilityPlanClosureEmailRecipientResolver;
 use App\Service\SustainabilityGamificationService;
 use App\Service\ProjectFeatureGate;
 use App\Service\StripeProjectCheckoutService;
@@ -68,6 +70,7 @@ class PlanController extends AbstractController
         private SustainabilityPlanCustomMeasureService $customMeasureService,
         private PlanMeasureOperationalStateResolver $operationalStateResolver,
         private SustainabilityCommitmentLevelService $commitmentLevelService,
+        private SustainabilityPlanClosureSummaryService $closureSummaryService,
         private SustainabilityGamificationService $gamificationService,
     ) {}
 
@@ -412,6 +415,9 @@ class PlanController extends AbstractController
             return $this->redirectToRoute('backend_plan_welcome');
         }
 
+        $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+        $this->denyAccessUnlessGranted(PlanVoter::VIEW, $plan);
+
         if ($plan instanceof Plan && $this->shouldShowCustomMeasuresStep($plan)) {
             return $this->redirectToRoute('backend_plan_measures');
         }
@@ -421,7 +427,28 @@ class PlanController extends AbstractController
         }
 
         $implementationPhase = CommercialPhase::IMPLEMENTATION;
+        $elaborationPhase = CommercialPhase::ELABORATION;
         $implementationTier = $this->featureGate->getTier($project, $implementationPhase);
+        $elaborationTier = $this->featureGate->getTier($project, $elaborationPhase);
+        $closureSummary = $this->closureSummaryService->buildSummary($plan, $project);
+        $closureFeatures = [
+            'unifiedPdf' => $this->featureGate->getFeatureState($project, $elaborationPhase, 'sustainability_plan.unified_pdf'),
+            'departmentPdf' => $this->featureGate->getFeatureState($project, $elaborationPhase, 'sustainability_plan.export.department_pdf'),
+            'tripleBalancePdf' => $this->featureGate->getFeatureState($project, $elaborationPhase, 'sustainability_plan.export.triple_balance'),
+            'odsPdf' => $this->featureGate->getFeatureState($project, $elaborationPhase, 'sustainability_plan.export.ods'),
+            'impactAreaPdf' => $this->featureGate->getFeatureState($project, $elaborationPhase, 'sustainability_plan.export.impact_area'),
+            'excel' => $this->featureGate->getFeatureState($project, $elaborationPhase, 'sustainability_plan.export.excel'),
+            'email' => $this->featureGate->getFeatureState($project, $elaborationPhase, 'sustainability_plan.export.email'),
+        ];
+        $elaborationUpgradeCta = $this->buildUpgradeCta(
+            $project,
+            $plan,
+            $elaborationPhase,
+            $elaborationTier,
+            $checkoutService->getAvailableUpgradeTargets($project, $elaborationPhase),
+            $commercialPlanRepository,
+            $measureRepository
+        );
         $implementationUpgradeCta = $this->buildUpgradeCta(
             $project,
             $plan,
@@ -441,12 +468,18 @@ class PlanController extends AbstractController
 
         return $this->render('backend/plan/done.html.twig', [
             'project' => $project,
-            'elaborationTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
+            'plan' => $plan,
+            'elaborationTier' => $elaborationTier,
+            'elaborationTierLabel' => $this->t->trans('backend.plan.tier.level.' . $elaborationTier),
+            'closureSummary' => $closureSummary,
+            'closureFeatures' => $closureFeatures,
+            'elaborationUpgradeCta' => $elaborationUpgradeCta,
             'implementationTier' => $implementationTier,
             'implementationTierLabel' => $this->featureGate->getPlanLabel($project, $implementationPhase),
             'hasImplementationActivity' => $hasImplementationActivity,
             'implementationUpgradeCta' => $implementationUpgradeCta,
             'gamificationMessage' => $gamificationMessage,
+            'crewMembers' => $project->getCrewMembers(),
         ]);
     }
 
@@ -539,24 +572,6 @@ class PlanController extends AbstractController
 
         // Protocolos válidos para el tipo
         $protocols = $protocolRepository->getNamesForProjectType($project->getType());
-
-        // --- POST: envío emails ET con PDF adjunto (solo si plan completo) ---
-        if ($request->isMethod('POST') && $request->request->get('action') === 'send_et_emails') {
-            $redirect = $this->handleSendEtEmails(
-                $request,
-                $activeProjectService,
-                $planRepository,
-                $measureRepository,
-                $protocolRepository,
-                $em,
-                $mailer,
-                $project,
-                $translator
-            );
-            if ($redirect) {
-                return $redirect;
-            }
-        }
 
         // --- Filtros por GET ---
         $protocol         = $request->query->get('protocol');
@@ -1224,104 +1239,41 @@ class PlanController extends AbstractController
         ]);
     }
 
-    private function handleSendEtEmails(
-        Request $request,
-        ActiveProjectService $activeProjectService,
-        PlanRepository $planRepository,
-        MeasureRepository $measureRepository,
-        ProtocolRepository $protocolRepository,
-        EntityManagerInterface $em,
+    /**
+     * @param CrewMember[] $members
+     * @return array{0:int, 1:int}
+     */
+    private function sendPlanPdfEmails(
+        array $members,
+        string $pdfBytes,
+        string $filename,
+        Project $project,
         MailerInterface $mailer,
-        $project,
         TranslatorInterface $translator
-    ) {
-        $selectedIds = $request->request->all('crew_ids') ?? [];
-
-        if (!$selectedIds || count($selectedIds) === 0) {
-            $this->addFlash('warning', 'backend.plan.email.select_member');
-            return $this->redirectToRoute('backend_plan_review', $request->query->all());
-        }
-
-        // Filtros del formulario (hidden en el modal)
-        $filters = [
-            'protocol'          => $request->request->get('filter_protocol'),
-            'category'          => $request->request->get('filter_category'),
-            'department'        => $request->request->get('filter_department'),
-            'ods'               => $request->request->get('filter_ods'),
-            'esg'               => $request->request->get('filter_esg'),
-            'is_applicable'     => $request->request->get('filter_is_applicable'),
-            'will_implement'    => $request->request->get('filter_will_implement'),
-            'pending_selection' => $request->request->get('filter_pending_selection'),
-            'only_implemented'  => $request->request->get('filter_only_implemented'),
-        ];
-
-        // Generar PDF una sola vez
-        $pdfBytes = $this->buildPdfBytesForFilters(
-            $activeProjectService,
-            $planRepository,
-            $measureRepository,
-            $protocolRepository,
-            $filters,
-            $em,
-            $translator
-        );
-
-        // Miembros seleccionados
-        $crewRepo = $em->getRepository(CrewMember::class);
-        $members = $crewRepo->createQueryBuilder('c')
-            ->andWhere('c.project = :project')
-            ->andWhere('c.id IN (:ids)')
-            ->setParameter('project', $project)
-            ->setParameter('ids', array_map('intval', $selectedIds))
-            ->getQuery()
-            ->getResult();
-
-        if (!$members) {
-            $this->addFlash('warning', 'backend.plan.email.members_not_found');
-            return $this->redirectToRoute('backend_plan_review', $request->query->all());
-        }
-
+    ): array {
         $from = $this->getParameter('app.mail_from') ?? 'no-reply@begreenmyfriend.local';
-        $slugger = new AsciiSlugger();
         $projectName = (string) $project->getName();
-        $projectSlug = $slugger->slug(mb_substr($projectName, 0, 60))->lower();
-        $dateIso     = (new \DateTimeImmutable())->format('Y-m-d');
+        $subject = $translator->trans('backend.plan.email.subject', ['%project%' => $projectName]);
+        $ok = 0;
+        $fail = 0;
 
-        // Basename localizado (sin extensión)
-        $basename = $translator->trans('backend.plan.email.attachment_basename', [
-            '%project%' => $projectName,
-            '%project_slug%' => $projectSlug,
-            '%date%'    => $dateIso
-        ]);
+        foreach ($members as $member) {
+            $to = trim((string) $member->getEmail());
+            if ($to === '' || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+                $fail++;
+                continue;
+            }
 
-        // Asegurar nombre “safe” para el header (slug si el traduce con acentos)
-        $basenameSafe = (string) $slugger->slug($basename)->lower();
-        $filename = $basenameSafe . '.pdf';
-
-        // Textos comunes traducidos
-        $subjectTpl = $translator->trans('backend.plan.email.subject', [
-            '%project%' => $projectName,
-        ]);
-
-        $ok = 0; $fail = 0;
-
-        foreach ($members as $m) {
-            $to = trim((string) $m->getEmail());
-            if (!$to) { $fail++; continue; }
-
-            $displayName = trim((string) ($m->getName() ?? ''));
+            $displayName = trim((string) ($member->getName() ?? ''));
             if ($displayName === '') {
-                // nombre a partir del email (antes de @), como fallback
                 $displayName = strtok($to, '@') ?: $to;
             }
 
-            // Cuerpos traducidos
-            $greeting   = $translator->trans('backend.plan.email.greeting', ['%name%' => $displayName]);
-            $intro      = $translator->trans('backend.plan.email.intro',    ['%project%' => $projectName]);
-            $closing    = $translator->trans('backend.plan.email.closing');
-
+            $greeting = $translator->trans('backend.plan.email.greeting', ['%name%' => $displayName]);
+            $intro = $translator->trans('backend.plan.email.intro', ['%project%' => $projectName]);
+            $closing = $translator->trans('backend.plan.email.closing');
             $plain = $greeting . "\n\n" . $intro . "\n\n" . $closing;
-            $html  = sprintf(
+            $html = sprintf(
                 '<p>%s</p><p>%s</p><p>%s</p>',
                 htmlspecialchars($greeting, ENT_QUOTES),
                 htmlspecialchars($intro, ENT_QUOTES),
@@ -1329,25 +1281,36 @@ class PlanController extends AbstractController
             );
 
             try {
-                $email = (new Email())
-                    ->from($from)
-                    ->to($to)
-                    ->subject($subjectTpl)
-                    ->text($plain)
-                    ->html($html)
-                    ->attach($pdfBytes, $filename, 'application/pdf');
-
-                $mailer->send($email);
+                $mailer->send(
+                    (new Email())
+                        ->from($from)
+                        ->to($to)
+                        ->subject($subject)
+                        ->text($plain)
+                        ->html($html)
+                        ->attach($pdfBytes, $filename, 'application/pdf')
+                );
                 $ok++;
-            } catch (\Throwable $e) {
+            } catch (\Throwable) {
                 $fail++;
             }
         }
 
-        if ($ok > 0)  { $this->addFlash('success', 'backend.plan.email.sent_ok'); }
-        if ($fail > 0){ $this->addFlash('danger',  'backend.plan.email.sent_fail'); }
+        return [$ok, $fail];
+    }
 
-        return $this->redirectToRoute('backend_plan_review', $request->query->all());
+    private function buildEmailAttachmentFilename(Project $project, TranslatorInterface $translator): string
+    {
+        $slugger = new AsciiSlugger();
+        $projectName = (string) $project->getName();
+        $projectSlug = $slugger->slug(mb_substr($projectName, 0, 60))->lower();
+        $basename = $translator->trans('backend.plan.email.attachment_basename', [
+            '%project%' => $projectName,
+            '%project_slug%' => $projectSlug,
+            '%date%' => (new \DateTimeImmutable())->format('Y-m-d'),
+        ]);
+
+        return (string) $slugger->slug($basename)->lower() . '.pdf';
     }
 
     private function isReviewInlineFieldAllowed(Project $project, string $field): bool
@@ -1648,6 +1611,116 @@ class PlanController extends AbstractController
         ]);
     }
 
+    #[Route('/closure/download', name: 'closure_download_pdf', methods: ['GET'])]
+    public function downloadClosurePdf(
+        ActiveProjectService $activeProjectService,
+        PlanRepository $planRepository,
+        MeasureRepository $measureRepository,
+        ProtocolRepository $protocolRepository,
+        EntityManagerInterface $em,
+        Request $request,
+        TranslatorInterface $translator
+    ): Response {
+        return $this->handlePreviewOrDownload(
+            activeProjectService: $activeProjectService,
+            planRepository: $planRepository,
+            measureRepository: $measureRepository,
+            protocolRepository: $protocolRepository,
+            em: $em,
+            request: $request,
+            asPdf: true,
+            translator: $translator,
+            phase: CommercialPhase::ELABORATION,
+            requireClosure: true,
+            forcedFilters: ['state' => PlanMeasureOperationalStateResolver::ALL]
+        );
+    }
+
+    #[Route('/done/email', name: 'closure_send_email', methods: ['POST'])]
+    public function sendClosureEmail(
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        PlanRepository $planRepository,
+        MeasureRepository $measureRepository,
+        ProtocolRepository $protocolRepository,
+        EntityManagerInterface $em,
+        MailerInterface $mailer,
+        TranslatorInterface $translator,
+        SustainabilityPlanClosureEmailRecipientResolver $recipientResolver
+    ): Response {
+        $project = $activeProjectService->getActiveProject();
+        if (!$project) {
+            return $this->redirectToRoute('app_backend');
+        }
+
+        $plan = $planRepository->findOneBy(['project' => $project]);
+        if (!$plan instanceof Plan) {
+            return $this->redirectToRoute('backend_plan_welcome');
+        }
+
+        $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+        $this->denyAccessUnlessGranted(PlanVoter::VIEW, $plan);
+
+        if ($plan->getStatus() !== 'completo' || $plan->getCustomMeasuresCompletedAt() === null) {
+            return $this->redirectToRoute('backend_plan_measures');
+        }
+
+        if (!$this->featureGate->canUseFeature(
+            $project,
+            CommercialPhase::ELABORATION,
+            'sustainability_plan.export.email'
+        )) {
+            $this->addFlash('info', 'backend.plan.closure.feature_unavailable');
+            return $this->redirectToRoute('backend_plan_done');
+        }
+
+        if (!$this->isCsrfTokenValid('closure_send_plan_email', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'backend.plan.closure.email.invalid_csrf');
+            return $this->redirectToRoute('backend_plan_done');
+        }
+
+        try {
+            $members = $recipientResolver->resolve($project, $request->request->all('crew_ids'));
+        } catch (\InvalidArgumentException) {
+            $this->addFlash('danger', 'backend.plan.closure.email.invalid_recipients');
+            return $this->redirectToRoute('backend_plan_done');
+        }
+
+        if ($members === []) {
+            $this->addFlash('warning', 'backend.plan.email.select_member');
+            return $this->redirectToRoute('backend_plan_done');
+        }
+
+        $pdfBytes = $this->buildPdfBytesForFilters(
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $protocolRepository,
+            ['state' => PlanMeasureOperationalStateResolver::ALL],
+            $em,
+            $translator,
+            CommercialPhase::ELABORATION
+        );
+
+        [$ok, $fail] = $this->sendPlanPdfEmails(
+            $members,
+            $pdfBytes,
+            $this->buildEmailAttachmentFilename($project, $translator),
+            $project,
+            $mailer,
+            $translator
+        );
+
+        if ($ok > 0) {
+            $this->addFlash('success', 'backend.plan.email.sent_ok');
+        }
+        if ($fail > 0) {
+            $this->addFlash('danger', 'backend.plan.email.sent_fail');
+        }
+
+        return $this->redirectToRoute('backend_plan_done');
+    }
+
     #[Route('/download', name: 'download_pdf', methods: ['GET'])]
     public function downloadPdf(
         ActiveProjectService $activeProjectService,
@@ -1704,7 +1777,10 @@ class PlanController extends AbstractController
         EntityManagerInterface $em,
         Request $request,
         bool $asPdf,
-        TranslatorInterface $translator
+        TranslatorInterface $translator,
+        CommercialPhase $phase = CommercialPhase::IMPLEMENTATION,
+        bool $requireClosure = false,
+        ?array $forcedFilters = null
     ): Response {
         // --- Guards de acceso y estado ---
         $project = $activeProjectService->getActiveProject();
@@ -1726,18 +1802,39 @@ class PlanController extends AbstractController
         // Debe poder ver el plan
         $this->denyAccessUnlessGranted(PlanVoter::VIEW, $plan);
 
+        if ($requireClosure && $plan->getCustomMeasuresCompletedAt() === null) {
+            return $this->redirectToRoute('backend_plan_measures');
+        }
+
+        if ($requireClosure && !$this->featureGate->canUseFeature(
+            $project,
+            CommercialPhase::ELABORATION,
+            'sustainability_plan.unified_pdf'
+        )) {
+            $this->addFlash('info', 'backend.plan.closure.feature_unavailable');
+            return $this->redirectToRoute('backend_plan_done');
+        }
+
         // 1) Leer filtros de la query
         $filters = [
             'protocol'           => $request->query->get('protocol'),
             'category'           => $request->query->get('category'),
             'department'         => $request->query->get('department'),
             'ods'                => $request->query->get('ods'),
+            'impact_area'        => $request->query->get('impact_area'),
+            'triple_balance_axis'=> $request->query->get('triple_balance_axis'),
+            'scope'              => $request->query->get('scope'),
             'esg'                => $request->query->get('esg'),
             'is_applicable'      => $request->query->get('is_applicable'),
             'will_implement'     => $request->query->get('will_implement'),
             'pending_selection'  => $request->query->get('pending_selection'),
             'only_implemented'   => $request->query->get('only_implemented'),
+            'state'              => $request->query->get('state'),
+            'is_critical'        => $request->query->get('is_critical'),
         ];
+        if ($forcedFilters !== null) {
+            $filters = array_replace($filters, $forcedFilters);
+        }
 
         // 2) Construir contexto unificado
         $ctx = $this->buildPdfContext(
@@ -1747,7 +1844,8 @@ class PlanController extends AbstractController
             protocolRepository:   $protocolRepository,
             em:                   $em,
             filters:              $filters,
-            translator:           $translator
+            translator:           $translator,
+            phase:                $phase
         );
 
         if ($asPdf) {
@@ -1800,7 +1898,8 @@ class PlanController extends AbstractController
         ProtocolRepository $protocolRepository,
         array $filters,
         EntityManagerInterface $em,
-        TranslatorInterface $translator
+        TranslatorInterface $translator,
+        CommercialPhase $phase = CommercialPhase::IMPLEMENTATION
     ): string {
         $ctx  = $this->buildPdfContext(
             $activeProjectService,
@@ -1810,7 +1909,8 @@ class PlanController extends AbstractController
             $em,
             $filters,
             $translator,
-            true
+            true,
+            $phase
         );
         $html = $this->renderPdfHtml($ctx);
         return $this->pdfBytesFromHtml($html);
@@ -1910,7 +2010,8 @@ class PlanController extends AbstractController
         EntityManagerInterface $em,
         array $filters,
         TranslatorInterface $translator,
-        bool $useDepartmentActionText = false
+        bool $useDepartmentActionText = false,
+        CommercialPhase $phase = CommercialPhase::IMPLEMENTATION
     ): array {
         $project = $activeProjectService->getActiveProject();
         if (!$project) throw $this->createNotFoundException('backend.projects.flash.no_active');
@@ -2027,17 +2128,17 @@ class PlanController extends AbstractController
         }
 
         $activeFilters = array_merge($activeMain, $activeFlags);
-        $projectTierLabel = $this->featureGate->getPlanLabel($project, CommercialPhase::IMPLEMENTATION);
-        $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::IMPLEMENTATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        $projectTierLabel = $this->featureGate->getPlanLabel($project, $phase);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project, $phase) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         return [
             'project'        => $project,
             'plan'           => $plan,
-            'projectTier'    => $this->featureGate->getTier($project, CommercialPhase::IMPLEMENTATION),
+            'projectTier'    => $this->featureGate->getTier($project, $phase),
             'projectTierLabel'=> $projectTierLabel,
             'projectTierSummary'=> $projectTierSummary,
             'currentUserLabel'=> $this->buildCurrentUserLabel(),
-            'hasWatermark'   => $this->featureGate->hasWatermark($project, CommercialPhase::IMPLEMENTATION),
+            'hasWatermark'   => $this->featureGate->hasWatermark($project, $phase),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),

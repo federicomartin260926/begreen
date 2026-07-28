@@ -136,7 +136,7 @@ final class CommercialPlanComparisonBuilder
             $this->staticRow('concurrent_projects', 'backend.commercial_plan_comparison.elaboration.concurrent_projects', ['basic' => 'unlimited', 'standard' => 'unlimited', 'pro' => 'unlimited']),
             $this->featureRow('custom_measure', 'backend.commercial_plan_comparison.elaboration.custom_measure', $plans, 'sustainability_plan.custom_measures'),
             $this->staticRow('recover_measure', 'backend.commercial_plan_comparison.elaboration.recover_measure', ['basic' => 'no', 'standard' => 'yes', 'pro' => 'yes']),
-            $this->staticRow('email_pdf', 'backend.commercial_plan_comparison.elaboration.email_pdf', ['basic' => 'no', 'standard' => 'elaboration.email_standard', 'pro' => 'elaboration.email_pro']),
+            $this->featureRow('email_pdf', 'backend.commercial_plan_comparison.elaboration.email_pdf', $plans, 'sustainability_plan.export.email'),
             $this->featureRow('history', 'backend.commercial_plan_comparison.elaboration.history', $plans, 'sustainability_plan.history'),
             $this->staticRow('level_alerts', 'backend.commercial_plan_comparison.elaboration.level_alerts', ['basic' => 'no', 'standard' => 'email', 'pro' => 'email_in_app']),
             $this->featureRow('excel', 'backend.commercial_plan_comparison.elaboration.excel', $plans, 'sustainability_plan.export.excel'),

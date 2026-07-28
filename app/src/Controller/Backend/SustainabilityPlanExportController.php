@@ -27,6 +27,7 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 final class SustainabilityPlanExportController extends AbstractController
 {
     private const VALID_GROUPINGS = ['category', 'department', 'impact_area', 'triple_balance', 'ods'];
+    private const CLOSURE_GROUPINGS = ['department', 'impact_area', 'triple_balance', 'ods'];
 
     public function __construct(
         private readonly ProjectFeatureGate $featureGate,
@@ -43,6 +44,37 @@ final class SustainabilityPlanExportController extends AbstractController
         Plan $plan,
         string $grouping,
         ActiveProjectService $activeProjectService
+    ): Response {
+        return $this->downloadPdfForPhase(
+            $plan,
+            $grouping,
+            $activeProjectService,
+            CommercialPhase::IMPLEMENTATION,
+            false
+        );
+    }
+
+    #[Route('/{id}/closure/export/{grouping}/pdf', name: 'closure_export_pdf', methods: ['GET'])]
+    public function downloadClosurePdf(
+        Plan $plan,
+        string $grouping,
+        ActiveProjectService $activeProjectService
+    ): Response {
+        return $this->downloadPdfForPhase(
+            $plan,
+            $grouping,
+            $activeProjectService,
+            CommercialPhase::ELABORATION,
+            true
+        );
+    }
+
+    private function downloadPdfForPhase(
+        Plan $plan,
+        string $grouping,
+        ActiveProjectService $activeProjectService,
+        CommercialPhase $phase,
+        bool $closure
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) {
@@ -63,9 +95,15 @@ final class SustainabilityPlanExportController extends AbstractController
             return $this->redirectToRoute('backend_plan_measures');
         }
 
-        if (!$this->isExportAllowed($project, $grouping, 'pdf')) {
+        if ($closure && $plan->getCustomMeasuresCompletedAt() === null) {
+            return $this->redirectToRoute('backend_plan_measures');
+        }
+
+        if (!$this->isExportAllowed($project, $grouping, 'pdf', $phase, $closure)) {
             $this->addFlash('info', $this->translator->trans($this->blockedMessageKey($grouping, 'pdf')));
-            return $this->redirectToRoute('backend_plan_review', [
+            return $closure
+                ? $this->redirectToRoute('backend_plan_done')
+                : $this->redirectToRoute('backend_plan_review', [
                 'is_applicable' => '1',
                 'will_implement' => '1',
             ]);
@@ -78,10 +116,10 @@ final class SustainabilityPlanExportController extends AbstractController
             'grouping' => $grouping,
             'groupingLabel' => $this->groupingService->getGroupingLabel($grouping),
             'groups' => $groups,
-            'projectTier' => $this->featureGate->getTier($project, CommercialPhase::IMPLEMENTATION),
-            'projectTierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::IMPLEMENTATION),
+            'projectTier' => $this->featureGate->getTier($project, $phase),
+            'projectTierLabel' => $this->featureGate->getPlanLabel($project, $phase),
             'generatedAt' => new \DateTimeImmutable(),
-            'hasWatermark' => $this->featureGate->hasWatermark($project, CommercialPhase::IMPLEMENTATION),
+            'hasWatermark' => $this->featureGate->hasWatermark($project, $phase),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
         ]);
 
@@ -103,6 +141,37 @@ final class SustainabilityPlanExportController extends AbstractController
         string $grouping,
         ActiveProjectService $activeProjectService
     ): Response {
+        return $this->downloadExcelForPhase(
+            $plan,
+            $grouping,
+            $activeProjectService,
+            CommercialPhase::IMPLEMENTATION,
+            false
+        );
+    }
+
+    #[Route('/{id}/closure/export/{grouping}/excel', name: 'closure_export_excel', methods: ['GET'])]
+    public function downloadClosureExcel(
+        Plan $plan,
+        string $grouping,
+        ActiveProjectService $activeProjectService
+    ): Response {
+        return $this->downloadExcelForPhase(
+            $plan,
+            $grouping,
+            $activeProjectService,
+            CommercialPhase::ELABORATION,
+            true
+        );
+    }
+
+    private function downloadExcelForPhase(
+        Plan $plan,
+        string $grouping,
+        ActiveProjectService $activeProjectService,
+        CommercialPhase $phase,
+        bool $closure
+    ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) {
             $this->addFlash('warning', 'backend.projects.flash.no_active');
@@ -122,9 +191,15 @@ final class SustainabilityPlanExportController extends AbstractController
             return $this->redirectToRoute('backend_plan_measures');
         }
 
-        if (!$this->isExportAllowed($project, $grouping, 'excel')) {
+        if ($closure && $plan->getCustomMeasuresCompletedAt() === null) {
+            return $this->redirectToRoute('backend_plan_measures');
+        }
+
+        if (!$this->isExportAllowed($project, $grouping, 'excel', $phase, $closure)) {
             $this->addFlash('info', $this->translator->trans($this->blockedMessageKey($grouping, 'excel')));
-            return $this->redirectToRoute('backend_plan_review', [
+            return $closure
+                ? $this->redirectToRoute('backend_plan_done')
+                : $this->redirectToRoute('backend_plan_review', [
                 'is_applicable' => '1',
                 'will_implement' => '1',
             ]);
@@ -149,44 +224,54 @@ final class SustainabilityPlanExportController extends AbstractController
         return $response;
     }
 
-    private function isExportAllowed(Project $project, string $grouping, string $format): bool
+    private function isExportAllowed(
+        Project $project,
+        string $grouping,
+        string $format,
+        CommercialPhase $phase = CommercialPhase::IMPLEMENTATION,
+        bool $closure = false
+    ): bool
     {
         if (!in_array($grouping, self::VALID_GROUPINGS, true)) {
             return false;
         }
 
+        if ($closure && !in_array($grouping, self::CLOSURE_GROUPINGS, true)) {
+            return false;
+        }
+
         return match ($format) {
-            'pdf' => $this->isPdfAllowed($project, $grouping),
-            'excel' => $this->isExcelAllowed($project, $grouping),
+            'pdf' => $this->isPdfAllowed($project, $grouping, $phase),
+            'excel' => $this->isExcelAllowed($project, $grouping, $phase),
             default => false,
         };
     }
 
-    private function isPdfAllowed(Project $project, string $grouping): bool
+    private function isPdfAllowed(Project $project, string $grouping, CommercialPhase $phase): bool
     {
         return match ($grouping) {
-            'department' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.department_pdf')
-                || $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.department'),
-            'category' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.category'),
-            'impact_area' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.impact_area'),
-            'triple_balance' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.triple_balance'),
-            'ods' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.ods'),
+            'department' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.department_pdf')
+                || $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.department'),
+            'category' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.category'),
+            'impact_area' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.impact_area'),
+            'triple_balance' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.triple_balance'),
+            'ods' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.ods'),
             default => false,
         };
     }
 
-    private function isExcelAllowed(Project $project, string $grouping): bool
+    private function isExcelAllowed(Project $project, string $grouping, CommercialPhase $phase): bool
     {
-        if (!$this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.excel')) {
+        if (!$this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.excel')) {
             return false;
         }
 
         return match ($grouping) {
-            'department' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.department'),
-            'category' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.category'),
-            'impact_area' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.impact_area'),
-            'triple_balance' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.triple_balance'),
-            'ods' => $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.export.ods'),
+            'department' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.department'),
+            'category' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.category'),
+            'impact_area' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.impact_area'),
+            'triple_balance' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.triple_balance'),
+            'ods' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.ods'),
             default => false,
         };
     }

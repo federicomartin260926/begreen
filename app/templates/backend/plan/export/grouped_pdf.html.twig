@@ -9,8 +9,8 @@
         h1, h2, h3 { margin: 0 0 8px 0; }
         .meta { margin-bottom: 18px; font-size: 10px; color: #4b5563; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e5e7eb; font-size: 10px; }
-        .group { margin-bottom: 18px; page-break-inside: avoid; }
-        .group-title { margin-bottom: 6px; }
+        .group { margin-bottom: 18px; }
+        .group-title { margin-bottom: 6px; page-break-after: avoid; }
         .group-subtitle { font-size: 10px; color: #6b7280; margin-bottom: 8px; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { border: 1px solid #d1d5db; padding: 6px 7px; vertical-align: top; word-wrap: break-word; }
@@ -114,12 +114,9 @@
                                 </td>
                                 <td class="description">
                                     {% if row.publicComment %}
-                                        <div class="taxonomy-line">{{ row.publicComment }}</div>
+                                        {{ row.publicComment }}
                                     {% else %}
                                         —
-                                    {% endif %}
-                                    {% if row.description %}
-                                        <div class="taxonomy-line muted">{{ row.description }}</div>
                                     {% endif %}
                                 </td>
                             </tr>

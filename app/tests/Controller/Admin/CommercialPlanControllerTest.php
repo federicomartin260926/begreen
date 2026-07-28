@@ -88,6 +88,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
             'allowedScores' => ['5', '2', '5', '1'],
             'pdfByDepartments' => true,
             'advancedExports' => true,
+            'emailExport' => true,
             'publicComments' => true,
             'internalNotes' => true,
             'responsibles' => true,
@@ -122,6 +123,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
         self::assertTrue($plan->getFeature('sustainability_plan.department_pdf', false));
         self::assertTrue($plan->getFeature('sustainability_plan.export.department_pdf', false));
         self::assertTrue($plan->getFeature('sustainability_plan.advanced_exports', false));
+        self::assertTrue($plan->getFeature('sustainability_plan.export.email', false));
         self::assertTrue($plan->getFeature('sustainability_plan.public_comments', false));
         self::assertTrue($plan->getFeature('sustainability_plan.custom_comments', false));
         self::assertFalse(array_key_exists('sustainability_plan.custom_comments', $plan->getFeatures()));

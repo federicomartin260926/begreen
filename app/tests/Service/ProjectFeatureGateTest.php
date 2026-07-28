@@ -23,9 +23,11 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertSame($basicDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
         self::assertTrue($gate->hasWatermark($project, CommercialPhase::ELABORATION));
         self::assertSame(10, $gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.unified_pdf'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
+        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.email'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.internal_notes'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.responsibles'));
@@ -64,11 +66,13 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertSame($standardDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
         self::assertFalse($gate->hasWatermark($project, CommercialPhase::ELABORATION));
         self::assertNull($gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.unified_pdf'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.advanced_exports'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.category'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.email'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
     }
@@ -84,10 +88,12 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertSame($proDefinition['description'], $gate->getPlanDescription($project, CommercialPhase::ELABORATION));
         self::assertFalse($gate->hasWatermark($project, CommercialPhase::ELABORATION));
         self::assertNull($gate->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.unified_pdf'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.branding'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.category'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.email'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.internal_notes'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.responsibles'));

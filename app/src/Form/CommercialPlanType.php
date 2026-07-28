@@ -114,6 +114,12 @@ final class CommercialPlanType extends AbstractType
                 'required' => false,
                 'data' => $featureValue($plan, 'sustainability_plan.advanced_exports'),
             ])
+            ->add('emailExport', CheckboxType::class, [
+                'label' => 'backend.commercial_plans.form.email_export',
+                'mapped' => false,
+                'required' => false,
+                'data' => $featureValue($plan, 'sustainability_plan.export.email'),
+            ])
             ->add('publicComments', CheckboxType::class, [
                 'label' => 'backend.commercial_plans.form.public_comments',
                 'mapped' => false,

@@ -76,6 +76,7 @@ final class CommercialPlanController extends AbstractController
         $commercialPlan->setFeature('sustainability_plan.export.triple_balance', $advancedExports);
         $commercialPlan->setFeature('sustainability_plan.export.ods', $advancedExports);
         $commercialPlan->setFeature('sustainability_plan.export.excel', $advancedExports);
+        $commercialPlan->setFeature('sustainability_plan.export.email', (bool) $form->get('emailExport')->getData());
 
         $commercialPlan->setFeature('sustainability_plan.public_comments', (bool) $form->get('publicComments')->getData());
         $commercialPlan->setFeature('sustainability_plan.internal_notes', (bool) $form->get('internalNotes')->getData());
