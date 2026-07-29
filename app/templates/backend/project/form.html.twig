@@ -73,7 +73,8 @@
         'data-project-label-pre-filming-value': 'backend.projects.phases.pre_filming'|trans,
         'data-project-label-post-event-value': 'backend.projects.phases.post_event'|trans,
         'data-project-label-post-filming-value': 'backend.projects.phases.post_filming'|trans,
-        'data-project-label-activity-value': 'backend.projects.phases.activity'|trans,
+        'data-project-label-activity-event-value': 'backend.projects.phases.activity'|trans,
+        'data-project-label-activity-filming-value': 'backend.aux.project_type.filming'|trans,
 
         'data-project-log-prototype-missing-value': 'backend.projects.form.log_prototype_missing'|trans,
         'data-project-log-cannot-insert-value': 'backend.projects.form.log_cannot_insert'|trans
@@ -116,7 +117,7 @@
                   data-project-wizard-target="stepButton"
                   data-step="{{ stepNumber }}"
                   aria-controls="project-step-{{ stepNumber }}">
-            <span class="wizard-step-indicator d-inline-flex align-items-center justify-content-center rounded-circle bg-white border text-success flex-shrink-0"
+            <span class="fw-bold flex-shrink-0"
                   data-project-wizard-step-indicator>{{ stepNumber }}</span>
             <span class="text-start">{{ stepLabel }}</span>
           </button>
@@ -146,23 +147,26 @@
               <div class="small text-muted">{{ 'backend.projects.form.subsection_basic_help'|trans }}</div>
             </div>
           </div>
+          {% set showEmissionSource = form.emissionSourceName is defined %}
           <div class="row g-3">
             <div class="col-12">
               {{ form_label(form.name) }}
               {{ form_widget(form.name) }}
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 {{ showEmissionSource ? 'col-md-4' : 'col-md-6' }}">
               {{ form_label(form.country) }}
               {{ form_widget(form.country) }}
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 {{ showEmissionSource ? 'col-md-4' : 'col-md-6' }}">
               {{ form_label(form.type) }}
               {{ form_widget(form.type) }}
             </div>
-            <div class="col-12 col-md-4">
-              {{ form_label(form.emissionSourceName) }}
-              {{ form_widget(form.emissionSourceName) }}
-            </div>
+            {% if showEmissionSource %}
+              <div class="col-12 col-md-4">
+                {{ form_label(form.emissionSourceName) }}
+                {{ form_widget(form.emissionSourceName) }}
+              </div>
+            {% endif %}
           </div>
         </div>
 
@@ -387,11 +391,7 @@
                            readonly
                            data-project-target="label"
                            data-phase="{{ phaseForm.phase.vars.value }}"
-                           value="
-                           {% if phaseForm.phase.vars.value == 'actividad' %}{{ 'backend.projects.phases.activity'|trans }}
-                           {% elseif phaseForm.phase.vars.value == 'preproduccion' %}{{ 'backend.projects.phases.pre'|trans }}
-                           {% elseif phaseForm.phase.vars.value == 'postproduccion' %}{{ 'backend.projects.phases.post'|trans }}
-                           {% endif %}">
+                           value="{% if phaseForm.phase.vars.value == 'actividad' %}{{ (form.type.vars.value == 'rodaje' ? 'backend.aux.project_type.filming' : 'backend.projects.phases.activity')|trans }}{% elseif phaseForm.phase.vars.value == 'preproduccion' %}{{ 'backend.projects.phases.pre'|trans }}{% elseif phaseForm.phase.vars.value == 'postproduccion' %}{{ 'backend.projects.phases.post'|trans }}{% endif %}">
                     {{ form_widget(phaseForm.phase) }}
                   </div>
                   <div class="col-12 col-md-4 form-label-over">

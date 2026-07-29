@@ -4,6 +4,7 @@ namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\ProjectController;
 use App\Entity\Project;
+use App\Entity\ProjectPhaseDate;
 use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
 use App\Entity\User;
@@ -76,6 +77,104 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
         self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getStatus());
+    }
+
+    public function testEventProjectCanBeCreatedWithConditionalFieldsAndAutomaticEmissionSource(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $this->setAdminToken($admin);
+
+        $controller = $this->createController();
+        $request = $this->createEventCreateRequest();
+
+        $response = $controller->new(
+            $request,
+            $entityManager,
+            $this->createMock(ActiveProjectService::class)
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $project = $entityManager->getRepository(Project::class)->findOneBy([
+            'name' => 'Evento wizard test',
+        ]);
+        self::assertInstanceOf(Project::class, $project);
+        self::assertSame('evento', $project->getType());
+        self::assertSame('corporativo', $project->getEventTypePrimary());
+        self::assertSame('hibrido', $project->getEventModality());
+        self::assertSame(120, $project->getEventAttendeesCount());
+        self::assertSame(80, $project->getEventOnlineConnections());
+        self::assertSame(Project::DEFAULT_EMISSION_SOURCE_NAME, $project->getEmissionSourceName());
+    }
+
+    public function testDateStepUsesContextualActivityLabelForFilmingAndEvent(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $filmingProject = $this->createProject($entityManager, $admin, 'Rodaje etiqueta fechas');
+        $eventProject = $this->createProject($entityManager, $admin, 'Evento etiqueta fechas')
+            ->setType('evento')
+            ->setFilmingType(null)
+            ->setDistributionMedia([])
+            ->setEventTypePrimary('corporativo')
+            ->setEventModality('presencial')
+            ->setEventAttendeesCount(50);
+        $this->addPhaseDates($filmingProject);
+        $this->addPhaseDates($eventProject);
+        $entityManager->flush();
+        $this->setAdminToken($admin);
+
+        $controller = $this->createController();
+        $filmingResponse = $controller->edit(
+            $filmingProject,
+            $this->createRequest('backend_project_edit', ['id' => $filmingProject->getId()]),
+            $entityManager
+        );
+        $eventResponse = $controller->edit(
+            $eventProject,
+            $this->createRequest('backend_project_edit', ['id' => $eventProject->getId()]),
+            $entityManager
+        );
+
+        $filmingContent = (string) $filmingResponse->getContent();
+        $eventContent = (string) $eventResponse->getContent();
+
+        self::assertMatchesRegularExpression('/data-phase="actividad"\s+value="Rodaje"/', $filmingContent);
+        self::assertMatchesRegularExpression('/data-phase="actividad"\s+value="Actividad"/', $eventContent);
+        self::assertStringContainsString('data-project-label-activity-filming-value="Rodaje"', $filmingContent);
+        self::assertStringContainsString('data-project-label-activity-event-value="Actividad"', $filmingContent);
+    }
+
+    public function testWizardStepThreeRendersPlanningInSpanishAndEnglish(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $this->setAdminToken($admin);
+        $controller = $this->createController();
+        $translator = $container->get('translator');
+
+        $translator->setLocale('es');
+        $spanishResponse = $controller->new(
+            $this->createRequest('backend_project_new'),
+            $entityManager,
+            $this->createMock(ActiveProjectService::class)
+        );
+        $translator->setLocale('en');
+        $englishResponse = $controller->new(
+            $this->createRequest('backend_project_new', [], 'en'),
+            $entityManager,
+            $this->createMock(ActiveProjectService::class)
+        );
+
+        self::assertSame(2, substr_count((string) $spanishResponse->getContent(), 'Planificación'));
+        self::assertSame(2, substr_count((string) $englishResponse->getContent(), 'Planning'));
     }
 
     public function testEditFormShowsCurrentPlanOutsideWizard(): void
@@ -262,7 +361,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         return $controller;
     }
 
-    private function createRequest(string $route, array $attributes = []): Request
+    private function createRequest(string $route, array $attributes = [], string $locale = 'es'): Request
     {
         $request = new Request();
         $request->attributes->set('_route', $route);
@@ -270,7 +369,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         foreach ($attributes as $key => $value) {
             $request->attributes->set($key, $value);
         }
-        $request->setLocale('es');
+        $request->setLocale($locale);
         $request->setSession(new Session(new MockArraySessionStorage()));
         $request->getSession()->set('_security_main', 'mock');
 
@@ -292,7 +391,6 @@ final class ProjectControllerFormTest extends KernelTestCase
                 'name' => 'Proyecto wizard test',
                 'country' => 'ES',
                 'type' => 'rodaje',
-                'emissionSourceName' => 'MITECO',
                 'filmingType' => 'feature',
                 'filmingGenre' => '',
                 'distributionMedia' => ['cinema'],
@@ -309,6 +407,39 @@ final class ProjectControllerFormTest extends KernelTestCase
                     ['phase' => 'preproduccion', 'startDate' => '2026-07-01', 'endDate' => '2026-07-02'],
                     ['phase' => 'actividad', 'startDate' => '2026-07-03', 'endDate' => '2026-07-04'],
                     ['phase' => 'postproduccion', 'startDate' => '2026-07-05', 'endDate' => '2026-07-06'],
+                ],
+            ],
+        ]);
+
+        return $request;
+    }
+
+    private function createEventCreateRequest(): Request
+    {
+        $request = $this->createRequest('backend_project_new');
+        $request->setMethod(Request::METHOD_POST);
+        $request->request->add([
+            'project' => [
+                '_token' => self::getContainer()->get('security.csrf.token_manager')->getToken('project')->getValue(),
+                'name' => 'Evento wizard test',
+                'country' => 'ES',
+                'type' => 'evento',
+                'filmingType' => '',
+                'filmingGenre' => '',
+                'distributionMedia' => [],
+                'eventTypePrimary' => 'corporativo',
+                'eventModality' => 'hibrido',
+                'eventAttendeesCount' => '120',
+                'eventOnlineConnections' => '80',
+                'mainLocation' => '',
+                'presupuesto' => '',
+                'ecoManagerStatus' => '',
+                'projectCompanies' => [],
+                'projectFundingSources' => [],
+                'phaseDates' => [
+                    ['phase' => 'preproduccion', 'startDate' => '2026-08-01', 'endDate' => '2026-08-02'],
+                    ['phase' => 'actividad', 'startDate' => '2026-08-03', 'endDate' => '2026-08-04'],
+                    ['phase' => 'postproduccion', 'startDate' => '2026-08-05', 'endDate' => '2026-08-06'],
                 ],
             ],
         ]);
@@ -387,6 +518,23 @@ final class ProjectControllerFormTest extends KernelTestCase
         $entityManager->flush();
 
         return $project;
+    }
+
+    private function addPhaseDates(Project $project): void
+    {
+        $timezone = new \DateTimeZone('Europe/Madrid');
+        foreach ([
+            ['preproduccion', '2026-09-01', '2026-09-02'],
+            ['actividad', '2026-09-03', '2026-09-04'],
+            ['postproduccion', '2026-09-05', '2026-09-06'],
+        ] as [$phase, $startDate, $endDate]) {
+            $project->addPhaseDate(
+                (new ProjectPhaseDate())
+                    ->setPhase($phase)
+                    ->setStartDate(new \DateTimeImmutable($startDate, $timezone))
+                    ->setEndDate(new \DateTimeImmutable($endDate, $timezone))
+            );
+        }
     }
 
     private function setEntityId(object $entity, int $id): void

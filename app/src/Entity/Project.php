@@ -18,6 +18,12 @@ class Project
 {
     use TimestampableTrait;
 
+    public const DEFAULT_EMISSION_SOURCE_NAME = 'MITECO';
+    public const EMISSION_SOURCE_NAMES = [
+        self::DEFAULT_EMISSION_SOURCE_NAME,
+        'DEFRA',
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -68,8 +74,8 @@ class Project
     #[Assert\Valid]
     private Collection $crewMembers;
 
-    #[ORM\Column(type: 'string', length: 100, options: ['default' => 'MITECO'])]
-    private string $emissionSourceName = 'MITECO';
+    #[ORM\Column(type: 'string', length: 100, options: ['default' => self::DEFAULT_EMISSION_SOURCE_NAME])]
+    private string $emissionSourceName = self::DEFAULT_EMISSION_SOURCE_NAME;
 
     // === Rodaje: tipo + género dependiente del tipo ===
     #[ORM\Column(length: 40, nullable: true)]
@@ -362,7 +368,7 @@ class Project
 
     public function setEmissionSourceName(string $emissionSourceName): self
     {
-        if (!in_array($emissionSourceName, ['MITECO', 'DEFRA'], true)) {
+        if (!in_array($emissionSourceName, self::EMISSION_SOURCE_NAMES, true)) {
             throw new \InvalidArgumentException('La fuente debe ser MITECO o DEFRA');
         }
         $this->emissionSourceName = $emissionSourceName;

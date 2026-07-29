@@ -624,7 +624,7 @@ backend:
       wizard:
         step_1: "Project type"
         step_2: "General data"
-        step_3: "Dates"
+        step_3: "Planning"
         step_4: "Funding"
         step_5: "Summary"
         overview_label: "Project details"

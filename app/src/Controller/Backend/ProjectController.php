@@ -513,6 +513,7 @@ class ProjectController extends AbstractController
 
         $form = $this->createForm(ProjectType::class, $project, [
             'show_commercial_tier' => false,
+            'show_emission_source' => false,
         ]);
         $form->handleRequest($request);
         $this->normalizeProject($project);
@@ -1503,8 +1504,8 @@ class ProjectController extends AbstractController
             'duracionEpisodio' => 1,
             'eventTypePrimary' => 1,
             'eventModality' => 1,
-            'eventAttendeesCount' => 1,
-            'eventOnlineConnections' => 1,
+            'eventAttendeesCount' => 3,
+            'eventOnlineConnections' => 3,
             'mainLocation' => 2,
             'presupuesto' => 2,
             'projectCompanies' => 2,

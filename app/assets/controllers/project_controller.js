@@ -23,7 +23,8 @@ export default class extends Controller {
     labelPreFilming: String,
     labelPostEvent: String,
     labelPostFilming: String,
-    labelActivity: String,
+    labelActivityEvent: String,
+    labelActivityFilming: String,
 
     // Mensajes
     logPrototypeMissing: String,
@@ -90,7 +91,9 @@ export default class extends Controller {
     const labels = {
       preproduccion: projectType === "evento" ? this.labelPreEventValue : this.labelPreFilmingValue,
       postproduccion: projectType === "evento" ? this.labelPostEventValue : this.labelPostFilmingValue,
-      actividad: this.labelActivityValue,
+      actividad: projectType === "rodaje"
+        ? this.labelActivityFilmingValue
+        : this.labelActivityEventValue,
     };
 
     this.labelTargets.forEach((input) => {

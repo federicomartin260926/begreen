@@ -57,6 +57,7 @@ class ProjectType extends AbstractType
         ];
 
         $showCommercialTier = (bool) $options['show_commercial_tier'];
+        $showEmissionSource = (bool) $options['show_emission_source'];
         $commercialTierValue = (string) ($options['commercial_tier_value'] ?? 'basic');
         $basicPlan = $this->commercialPlanResolver->getPlanByCode(CommercialPhase::ELABORATION, 'basic');
         $standardPlan = $this->commercialPlanResolver->getPlanByCode(CommercialPhase::ELABORATION, 'standard');
@@ -78,17 +79,6 @@ class ProjectType extends AbstractType
                     'data-project-target' => 'type',
                     'data-action' => 'change->project#change',
                 ],
-            ])
-            ->add('emissionSourceName', ChoiceType::class, [
-                'label' => 'backend.projects.form.emission_source',
-                'choices' => [
-                    'backend.projects.form.emission_source_options.miteco' => 'MITECO',
-                    'backend.projects.form.emission_source_options.defra' => 'DEFRA',
-                ],
-                'data' => 'MITECO',
-                'required' => true,
-                'attr' => ['class' => 'form-select'],
-                'choice_translation_domain' => 'messages',
             ])
             ->add('country', CountryType::class, [
                 'label' => 'backend.projects.form.country',
@@ -120,6 +110,7 @@ class ProjectType extends AbstractType
                 'attr' => [
                     'data-project-target' => 'filmingType',
                     'data-action' => 'change->project#change',
+                    'data-required-when' => 'type:rodaje',
                 ],
             ])
             ->add('filmingGenre', ChoiceType::class, [
@@ -142,6 +133,9 @@ class ProjectType extends AbstractType
                 'choice_translation_domain' => 'messages',
                 'row_attr' => ['data-show-when' => 'type:rodaje'],
                 'attr' => ['class' => 'distribution-media-grid'],
+                'choice_attr' => static fn (): array => [
+                    'data-required-group-when' => 'type:rodaje',
+                ],
             ])
             ->add('episodios', IntegerType::class, [
                 'label' => 'backend.projects.form.common.episodios',
@@ -173,6 +167,9 @@ class ProjectType extends AbstractType
                 'placeholder' => 'backend.common.placeholder',
                 'choice_translation_domain' => 'messages',
                 'row_attr' => ['data-show-when' => 'type:evento'],
+                'attr' => [
+                    'data-required-when' => 'type:evento',
+                ],
             ])
             ->add('eventModality', ChoiceType::class, [
                 'label' => 'backend.projects.form.event_modality.label',
@@ -184,6 +181,7 @@ class ProjectType extends AbstractType
                 'attr' => [
                     'data-project-target' => 'eventModality',
                     'data-action' => 'change->project#change',
+                    'data-required-when' => 'type:evento',
                 ],
             ])
             ->add('eventAttendeesCount', IntegerType::class, [
@@ -194,6 +192,7 @@ class ProjectType extends AbstractType
                     'min' => 0,
                     'step' => 1,
                     'class' => 'form-control',
+                    'data-required-when' => 'eventModality:presencial,eventModality:hibrido',
                 ],
                 'row_attr' => ['data-show-when' => 'eventModality:presencial,eventModality:hibrido'],
             ])
@@ -205,6 +204,7 @@ class ProjectType extends AbstractType
                     'min' => 0,
                     'step' => 1,
                     'class' => 'form-control',
+                    'data-required-when' => 'eventModality:virtual,eventModality:hibrido',
                 ],
                 'row_attr' => ['data-show-when' => 'eventModality:virtual,eventModality:hibrido'],
             ])
@@ -270,6 +270,19 @@ class ProjectType extends AbstractType
                     'data-project-target' => 'list',
                 ],
             ]);
+
+        if ($showEmissionSource) {
+            $builder->add('emissionSourceName', ChoiceType::class, [
+                'label' => 'backend.projects.form.emission_source',
+                'choices' => [
+                    'backend.projects.form.emission_source_options.miteco' => Project::DEFAULT_EMISSION_SOURCE_NAME,
+                    'backend.projects.form.emission_source_options.defra' => 'DEFRA',
+                ],
+                'required' => true,
+                'attr' => ['class' => 'form-select'],
+                'choice_translation_domain' => 'messages',
+            ]);
+        }
     }
 
     public function configureOptions(OptionsResolver $resolver): void
@@ -277,6 +290,7 @@ class ProjectType extends AbstractType
         $resolver->setDefaults([
             'data_class' => Project::class,
             'show_commercial_tier' => false,
+            'show_emission_source' => true,
             'commercial_tier_value' => 'basic',
         ]);
     }

@@ -156,7 +156,6 @@ export default class extends Controller {
     this.stepButtonTargets.forEach((button) => {
       const step = Number(button.dataset.step);
       const state = this.stepState(step);
-      const indicator = button.querySelector("[data-project-wizard-step-indicator]");
 
       button.classList.remove(
         "btn-success",
@@ -187,15 +186,6 @@ export default class extends Controller {
         button.classList.add("bg-white", "text-muted", "border-secondary-subtle", "opacity-50");
       }
 
-      if (indicator) {
-        indicator.textContent = state === "completed" ? "✓" : String(step);
-        indicator.classList.toggle("bg-success", state === "current");
-        indicator.classList.toggle("text-white", state === "current");
-        indicator.classList.toggle("bg-white", state !== "current");
-        indicator.classList.toggle("text-success", state !== "current");
-        indicator.classList.toggle("border-success", state !== "future");
-        indicator.classList.toggle("border-secondary-subtle", state === "future");
-      }
     });
   }
 
@@ -589,68 +579,8 @@ export default class extends Controller {
   }
 
   validateStepOne() {
-    const requiredControls = [
-      this.findControl("name"),
-      this.findControl("country"),
-      this.findControl("type"),
-      this.findControl("emissionSourceName"),
-    ].filter(Boolean);
-
-    if (requiredControls.some((control) => !this.isFilled(control))) {
-      return false;
-    }
-
-    const commercialTier = this.findControl("commercialTier");
-    if (commercialTier && !commercialTier.disabled && !this.isFilled(commercialTier)) {
-      return false;
-    }
-
-    const type = this.choiceValue("type");
-    if (type === "rodaje") {
-      if (!this.isFilled(this.findControl("filmingType"))) {
-        return false;
-      }
-
-      if (!this.hasCheckedCheckbox("distributionMedia")) {
-        return false;
-      }
-
-      const filmingType = this.choiceValue("filmingType");
-      if (filmingType === "tv_series" || filmingType === "tv_program") {
-        if (!this.isFilled(this.findControl("episodios"))) {
-          return false;
-        }
-
-        if (!this.isFilled(this.findControl("duracionEpisodio"))) {
-          return false;
-        }
-      }
-    }
-
-    if (type === "evento") {
-      if (!this.isFilled(this.findControl("eventTypePrimary"))) {
-        return false;
-      }
-
-      if (!this.isFilled(this.findControl("eventModality"))) {
-        return false;
-      }
-
-      const modality = this.choiceValue("eventModality");
-      if (modality === "presencial" || modality === "hibrido") {
-        if (!this.isFilled(this.findControl("eventAttendeesCount"))) {
-          return false;
-        }
-      }
-
-      if (modality === "virtual" || modality === "hibrido") {
-        if (!this.isFilled(this.findControl("eventOnlineConnections"))) {
-          return false;
-        }
-      }
-    }
-
-    return true;
+    return this.validateRequiredControlsForStep(1)
+      && this.validateRequiredGroupsForStep(1);
   }
 
   validateStepTwo() {
@@ -668,6 +598,11 @@ export default class extends Controller {
   }
 
   validateStepThree() {
+    if (!this.validateRequiredControlsForStep(3)
+      || !this.validateRequiredGroupsForStep(3)) {
+      return false;
+    }
+
     const rows = this.collectPhaseRows();
     if (!rows.length) {
       return false;
@@ -737,7 +672,71 @@ export default class extends Controller {
       return false;
     }
 
-    return Boolean(control.required || control.getAttribute("aria-required") === "true");
+    if (control.required || control.getAttribute("aria-required") === "true") {
+      return true;
+    }
+
+    return this.matchesRequirement(control.dataset.requiredWhen || "");
+  }
+
+  validateRequiredControlsForStep(step) {
+    const panel = this.panelForStep(step);
+    if (!panel) {
+      return true;
+    }
+
+    return Array.from(panel.querySelectorAll("[required], [aria-required=\"true\"], [data-required-when]"))
+      .filter((control) => this.isControlRequired(control))
+      .every((control) => {
+        if (control.type === "radio") {
+          return this.element.querySelector(`input[type="radio"][name="${CSS.escape(control.name)}"]:checked`) !== null;
+        }
+
+        return this.isFilled(control);
+      });
+  }
+
+  validateRequiredGroupsForStep(step) {
+    const panel = this.panelForStep(step);
+    if (!panel) {
+      return true;
+    }
+
+    const controls = Array.from(panel.querySelectorAll("[data-required-group-when]"));
+    const groups = new Map();
+
+    controls.forEach((control) => {
+      if (!groups.has(control.name)) {
+        groups.set(control.name, {
+          rule: control.dataset.requiredGroupWhen || "",
+          controls: [],
+        });
+      }
+      groups.get(control.name).controls.push(control);
+    });
+
+    return Array.from(groups.values()).every((group) => {
+      if (!this.matchesRequirement(group.rule)) {
+        return true;
+      }
+
+      return group.controls.some((control) => !control.disabled && control.checked);
+    });
+  }
+
+  matchesRequirement(rule) {
+    if (!rule) {
+      return false;
+    }
+
+    return rule.split(",").some((condition) => {
+      const [fieldName, expectedValue] = condition.split(":").map((part) => part.trim());
+      return fieldName && expectedValue && this.choiceValue(fieldName) === expectedValue;
+    });
+  }
+
+  panelForStep(step) {
+    return this.panelTargets.find((panel) => this.stepFromPanel(panel) === step) || null;
   }
 
   isRadioGroupRequired(fieldName) {
@@ -763,11 +762,6 @@ export default class extends Controller {
     }
 
     return (control.value || "").trim() !== "";
-  }
-
-  hasCheckedCheckbox(fieldName) {
-    return Array.from(this.element.querySelectorAll(`input[type="checkbox"][name$="[${fieldName}][]"]`))
-      .some((checkbox) => checkbox.checked);
   }
 
   collectionRow(kind, index) {
