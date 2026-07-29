@@ -21,7 +21,7 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 
 final class MeasureTemplateImporter
 {
-    private const TEMPLATE_VERSION = 'v23';
+    private const TEMPLATE_VERSION = PlanMeasureCatalogResolver::CATALOG_IMPORT_VERSION;
 
     /**
      * @var array<string, array<string, MeasureBlock>>
@@ -169,7 +169,7 @@ final class MeasureTemplateImporter
         $measureBlockValue = trim((string) ($rowData['measureBlock'] ?? ''));
         $measureBlock = $this->resolveMeasureBlock($measureBlockValue, $protocol, $rowNumber);
 
-        $departments = $this->resolveDepartments((string) ($rowData['departments'] ?? ''), $rowNumber, $report);
+        $departments = $this->resolveDepartments((string) ($rowData['departments'] ?? ''), $protocol, $rowNumber, $report);
         $odsItems = $this->resolveOdsItems((string) ($rowData['odsItems'] ?? ''), $rowNumber, $report);
         $impactAreas = $this->resolveImpactAreas((string) ($rowData['impactAreas'] ?? ''), $rowNumber, $report);
         $tripleBalanceAxes = $this->resolveTripleBalanceAxes((string) ($rowData['tripleBalanceAxes'] ?? ''), $rowNumber, $report);
@@ -183,6 +183,7 @@ final class MeasureTemplateImporter
         $name = trim((string) ($rowData['name'] ?? ''));
         $nameReview = trim((string) ($rowData['nameReview'] ?? '')) ?: null;
         $questionText = trim((string) ($rowData['questionText'] ?? '')) ?: null;
+        $gamificationMessage = trim((string) ($rowData['gamificationMessage'] ?? '')) ?: null;
         $description = trim((string) ($rowData['description'] ?? '')) ?: null;
         $implementation = trim((string) ($rowData['implementation'] ?? '')) ?: null;
         $score = (int) ($rowData['score'] ?? 0);
@@ -190,6 +191,7 @@ final class MeasureTemplateImporter
         $nameEn = trim((string) ($rowData['nameEn'] ?? '')) ?: null;
         $nameReviewEn = trim((string) ($rowData['nameReviewEn'] ?? '')) ?: null;
         $questionTextEn = trim((string) ($rowData['questionTextEn'] ?? '')) ?: null;
+        $gamificationMessageEn = trim((string) ($rowData['gamificationMessageEn'] ?? '')) ?: null;
         $descriptionEn = trim((string) ($rowData['descriptionEn'] ?? '')) ?: null;
         $implementationEn = trim((string) ($rowData['implementationEn'] ?? '')) ?: null;
         $verificationSourcesEn = trim((string) ($rowData['verificationSourcesEn'] ?? '')) ?: null;
@@ -215,6 +217,7 @@ final class MeasureTemplateImporter
             ->setName($name)
             ->setNameReview($nameReview)
             ->setQuestionText($questionText)
+            ->setGamificationMessage($gamificationMessage)
             ->setDescription($description)
             ->setImplementation($implementation)
             ->setCategory($category)
@@ -236,6 +239,7 @@ final class MeasureTemplateImporter
                 'name' => $name,
                 'nameReview' => $nameReview,
                 'questionText' => $questionText,
+                'gamificationMessage' => $gamificationMessage,
                 'description' => $description,
                 'implementation' => $implementation,
                 'score' => $score,
@@ -250,6 +254,7 @@ final class MeasureTemplateImporter
                 'nameEn' => $nameEn,
                 'nameReviewEn' => $nameReviewEn,
                 'questionTextEn' => $questionTextEn,
+                'gamificationMessageEn' => $gamificationMessageEn,
                 'descriptionEn' => $descriptionEn,
                 'implementationEn' => $implementationEn,
                 'verificationSourcesEn' => $verificationSourcesEn,
@@ -276,8 +281,11 @@ final class MeasureTemplateImporter
 
         if (
             $this->validateCanonicalMeasures
-            && $protocol->getCode() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE
-            && $measure->getImportVersion() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION
+            && in_array($protocol->getCode(), [
+                PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE,
+                PlanMeasureCatalogResolver::BE_GREEN_MY_EVENT_CODE,
+            ], true)
+            && $measure->getImportVersion() === PlanMeasureCatalogResolver::CATALOG_IMPORT_VERSION
         ) {
             $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $this->mapVerificationSources($verificationSources));
             if ($measureBlockValue === '') {
@@ -300,6 +308,7 @@ final class MeasureTemplateImporter
             $nameEn,
             $nameReviewEn,
             $questionTextEn,
+            $gamificationMessageEn,
             $descriptionEn,
             $implementationEn,
             $verificationSourcesEn,
@@ -376,34 +385,26 @@ final class MeasureTemplateImporter
 
     private function resolveEsg(string $value): ?EsG
     {
-        if (trim($value) === '') {
+        $canonicalName = MeasureTemplateSchema::canonicalEsgName($value);
+        if ($canonicalName === null) {
             return null;
         }
 
-        foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
-            $item = $this->em->getRepository(EsG::class)->findOneBy(['name' => $candidate]);
-            if ($item instanceof EsG) {
-                return $item;
-            }
-        }
+        $item = $this->em->getRepository(EsG::class)->findOneBy(['name' => $canonicalName]);
 
-        return null;
+        return $item instanceof EsG ? $item : null;
     }
 
     private function resolveScope(string $value): ?Scope
     {
-        if (trim($value) === '') {
+        $canonicalName = MeasureTemplateSchema::canonicalScopeName($value);
+        if ($canonicalName === null) {
             return null;
         }
 
-        foreach (MeasureTemplateSchema::lookupCandidates($value) as $candidate) {
-            $item = $this->em->getRepository(Scope::class)->findOneBy(['name' => $candidate]);
-            if ($item instanceof Scope) {
-                return $item;
-            }
-        }
+        $item = $this->em->getRepository(Scope::class)->findOneBy(['name' => $canonicalName]);
 
-        return null;
+        return $item instanceof Scope ? $item : null;
     }
 
     private function resolveMeasureBlock(string $value, Protocol $protocol, int $rowNumber): ?MeasureBlock
@@ -509,9 +510,44 @@ final class MeasureTemplateImporter
     /**
      * @return Department[]
      */
-    private function resolveDepartments(string $value, int $rowNumber, MeasureTemplateReport $report): array
+    private function resolveDepartments(string $value, Protocol $protocol, int $rowNumber, MeasureTemplateReport $report): array
     {
-        return $this->resolveMultipleEntities($value, Department::class, 'departamento', $rowNumber, $report, static fn (Department $department): string => $department->getDisplayName());
+        $resolved = [];
+        foreach (MeasureTemplateSchema::splitMultiValueCell($value) as $itemValue) {
+            $department = null;
+            foreach (MeasureTemplateSchema::lookupCandidates($itemValue) as $candidate) {
+                $department = $this->em->getRepository(Department::class)->findOneBy([
+                    'code' => $candidate,
+                    'projectType' => $protocol->getType(),
+                ]) ?? $this->em->getRepository(Department::class)->findOneBy([
+                    'name' => $candidate,
+                    'projectType' => $protocol->getType(),
+                ]) ?? $this->em->getRepository(Department::class)->findOneBy([
+                    'code' => $candidate,
+                    'projectType' => null,
+                ]) ?? $this->em->getRepository(Department::class)->findOneBy([
+                    'name' => $candidate,
+                    'projectType' => null,
+                ]);
+
+                if ($department instanceof Department) {
+                    break;
+                }
+            }
+
+            if (!$department instanceof Department) {
+                $report->addError(
+                    'invalid_departamento',
+                    sprintf('Fila %d con departamento desconocido para tipo "%s": "%s".', $rowNumber, $protocol->getType(), $itemValue),
+                    ['row' => $rowNumber, 'value' => $itemValue, 'projectType' => $protocol->getType()]
+                );
+                continue;
+            }
+
+            $resolved[] = $department;
+        }
+
+        return $resolved;
     }
 
     /**
@@ -731,6 +767,7 @@ final class MeasureTemplateImporter
         ?string $nameEn,
         ?string $nameReviewEn,
         ?string $questionTextEn,
+        ?string $gamificationMessageEn,
         ?string $descriptionEn,
         ?string $implementationEn,
         ?string $verificationSourcesEn,
@@ -743,6 +780,7 @@ final class MeasureTemplateImporter
             'name' => $nameEn,
             'nameReview' => $nameReviewEn,
             'questionText' => $questionTextEn,
+            'gamificationMessage' => $gamificationMessageEn,
             'description' => $descriptionEn,
             'implementation' => $implementationEn,
             'verificationSources' => $verificationSourcesEn,

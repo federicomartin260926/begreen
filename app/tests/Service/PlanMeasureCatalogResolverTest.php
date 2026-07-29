@@ -15,15 +15,21 @@ final class PlanMeasureCatalogResolverTest extends TestCase
 {
     use CommercialPlanTestHelpers;
 
-    public function testCanonicalProtocolUsesV23ImportVersion(): void
+    public function testFilmAndEventCatalogProtocolsUseV23ImportVersion(): void
     {
         $resolver = $this->createResolver();
-        $protocol = (new Protocol())
+        $filmProtocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE);
+        $eventProtocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_EVENT_CODE);
 
         self::assertSame(
             PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION,
-            $resolver->getImportVersionForProtocol($protocol)
+            $resolver->getImportVersionForProtocol($filmProtocol)
+        );
+        self::assertSame(
+            PlanMeasureCatalogResolver::BE_GREEN_MY_EVENT_IMPORT_VERSION,
+            $resolver->getImportVersionForProtocol($eventProtocol)
         );
     }
 

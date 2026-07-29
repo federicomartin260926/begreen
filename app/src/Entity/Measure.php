@@ -48,6 +48,10 @@ class Measure
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $description = null;
 
+    #[Gedmo\Translatable]
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $gamificationMessage = null;
+
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
     private ?Department $department = null;
@@ -164,6 +168,9 @@ class Measure
 
     public function getDescription(): ?string { return $this->description; }
     public function setDescription(?string $description): static { $this->description = $description; return $this; }
+
+    public function getGamificationMessage(): ?string { return $this->gamificationMessage; }
+    public function setGamificationMessage(?string $gamificationMessage): static { $this->gamificationMessage = $gamificationMessage; return $this; }
 
     public function getDepartment(): ?Department { return $this->department; }
     public function setDepartment(?Department $department): static { $this->department = $department; return $this; }

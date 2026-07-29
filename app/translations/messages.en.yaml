@@ -440,6 +440,7 @@ backend:
       title: "Measures by protocol"
     form:
       name: "Measure name"
+      gamification_message: "Gamification message"
       description: "Description"
       protocol: "Protocol"
       category: "Category"

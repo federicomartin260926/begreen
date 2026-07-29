@@ -30,6 +30,7 @@ final class MeasureTemplateSchema
             'name' => 'Medida',
             'name_review' => 'Nombre revisión',
             'question_text' => 'Pregunta (futuro)',
+            'gamification_message' => 'Mensaje de gamificación',
             'description' => 'Descripción',
             'implementation' => 'Implementación',
             'department_action_text' => 'Acción por departamento',
@@ -45,6 +46,7 @@ final class MeasureTemplateSchema
             'name_en' => 'Nombre EN (opcional)',
             'name_review_en' => 'Nombre revisión EN (opcional)',
             'question_text_en' => 'Pregunta (futuro) EN (opcional)',
+            'gamification_message_en' => 'Mensaje de gamificación EN (opcional)',
             'description_en' => 'Descripción EN (opcional)',
             'implementation_en' => 'Implementación EN (opcional)',
             'verification_sources_en' => 'Fuentes de verificación EN (opcional)',
@@ -89,6 +91,8 @@ final class MeasureTemplateSchema
             'verification_sources_en',
             'question_text',
             'question_text_en',
+            'gamification_message',
+            'gamification_message_en',
             'department_action_text',
             'department_action_text_en',
         ], true);
@@ -161,6 +165,28 @@ final class MeasureTemplateSchema
         $ascii = preg_replace('/[^a-z0-9]+/u', '', $ascii);
 
         return $ascii ?? '';
+    }
+
+    public static function canonicalEsgName(string $value): ?string
+    {
+        return match (trim($value)) {
+            'Ambiental', 'Environmental', 'E' => 'Ambiental',
+            'Social', 'S' => 'Social',
+            'Gobernanza', 'Governance', 'G' => 'Gobernanza',
+            default => null,
+        };
+    }
+
+    public static function canonicalScopeName(string $value): ?string
+    {
+        return match (trim($value)) {
+            'Alcance 1', '1' => 'Alcance 1',
+            'Alcance 2', '2' => 'Alcance 2',
+            'Alcance 3', '3' => 'Alcance 3',
+            'No aplica', '-' => 'No aplica',
+            'Alcance 1, 2 y 3', '1, 2 y 3' => 'Alcance 1, 2 y 3',
+            default => null,
+        };
     }
 
     /**

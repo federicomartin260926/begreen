@@ -25,16 +25,74 @@ use PHPUnit\Framework\TestCase;
 
 final class MeasureTemplateImporterTest extends TestCase
 {
+    public function testFilmAndEventAliasesResolveSameCanonicalEsgAndScopeEntities(): void
+    {
+        $environmental = (new EsG())->setName('Ambiental');
+        $social = (new EsG())->setName('Social');
+        $governance = (new EsG())->setName('Gobernanza');
+        $scope1 = (new Scope())->setName('Alcance 1');
+        $scope2 = (new Scope())->setName('Alcance 2');
+        $scope3 = (new Scope())->setName('Alcance 3');
+        $notApplicable = (new Scope())->setName('No aplica');
+        $allScopes = (new Scope())->setName('Alcance 1, 2 y 3');
+
+        $esgByName = [
+            'Ambiental' => $environmental,
+            'Social' => $social,
+            'Gobernanza' => $governance,
+        ];
+        $scopeByName = [
+            'Alcance 1' => $scope1,
+            'Alcance 2' => $scope2,
+            'Alcance 3' => $scope3,
+            'No aplica' => $notApplicable,
+            'Alcance 1, 2 y 3' => $allScopes,
+        ];
+
+        $repositories = [
+            EsG::class => $this->createRepository(static fn (array $criteria): ?EsG => $esgByName[$criteria['name'] ?? ''] ?? null),
+            Scope::class => $this->createRepository(static fn (array $criteria): ?Scope => $scopeByName[$criteria['name'] ?? ''] ?? null),
+        ];
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturnCallback(
+            static fn (string $class): EntityRepository => $repositories[$class]
+        );
+        $importer = new MeasureTemplateImporter(
+            $entityManager,
+            $this->createMock(TranslatableListener::class),
+            new MeasureCatalogAdminService(),
+        );
+
+        $resolveEsg = new \ReflectionMethod($importer, 'resolveEsg');
+        $resolveScope = new \ReflectionMethod($importer, 'resolveScope');
+
+        self::assertSame($environmental, $resolveEsg->invoke($importer, 'Environmental'));
+        self::assertSame($environmental, $resolveEsg->invoke($importer, 'E'));
+        self::assertSame($social, $resolveEsg->invoke($importer, 'Social'));
+        self::assertSame($social, $resolveEsg->invoke($importer, 'S'));
+        self::assertSame($governance, $resolveEsg->invoke($importer, 'Governance'));
+        self::assertSame($governance, $resolveEsg->invoke($importer, 'G'));
+
+        self::assertSame($scope1, $resolveScope->invoke($importer, '1'));
+        self::assertSame($scope2, $resolveScope->invoke($importer, '2'));
+        self::assertSame($scope3, $resolveScope->invoke($importer, '3'));
+        self::assertSame($notApplicable, $resolveScope->invoke($importer, '-'));
+        self::assertSame($notApplicable, $resolveScope->invoke($importer, 'No aplica'));
+        self::assertSame($allScopes, $resolveScope->invoke($importer, '1, 2 y 3'));
+        self::assertNull($resolveEsg->invoke($importer, 'environmental'));
+        self::assertNull($resolveScope->invoke($importer, '01'));
+    }
+
     public function testImportPersistsMeasuresForMultipleProtocolsWithoutMixingTaxonomies(): void
     {
-        $protocolPeach = (new Protocol())->setCode('peach')->setName('Peach')->setType(Protocol::TYPE_RODAJE);
-        $protocolGreenFilm = (new Protocol())->setCode('green-film')->setName('Green Film')->setType(Protocol::TYPE_RODAJE);
+        $protocolPeach = (new Protocol())->setCode('be-green-my-film')->setName('Be Green My Film')->setType(Protocol::TYPE_RODAJE);
+        $protocolEvent = (new Protocol())->setCode('be-green-my-event')->setName('Be Green My Event')->setType(Protocol::TYPE_EVENTO);
 
         $category = (new Category())->setName('Movilidad')->setSortOrder(70);
         $categoryGhg = (new CategoryGhg())->setName('Emisiones indirectas de GEI debido al transporte');
-        $departmentProd = (new Department())->setCode('prod')->setName('Producción')->setSortOrder(10);
-        $departmentPost = (new Department())->setCode('post')->setName('Postproducción')->setSortOrder(20);
-        $departmentDir = (new Department())->setCode('dir')->setName('Dirección')->setSortOrder(30);
+        $departmentProd = (new Department())->setCode('prod')->setName('Producción')->setProjectType(Protocol::TYPE_RODAJE)->setSortOrder(10);
+        $departmentPost = (new Department())->setCode('post')->setName('Postproducción')->setProjectType(Protocol::TYPE_RODAJE)->setSortOrder(20);
+        $departmentEventProd = (new Department())->setCode('event-prod')->setName('Producción')->setProjectType(Protocol::TYPE_EVENTO)->setSortOrder(30);
         $ods12 = (new Ods())->setCode('ODS12')->setName('Producción y consumo responsables');
         $ods13 = (new Ods())->setCode('ODS13')->setName('Acción por el clima');
         $ods14 = (new Ods())->setCode('ODS14')->setName('Vida submarina');
@@ -52,26 +110,26 @@ final class MeasureTemplateImporterTest extends TestCase
 
         $blockPeach = (new MeasureBlock())
             ->setProtocol($protocolPeach)
-            ->setCode('peach__movilidad')
+            ->setCode('be-green-my-film__movilidad')
             ->setName('Movilidad')
             ->setSortOrder(1);
-        $blockGreen = (new MeasureBlock())
-            ->setProtocol($protocolGreenFilm)
-            ->setCode('green-film__energia')
+        $blockEvent = (new MeasureBlock())
+            ->setProtocol($protocolEvent)
+            ->setCode('be-green-my-event__energia')
             ->setName('Energía')
             ->setSortOrder(2);
 
         $persistedMeasures = [];
         $repositories = [
-            Protocol::class => $this->createRepository(static function (array $criteria) use ($protocolPeach, $protocolGreenFilm): ?Protocol {
+            Protocol::class => $this->createRepository(static function (array $criteria) use ($protocolPeach, $protocolEvent): ?Protocol {
                 $code = $criteria['code'] ?? null;
                 $name = $criteria['name'] ?? null;
 
-                if ($code === 'peach' || $name === 'Peach') {
+                if ($code === 'be-green-my-film' || $name === 'Be Green My Film') {
                     return $protocolPeach;
                 }
-                if ($code === 'green-film' || $name === 'Green Film') {
-                    return $protocolGreenFilm;
+                if ($code === 'be-green-my-event' || $name === 'Be Green My Event') {
+                    return $protocolEvent;
                 }
 
                 return null;
@@ -80,17 +138,18 @@ final class MeasureTemplateImporterTest extends TestCase
                 return ($criteria['name'] ?? null) === 'Movilidad' ? $category : null;
             }),
             CategoryGhg::class => $this->createRepository(static fn (array $criteria): ?CategoryGhg => ($criteria['name'] ?? null) === 'Emisiones indirectas de GEI debido al transporte' ? (new CategoryGhg())->setName('Emisiones indirectas de GEI debido al transporte') : null),
-            Department::class => $this->createRepository(static function (array $criteria) use ($departmentProd, $departmentPost, $departmentDir): ?Department {
+            Department::class => $this->createRepository(static function (array $criteria) use ($departmentProd, $departmentPost, $departmentEventProd): ?Department {
                 $code = $criteria['code'] ?? null;
                 $name = $criteria['name'] ?? null;
-                if ($code === 'prod' || $name === 'Producción') {
+                $projectType = $criteria['projectType'] ?? null;
+                if (($code === 'prod' || $name === 'Producción') && $projectType === Protocol::TYPE_RODAJE) {
                     return $departmentProd;
                 }
-                if ($code === 'post' || $name === 'Postproducción') {
+                if (($code === 'post' || $name === 'Postproducción') && $projectType === Protocol::TYPE_RODAJE) {
                     return $departmentPost;
                 }
-                if ($code === 'dir' || $name === 'Dirección') {
-                    return $departmentDir;
+                if (($code === 'event-prod' || $name === 'Producción') && $projectType === Protocol::TYPE_EVENTO) {
+                    return $departmentEventProd;
                 }
 
                 return null;
@@ -110,8 +169,8 @@ final class MeasureTemplateImporterTest extends TestCase
 
                 return null;
             }),
-            EsG::class => $this->createRepository(static fn (array $criteria): ?EsG => ($criteria['name'] ?? null) === 'Ambiental' ? (new EsG())->setName('Ambiental') : null),
-            Scope::class => $this->createRepository(static fn (array $criteria): ?Scope => ($criteria['name'] ?? null) === 'Alcance 1' ? (new Scope())->setName('Alcance 1') : null),
+            EsG::class => $this->createRepository(static fn (array $criteria): ?EsG => ($criteria['name'] ?? null) === 'Ambiental' ? $esg : null),
+            Scope::class => $this->createRepository(static fn (array $criteria): ?Scope => ($criteria['name'] ?? null) === 'Alcance 1' ? $scope : null),
             ImpactArea::class => $this->createRepository(static function (array $criteria) use ($impactA, $impactB, $impactC): ?ImpactArea {
                 $code = $criteria['code'] ?? null;
                 $name = $criteria['name'] ?? null;
@@ -157,16 +216,16 @@ final class MeasureTemplateImporterTest extends TestCase
 
                 return null;
             }),
-            MeasureBlock::class => $this->createRepository(static function (array $criteria) use ($blockPeach, $blockGreen): ?MeasureBlock {
+            MeasureBlock::class => $this->createRepository(static function (array $criteria) use ($blockPeach, $blockEvent): ?MeasureBlock {
                 $protocol = $criteria['protocol'] ?? null;
                 $code = $criteria['code'] ?? null;
                 $name = $criteria['name'] ?? null;
 
-                if ($protocol === $blockPeach->getProtocol() && ($code === 'peach__movilidad' || $name === 'Movilidad')) {
+                if ($protocol === $blockPeach->getProtocol() && ($code === 'be-green-my-film__movilidad' || $name === 'Movilidad')) {
                     return $blockPeach;
                 }
-                if ($protocol === $blockGreen->getProtocol() && ($code === 'green-film__energia' || $name === 'Energía')) {
-                    return $blockGreen;
+                if ($protocol === $blockEvent->getProtocol() && ($code === 'be-green-my-event__energia' || $name === 'Energía')) {
+                    return $blockEvent;
                 }
 
                 return null;
@@ -210,9 +269,9 @@ final class MeasureTemplateImporterTest extends TestCase
         $report = new MeasureTemplateReport();
         $report->addRow([
             'row' => 2,
-            'protocol' => 'peach - Peach',
+            'protocol' => 'be-green-my-film - Be Green My Film',
             'projectType' => Protocol::TYPE_RODAJE,
-            'measureBlock' => 'peach__movilidad - Movilidad',
+            'measureBlock' => 'be-green-my-film__movilidad - Movilidad',
             'category' => 'Movilidad',
             'categoryGhg' => 'Emisiones indirectas de GEI debido al transporte',
             'name' => 'Reducir consumo de combustible',
@@ -224,8 +283,8 @@ final class MeasureTemplateImporterTest extends TestCase
             'mandatory' => 'Sí',
             'departments' => 'prod; post',
             'odsItems' => 'ODS12; ODS13',
-            'esg' => 'Ambiental',
-            'scope' => 'Alcance 1',
+            'esg' => 'Environmental',
+            'scope' => '1',
             'impactAreas' => 'a; b',
             'tripleBalanceAxes' => 'ambiental; social',
             'verificationSources' => [
@@ -242,9 +301,9 @@ final class MeasureTemplateImporterTest extends TestCase
         ]);
         $report->addRow([
             'row' => 3,
-            'protocol' => 'green-film - Green Film',
-            'projectType' => Protocol::TYPE_RODAJE,
-            'measureBlock' => 'green-film__energia - Energía',
+            'protocol' => 'be-green-my-event - Be Green My Event',
+            'projectType' => Protocol::TYPE_EVENTO,
+            'measureBlock' => 'be-green-my-event__energia - Energía',
             'category' => 'Movilidad',
             'categoryGhg' => 'Emisiones indirectas de GEI debido al transporte',
             'name' => 'Reducir consumo energético',
@@ -254,9 +313,9 @@ final class MeasureTemplateImporterTest extends TestCase
             'implementation' => 'Impl Green',
             'score' => 4,
             'mandatory' => 'No',
-            'departments' => 'dir',
+            'departments' => 'Producción',
             'odsItems' => 'ODS14',
-            'esg' => 'Ambiental',
+            'esg' => 'E',
             'scope' => 'Alcance 1',
             'impactAreas' => 'c',
             'tripleBalanceAxes' => 'economico',
@@ -278,8 +337,14 @@ final class MeasureTemplateImporterTest extends TestCase
         self::assertSame('applied', $result->getImportSummary()['status'] ?? null);
         self::assertCount(2, $persistedMeasures);
 
-        self::assertSame('peach', $persistedMeasures[0]->getProtocol()?->getCode());
-        self::assertSame('green-film', $persistedMeasures[1]->getProtocol()?->getCode());
+        self::assertSame('be-green-my-film', $persistedMeasures[0]->getProtocol()?->getCode());
+        self::assertSame('be-green-my-event', $persistedMeasures[1]->getProtocol()?->getCode());
+        self::assertSame($esg, $persistedMeasures[0]->getEsg());
+        self::assertSame($esg, $persistedMeasures[1]->getEsg());
+        self::assertSame($scope, $persistedMeasures[0]->getScope());
+        self::assertSame($scope, $persistedMeasures[1]->getScope());
+        self::assertSame(Protocol::TYPE_RODAJE, $persistedMeasures[0]->getResolvedDepartments()[0]->getProjectType());
+        self::assertSame(Protocol::TYPE_EVENTO, $persistedMeasures[1]->getResolvedDepartments()[0]->getProjectType());
         self::assertCount(2, $persistedMeasures[0]->getResolvedDepartments());
         self::assertCount(2, $persistedMeasures[0]->getResolvedOdsItems());
         self::assertCount(2, $persistedMeasures[0]->getResolvedImpactAreas());
@@ -292,7 +357,7 @@ final class MeasureTemplateImporterTest extends TestCase
         self::assertSame(70, $category->getSortOrder());
         self::assertSame(10, $departmentProd->getSortOrder());
         self::assertSame(20, $departmentPost->getSortOrder());
-        self::assertSame(30, $departmentDir->getSortOrder());
+        self::assertSame(30, $departmentEventProd->getSortOrder());
         self::assertSame(2, $persistedMeasures[0]->getSortOrder());
         self::assertSame(3, $persistedMeasures[1]->getSourceRow());
         self::assertSame(3, $persistedMeasures[1]->getSortOrder());
@@ -376,7 +441,7 @@ final class MeasureTemplateImporterTest extends TestCase
         self::assertSame(7, $existingMeasure->getSortOrder());
     }
 
-    public function testImportPersistsDepartmentActionTextAndEnglishTranslation(): void
+    public function testImportPersistsGamificationMessageAndEnglishTranslation(): void
     {
         $protocol = (new Protocol())->setCode('be-green-my-film')->setName('Be Green My Film')->setType(Protocol::TYPE_RODAJE);
         $department = (new Department())->setCode('prod')->setName('Producción');
@@ -429,6 +494,7 @@ final class MeasureTemplateImporterTest extends TestCase
             'categoryGhg' => '',
             'name' => 'Medida con acción por departamento',
             'nameReview' => '',
+            'gamificationMessage' => 'Mensaje de gamificación ES',
             'description' => '',
             'implementation' => '',
             'score' => 5,
@@ -442,6 +508,7 @@ final class MeasureTemplateImporterTest extends TestCase
             'verificationSources' => [],
             'nameEn' => '',
             'nameReviewEn' => '',
+            'gamificationMessageEn' => 'Gamification message EN',
             'descriptionEn' => '',
             'implementationEn' => '',
             'verificationSourcesEn' => '',
@@ -453,6 +520,7 @@ final class MeasureTemplateImporterTest extends TestCase
 
         self::assertSame('applied', $result->getImportSummary()['status'] ?? null);
         self::assertCount(1, $persistedMeasures);
+        self::assertSame('Mensaje de gamificación ES', $persistedMeasures[0]->getGamificationMessage());
         self::assertSame('Acción por departamento', $persistedMeasures[0]->getDepartmentActionText());
     }
 
@@ -954,14 +1022,15 @@ final class MeasureTemplateImporterTest extends TestCase
             ->addMethods(['translate'])
             ->getMock();
 
-        $repository->expects(self::once())
+        $repository->expects(self::exactly(2))
             ->method('translate')
-            ->with(
-                self::isInstanceOf(Measure::class),
-                'departmentActionText',
-                'en',
-                'Department action text EN'
-            );
+            ->willReturnCallback(static function (Measure $measure, string $field, string $locale, string $value): void {
+                self::assertSame('en', $locale);
+                self::assertSame([
+                    'gamificationMessage' => 'Gamification message EN',
+                    'departmentActionText' => 'Department action text EN',
+                ][$field] ?? null, $value);
+            });
 
         return $repository;
     }

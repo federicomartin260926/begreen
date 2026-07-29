@@ -12,11 +12,25 @@ use App\Repository\ProtocolRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Gedmo\Translatable\TranslatableListener;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
-class MeasureFixtures extends Fixture implements FixtureGroupInterface
+class MeasureFixtures extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
+    private const CATALOGS = [
+        [
+            'protocolCode' => 'be-green-my-film',
+            'protocolName' => 'Be Green My Film',
+            'filename' => 'be_green_my_film_measures.xlsx',
+        ],
+        [
+            'protocolCode' => 'be-green-my-event',
+            'protocolName' => 'Be Green My Event',
+            'filename' => 'be_green_my_event_measures.xlsx',
+        ],
+    ];
+
     public function __construct(
         private readonly TranslatableListener $translatableListener,
         private readonly MeasureTemplateParser $measureTemplateParser,
@@ -31,7 +45,10 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
 
     public function getDependencies(): array
     {
-        return [AuxiliaryFixtures::class];
+        return [
+            AuxiliaryFixtures::class,
+            DepartmentPositionFixtures::class,
+        ];
     }
 
     public function load(ObjectManager $manager): void
@@ -46,27 +63,38 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
 
         $baseDir = rtrim($this->params->get('kernel.project_dir'), '/').'/public/fixtures';
 
-        $path = $baseDir.'/be_green_my_film_measures.xlsx';
-        if (!is_file($path)) {
-            echo sprintf("⚠️  Measures file not found: %s\n", $path);
-            $this->translatableListener->setTranslationFallback(true);
-            return;
+        foreach (self::CATALOGS as $catalog) {
+            $path = $baseDir.'/'.$catalog['filename'];
+            if (!is_file($path)) {
+                echo sprintf("⚠️  Measures file not found: %s\n", $path);
+                continue;
+            }
+
+            $report = $this->measureTemplateParser->parseFile($path);
+            $report = $this->measureTemplateImporter->import(
+                report: $report,
+                apply: true,
+                validateCanonical: true,
+            );
+            $this->backfillMeasureSortOrders(
+                $manager,
+                $catalog['protocolCode'],
+                $catalog['protocolName']
+            );
+            $summary = $report->getImportSummary();
+
+            echo sprintf(
+                "📊 Catalog %s | status=%s, imported=%d, updated=%d, errors=%d\n",
+                basename($path),
+                $summary['status'] ?? $report->getStatus(),
+                $summary['imported'] ?? 0,
+                $summary['updated'] ?? 0,
+                $summary['errors'] ?? count($report->getErrors())
+            );
         }
 
-        $report = $this->measureTemplateParser->parseFile($path);
-        $report = $this->measureTemplateImporter->import($report, true, false);
-        $this->backfillMeasureSortOrders($manager);
         $this->seedInitialBlockQuestions($manager);
         $manager->flush();
-        $summary = $report->getImportSummary();
-
-        echo sprintf(
-            "✅ Imported %s | imported=%d, updated=%d, errors=%d\n",
-            basename($path),
-            $summary['imported'] ?? 0,
-            $summary['updated'] ?? 0,
-            $summary['errors'] ?? 0
-        );
 
         // Devuelve fallback si quieres
         $this->translatableListener->setTranslationFallback(true);
@@ -129,15 +157,15 @@ class MeasureFixtures extends Fixture implements FixtureGroupInterface
         }
     }
 
-    private function backfillMeasureSortOrders(ObjectManager $manager): void
+    private function backfillMeasureSortOrders(ObjectManager $manager, string $protocolCode, string $protocolName): void
     {
         /** @var ProtocolRepository $protocolRepository */
         $protocolRepository = $manager->getRepository(Protocol::class);
-        $protocol = $protocolRepository->findOneBy(['code' => 'be-green-my-film'])
-            ?? $protocolRepository->findOneBy(['name' => 'Be Green My Film']);
+        $protocol = $protocolRepository->findOneBy(['code' => $protocolCode])
+            ?? $protocolRepository->findOneBy(['name' => $protocolName]);
 
         if (!$protocol instanceof Protocol) {
-            echo "⚠️  Protocol not found for measure sort order backfill: Be Green My Film\n";
+            echo sprintf("⚠️  Protocol not found for measure sort order backfill: %s\n", $protocolName);
 
             return;
         }

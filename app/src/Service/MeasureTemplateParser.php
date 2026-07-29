@@ -169,6 +169,7 @@ final class MeasureTemplateParser
             'name' => $this->cell($row, $columnMap['name'] ?? null),
             'nameReview' => $this->cell($row, $columnMap['name_review'] ?? null),
             'questionText' => $this->cell($row, $columnMap['question_text'] ?? null),
+            'gamificationMessage' => $this->cell($row, $columnMap['gamification_message'] ?? null),
             'description' => $this->cell($row, $columnMap['description'] ?? null),
             'implementation' => $this->cell($row, $columnMap['implementation'] ?? null),
             'score' => $this->parseScore($this->cell($row, $columnMap['score'] ?? null), $rowNumber, $report),
@@ -183,6 +184,7 @@ final class MeasureTemplateParser
             'nameEn' => $this->cell($row, $columnMap['name_en'] ?? null),
             'nameReviewEn' => $this->cell($row, $columnMap['name_review_en'] ?? null),
             'questionTextEn' => $this->cell($row, $columnMap['question_text_en'] ?? null),
+            'gamificationMessageEn' => $this->cell($row, $columnMap['gamification_message_en'] ?? null),
             'descriptionEn' => $this->cell($row, $columnMap['description_en'] ?? null),
             'implementationEn' => $this->cell($row, $columnMap['implementation_en'] ?? null),
             'verificationSourcesEn' => $this->cell($row, $columnMap['verification_sources_en'] ?? null),
@@ -403,6 +405,7 @@ final class MeasureTemplateParser
         $rowData['name'] = (string) ($rowData['name'] ?? '');
         $rowData['nameReview'] = (string) ($rowData['name_review'] ?? $rowData['nameReview'] ?? '');
         $rowData['questionText'] = (string) ($rowData['question_text'] ?? $rowData['questionText'] ?? '');
+        $rowData['gamificationMessage'] = (string) ($rowData['gamification_message'] ?? $rowData['gamificationMessage'] ?? '');
         $rowData['description'] = (string) ($rowData['description'] ?? '');
         $rowData['implementation'] = (string) ($rowData['implementation'] ?? '');
         $rowData['score'] = $this->parseScore((string) ($rowData['score'] ?? ''), $rowNumber, $report);
@@ -412,6 +415,7 @@ final class MeasureTemplateParser
         $rowData['nameEn'] = (string) ($rowData['name_en'] ?? $rowData['nameEn'] ?? '');
         $rowData['nameReviewEn'] = (string) ($rowData['name_review_en'] ?? $rowData['nameReviewEn'] ?? '');
         $rowData['questionTextEn'] = (string) ($rowData['question_text_en'] ?? $rowData['questionTextEn'] ?? '');
+        $rowData['gamificationMessageEn'] = (string) ($rowData['gamification_message_en'] ?? $rowData['gamificationMessageEn'] ?? '');
         $rowData['descriptionEn'] = (string) ($rowData['description_en'] ?? $rowData['descriptionEn'] ?? '');
         $rowData['implementationEn'] = (string) ($rowData['implementation_en'] ?? $rowData['implementationEn'] ?? '');
         $rowData['verificationSourcesEn'] = (string) ($rowData['verification_sources_en'] ?? $rowData['verificationSourcesEn'] ?? '');

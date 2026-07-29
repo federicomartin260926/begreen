@@ -9,6 +9,41 @@ use PHPUnit\Framework\TestCase;
 
 final class MeasureTemplateParserTest extends TestCase
 {
+    public function testParserReadsFilmAndEventCatalogGamificationMessagesAndOdsOneWithoutCollisions(): void
+    {
+        $parser = new MeasureTemplateParser();
+        $rowsByCatalog = [];
+
+        foreach ([
+            'film' => 'be_green_my_film_measures.xlsx',
+            'event' => 'be_green_my_event_measures.xlsx',
+        ] as $catalog => $filename) {
+            $report = $parser->parseFile(__DIR__.'/../../public/fixtures/'.$filename);
+
+            self::assertSame('OK', $report->getStatus(), json_encode($report->getErrors(), JSON_UNESCAPED_UNICODE));
+            self::assertCount(200, $report->getRows());
+            self::assertNotSame('', $report->getRows()[0]['gamificationMessage']);
+            self::assertNotSame('', $report->getRows()[0]['gamificationMessageEn']);
+            self::assertNotEmpty(array_filter(
+                $report->getRows(),
+                static fn (array $row): bool => in_array('1', MeasureTemplateSchema::splitMultiValueCell($row['odsItems']), true)
+            ));
+
+            $rowsByCatalog[$catalog] = $report->getRows();
+        }
+
+        self::assertSame('Be Green My Film', $rowsByCatalog['film'][0]['protocol']);
+        self::assertSame('rodaje', $rowsByCatalog['film'][0]['projectType']);
+        self::assertSame('Be Green My Event', $rowsByCatalog['event'][0]['protocol']);
+        self::assertSame('evento', $rowsByCatalog['event'][0]['projectType']);
+
+        $identities = [];
+        foreach (array_merge($rowsByCatalog['film'], $rowsByCatalog['event']) as $row) {
+            $identities[] = $row['protocol'].':'.$row['row'];
+        }
+        self::assertCount(400, array_unique($identities));
+    }
+
     public function testParserReadsMatrixWorkbookWithSelectionColumns(): void
     {
         $spreadsheet = new Spreadsheet();
@@ -136,6 +171,7 @@ final class MeasureTemplateParserTest extends TestCase
             'Reducir consumo de combustible',
             'Se redujo el consumo',
             'Pregunta de prueba',
+            'Mensaje de gamificación',
             'Descripción de prueba',
             'Implementación de medidas de movilidad',
             'Acción por departamento',
@@ -149,6 +185,7 @@ final class MeasureTemplateParserTest extends TestCase
             'ambiental; social',
             '1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia',
             '',
+            'Gamification message',
             '',
             '',
             '',
@@ -191,6 +228,7 @@ final class MeasureTemplateParserTest extends TestCase
             'Reducir consumo de combustible',
             'Se redujo el consumo',
             'Pregunta de prueba',
+            'Mensaje de gamificación',
             'Descripción de prueba',
             'Implementación de prueba',
             4,
@@ -203,6 +241,7 @@ final class MeasureTemplateParserTest extends TestCase
             'ambiental; social',
             '1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia',
             '',
+            'Gamification message',
             '',
             '',
             '',

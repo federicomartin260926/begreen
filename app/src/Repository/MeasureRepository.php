@@ -265,9 +265,10 @@ class MeasureRepository extends ServiceEntityRepository
             ->andWhere('p = :protocol')
             ->setParameter('protocol', $protocol);
 
-        if ($protocol->getCode() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE) {
+        $importVersion = $this->catalogResolver->getImportVersionForProtocol($protocol);
+        if ($importVersion !== null) {
             $qb->andWhere('m.importVersion = :catalogImportVersion')
-                ->setParameter('catalogImportVersion', PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION);
+                ->setParameter('catalogImportVersion', $importVersion);
 
             $normalizedScores = array_values(array_unique(array_map(static fn (mixed $score): int => (int) $score, $allowedScores)));
             if ($normalizedScores !== []) {

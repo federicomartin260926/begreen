@@ -442,6 +442,7 @@ backend:
       title: "Listado de medidas por protocolo"
     form:
       name: "Nombre de la medida"
+      gamification_message: "Mensaje de gamificación"
       description: "Descripción"
       protocol: "Protocolo"
       category: "Categoría"

@@ -42,6 +42,7 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
             static $map = [
                 // Protocols
                 'Be Green My Film' => 'Be Green My Film',
+                'Be Green My Event' => 'Be Green My Event',
 
                 // Categories
                 'Alojamientos' => 'Accommodation',
@@ -124,12 +125,13 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         // -------------------------
         $protocols = [
             ['code' => 'be-green-my-film',  'name' => 'Be Green My Film',  'type' => 'rodaje'],
+            ['code' => 'be-green-my-event', 'name' => 'Be Green My Event', 'type' => 'evento'],
         ];
         foreach ($protocols as $data) {
             $p = $upsert($manager, Protocol::class, ['name' => $data['name']], function () use ($data) {
                 return (new Protocol())->setCode($data['code'])->setName($data['name'])->setType($data['type']);
             });
-            $p->setCode($data['code']);
+            $p->setCode($data['code'])->setType($data['type']);
             $translateName($p, $p->getName());
         }
 
@@ -150,6 +152,9 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
             ['name' => 'Social', 'sortOrder' => 110],
             ['name' => 'Viajes', 'sortOrder' => 120],
             ['name' => 'Agua', 'sortOrder' => 130],
+            ['name' => 'Oficina', 'sortOrder' => 140],
+            ['name' => 'Consumo eficiente de recursos', 'sortOrder' => 150],
+            ['name' => 'Contenidos', 'sortOrder' => 160],
         ] as $data) {
             $c = $upsert($manager, Category::class, ['name' => $data['name']], function (?Category $entity = null) use ($data) {
                 $entity ??= new Category();
@@ -171,6 +176,28 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
             'Emisiones indirectas de GEI debido al transporte',
             'Emisiones indirectas de GEI por productos utilizados por la organización',
             'Emisiones indirectas de GEI por otras fuentes',
+            'Alcance 2 - Electricidad adquirida',
+            'Alcance 3 - Cat. 5 Residuos generados en las operaciones',
+            'Alcance 3 - Cat. 1 Bienes y servicios adquiridos',
+            'Alcance 1 - Combustión fija',
+            'Alcance 3 - Cat. 6 Viajes de negocio',
+            'Alcance 1 - Combustión móvil',
+            'Alcance 3 - Cat. 4 Transporte y distribución (upstream)',
+            'Alcance 3 - Cat. 7 Desplazamientos del personal',
+            'Electricidad adquirida',
+            'Bienes y servicios adquiridos',
+            'Residuos generados',
+            'Combustión fija',
+            'Energía autogenerada',
+            'Combustión móvil',
+            'Alojamiento',
+            'Desplazamiento de asistentes',
+            'Viajes de negocio',
+            'Transporte y distribución',
+            'Agua y vertidos',
+            'Alimentación',
+            'Todas las categorías',
+            'No aplica',
         ];
         foreach ($categoryGhgs as $name) {
             $g = $upsert($manager, CategoryGhg::class, ['name' => $name], function () use ($name) {
@@ -182,7 +209,7 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         // -------------------------
         // Scopes
         // -------------------------
-        foreach (['Alcance 1','Alcance 2','Alcance 3'] as $name) {
+        foreach (['Alcance 1', 'Alcance 2', 'Alcance 3', 'No aplica', 'Alcance 1, 2 y 3'] as $name) {
             $s = $upsert($manager, Scope::class, ['name' => $name], function () use ($name) {
                 return (new Scope())->setName($name);
             });
@@ -245,10 +272,9 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         $impactAreas = [
             ['code' => 'a', 'name' => 'Cambio Climático', 'sortOrder' => 1],
             ['code' => 'b', 'name' => 'Agotamiento Recursos Nat.', 'sortOrder' => 2],
-            ['code' => 'c', 'name' => 'Biodiversidad', 'sortOrder' => 3],
-            ['code' => 'd', 'name' => 'Contaminación', 'sortOrder' => 4],
-            ['code' => 'e', 'name' => 'Cambio Uso Suelo', 'sortOrder' => 5],
-            ['code' => 'f', 'name' => 'Comunicación y Sensib.', 'sortOrder' => 6],
+            ['code' => 'c', 'name' => 'Contaminación', 'sortOrder' => 3],
+            ['code' => 'd', 'name' => 'Biodiversidad', 'sortOrder' => 4],
+            ['code' => 'e', 'name' => 'Comunicación y Sensib.', 'sortOrder' => 5],
         ];
         foreach ($impactAreas as $data) {
             $impactArea = $upsert($manager, ImpactArea::class, ['code' => $data['code']], function () use ($data) {

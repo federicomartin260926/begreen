@@ -42,7 +42,7 @@ class MeasureType extends AbstractType
         $projectType          = $options['projectType'] ?? null;
         $locales              = $options['locales'] ?? ['es','en'];
         $defaultLocale        = $options['default_locale'] ?? 'es';
-        $translatableFields   = $options['translatable_fields'] ?? ['name','nameReview','questionText','description','implementation','departmentActionText'];
+        $translatableFields   = $options['translatable_fields'] ?? ['name','nameReview','questionText','gamificationMessage','description','implementation','departmentActionText'];
         $existingTranslations = $options['translations'] ?? [];
         $measure              = $builder->getData();
         $verificationLinks    = $measure instanceof Measure ? $measure->getResolvedVerificationSourceLinks() : [];
@@ -106,6 +106,11 @@ class MeasureType extends AbstractType
                 'required' => false,
                 'attr'     => ['rows' => 4],
             ])
+            ->add('gamificationMessage', TextareaType::class, [
+                'label'    => 'backend.measures.form.gamification_message',
+                'required' => false,
+                'attr'     => ['rows' => 4],
+            ])
             ->add('departmentActionText', TextareaType::class, [
                 'label'    => 'backend.measures.form.department_action_text',
                 'required' => false,
@@ -161,6 +166,16 @@ class MeasureType extends AbstractType
                     'mapped'   => false,
                     'required' => false,
                     'data'     => $existingTranslations[$loc]['description'] ?? null,
+                    'attr'     => ['class' => 'form-control', 'rows' => 4],
+                ]);
+            }
+
+            if (in_array('gamificationMessage', $translatableFields, true)) {
+                $builder->add('gamificationMessage_' . $loc, TextareaType::class, [
+                    'label'    => 'backend.measures.form.gamification_message',
+                    'mapped'   => false,
+                    'required' => false,
+                    'data'     => $existingTranslations[$loc]['gamificationMessage'] ?? null,
                     'attr'     => ['class' => 'form-control', 'rows' => 4],
                 ]);
             }
@@ -335,8 +350,7 @@ class MeasureType extends AbstractType
             'projectType'         => null,       // 'rodaje' | 'evento' | null
             'locales'             => ['es','en'],
             'default_locale'      => 'es',
-            // Añadimos nameReview, questionText, implementation y departmentActionText para tabs i18n
-            'translatable_fields' => ['name','nameReview','questionText','description','implementation','departmentActionText'],
+            'translatable_fields' => ['name','nameReview','questionText','gamificationMessage','description','implementation','departmentActionText'],
             'translations'        => [],
         ]);
     }

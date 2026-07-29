@@ -254,7 +254,10 @@ final class MeasureCatalogAdminService
 
     private function isCanonicalV23Measure(Measure $measure): bool
     {
-        return $measure->getProtocol()?->getCode() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE
-            && $measure->getImportVersion() === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION;
+        return in_array($measure->getProtocol()?->getCode(), [
+            PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE,
+            PlanMeasureCatalogResolver::BE_GREEN_MY_EVENT_CODE,
+        ], true)
+            && $measure->getImportVersion() === PlanMeasureCatalogResolver::CATALOG_IMPORT_VERSION;
     }
 }

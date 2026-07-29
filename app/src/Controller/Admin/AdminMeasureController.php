@@ -33,7 +33,8 @@ class AdminMeasureController extends AbstractController
         private MeasureTemplateImporter $measureTemplateImporter,
         private MeasureTemplateExporter $measureTemplateExporter,
         private MeasureCatalogAdminService $catalogAdminService,
-        private MeasureTaxonomyPresenter $taxonomyPresenter
+        private MeasureTaxonomyPresenter $taxonomyPresenter,
+        private PlanMeasureCatalogResolver $catalogResolver,
     ) {}
 
     #[Route('/', name: 'index')]
@@ -68,7 +69,7 @@ class AdminMeasureController extends AbstractController
         $measure = new Measure();
 
         $locales = ['en']; // añade más si procede
-        $fields  = ['name','nameReview','questionText','description','implementation','departmentActionText'];
+        $fields  = ['name','nameReview','questionText','gamificationMessage','description','implementation','departmentActionText'];
 
         $form = $this->createForm(MeasureType::class, $measure, [
             'locales'             => array_merge(['es'], $locales),
@@ -153,7 +154,7 @@ class AdminMeasureController extends AbstractController
         }
 
         $locales = ['en']; // añade más si procede
-        $fields  = ['name','nameReview','questionText','description','implementation','departmentActionText'];
+        $fields  = ['name','nameReview','questionText','gamificationMessage','description','implementation','departmentActionText'];
 
         /** @var \Gedmo\Translatable\Entity\Repository\TranslationRepository $tr */
         $tr = $em->getRepository(Translation::class);
@@ -257,9 +258,9 @@ class AdminMeasureController extends AbstractController
 
     private function syncMeasureImportVersion(Measure $measure): void
     {
-        $protocolCode = $measure->getProtocol()?->getCode();
-        if ($protocolCode === PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE) {
-            $measure->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION);
+        $importVersion = $this->catalogResolver->getImportVersionForProtocol($measure->getProtocol());
+        if ($importVersion !== null) {
+            $measure->setImportVersion($importVersion);
         }
     }
 
