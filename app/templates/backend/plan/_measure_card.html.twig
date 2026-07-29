@@ -21,31 +21,38 @@
     {% set departments = taxonomyPresenter.departmentBadges(measure, projectType|default(null)) %}
 
     {% if measureBlock and measureBlock.hasScreeningQuestion and blockAnswer is null %}
-        <div class="alert alert-warning mb-4">
-            <div class="fw-semibold mb-2">{{ measureBlock.name }}</div>
-            <div class="mb-3">{{ measureBlock.screeningQuestion }}</div>
-            <div class="measure-action-group d-flex justify-content-center gap-3">
-                <button
-                    type="button"
-                    class="btn btn-outline-danger px-4"
-                    data-plan-measures-target="actionBtn"
-                    data-measure-id="{{ measure.id }}"
-                    data-field="blockQuestion"
-                    data-value="false">
-                    {{ 'backend.common.no'|trans }}
-                </button>
-                <button
-                    type="button"
-                    class="btn btn-outline-success px-4"
-                    data-plan-measures-target="actionBtn"
-                    data-measure-id="{{ measure.id }}"
-                    data-field="blockQuestion"
-                    data-value="true">
-                    {{ 'backend.common.yes'|trans }}
-                </button>
+        <div class="alert alert-warning mb-3 px-3 py-2">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 gap-lg-3">
+                <div class="d-flex flex-grow-1 flex-wrap align-items-baseline gap-2">
+                    <span class="fw-semibold">{{ measureBlock.name }}</span>
+                    <span>{{ measureBlock.screeningQuestion }}</span>
+                </div>
+                <div
+                    class="measure-action-group d-flex flex-wrap justify-content-end gap-2 ms-auto"
+                    role="group"
+                    aria-label="{{ measureBlock.screeningQuestion }}">
+                    <button
+                        type="button"
+                        class="btn btn-outline-danger px-3"
+                        data-plan-measures-target="actionBtn"
+                        data-measure-id="{{ measure.id }}"
+                        data-field="blockQuestion"
+                        data-value="false">
+                        {{ 'backend.common.no'|trans }}
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-outline-success px-3"
+                        data-plan-measures-target="actionBtn"
+                        data-measure-id="{{ measure.id }}"
+                        data-field="blockQuestion"
+                        data-value="true">
+                        {{ 'backend.common.yes'|trans }}
+                    </button>
+                </div>
             </div>
         </div>
-        {% endif %}
+    {% endif %}
 
     <div
         class="alert alert-danger d-none mb-3"
