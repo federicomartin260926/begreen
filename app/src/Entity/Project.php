@@ -34,10 +34,12 @@ class Project
     private ?string $name = null;
 
     #[ORM\Column(length: 50)]
+    #[Assert\NotBlank(message: 'backend.projects.form.validation.type_required')]
     #[Assert\Choice(choices: ['rodaje', 'evento'])]
     private ?string $type = null;
 
     #[ORM\Column(length: 2)]
+    #[Assert\NotBlank(message: 'backend.projects.form.validation.country_required')]
     #[Assert\Country]
     private ?string $country = null;
 
@@ -143,10 +145,10 @@ class Project
     public function setName(string $name): static { $this->name = $name; return $this; }
 
     public function getType(): ?string { return $this->type; }
-    public function setType(string $type): static { $this->type = $type; return $this; }
+    public function setType(?string $type): static { $this->type = $type; return $this; }
 
     public function getCountry(): ?string { return $this->country; }
-    public function setCountry(string $country): static { $this->country = $country; return $this; }
+    public function setCountry(?string $country): static { $this->country = $country; return $this; }
 
     public function getUser(): ?User { return $this->user; }
     public function setUser(?User $user): self { $this->user = $user; return $this; }

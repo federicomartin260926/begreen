@@ -494,6 +494,9 @@ backend:
       actions: "Acciones del proyecto"
       crew: "Equipo técnico"
       duplicate: "Duplicar"
+      project_description:
+        filming: "%type% %genre%"
+        event: "Evento %subtype%"
       phase_names:
         elaboration: "Elaboración del plan de sostenibilidad"
         signage: "Cartelería sostenible"
@@ -624,6 +627,8 @@ backend:
       title_edit: "Editar proyecto"
       h2_new: "Nuevo proyecto"
       h2_edit: "Editar proyecto"
+      country_placeholder: "Selecciona un país"
+      type_placeholder: "Selecciona un tipo de proyecto"
       wizard:
         step_1: "Tipo de proyecto"
         step_2: "Datos generales"

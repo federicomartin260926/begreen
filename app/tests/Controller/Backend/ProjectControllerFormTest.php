@@ -48,6 +48,10 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringNotContainsString('Gestionar facturación', $content);
         self::assertStringContainsString('data-project-wizard-edit-mode-value="false"', $content);
         self::assertStringNotContainsString('Tier actual', $content);
+        self::assertMatchesRegularExpression('/<select[^>]*id="project_country"[^>]*>[\s\S]*?<option value="" selected="selected">Selecciona un país<\/option>/', $content);
+        self::assertMatchesRegularExpression('/<select[^>]*id="project_type"[^>]*>[\s\S]*?<option value="" selected="selected">Selecciona un tipo de proyecto<\/option>/', $content);
+        self::assertNull((new Project())->getCountry());
+        self::assertNull((new Project())->getType());
     }
 
     public function testCreateRedirectsToConfirmationPage(): void
@@ -183,7 +187,8 @@ final class ProjectControllerFormTest extends KernelTestCase
         $container = self::getContainer();
         $entityManager = $container->get(EntityManagerInterface::class);
         $admin = $this->createAdminUser($entityManager);
-        $project = $this->createProject($entityManager, $admin, 'Proyecto edición test');
+        $project = $this->createProject($entityManager, $admin, 'Proyecto edición test')
+            ->setCountry('FR');
         $this->setAdminToken($admin);
 
         $controller = $this->createController();
@@ -198,6 +203,39 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringNotContainsString('Facturación del proyecto', $content);
         self::assertStringNotContainsString('Gestionar facturación', $content);
         self::assertStringContainsString('data-project-wizard-edit-mode-value="true"', $content);
+        self::assertMatchesRegularExpression('/<option value="FR" selected="selected">Francia<\/option>/', $content);
+        self::assertMatchesRegularExpression('/<option value="rodaje" selected="selected">Rodaje<\/option>/', $content);
+    }
+
+    public function testCreateRejectsMissingCountryAndProjectTypeWithTranslatedErrors(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $this->setAdminToken($admin);
+        $request = $this->createRequest('backend_project_new');
+        $request->setMethod(Request::METHOD_POST);
+        $request->request->set('project', [
+            '_token' => $container->get('security.csrf.token_manager')->getToken('project')->getValue(),
+            'name' => 'Proyecto sin clasificación',
+            'country' => '',
+            'type' => '',
+        ]);
+
+        $response = $this->createController()->new(
+            $request,
+            $entityManager,
+            $this->createMock(ActiveProjectService::class)
+        );
+        $content = (string) $response->getContent();
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Debes seleccionar un país.', $content);
+        self::assertStringContainsString('Debes seleccionar un tipo de proyecto.', $content);
+        self::assertNull($entityManager->getRepository(Project::class)->findOneBy([
+            'name' => 'Proyecto sin clasificación',
+        ]));
     }
 
     public function testEditDoesNotOverwriteImplementationSubscription(): void

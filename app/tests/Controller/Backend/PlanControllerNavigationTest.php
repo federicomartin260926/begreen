@@ -709,6 +709,59 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="critical"[^>]*class="[^"]*d-none[^"]*"/', $html);
     }
 
+    public function testCriticalDecisionShowsYesBeforeNoWithoutChangingBooleanPayloads(): void
+    {
+        self::bootKernel();
+        $planMeasure = $this->buildLoadedMeasureState(true, true, false, null);
+        $measure = $planMeasure->getMeasure();
+        $html = self::getContainer()->get('twig')->render('backend/plan/_measure_card.html.twig', [
+            'measure' => $measure,
+            'planMeasures' => [$planMeasure],
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'projectType' => 'rodaje',
+            'currentBlockAnswer' => null,
+            'nextCategoryName' => null,
+            'prevCategoryName' => null,
+        ]);
+
+        $criticalSection = substr($html, (int) strpos($html, 'data-plan-measures-section="critical"'));
+        $yesPosition = strpos($criticalSection, 'data-value="true"');
+        $noPosition = strpos($criticalSection, 'data-value="false"');
+
+        self::assertNotFalse($yesPosition);
+        self::assertNotFalse($noPosition);
+        self::assertLessThan($noPosition, $yesPosition);
+        self::assertStringContainsString('data-field="critical"', $criticalSection);
+    }
+
+    public function testEventMeasureOmitsImplementationDetailsButKeepsTheImplementationPhase(): void
+    {
+        self::bootKernel();
+        $measure = (new Measure())
+            ->setName('Medida de evento')
+            ->setImplementation('Contenido operativo de la medida');
+        $this->setEntityId($measure, 803);
+        $context = [
+            'measure' => $measure,
+            'planMeasures' => [],
+            'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+            'currentBlockAnswer' => null,
+            'nextCategoryName' => null,
+            'prevCategoryName' => null,
+        ];
+        $twig = self::getContainer()->get('twig');
+
+        $eventHtml = $twig->render('backend/plan/_measure_card.html.twig', $context + ['projectType' => 'evento']);
+        $filmingHtml = $twig->render('backend/plan/_measure_card.html.twig', $context + ['projectType' => 'rodaje']);
+        $reviewTemplate = file_get_contents(\dirname(__DIR__, 3) . '/templates/backend/plan/review.html.twig');
+
+        self::assertStringNotContainsString('Contenido operativo de la medida', $eventHtml);
+        self::assertStringNotContainsString('<dt class="col-md-4 col-lg-2">Implementación</dt>', $eventHtml);
+        self::assertStringContainsString('<dt class="col-md-4 col-lg-2">Implementación</dt>', $filmingHtml);
+        self::assertNotFalse($reviewTemplate);
+        self::assertStringContainsString('backend.plan.implementation.title', $reviewTemplate);
+    }
+
     public function testMeasuresPageShowsCriticalStepWithNoSelectedWhenCriticalIsFalse(): void
     {
         self::bootKernel();

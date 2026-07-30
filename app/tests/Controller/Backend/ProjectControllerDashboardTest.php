@@ -43,9 +43,20 @@ final class ProjectControllerDashboardTest extends KernelTestCase
         $entityManager->persist($admin);
 
         $activeProject = $this->createProject($admin, 'Proyecto activo dashboard');
-        $targetProject = $this->createProject($admin, 'Proyecto incompleto dashboard');
-        $activityProject = $this->createProject($admin, 'Proyecto incompleto con actividad dashboard');
-        $completedProject = $this->createProject($admin, 'Proyecto completo dashboard');
+        $targetProject = $this->createProject($admin, 'Proyecto incompleto dashboard')
+            ->setFilmingType('feature')
+            ->setFilmingGenre('ficcion');
+        $activityProject = $this->createProject($admin, 'Proyecto incompleto con actividad dashboard')
+            ->setFilmingType('tv_series')
+            ->setFilmingGenre('documental')
+            ->setDistributionMedia(['tv'])
+            ->setEpisodios(6)
+            ->setDuracionEpisodio(50);
+        $completedProject = $this->createProject($admin, 'Proyecto completo dashboard')
+            ->setType('evento')
+            ->setEventTypePrimary('corporativo')
+            ->setEventModality('presencial')
+            ->setEventAttendeesCount(100);
         $entityManager->persist(
             (new Plan())
                 ->setProject($targetProject)
@@ -125,6 +136,9 @@ final class ProjectControllerDashboardTest extends KernelTestCase
         self::assertStringContainsString('name="_token"', $actionCell);
         self::assertStringNotContainsString('Eliminar plan', $activityActionCell);
         self::assertStringNotContainsString('Eliminar plan', $completedActionCell);
+        self::assertStringContainsString('Largometraje Ficción', $content);
+        self::assertStringContainsString('Serie Documental', $content);
+        self::assertStringContainsString('Evento corporativo', $content);
     }
 
     public function testDashboardQueryDoesNotDuplicateProjectsWithMultipleSubscriptions(): void

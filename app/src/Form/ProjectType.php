@@ -70,6 +70,7 @@ class ProjectType extends AbstractType
             ])
             ->add('type', ChoiceType::class, [
                 'label' => 'backend.projects.form.type',
+                'placeholder' => 'backend.projects.form.type_placeholder',
                 'choices' => [
                     'backend.aux.project_type.filming' => 'rodaje',
                     'backend.aux.project_type.event' => 'evento',
@@ -82,7 +83,7 @@ class ProjectType extends AbstractType
             ])
             ->add('country', CountryType::class, [
                 'label' => 'backend.projects.form.country',
-                'data' => 'ES',
+                'placeholder' => 'backend.projects.form.country_placeholder',
             ])
             ->add('commercialTier', ChoiceType::class, [
                 'label' => 'backend.projects.form.commercial_tier',

@@ -90,7 +90,7 @@
 
     <div class="measure-details bg-white shadow-sm rounded-3 p-3">
         <dl class="row mb-0">
-            {% if measure.implementation %}
+            {% if measure.implementation and projectType|default(null) != 'evento' %}
                 <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.implementation'|trans }}</dt>
                 <dd class="col-md-8 col-lg-10">{{ measure.implementation }}</dd>
             {% endif %}
@@ -184,18 +184,6 @@
                 class="{% if not (applicable is same as(true) and willImpl is same as(true)) %}d-none{% endif %}">
                 <div class="text-center mb-2">{{ 'backend.plan.q.critical'|trans }}</div>
                 <div class="measure-action-group d-flex justify-content-center gap-3 mb-3">
-                    {# No #}
-                    <button
-                        type="button"
-                        class="btn {% if critical is same as(false) %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
-                        data-plan-measures-target="actionBtn"
-                        data-measure-id="{{ measure.id }}"
-                        data-field="critical"
-                        data-value="false">
-                        {% if critical is same as(false) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
-                        {{ 'backend.common.no'|trans }}
-                    </button>
-
                     {# Sí #}
                     <button
                         type="button"
@@ -206,6 +194,18 @@
                         data-value="true">
                         {% if critical is same as(true) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
                         {{ 'backend.common.yes'|trans }}
+                    </button>
+
+                    {# No #}
+                    <button
+                        type="button"
+                        class="btn {% if critical is same as(false) %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
+                        data-plan-measures-target="actionBtn"
+                        data-measure-id="{{ measure.id }}"
+                        data-field="critical"
+                        data-value="false">
+                        {% if critical is same as(false) %}<i class="bi bi-check-lg me-1"></i>{% endif %}
+                        {{ 'backend.common.no'|trans }}
                     </button>
                 </div>
             </div>

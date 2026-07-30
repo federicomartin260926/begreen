@@ -353,6 +353,7 @@ class ProjectController extends AbstractController
                 ? $project->getFilmingType()
                 : $project->getEventTypePrimary(),
             'modalityLabel' => $this->translateProjectModality($project),
+            'descriptionLabel' => $this->formatProjectDescription($project),
             'companies' => array_map(fn (ProjectCompany $company): array => [
                 'id' => $company->getId(),
                 'typeKey' => $company->getType(),
@@ -473,6 +474,40 @@ class ProjectController extends AbstractController
             : 'backend.projects.form.event_type_primary.options.';
 
         return $this->t->trans($prefix . $key);
+    }
+
+    private function formatProjectDescription(Project $project): string
+    {
+        if ($project->getType() === 'rodaje') {
+            $filmingType = $project->getFilmingType();
+            if ($filmingType === null || $filmingType === '') {
+                return $this->translateProjectType('rodaje');
+            }
+
+            $typeLabel = $this->t->trans('backend.projects.form.filming_type.options.' . $filmingType);
+            $genre = $project->getFilmingGenre();
+            if ($genre === null || $genre === '') {
+                return $typeLabel;
+            }
+
+            return $this->t->trans('backend.projects.dashboard.project_description.filming', [
+                '%type%' => $typeLabel,
+                '%genre%' => $this->t->trans('backend.projects.form.filming_genre.options.' . $genre),
+            ]);
+        }
+
+        if ($project->getType() === 'evento') {
+            $eventType = $project->getEventTypePrimary();
+            if ($eventType === null || $eventType === '') {
+                return $this->translateProjectType('evento');
+            }
+
+            return $this->t->trans('backend.projects.dashboard.project_description.event', [
+                '%subtype%' => mb_strtolower($this->t->trans('backend.projects.form.event_type_primary.options.' . $eventType)),
+            ]);
+        }
+
+        return $this->translateProjectType('');
     }
 
     private function formatProjectOwner(Project $project): string

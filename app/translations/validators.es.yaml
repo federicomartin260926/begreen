@@ -4,6 +4,8 @@ backend:
   projects:
     form:
       validation:
+        country_required: "Debes seleccionar un país."
+        type_required: "Debes seleccionar un tipo de proyecto."
         filming_type_required: "Debes seleccionar un tipo de rodaje."
         distribution_media_required: "Debes seleccionar al menos un medio de distribución."
         episodes_required: "Debes indicar el número de episodios para series y programas de TV."

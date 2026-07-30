@@ -492,6 +492,9 @@ backend:
       actions: "Project actions"
       crew: "Crew"
       duplicate: "Duplicate"
+      project_description:
+        filming: "%genre% %type%"
+        event: "%subtype% event"
       phase_names:
         elaboration: "Sustainability plan elaboration"
         signage: "Sustainable signage"
@@ -622,6 +625,8 @@ backend:
       title_edit: "Edit project"
       h2_new: "New project"
       h2_edit: "Edit project"
+      country_placeholder: "Select a country"
+      type_placeholder: "Select a project type"
       wizard:
         step_1: "Project type"
         step_2: "General data"
