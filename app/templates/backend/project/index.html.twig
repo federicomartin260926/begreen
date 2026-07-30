@@ -280,6 +280,19 @@
                                         <li><a class="dropdown-item text-decoration-none" href="{{ path('backend_project_edit', {id: project.id}) }}"><i class="bi bi-pencil-square me-2"></i>{{ 'backend.common.edit'|trans }}</a></li>
                                         <li><a class="dropdown-item text-decoration-none" href="{{ path('backend_project_edit_crew', {id: project.id}) }}"><i class="bi bi-people me-2"></i>{{ 'backend.projects.dashboard.crew'|trans }}</a></li>
                                         <li><a class="dropdown-item text-decoration-none" href="{{ path('backend_project_clone', {id: project.id}) }}"><i class="bi bi-files me-2"></i>{{ 'backend.projects.dashboard.duplicate'|trans }}</a></li>
+                                        {% if project.plan.canDelete %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form action="{{ path('backend_plan_delete', {id: project.id}) }}"
+                                                      method="post"
+                                                      onsubmit="return confirm('{{ 'backend.plan.delete.confirm'|trans|e('js') }}');">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_plan_' ~ project.plan.id) }}">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="bi bi-trash me-2"></i>{{ 'backend.plan.delete.btn'|trans }}
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        {% endif %}
                                     </ul>
                                 </div>
                             </div>

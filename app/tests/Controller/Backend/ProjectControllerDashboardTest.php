@@ -3,6 +3,9 @@
 namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\ProjectController;
+use App\Entity\Measure;
+use App\Entity\Plan;
+use App\Entity\PlanMeasure;
 use App\Entity\Project;
 use App\Entity\ProjectMembership;
 use App\Entity\ProjectSubscription;
@@ -40,13 +43,39 @@ final class ProjectControllerDashboardTest extends KernelTestCase
         $entityManager->persist($admin);
 
         $activeProject = $this->createProject($admin, 'Proyecto activo dashboard');
-        $targetProject = $this->createProject($admin, 'Proyecto objetivo dashboard');
+        $targetProject = $this->createProject($admin, 'Proyecto incompleto dashboard');
+        $activityProject = $this->createProject($admin, 'Proyecto incompleto con actividad dashboard');
+        $completedProject = $this->createProject($admin, 'Proyecto completo dashboard');
+        $entityManager->persist(
+            (new Plan())
+                ->setProject($targetProject)
+                ->setUser($admin)
+                ->setStatus('incompleto')
+        );
+        $entityManager->persist(
+            (new Plan())
+                ->setProject($completedProject)
+                ->setUser($admin)
+                ->setStatus('completo')
+        );
+        $activityMeasure = (new Measure())->setName('Medida con actividad');
+        $activityPlan = (new Plan())
+            ->setProject($activityProject)
+            ->setUser($admin)
+            ->setStatus('incompleto');
+        $activityPlan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($activityMeasure)
+                ->setActionTaken('Acción ya registrada')
+        );
+        $entityManager->persist($activityMeasure);
+        $entityManager->persist($activityPlan);
 
         $entityManager->flush();
 
         $this->setAdminToken($admin);
 
-        $request = new Request(['name' => 'Proyecto objetivo dashboard']);
+        $request = new Request();
         $request->attributes->set('_route', 'backend_project_index');
         $request->setLocale('es');
         $request->setSession(new Session(new MockArraySessionStorage()));
@@ -85,15 +114,17 @@ final class ProjectControllerDashboardTest extends KernelTestCase
 
         $content = (string) $response->getContent();
         $actionCell = $this->extractActionCell($content, $targetProject->getName());
+        $activityActionCell = $this->extractActionCell($content, $activityProject->getName());
+        $completedActionCell = $this->extractActionCell($content, $completedProject->getName());
 
         self::assertStringContainsString('Editar', $actionCell);
         self::assertStringContainsString('Equipo', $actionCell);
-        self::assertStringContainsString('Facturación', $actionCell);
         self::assertStringContainsString('Duplicar', $actionCell);
-        self::assertStringContainsString('Seleccionar activo', $actionCell);
         self::assertStringNotContainsString('Abrir', $actionCell);
-        self::assertStringNotContainsString('Plan', $actionCell);
-        self::assertStringNotContainsString('Eliminar', $actionCell);
+        self::assertStringContainsString('Eliminar plan', $actionCell);
+        self::assertStringContainsString('name="_token"', $actionCell);
+        self::assertStringNotContainsString('Eliminar plan', $activityActionCell);
+        self::assertStringNotContainsString('Eliminar plan', $completedActionCell);
     }
 
     public function testDashboardQueryDoesNotDuplicateProjectsWithMultipleSubscriptions(): void
@@ -175,15 +206,18 @@ final class ProjectControllerDashboardTest extends KernelTestCase
 
     private function extractActionCell(string $content, string $projectName): string
     {
-        $projectPos = strpos($content, $projectName);
+        $projectPos = strrpos($content, $projectName);
         self::assertNotFalse($projectPos, sprintf('No se encontró el proyecto "%s" en el HTML.', $projectName));
 
-        $cellStart = strpos($content, '<td class="text-center dashboard-actions-cell">', $projectPos);
-        self::assertNotFalse($cellStart, 'No se encontró la celda de acciones del proyecto.');
+        $articleStart = strrpos(substr($content, 0, $projectPos), '<article');
+        self::assertNotFalse($articleStart, 'No se encontró la tarjeta del proyecto.');
 
-        $cellEnd = strpos($content, '</td>', $cellStart);
-        self::assertNotFalse($cellEnd, 'No se pudo delimitar la celda de acciones del proyecto.');
+        $actionsStart = strpos($content, '<div class="dropdown backend-project-pill__actions">', $articleStart);
+        self::assertNotFalse($actionsStart, 'No se encontró el menú de acciones del proyecto.');
 
-        return substr($content, $cellStart, $cellEnd - $cellStart);
+        $actionsEnd = strpos($content, '</ul>', $actionsStart);
+        self::assertNotFalse($actionsEnd, 'No se pudo delimitar el menú de acciones del proyecto.');
+
+        return substr($content, $actionsStart, $actionsEnd - $actionsStart);
     }
 }

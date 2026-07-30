@@ -475,7 +475,7 @@ class PlanController extends AbstractController
             'closureFeatures' => $closureFeatures,
             'elaborationUpgradeCta' => $elaborationUpgradeCta,
             'implementationTier' => $implementationTier,
-            'implementationTierLabel' => $this->featureGate->getPlanLabel($project, $implementationPhase),
+            'implementationTierLabel' => $this->t->trans('backend.plan.tier.level.' . $implementationTier),
             'hasImplementationActivity' => $hasImplementationActivity,
             'implementationUpgradeCta' => $implementationUpgradeCta,
             'gamificationMessage' => $gamificationMessage,
@@ -483,27 +483,31 @@ class PlanController extends AbstractController
         ]);
     }
 
-    #[Route('/delete', name: 'delete', methods: ['POST'])]
+    #[Route('/delete/{id}', name: 'delete', methods: ['POST'])]
     public function deletePlan(
+        Project $project,
         Request $request,
-        ActiveProjectService $activeProjectService,
         PlanRepository $planRepository,
         EntityManagerInterface $em
     ): Response {
-        $project = $activeProjectService->getActiveProject();
-        if (!$project) {
-            $this->addFlash('warning', 'backend.projects.flash.no_active');
-            return $this->redirectToRoute('app_backend');
-        }
-
         $plan = $planRepository->findOneBy(['project' => $project]);
         if (!$plan) {
             $this->addFlash('info', 'backend.plan.flash.no_plan_for_project');
-            return $this->redirectToRoute('backend_plan_welcome');
+            return $this->redirectToRoute('backend_project_index');
         }
 
         // VOTER: solo miembros pueden editar/borrar el plan
         $this->denyAccessUnlessGranted(PlanVoter::EDIT, $plan);
+
+        if (!$this->isCsrfTokenValid('delete_plan_' . $plan->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        if ($plan->getStatus() !== 'incompleto' || $this->collaborationService->hasImplementationActivity($plan)) {
+            $this->addFlash('danger', 'backend.plan.flash.delete_forbidden');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
 
         try {
             $em->remove($plan);
@@ -514,7 +518,7 @@ class PlanController extends AbstractController
             $this->addFlash('danger', 'backend.plan.flash.delete_failed');
         }
 
-        return $this->redirectToRoute('backend_plan_welcome');
+        return $this->redirectToRoute('backend_project_index');
     }
 
     #[Route('/review', name: 'review', methods: ['GET','POST'])]
@@ -756,7 +760,7 @@ class PlanController extends AbstractController
         $uiLocale = $request->getLocale();
         $reviewPhase = CommercialPhase::IMPLEMENTATION;
         $projectTier = $this->featureGate->getTier($project, $reviewPhase);
-        $projectTierLabel = $this->featureGate->getPlanLabel($project, $reviewPhase);
+        $projectTierLabel = $this->t->trans('backend.plan.tier.level.' . $projectTier);
         $projectTierSummary = $this->featureGate->getPlanDescription($project, $reviewPhase) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project, $reviewPhase);
         $upgradeCta = $this->buildUpgradeCta($project, $plan, $reviewPhase, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);

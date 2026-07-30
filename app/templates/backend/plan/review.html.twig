@@ -122,14 +122,6 @@
                 comparisonFrom: 'review'
             } %}
 
-            {% if not is_granted('ROLE_MANAGER') or is_granted('ROLE_SUPER_ADMIN') %}
-                <div class="d-flex justify-content-end mb-3">
-                    <form action="{{ path('backend_plan_delete') }}" method="post" onsubmit="return confirm('{{ 'backend.plan.delete.confirm'|trans|e('js') }}');">
-                        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> {{ 'backend.plan.delete.btn'|trans }}</button>
-                    </form>
-                </div>
-            {% endif %}
-
             {% if customMeasures is not empty %}
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body">

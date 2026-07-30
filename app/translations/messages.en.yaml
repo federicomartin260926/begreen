@@ -1002,7 +1002,7 @@ backend:
       completo: "complete"
       incompleto: "incomplete"
     delete:
-      confirm: "Delete the plan and go back to the start?"
+      confirm: "Delete this project's sustainability plan?"
       btn: "Delete plan"
     badges:
       protocol_popover: "Plan protocol: <strong>%protocol%</strong>"
@@ -1270,6 +1270,7 @@ backend:
       no_plan_for_project: "There is no plan for this project."
       deleted: "Plan deleted."
       delete_failed: "The plan could not be deleted."
+      delete_forbidden: "A plan with completed Elaboration or Implementation activity cannot be deleted."
     errors:
       not_complete: "The plan is not complete yet. Finish answering the measures."
       not_found: "The sustainability plan does not exist"
@@ -1393,6 +1394,7 @@ backend:
       badges:
         status_popover: "Plan status: <strong>%status%</strong>"
       plan_status: "Plan %status%"
+      modify_decision: "Edit decision"
       actions:
         preview_title: "Plan view by department with applied filters"
         preview: "Preview"

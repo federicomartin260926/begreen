@@ -322,7 +322,8 @@ class ProjectController extends AbstractController
         $implementationProgress = $plan instanceof Plan
             ? $this->collaborationService->buildProgressSummary($plan, $project)
             : null;
-        $hasImplementationActivity = $implementationProgress['hasImplementationActivity'] ?? false;
+        $hasImplementationActivity = $plan instanceof Plan
+            && $this->collaborationService->hasImplementationActivity($plan);
         $implementationCompleted = $implementationProgress !== null
             && $implementationProgress['toImplement'] > 0
             && $implementationProgress['implemented'] >= $implementationProgress['toImplement'];
@@ -368,7 +369,9 @@ class ProjectController extends AbstractController
             'createdAt' => $project->getCreatedAt(),
             'plan' => [
                 'exists' => $plan !== null,
+                'id' => $plan?->getId(),
                 'status' => $planStatus,
+                'canDelete' => $planStatus === 'incompleto' && !$hasImplementationActivity,
                 'label' => $planLabel,
                 'class' => $planState,
                 'measureCount' => $plan?->getPlanMeasures()->count() ?? 0,

@@ -1004,7 +1004,7 @@ backend:
       completo: "completo"
       incompleto: "incompleto"
     delete:
-      confirm: "¿Eliminar el plan y volver al inicio?"
+      confirm: "¿Eliminar el plan de sostenibilidad de este proyecto?"
       btn: "Eliminar plan"
     badges:
       protocol_popover: "Protocolo del plan: <strong>%protocol%</strong>"
@@ -1273,6 +1273,7 @@ backend:
       no_plan_for_project: "No hay plan para este proyecto."
       deleted: "Plan eliminado."
       delete_failed: "No se pudo eliminar el plan."
+      delete_forbidden: "No se puede eliminar un plan con la Elaboración completa o actividad de Implementación."
     errors:
       not_complete: "El plan aún no está completo. Termina de responder las medidas."
       not_found: "El plan de sostenibilidad no existe"
@@ -1398,6 +1399,7 @@ backend:
       badges:
         status_popover: "Estado del plan: <strong>%status%</strong>"
       plan_status: "Plan %status%"
+      modify_decision: "Modificar decisión"
       # Botones de la barra de acciones
       actions:
         preview_title: "Vista del plan por departamento con filtros aplicados"

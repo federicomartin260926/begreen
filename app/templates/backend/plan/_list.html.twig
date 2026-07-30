@@ -84,61 +84,32 @@
                 {# Fila plegable con detalles de la medida #}
                 <tr class="collapse plan-measure-row--{{ operationalState }} {{ isOpen ? 'show' : '' }}" id="{{ collapseId }}">
                     <td colspan="3">
-                        <div class="plan-measure-detail p-3 p-lg-4 border rounded-4 shadow-sm"
+                        <div class="plan-measure-detail p-3 p-lg-4 border rounded-4 shadow-sm bg-body-tertiary"
                              data-plan-measure-row
                              data-measure-id="{{ measure.id }}">
-                            <div class="row g-3">
-                                <div class="col-12 col-xl-6">
-                                    <div class="border rounded-3 bg-body-tertiary p-3 h-100">
-                                        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-                                            <div class="fw-semibold text-success-emphasis">
-                                                {{ 'backend.plan.review.info_title'|trans }}
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <div class="small text-muted mb-1">{{ 'backend.plan.measure.description'|trans }}</div>
-                                            {% include 'backend/plan/_description_toggle.html.twig' with {
-                                                description: measure.description,
-                                                toggleId: 'review-description-' ~ measure.id,
-                                                excerptLength: 200
-                                            } %}
-                                        </div>
-
-                                        <div>
-                                            <div class="small text-muted mb-2">{{ 'backend.plan.review.verification_sources'|trans }}</div>
-                                            {% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
-                                            {% if verificationLinks is not empty %}
-                                                <div class="d-flex flex-wrap gap-1 align-items-center">
-                                                    {% for link in verificationLinks %}
-                                                        <span class="badge bg-light text-dark border rounded-pill">
-                                                            {{ link.displayName|default(link.name) }}
-                                                        </span>
-                                                    {% endfor %}
-                                                </div>
-                                            {% elseif measure.verificationSources %}
-                                                <div class="text-body">{{ measure.verificationSources }}</div>
-                                            {% else %}
-                                                <div class="text-muted small">—</div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
+                            <div class="d-flex flex-column flex-md-row gap-2 gap-md-4 py-2 border-bottom">
+                                <div class="small text-muted flex-shrink-0">{{ 'backend.plan.measure.description'|trans }}</div>
+                                <div class="flex-grow-1">
+                                    {% include 'backend/plan/_description_toggle.html.twig' with {
+                                        description: measure.description,
+                                        toggleId: 'review-description-' ~ measure.id,
+                                        excerptLength: 200
+                                    } %}
                                 </div>
+                            </div>
 
-                                <div class="col-12 col-xl-6">
-                                    <div class="border rounded-3 bg-body-tertiary p-3 h-100">
-                                        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-                                            <div class="fw-semibold text-success-emphasis">{{ 'backend.plan.review.decision_title'|trans }}</div>
-                                        </div>
-
+                            <div class="py-3 border-bottom">
+                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                                    <div>
+                                        <div class="fw-semibold text-success-emphasis mb-2">{{ 'backend.plan.review.decision_title'|trans }}</div>
                                         <div class="d-flex flex-wrap gap-2">
                                             <span class="badge rounded-pill bg-light text-dark border">
-                                                {{ pm ? (pm.isApplicable is same as(true)
-                                                    ? 'backend.plan.answers.applicable'|trans ~ ': ' ~ ('backend.common.yes'|trans)
-                                                    : (pm.isApplicable is same as(false)
-                                                        ? 'backend.plan.answers.not_applicable'|trans ~ ': ' ~ ('backend.common.no'|trans)
-                                                        : 'backend.common.no_answer'|trans))
-                                                    : 'backend.common.no_answer'|trans }}
+                                                {{ 'backend.plan.q.apply'|trans }}:
+                                                {{ pm and pm.isApplicable is same as(true)
+                                                    ? 'backend.common.yes'|trans
+                                                    : (pm and pm.isApplicable is same as(false)
+                                                        ? 'backend.common.no'|trans
+                                                        : 'backend.common.no_answer'|trans) }}
                                             </span>
 
                                             {% if pm and pm.isApplicable %}
@@ -150,11 +121,40 @@
                                                 </span>
                                             {% endif %}
                                         </div>
+                                        {% if pm and pm.criticalReason %}
+                                            <div class="small text-muted mt-2">
+                                                {{ 'backend.plan.q.critical_reason'|trans }}: <span class="text-body">{{ pm.criticalReason }}</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
 
-                                        {% if pm %}
-                                            <div class="border rounded-3 bg-white mt-3 p-3"
-                                                 data-plan-review-target="inlineEdit"
-                                                 id="inline-edit-{{ measure.id }}">
+                                    {% if pm %}
+                                        <button type="button"
+                                                class="btn btn-outline-primary btn-sm"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#decision-modal-{{ measure.id }}">
+                                            <i class="bi bi-pencil-square me-1"></i>{{ 'backend.plan.review.modify_decision'|trans }}
+                                        </button>
+                                    {% endif %}
+                                </div>
+
+                                {% if pm %}
+                                    <div class="modal fade"
+                                         id="decision-modal-{{ measure.id }}"
+                                         tabindex="-1"
+                                         aria-labelledby="decision-modal-label-{{ measure.id }}"
+                                         aria-hidden="true">
+                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="decision-modal-label-{{ measure.id }}">
+                                                        {{ 'backend.plan.review.modify_decision'|trans }}
+                                                    </h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                                                </div>
+                                                <div class="modal-body"
+                                                     data-plan-review-target="inlineEdit"
+                                                     id="inline-edit-{{ measure.id }}">
                                                 <div class="row g-3">
                                                     <div class="col-12 col-lg-4">
                                                         <div class="small text-muted mb-1">{{ 'backend.plan.q.apply'|trans }}</div>
@@ -249,10 +249,13 @@
                                                            value="{{ pm.criticalReason ?? '' }}"
                                                            placeholder="{{ 'backend.plan.q.critical_reason_ph'|trans }}">
                                                 </div>
-
-                                                <div class="mt-3 d-flex justify-content-end">
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                                        {{ 'backend.common.cancel'|trans }}
+                                                    </button>
                                                     <button type="button"
-                                                            class="btn btn-sm btn-primary"
+                                                            class="btn btn-primary"
                                                             data-action="click->plan-review#saveInlineEdit"
                                                             data-save-section="state"
                                                             data-measure-id="{{ measure.id }}">
@@ -260,12 +263,12 @@
                                                     </button>
                                                 </div>
                                             </div>
-                                        {% endif %}
+                                        </div>
                                     </div>
-                                </div>
+                                {% endif %}
                             </div>
 
-                            <div class="mt-3 border rounded-3 bg-body-tertiary p-3">
+                            <section  class="mt-3">
                                 <div class="d-flex align-items-center justify-content-between gap-2">
                                     <div class="fw-semibold text-success-emphasis">{{ 'backend.plan.review.execution_title'|trans }}</div>
                                     {% if pm and pm.willImplement is not same as(true) %}
@@ -455,7 +458,7 @@
                                 {% else %}
                                     <div class="text-muted small mt-2">{{ 'backend.plan.review.execution_hint'|trans }}</div>
                                 {% endif %}
-                            </div>
+                            </section>
 
                             <div class="mt-3">
                                 <button
@@ -469,7 +472,7 @@
                                     <i class="bi bi-diagram-3 me-1"></i><span class="classification-toggle__label">{{ 'backend.plan.review.classification_title'|trans }}</span>
                                 </button>
                                 <div class="collapse mt-2" id="classification-{{ measure.id }}">
-                                    <div class="border rounded-3 bg-body-tertiary p-3">
+                                    <div class="pt-2">
                                         {% if measure.category %}
                                             <div class="row g-2 align-items-start mb-2">
                                                 <dt class="col-12 col-md-4 col-lg-3">{{ 'backend.plan.measure.category'|trans }}</dt>

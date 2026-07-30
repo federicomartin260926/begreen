@@ -399,6 +399,137 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $requestStack->pop();
     }
 
+    public function testImplementationTierSummaryUsesCanonicalBasicStandardAndProLabels(): void
+    {
+        self::bootKernel();
+        $requestStack = self::getContainer()->get('request_stack');
+        $request = Request::create('/');
+        $request->setLocale('es');
+        $requestStack->push($request);
+        $twig = self::getContainer()->get('twig');
+
+        foreach (['basic' => 'Basic', 'standard' => 'Standard', 'pro' => 'Pro'] as $tier => $label) {
+            $html = $twig->render('backend/plan/_tier_summary_panel.html.twig', [
+                'project' => new Project(),
+                'projectTier' => $tier,
+                'projectTierLabel' => $label,
+                'phaseLabel' => 'Implementación',
+                'phaseUpgradeLabel' => 'Mejorar plan',
+                'upgradeCta' => [
+                    'mode' => 'unavailable',
+                    'label' => 'No disponible',
+                    'options' => [],
+                ],
+            ]);
+
+            self::assertStringContainsString('Plan de Implementación: ' . $label, $html);
+            self::assertStringNotContainsString('Plan de Implementación: Implementación ' . $label, $html);
+        }
+
+        $requestStack->pop();
+    }
+
+    public function testDeletePlanActionIsAbsentFromElaborationAndImplementationTemplates(): void
+    {
+        foreach (['measures.html.twig', 'review.html.twig'] as $template) {
+            $source = file_get_contents(\dirname(__DIR__, 3) . '/templates/backend/plan/' . $template);
+            self::assertNotFalse($source);
+            self::assertStringNotContainsString('backend_plan_delete', $source);
+            self::assertStringNotContainsString('backend.plan.delete.btn', $source);
+        }
+    }
+
+    public function testDeletePlanRemovesAnIncompletePlan(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+        $project = (new Project())->setName('Proyecto con plan incompleto');
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setStatus('incompleto');
+        $request = $this->createRequest();
+        $token = (string) self::getContainer()
+            ->get('security.csrf.token_manager')
+            ->getToken('delete_plan_' . $plan->getId());
+        $request->request->set('_token', $token);
+        $request->setMethod('POST');
+        $planRepository = $this->createMock(PlanRepository::class);
+        $planRepository->expects(self::once())
+            ->method('findOneBy')
+            ->with(['project' => $project])
+            ->willReturn($plan);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('remove')->with($plan);
+        $entityManager->expects(self::once())->method('flush');
+
+        $response = $controller->deletePlan($project, $request, $planRepository, $entityManager);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringContainsString('/backend/project', (string) $response->headers->get('Location'));
+    }
+
+    public function testDeletePlanRejectsACompletedPlanEvenWithAValidRequest(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+        $project = (new Project())->setName('Proyecto con plan completo');
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setStatus('completo');
+        $request = $this->createRequest();
+        $token = (string) self::getContainer()
+            ->get('security.csrf.token_manager')
+            ->getToken('delete_plan_' . $plan->getId());
+        $request->request->set('_token', $token);
+        $request->setMethod('POST');
+        $planRepository = $this->createMock(PlanRepository::class);
+        $planRepository->method('findOneBy')->willReturn($plan);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('remove');
+        $entityManager->expects(self::never())->method('flush');
+
+        $response = $controller->deletePlan($project, $request, $planRepository, $entityManager);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(
+            ['backend.plan.flash.delete_forbidden'],
+            $request->getSession()->getFlashBag()->peek('danger')
+        );
+    }
+
+    public function testDeletePlanRejectsAnIncompletePlanWithImplementationActivity(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+        $project = (new Project())->setName('Proyecto con actividad de Implementación');
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setStatus('incompleto');
+        $plan->addPlanMeasure((new PlanMeasure())->setActionTaken('Acción ya registrada'));
+        $request = $this->createRequest();
+        $token = (string) self::getContainer()
+            ->get('security.csrf.token_manager')
+            ->getToken('delete_plan_' . $plan->getId());
+        $request->request->set('_token', $token);
+        $request->setMethod('POST');
+        $planRepository = $this->createMock(PlanRepository::class);
+        $planRepository->method('findOneBy')->willReturn($plan);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('remove');
+        $entityManager->expects(self::never())->method('flush');
+
+        $response = $controller->deletePlan($project, $request, $planRepository, $entityManager);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(
+            ['backend.plan.flash.delete_forbidden'],
+            $request->getSession()->getFlashBag()->peek('danger')
+        );
+    }
+
     public function testAddCustomMeasureIsAllowedWhenBasicFeatureIsEnabledManually(): void
     {
         $basicPlan = $this->makeCommercialPlan('basic', [
@@ -673,7 +804,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $twig = self::getContainer()->get('twig');
         $twig->addGlobal('userProjects', []);
 
-        $planMeasure = $this->buildLoadedMeasureState(true, true, false, null);
+        $planMeasure = $this->buildLoadedMeasureState(true, true, true, 'Motivo visible');
         $measure = $planMeasure->getMeasure();
 
         $html = $twig->render('backend/plan/_list.html.twig', [
@@ -714,6 +845,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
         ]);
 
         self::assertMatchesRegularExpression('/<input[^>]*name="implement-' . $measure->getId() . '"[^>]*value="true"[^>]*checked[^>]*>/', $html);
+        self::assertStringContainsString('data-bs-target="#decision-modal-' . $measure->getId() . '"', $html);
+        self::assertStringContainsString('id="decision-modal-' . $measure->getId() . '"', $html);
+        self::assertStringContainsString('name="applies-' . $measure->getId() . '"', $html);
+        self::assertStringContainsString('name="critical-' . $measure->getId() . '"', $html);
+        self::assertStringContainsString('id="critical-reason-' . $measure->getId() . '"', $html);
+        self::assertStringContainsString('data-save-section="state"', $html);
+        self::assertStringContainsString('Modificar decisión', $html);
+        self::assertStringContainsString('Motivo visible', $html);
+        self::assertStringContainsString('Descripción', $html);
+        self::assertStringContainsString('<hr class="my-3">', $html);
+        self::assertStringContainsString('Ejecución', $html);
+        self::assertStringNotContainsString('Fuentes de verificación sugeridas', $html);
         self::assertStringContainsString('data-action="change->plan-review#toggleImplemented"', $html);
 
         $requestStack->pop();
