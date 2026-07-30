@@ -22,7 +22,6 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertTrue($resolver->hasWatermark($project, CommercialPhase::ELABORATION));
         self::assertSame(10, $resolver->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
         self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
-        self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
         self::assertSame('Elaboración Basic', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 
@@ -36,7 +35,6 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertFalse($resolver->hasWatermark($project, CommercialPhase::ELABORATION));
         self::assertNull($resolver->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
         self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.department_pdf'));
-        self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
         self::assertFalse($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
         self::assertSame('Elaboración Standard', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
@@ -52,7 +50,6 @@ final class CommercialPlanResolverTest extends TestCase
         self::assertNull($resolver->getMaxEvidenceCount($project, CommercialPhase::ELABORATION));
         self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
         self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.branding'));
-        self::assertTrue($resolver->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_comments'));
         self::assertSame('Elaboración Pro', $resolver->getPlanLabel($project, CommercialPhase::ELABORATION));
     }
 

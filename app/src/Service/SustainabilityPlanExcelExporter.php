@@ -39,7 +39,7 @@ final class SustainabilityPlanExcelExporter
         $sheet->setCellValue('K1', $this->translator->trans('backend.plan.exports.excel.implemented'));
         $sheet->setCellValue('L1', $this->translator->trans('backend.plan.exports.excel.verified'));
         $sheet->setCellValue('M1', $this->translator->trans('backend.plan.exports.excel.responsibles'));
-        $sheet->setCellValue('N1', $this->translator->trans('backend.plan.exports.excel.public_comment'));
+        $sheet->setCellValue('N1', $this->translator->trans('backend.plan.exports.excel.execution_incident'));
         $sheet->setCellValue('O1', $this->translator->trans('backend.plan.exports.excel.description'));
         $sheet->setCellValue('P1', $this->translator->trans('backend.plan.exports.excel.status'));
 
@@ -61,7 +61,7 @@ final class SustainabilityPlanExcelExporter
                     !empty($row['implemented']) ? $this->translator->trans('backend.common.yes') : $this->translator->trans('backend.common.no'),
                     !empty($row['verified']) ? $this->translator->trans('backend.common.yes') : $this->translator->trans('backend.common.no'),
                     $row['responsibles'] ?? '',
-                    $row['publicComment'] ?? '',
+                    $row['executionIncident'] ?? '',
                     $row['description'] ?? '',
                     $row['statusLabel'] ?? '',
                 ], null, 'A' . $rowIndex);

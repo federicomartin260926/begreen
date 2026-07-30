@@ -126,6 +126,7 @@
     {% set applicable = pm ? pm.isApplicable : null %}   {# null|true|false #}
     {% set critical  = pm ? pm.isCritical  : null %}     {# null|true|false #}
     {% set reason    = pm ? pm.criticalReason : '' %}
+    {% set observations = pm ? pm.observations : '' %}
     {% set willImpl  = pm is not null ? pm.willImplement : null %}
     {% set implDone  = pm ? pm.isImplemented : false %}
     {% set decision  = pm is not null
@@ -139,6 +140,20 @@
         : null %}
 
     <div class="mt-3">
+
+        <div class="mb-3">
+            <label for="observations-{{ measure.id }}" class="form-label">{{ 'backend.plan.q.observations'|trans }}</label>
+            <textarea
+                id="observations-{{ measure.id }}"
+                rows="3"
+                class="form-control"
+                placeholder="{{ 'backend.plan.q.observations_ph'|trans }}"
+                data-plan-measures-target="observation"
+                data-action="blur->plan-measures#saveObservation"
+                data-measure-id="{{ measure.id }}"
+                data-saved-value="{{ observations|trim }}"
+            >{{ observations }}</textarea>
+        </div>
 
         {% if not (measureBlock and measureBlock.hasScreeningQuestion and blockAnswer is null) %}
             {# 1) ¿Quieres incluirla? #}

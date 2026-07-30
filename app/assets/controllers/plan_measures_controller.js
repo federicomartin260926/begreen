@@ -2,7 +2,7 @@
 import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
-    static targets = ['actionBtn', 'criticalReason', 'errorAlert'];
+    static targets = ['actionBtn', 'criticalReason', 'observation', 'errorAlert'];
     static scrollOffset = 96;
 
     connect() {
@@ -31,6 +31,20 @@ export default class extends Controller {
                 this.updateCriticalContinueState(card, measureId);
             });
         });
+
+    }
+
+    async saveObservation(event) {
+        const input = event.currentTarget;
+        const value = String(input.value || '').trim();
+        if (value === (input.dataset.savedValue || '')) {
+            return;
+        }
+
+        const saved = await this.postField(input, input.dataset.measureId, 'observations', value);
+        if (saved) {
+            input.dataset.savedValue = value;
+        }
     }
 
     async postField(triggerEl, measureId, field, value) {
@@ -103,9 +117,13 @@ export default class extends Controller {
             } else if (shouldAdvance) {
                 this.navigateAfterSave(field, value);
             }
+
+            return true;
         } catch (error) {
             const message = error instanceof Error ? error.message : 'No se pudo guardar';
             this.showInlineError(message, card);
+
+            return false;
         } finally {
             if (triggerButton) {
                 triggerButton.disabled = false;

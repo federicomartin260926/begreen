@@ -30,6 +30,34 @@ final class SustainabilityPlanExportControllerTest extends TestCase
         self::assertTrue($this->invokeExportAllowed($controller, $project, 'category', 'excel'));
     }
 
+    public function testImplementationDepartmentPdfAcceptsTheCommercialDepartmentFeature(): void
+    {
+        $implementationPlan = $this->makeCommercialPlan('basic', [
+            'phase' => CommercialPhase::IMPLEMENTATION,
+            'features' => array_replace(
+                $this->defaultImplementationCommercialPlanDefinition('basic')['features'],
+                [
+                    'sustainability_plan.department_pdf' => true,
+                    'sustainability_plan.export.department_pdf' => false,
+                    'sustainability_plan.export.department' => false,
+                ]
+            ),
+        ]);
+        $controller = $this->makeControllerWithFeatureGate(
+            $this->makeProjectFeatureGate([
+                $this->makeCommercialPlan('basic'),
+                $implementationPlan,
+            ])
+        );
+        $project = $this->makeProjectWithTiers(
+            ProjectSubscription::TIER_PRO,
+            ProjectSubscription::TIER_BASIC
+        );
+
+        self::assertTrue($this->invokeExportAllowed($controller, $project, 'department', 'pdf'));
+        self::assertFalse($this->invokeExportAllowed($controller, $project, 'department', 'excel'));
+    }
+
     public function testClosureExportsUseElaborationPhaseAndExpectedMatrix(): void
     {
         $controller = $this->makeControllerWithFeatureGate(

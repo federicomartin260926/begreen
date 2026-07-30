@@ -131,6 +131,363 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($this->invokeIsReviewInlineFieldAllowed($controller, $project, 'internal_notes'));
     }
 
+    public function testReviewExportOptionsRenderOnlyImplementationTierCapabilities(): void
+    {
+        $controller = $this->getControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
+        $project = $this->makeProjectWithTiers(
+            ProjectSubscription::TIER_BASIC,
+            ProjectSubscription::TIER_BASIC
+        );
+        $plan = (new Plan())->setProject($project)->setStatus('completo');
+        $this->setEntityId($plan, 701);
+        $twig = self::getContainer()->get('twig');
+        $routes = self::getContainer()->get('router')->getRouteCollection();
+
+        self::assertNotNull($routes->get('backend_plan_download_pdf'));
+        self::assertNotNull($routes->get('backend_plan_export_pdf'));
+        self::assertNotNull($routes->get('backend_plan_export_excel'));
+
+        $summaryHtml = $twig->render('backend/plan/_tier_summary_panel.html.twig', [
+            'project' => $project,
+            'projectTier' => ProjectSubscription::TIER_BASIC,
+            'projectTierLabel' => 'Basic',
+            'phaseLabel' => 'Implementación',
+            'phaseUpgradeLabel' => 'Mejorar plan de Implementación',
+            'comparisonFrom' => 'review',
+            'exportModalId' => 'implementation-export-options',
+            'upgradeCta' => [
+                'mode' => 'unavailable',
+                'label' => 'Mejorar plan de Implementación',
+                'options' => [],
+            ],
+        ]);
+
+        self::assertMatchesRegularExpression(
+            '/card-body[^>]*justify-content-between[^>]*>.*Plan de Implementación: Basic.*data-bs-target="#implementation-export-options".*Mejorar plan de Implementación/s',
+            $summaryHtml
+        );
+        self::assertStringNotContainsString('justify-content-end mb-3', $summaryHtml);
+
+        $basicHtml = $twig->render('backend/plan/_export_options_panel.html.twig', [
+            'plan' => $plan,
+            'exportOptions' => $this->invokeBuildReviewExportOptions($controller, $project),
+        ]);
+
+        self::assertStringContainsString('id="implementation-export-options"', $basicHtml);
+        self::assertStringContainsString('modal-xl', $basicHtml);
+        self::assertStringContainsString('modal-dialog-scrollable', $basicHtml);
+        self::assertStringContainsString('row-cols-md-2', $basicHtml);
+        self::assertStringContainsString('row-cols-xl-3', $basicHtml);
+        self::assertStringContainsString('row-cols-xxl-4', $basicHtml);
+        self::assertStringContainsString('data-action="plan-review#downloadPdf"', $basicHtml);
+        self::assertStringContainsString(
+            'data-download-state-loading-label-value="Generando PDF…"',
+            $basicHtml
+        );
+        self::assertSame(1, substr_count($basicHtml, 'data-controller="download-state"'));
+        self::assertStringNotContainsString('click->download-state#start', $basicHtml);
+        self::assertStringNotContainsString('/export/', $basicHtml);
+        self::assertStringNotContainsString('disabled', $basicHtml);
+        self::assertSame(7, substr_count($basicHtml, 'data-export-option="'));
+        self::assertSame(1, substr_count($basicHtml, 'data-export-option-state="enabled"'));
+        self::assertSame(6, substr_count($basicHtml, 'data-export-option-state="blocked"'));
+        self::assertSame(6, substr_count($basicHtml, 'data-export-option-locked'));
+        self::assertStringContainsString('Disponible desde Standard', $basicHtml);
+        self::assertStringContainsString('Disponible desde Pro', $basicHtml);
+
+        $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)
+            ?->setTier(ProjectSubscription::TIER_STANDARD);
+        $standardHtml = $twig->render('backend/plan/_export_options_panel.html.twig', [
+            'plan' => $plan,
+            'exportOptions' => $this->invokeBuildReviewExportOptions($controller, $project),
+        ]);
+
+        self::assertStringContainsString('data-action="plan-review#downloadPdf"', $standardHtml);
+        self::assertStringContainsString('/backend/plan/701/export/department/pdf', $standardHtml);
+        self::assertSame(2, substr_count($standardHtml, 'data-controller="download-state"'));
+        self::assertSame(1, substr_count($standardHtml, 'click->download-state#start'));
+        self::assertStringNotContainsString('/backend/plan/701/export/category/pdf', $standardHtml);
+        self::assertStringNotContainsString('/excel', $standardHtml);
+        self::assertSame(7, substr_count($standardHtml, 'data-export-option="'));
+        self::assertSame(2, substr_count($standardHtml, 'data-export-option-state="enabled"'));
+        self::assertSame(5, substr_count($standardHtml, 'data-export-option-state="blocked"'));
+        self::assertStringContainsString('Disponible desde Pro', $standardHtml);
+
+        $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)
+            ?->setTier(ProjectSubscription::TIER_PRO);
+        $proHtml = $twig->render('backend/plan/_export_options_panel.html.twig', [
+            'plan' => $plan,
+            'exportOptions' => $this->invokeBuildReviewExportOptions($controller, $project),
+        ]);
+
+        self::assertStringContainsString('data-action="plan-review#downloadPdf"', $proHtml);
+        self::assertSame(7, substr_count($proHtml, 'data-export-option="'));
+        self::assertSame(7, substr_count($proHtml, 'data-export-option-state="enabled"'));
+        self::assertStringNotContainsString('data-export-option-state="blocked"', $proHtml);
+        self::assertStringNotContainsString('data-export-option-locked', $proHtml);
+        self::assertSame(6, substr_count($proHtml, 'data-controller="download-state"'));
+        self::assertSame(5, substr_count($proHtml, 'click->download-state#start'));
+        foreach (['department', 'category', 'impact_area', 'triple_balance', 'ods'] as $grouping) {
+            self::assertStringContainsString('/backend/plan/701/export/' . $grouping . '/pdf', $proHtml);
+            self::assertStringContainsString('/backend/plan/701/export/' . $grouping . '/excel', $proHtml);
+        }
+        $excelCard = substr($proHtml, (int) strpos($proHtml, 'data-export-option="excel"'));
+        self::assertStringNotContainsString('data-controller="download-state"', $excelCard);
+    }
+
+    public function testReviewExportOptionsAreIndependentFromElaborationTier(): void
+    {
+        $controller = $this->getControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
+
+        $elaborationPro = $this->makeProjectWithTiers(
+            ProjectSubscription::TIER_PRO,
+            ProjectSubscription::TIER_BASIC
+        );
+        $implementationBasicOptions = $this->invokeBuildReviewExportOptions($controller, $elaborationPro);
+
+        self::assertTrue($implementationBasicOptions['generalPdf']);
+        self::assertFalse($implementationBasicOptions['groupings']['department']['pdf']['enabled']);
+        self::assertSame(
+            ProjectSubscription::TIER_STANDARD,
+            $implementationBasicOptions['groupings']['department']['pdf']['requiredTier']
+        );
+        self::assertFalse($implementationBasicOptions['groupings']['category']['pdf']['enabled']);
+        self::assertFalse($implementationBasicOptions['groupings']['category']['excel']['enabled']);
+
+        $elaborationBasic = $this->makeProjectWithTiers(
+            ProjectSubscription::TIER_BASIC,
+            ProjectSubscription::TIER_PRO
+        );
+        $implementationProOptions = $this->invokeBuildReviewExportOptions($controller, $elaborationBasic);
+
+        self::assertTrue($implementationProOptions['generalPdf']);
+        foreach ($implementationProOptions['groupings'] as $availability) {
+            self::assertTrue($availability['pdf']['enabled']);
+            self::assertTrue($availability['excel']['enabled']);
+        }
+    }
+
+    public function testReviewDepartmentPdfCombinesEveryBackendPermissionFeature(): void
+    {
+        $plans = $this->makeDefaultCommercialPlans();
+        $implementationBasic = $plans['implementation_basic'];
+        $controller = $this->getControllerWithFeatureGate(
+            $this->makeProjectFeatureGate(array_values($plans))
+        );
+        $project = $this->makeProjectWithTiers(
+            ProjectSubscription::TIER_PRO,
+            ProjectSubscription::TIER_BASIC
+        );
+        $plan = (new Plan())->setProject($project)->setStatus('completo');
+        $this->setEntityId($plan, 702);
+        $twig = self::getContainer()->get('twig');
+        $baseFeatures = $this->defaultImplementationCommercialPlanDefinition('basic')['features'];
+
+        foreach ([
+            'commercial feature' => [
+                'sustainability_plan.department_pdf' => true,
+                'sustainability_plan.export.department_pdf' => false,
+                'sustainability_plan.export.department' => false,
+            ],
+            'dedicated export feature' => [
+                'sustainability_plan.department_pdf' => false,
+                'sustainability_plan.export.department_pdf' => true,
+                'sustainability_plan.export.department' => false,
+            ],
+            'grouping export feature' => [
+                'sustainability_plan.department_pdf' => false,
+                'sustainability_plan.export.department_pdf' => false,
+                'sustainability_plan.export.department' => true,
+            ],
+        ] as $case => $overrides) {
+            $implementationBasic->setFeatures(array_replace($baseFeatures, $overrides));
+            $options = $this->invokeBuildReviewExportOptions($controller, $project);
+            $departmentPdf = $options['groupings']['department']['pdf'];
+
+            self::assertTrue($departmentPdf['visible'], $case);
+            self::assertTrue($departmentPdf['enabled'], $case);
+            self::assertNull($departmentPdf['requiredTier'], $case);
+            self::assertNull($departmentPdf['reason'], $case);
+
+            $html = $twig->render('backend/plan/_export_options_panel.html.twig', [
+                'plan' => $plan,
+                'exportOptions' => $options,
+            ]);
+            self::assertMatchesRegularExpression(
+                '/data-export-option="department_pdf"\\s+data-export-option-state="enabled"/',
+                $html,
+                $case
+            );
+            self::assertStringContainsString(
+                '/backend/plan/702/export/department/pdf',
+                $html,
+                $case
+            );
+        }
+
+        $implementationBasic->setFeatures(array_replace($baseFeatures, [
+            'sustainability_plan.department_pdf' => false,
+            'sustainability_plan.export.department_pdf' => false,
+            'sustainability_plan.export.department' => false,
+        ]));
+        $options = $this->invokeBuildReviewExportOptions($controller, $project);
+        $departmentPdf = $options['groupings']['department']['pdf'];
+
+        self::assertTrue($departmentPdf['visible']);
+        self::assertFalse($departmentPdf['enabled']);
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $departmentPdf['requiredTier']);
+        self::assertNotNull($departmentPdf['reason']);
+        self::assertStringContainsString('Standard', $departmentPdf['reason']);
+
+        $html = $twig->render('backend/plan/_export_options_panel.html.twig', [
+            'plan' => $plan,
+            'exportOptions' => $options,
+        ]);
+        self::assertMatchesRegularExpression(
+            '/data-export-option="department_pdf"\\s+data-export-option-state="blocked"/',
+            $html
+        );
+        self::assertStringNotContainsString('/backend/plan/702/export/department/pdf', $html);
+        self::assertStringContainsString('Disponible desde Standard', $html);
+    }
+
+    public function testInlineSaveAlwaysReloadsAndRestoresTheOpenMeasure(): void
+    {
+        $source = file_get_contents(
+            \dirname(__DIR__, 3) . '/assets/controllers/plan_review_controller.js'
+        );
+        self::assertNotFalse($source);
+
+        $saveStart = strpos($source, 'async saveInlineEdit(event)');
+        $saveEnd = strpos($source, 'openEvidenceModal(event)', (int) $saveStart);
+        self::assertNotFalse($saveStart);
+        self::assertNotFalse($saveEnd);
+        $saveSource = substr($source, (int) $saveStart, (int) $saveEnd - (int) $saveStart);
+
+        self::assertStringContainsString("saveSection === 'state'", $saveSource);
+        self::assertStringContainsString("saveSection === 'actions'", $saveSource);
+        self::assertStringContainsString('btn.disabled = true;', $saveSource);
+        self::assertMatchesRegularExpression(
+            '/finally\\s*\\{\\s*btn\\.disabled = false;\\s*\\}/',
+            $saveSource
+        );
+        self::assertStringContainsString(
+            'this.reloadReviewWithQuery({ open: measureId }, null, measureId);',
+            $saveSource
+        );
+        self::assertSame(1, substr_count($saveSource, 'this.reloadReviewWithQuery('));
+        self::assertStringContainsString(
+            'bootstrap.Modal.getOrCreateInstance(decisionModal).hide();',
+            $saveSource
+        );
+        self::assertStringNotContainsString('#implementation-filters', $saveSource);
+
+        $catchStart = strpos($saveSource, '} catch (err)');
+        $finallyStart = strpos($saveSource, '} finally', (int) $catchStart);
+        self::assertNotFalse($catchStart);
+        self::assertNotFalse($finallyStart);
+        $catchSource = substr($saveSource, (int) $catchStart, (int) $finallyStart - (int) $catchStart);
+        self::assertStringNotContainsString('reloadReviewWithQuery', $catchSource);
+
+        $reloadStart = strpos(
+            $source,
+            "reloadReviewWithQuery(extraParams = {}, anchor = 'implementation-filters', scrollMeasureId = null)"
+        );
+        $reloadEnd = strpos($source, 'extractFilename(', (int) $reloadStart);
+        self::assertNotFalse($reloadStart);
+        self::assertNotFalse($reloadEnd);
+        $reloadSource = substr($source, (int) $reloadStart, (int) $reloadEnd - (int) $reloadStart);
+
+        self::assertStringContainsString("anchor = 'implementation-filters'", $reloadSource);
+        self::assertStringContainsString(
+            "sessionStorage.setItem('planReviewScrollMeasure', String(scrollMeasureId));",
+            $reloadSource
+        );
+        self::assertStringContainsString('if (sameLogicalUrl)', $reloadSource);
+        self::assertStringContainsString('window.location.reload();', $reloadSource);
+        self::assertStringContainsString(
+            'window.location.assign(`${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`);',
+            $reloadSource
+        );
+        self::assertStringContainsString(
+            "sessionStorage.getItem('planReviewScrollMeasure')",
+            $reloadSource
+        );
+        self::assertStringContainsString(
+            "sessionStorage.removeItem('planReviewScrollMeasure')",
+            $reloadSource
+        );
+        self::assertStringContainsString(
+            'document.getElementById(`mrow_${measureId}`)',
+            $reloadSource
+        );
+        self::assertStringContainsString(
+            "window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });",
+            $reloadSource
+        );
+        self::assertStringContainsString('this.restoreReviewScrollPosition();', $source);
+    }
+
+    public function testImplementationPdfDownloadsReuseManagedDownloadState(): void
+    {
+        $downloadStateSource = file_get_contents(
+            \dirname(__DIR__, 3) . '/assets/controllers/download_state_controller.js'
+        );
+        $reviewSource = file_get_contents(
+            \dirname(__DIR__, 3) . '/assets/controllers/plan_review_controller.js'
+        );
+        self::assertNotFalse($downloadStateSource);
+        self::assertNotFalse($reviewSource);
+
+        self::assertStringContainsString('startManaged()', $downloadStateSource);
+        self::assertStringContainsString("this.element.setAttribute('aria-busy', 'true')", $downloadStateSource);
+        self::assertStringContainsString('spinner-border spinner-border-sm', $downloadStateSource);
+        self::assertStringContainsString('this.scheduleFallbackReset()', $downloadStateSource);
+        self::assertStringContainsString('default: 180000', $downloadStateSource);
+        self::assertStringContainsString("window.addEventListener('pageshow', this.reset)", $downloadStateSource);
+        self::assertStringContainsString("this.element.removeAttribute('aria-busy')", $downloadStateSource);
+        self::assertStringContainsString('this.element.innerHTML = this.originalHtml', $downloadStateSource);
+
+        $validationPosition = strpos($downloadStateSource, 'if (!this.canStartForSubmitButton())');
+        $loadingPosition = strpos($downloadStateSource, 'if (!this.startManaged())');
+        self::assertNotFalse($validationPosition);
+        self::assertNotFalse($loadingPosition);
+        self::assertLessThan($loadingPosition, $validationPosition);
+        self::assertStringContainsString(
+            'new FormData(form).getAll(this.requireCheckedNameValue).length > 0',
+            $downloadStateSource
+        );
+
+        $downloadStart = strpos($reviewSource, 'async downloadPdf(event)');
+        $downloadEnd = strpos($reviewSource, 'async toggleImplemented(event)', (int) $downloadStart);
+        self::assertNotFalse($downloadStart);
+        self::assertNotFalse($downloadEnd);
+        $generalPdfSource = substr(
+            $reviewSource,
+            (int) $downloadStart,
+            (int) $downloadEnd - (int) $downloadStart
+        );
+
+        self::assertStringContainsString(
+            "this.application.getControllerForElementAndIdentifier(btn, 'download-state')",
+            $generalPdfSource
+        );
+        self::assertStringContainsString('downloadState.startManaged()', $generalPdfSource);
+        self::assertStringContainsString('const blob = await res.blob();', $generalPdfSource);
+        self::assertMatchesRegularExpression(
+            '/finally\\s*\\{.*downloadState\\.reset\\(\\);/s',
+            $generalPdfSource
+        );
+        self::assertStringContainsString(
+            "this.showModal(this.t('modal.error_title'), this.t('pdf_error_generic'));",
+            $generalPdfSource
+        );
+    }
+
     public function testIndexRedirectsToMeasuresWhenCustomMeasuresStepIsPending(): void
     {
         $controller = $this->getController();
@@ -670,6 +1027,62 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringNotContainsString('Implementar', $html);
     }
 
+    public function testMeasuresPageAlwaysRendersObservationsForEveryCriticalityState(): void
+    {
+        self::bootKernel();
+        $twig = self::getContainer()->get('twig');
+        $measure = (new Measure())->setName('Medida con observaciones');
+        $this->setEntityId($measure, 804);
+
+        foreach ([null, false, true] as $critical) {
+            $observations = 'Observación ' . ($critical === null ? 'pendiente' : ($critical ? 'crítica' : 'no crítica'));
+            $planMeasure = (new PlanMeasure())
+                ->setMeasure($measure)
+                ->setIsApplicable(true)
+                ->setWillImplement(true)
+                ->setIsCritical($critical)
+                ->setCriticalReason($critical ? 'Motivo crítico' : null)
+                ->setObservations($observations)
+                ->markAsManual();
+
+            $html = $twig->render('backend/plan/_measure_card.html.twig', [
+                'measure' => $measure,
+                'planMeasures' => [$planMeasure],
+                'taxonomyPresenter' => self::getContainer()->get(\App\Service\MeasureTaxonomyPresenter::class),
+                'projectType' => null,
+                'currentBlockAnswer' => null,
+                'nextCategoryName' => null,
+                'prevCategoryName' => null,
+            ]);
+
+            self::assertStringContainsString('<label for="observations-804" class="form-label">Observaciones</label>', $html);
+            self::assertStringContainsString('data-plan-measures-target="observation"', $html);
+            self::assertStringContainsString($observations, $html);
+        }
+    }
+
+    public function testEnglishExecutionIncidentTranslationsAreConsistentAcrossConsumers(): void
+    {
+        self::bootKernel();
+        $translator = self::getContainer()->get('translator');
+        $translator->setLocale('en');
+
+        foreach ([
+            'backend.plan.review.execution_incident',
+            'backend.plan.exports.pdf.notes',
+            'backend.plan.exports.excel.execution_incident',
+            'backend.plan.preview.th.notes',
+            'backend.plan.pdf.th.notes',
+        ] as $key) {
+            self::assertSame('Execution incident', $translator->trans($key), $key);
+        }
+
+        self::assertSame(
+            'Describe the execution incident or visible comment…',
+            $translator->trans('backend.plan.review.execution_incident_ph')
+        );
+    }
+
     public function testMeasuresPageShowsContinueButtonWhenCriticalIsYes(): void
     {
         self::bootKernel();
@@ -858,6 +1271,10 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $twig->addGlobal('userProjects', []);
 
         $planMeasure = $this->buildLoadedMeasureState(true, true, true, 'Motivo visible');
+        $planMeasure
+            ->setActionTaken('Acción independiente')
+            ->setExecutionIncident('Incidencia independiente')
+            ->setObservations('Observación independiente');
         $measure = $planMeasure->getMeasure();
 
         $html = $twig->render('backend/plan/_list.html.twig', [
@@ -907,8 +1324,24 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('Modificar decisión', $html);
         self::assertStringContainsString('Motivo visible', $html);
         self::assertStringContainsString('Descripción', $html);
-        self::assertStringContainsString('<hr class="my-3">', $html);
         self::assertStringContainsString('Ejecución', $html);
+        self::assertStringContainsString('Incidencia de ejecución de la medida', $html);
+        self::assertStringContainsString('Incidencia independiente', $html);
+        self::assertStringContainsString('Observaciones', $html);
+        self::assertStringContainsString('Observación independiente', $html);
+        self::assertStringContainsString('rows="2"', $html);
+        self::assertLessThan(
+            strpos($html, 'Incidencia de ejecución de la medida'),
+            strpos($html, 'Acción realizada')
+        );
+        self::assertLessThan(
+            strpos($html, '>Observaciones</label>'),
+            strpos($html, 'Incidencia de ejecución de la medida')
+        );
+        self::assertMatchesRegularExpression(
+            '/<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">(?:(?!<\\/div>).)*Más información(?:(?!<\\/div>).)*Guardar cambios(?:(?!<\\/div>).)*<\\/div>/s',
+            $html
+        );
         self::assertStringNotContainsString('Fuentes de verificación sugeridas', $html);
         self::assertStringContainsString('data-action="change->plan-review#toggleImplemented"', $html);
 
@@ -3760,6 +4193,35 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $reflection->setAccessible(true);
 
         return (bool) $reflection->invoke($controller, $project, $field);
+    }
+
+    /**
+     * @return array{
+     *     generalPdf: true,
+     *     excel: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string},
+     *     groupings: array<string, array{
+     *         pdf: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string},
+     *         excel: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string}
+     *     }>
+     * }
+     */
+    private function invokeBuildReviewExportOptions(PlanController $controller, Project $project): array
+    {
+        $reflection = new \ReflectionMethod($controller, 'buildReviewExportOptions');
+        $reflection->setAccessible(true);
+
+        /** @var array{
+         *     generalPdf: true,
+         *     excel: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string},
+         *     groupings: array<string, array{
+         *         pdf: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string},
+         *         excel: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string}
+         *     }>
+         * } $options
+         */
+        $options = $reflection->invoke($controller, $project);
+
+        return $options;
     }
 
     private function newStripeCheckoutServiceStub(): \App\Service\StripeProjectCheckoutService

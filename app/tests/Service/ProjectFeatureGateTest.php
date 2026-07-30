@@ -28,7 +28,6 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department_pdf'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.email'));
-        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.internal_notes'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.responsibles'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
@@ -73,7 +72,6 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.category'));
         self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.email'));
-        self::assertFalse($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
     }
 
@@ -94,7 +92,6 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.department'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.excel'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.export.email'));
-        self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.public_comments'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.internal_notes'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.responsibles'));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));

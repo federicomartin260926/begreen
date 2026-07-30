@@ -78,15 +78,11 @@ final class CommercialPlanController extends AbstractController
         $commercialPlan->setFeature('sustainability_plan.export.excel', $advancedExports);
         $commercialPlan->setFeature('sustainability_plan.export.email', (bool) $form->get('emailExport')->getData());
 
-        $commercialPlan->setFeature('sustainability_plan.public_comments', (bool) $form->get('publicComments')->getData());
         $commercialPlan->setFeature('sustainability_plan.internal_notes', (bool) $form->get('internalNotes')->getData());
         $commercialPlan->setFeature('sustainability_plan.responsibles', (bool) $form->get('responsibles')->getData());
         $commercialPlan->setFeature('sustainability_plan.checklist', (bool) $form->get('checklist')->getData());
         $commercialPlan->setFeature('sustainability_plan.custom_measures', (bool) $form->get('customMeasures')->getData());
         $commercialPlan->setFeature('sustainability_plan.validation_summary', (bool) $form->get('validationSummary')->getData());
         $commercialPlan->setFeature('sustainability_plan.branding', (bool) $form->get('branding')->getData());
-
-        // Normaliza alias antiguos (custom_comments -> public_comments) sin perder compatibilidad.
-        $commercialPlan->setFeatures($commercialPlan->getFeatures());
     }
 }

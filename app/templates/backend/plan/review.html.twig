@@ -119,8 +119,15 @@
             {% include 'backend/plan/_tier_summary_panel.html.twig' with {
                 phaseLabel: 'backend.commercial_phases.implementation'|trans,
                 phaseUpgradeLabel: 'backend.plan.upgrade.implementation'|trans,
-                comparisonFrom: 'review'
+                comparisonFrom: 'review',
+                exportModalId: 'implementation-export-options'
             } %}
+
+            {% include 'backend/plan/_export_options_panel.html.twig' with {
+                plan: plan,
+                exportOptions: reviewExportOptions,
+                modalId: 'implementation-export-options'
+            } only %}
 
             {% if customMeasures is not empty %}
                 <div class="card border-0 shadow-sm mb-4">

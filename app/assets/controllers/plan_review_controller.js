@@ -97,6 +97,8 @@ export default class extends Controller {
       etModalEl.addEventListener('show.bs.modal', () => { this.hideEtWarning(); this.updateEtCounter(); });
       etModalEl.addEventListener('hidden.bs.modal', () => { this.hideEtWarning(); });
     }
+
+    this.restoreReviewScrollPosition();
   }
 
   // --- Vista previa (modal) ---
@@ -125,7 +127,15 @@ export default class extends Controller {
   async downloadPdf(event) {
     if (event) event.preventDefault();
     const btn = event?.currentTarget;
-    if (btn) btn.disabled = true;
+    const downloadState = btn
+      ? this.application.getControllerForElementAndIdentifier(btn, 'download-state')
+      : null;
+
+    if (downloadState) {
+      if (!downloadState.startManaged()) return;
+    } else if (btn) {
+      btn.disabled = true;
+    }
 
     this.showSpinner();
     try {
@@ -152,7 +162,11 @@ export default class extends Controller {
       this.showModal(this.t('modal.error_title'), this.t('pdf_error_generic'));
     } finally {
       this.hideSpinner();
-      if (btn) btn.disabled = false;
+      if (downloadState) {
+        downloadState.reset();
+      } else if (btn) {
+        btn.disabled = false;
+      }
     }
   }
 
@@ -327,15 +341,61 @@ export default class extends Controller {
     return params.toString();
   }
 
-  reloadReviewWithQuery(extraParams = {}) {
+  reloadReviewWithQuery(extraParams = {}, anchor = 'implementation-filters', scrollMeasureId = null) {
     const nextQuery = this.buildReviewQuery(extraParams);
-    const currentQuery = window.location.search.replace(/^\?/, '');
+    const targetUrl = new URL(window.location.href);
+    targetUrl.search = nextQuery;
+    targetUrl.hash = anchor ? `#${anchor}` : '';
 
-    if (nextQuery === currentQuery) {
-      window.location.assign(`${window.location.pathname}?${nextQuery}#implementation-filters`);
-    } else {
-      window.location.assign(`${window.location.pathname}?${nextQuery}#implementation-filters`);
+    if (scrollMeasureId !== null && scrollMeasureId !== undefined) {
+      try {
+        sessionStorage.setItem('planReviewScrollMeasure', String(scrollMeasureId));
+      } catch (error) {
+        console.warn('plan-review: could not persist scroll target', error);
+      }
     }
+
+    const sameLogicalUrl = window.location.pathname === targetUrl.pathname
+      && window.location.search === targetUrl.search;
+
+    if (sameLogicalUrl) {
+      if (window.location.hash !== targetUrl.hash) {
+        try {
+          window.history.replaceState(
+            window.history.state,
+            '',
+            `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`
+          );
+        } catch (error) {
+          console.warn('plan-review: could not update navigation hash before reload', error);
+        }
+      }
+      window.location.reload();
+      return;
+    }
+
+    window.location.assign(`${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`);
+  }
+
+  restoreReviewScrollPosition() {
+    let measureId = null;
+    try {
+      measureId = sessionStorage.getItem('planReviewScrollMeasure');
+      sessionStorage.removeItem('planReviewScrollMeasure');
+    } catch (error) {
+      console.warn('plan-review: could not restore scroll target', error);
+      return;
+    }
+
+    if (!measureId) return;
+
+    const measureRow = document.getElementById(`mrow_${measureId}`);
+    if (!measureRow) return;
+
+    window.requestAnimationFrame(() => {
+      const top = measureRow.getBoundingClientRect().top + window.scrollY - 96;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
   }
 
   extractFilename(contentDisposition) {
@@ -435,12 +495,14 @@ export default class extends Controller {
       const implementedEl   = document.getElementById(`implemented-${measureId}`);
       const verificationEl  = document.getElementById(`verification-${measureId}`);
       const actionTakenEl   = document.getElementById(`action-taken-${measureId}`);
+      const executionIncidentEl = document.getElementById(`execution-incident-${measureId}`);
       const observationsEl  = document.getElementById(`observations-${measureId}`);
       const internalNotesEl = document.getElementById(`internal-notes-${measureId}`);
       const responsiblesEl  = document.getElementById(`responsibles-${measureId}`);
 
       if (canSend(verificationEl)) updates.push({ field: 'verification', value: verificationEl.checked ? 'true' : 'false' });
       if (canSend(actionTakenEl))  updates.push({ field: 'action_taken', value: (actionTakenEl.value || '').trim() });
+      if (canSend(executionIncidentEl)) updates.push({ field: 'executionIncident', value: (executionIncidentEl.value || '').trim() });
       if (canSend(observationsEl)) updates.push({ field: 'observations', value: (observationsEl.value || '').trim() });
       if (canSend(internalNotesEl)) updates.push({ field: 'internal_notes', value: (internalNotesEl.value || '').trim() });
       if (responsiblesEl && !responsiblesEl.disabled) {
@@ -513,8 +575,17 @@ export default class extends Controller {
         }
       }
 
-      // Mantener la medida abierta
-      this.reloadReviewWithQuery({ open: measureId });
+      const decisionModal = btn.closest('.modal');
+      if (decisionModal) {
+        try {
+          bootstrap.Modal.getOrCreateInstance(decisionModal).hide();
+        } catch (error) {
+          console.warn('plan-review: could not close decision modal before reload', error);
+        }
+      }
+
+      // Reconstruir la tarjeta desde backend, manteniéndola abierta y visible.
+      this.reloadReviewWithQuery({ open: measureId }, null, measureId);
     } catch (err) {
       console.error(err);
       if (err?.message === this.t('implemented_require_action_and_evidence')) {
@@ -531,6 +602,7 @@ export default class extends Controller {
         }
       }
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
+    } finally {
       btn.disabled = false;
     }
   }

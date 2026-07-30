@@ -161,7 +161,6 @@ trait CommercialPlanTestHelpers
                     'sustainability_plan.export.ods' => false,
                     'sustainability_plan.export.excel' => false,
                     'sustainability_plan.export.email' => true,
-                    'sustainability_plan.public_comments' => false,
                     'sustainability_plan.internal_notes' => false,
                     'sustainability_plan.responsibles' => false,
                     'sustainability_plan.checklist' => false,
@@ -199,7 +198,6 @@ trait CommercialPlanTestHelpers
                     'sustainability_plan.export.ods' => true,
                     'sustainability_plan.export.excel' => true,
                     'sustainability_plan.export.email' => true,
-                    'sustainability_plan.public_comments' => true,
                     'sustainability_plan.internal_notes' => true,
                     'sustainability_plan.responsibles' => true,
                     'sustainability_plan.checklist' => true,
@@ -237,7 +235,6 @@ trait CommercialPlanTestHelpers
                     'sustainability_plan.export.ods' => false,
                     'sustainability_plan.export.excel' => false,
                     'sustainability_plan.export.email' => false,
-                    'sustainability_plan.public_comments' => false,
                     'sustainability_plan.internal_notes' => false,
                     'sustainability_plan.responsibles' => false,
                     'sustainability_plan.checklist' => false,
@@ -255,7 +252,6 @@ trait CommercialPlanTestHelpers
         $definition['phase'] = CommercialPhase::IMPLEMENTATION;
         $definition['features']['allowed_scores'] = [4, 5];
         $definition['features']['sustainability_plan.custom_measures'] = false;
-        $definition['features']['sustainability_plan.public_comments'] = false;
         $definition['features']['sustainability_plan.export.email'] = false;
         $definition['name'] = match ($definition['code']) {
             'standard' => 'Implementación Standard',

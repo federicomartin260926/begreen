@@ -32,7 +32,7 @@ final class CommercialPlanControllerTest extends KernelTestCase
         self::ensureKernelShutdown();
     }
 
-    public function testEditMapperNormalizesFeaturesAndAliasComments(): void
+    public function testEditMapperUpdatesCommercialFeatures(): void
     {
         $container = self::getContainer();
         $plan = (new CommercialPlan())
@@ -61,7 +61,6 @@ final class CommercialPlanControllerTest extends KernelTestCase
                 'sustainability_plan.export.triple_balance' => false,
                 'sustainability_plan.export.ods' => false,
                 'sustainability_plan.export.excel' => false,
-                'sustainability_plan.public_comments' => false,
                 'sustainability_plan.internal_notes' => false,
                 'sustainability_plan.responsibles' => false,
                 'sustainability_plan.checklist' => false,
@@ -89,7 +88,6 @@ final class CommercialPlanControllerTest extends KernelTestCase
             'pdfByDepartments' => true,
             'advancedExports' => true,
             'emailExport' => true,
-            'publicComments' => true,
             'internalNotes' => true,
             'responsibles' => true,
             'checklist' => true,
@@ -124,9 +122,6 @@ final class CommercialPlanControllerTest extends KernelTestCase
         self::assertTrue($plan->getFeature('sustainability_plan.export.department_pdf', false));
         self::assertTrue($plan->getFeature('sustainability_plan.advanced_exports', false));
         self::assertTrue($plan->getFeature('sustainability_plan.export.email', false));
-        self::assertTrue($plan->getFeature('sustainability_plan.public_comments', false));
-        self::assertTrue($plan->getFeature('sustainability_plan.custom_comments', false));
-        self::assertFalse(array_key_exists('sustainability_plan.custom_comments', $plan->getFeatures()));
     }
 
     public function testEditFormRendersStripeUpgradePriceRightAfterStripePriceId(): void
@@ -159,7 +154,6 @@ final class CommercialPlanControllerTest extends KernelTestCase
                 'sustainability_plan.export.triple_balance' => true,
                 'sustainability_plan.export.ods' => true,
                 'sustainability_plan.export.excel' => true,
-                'sustainability_plan.public_comments' => true,
                 'sustainability_plan.internal_notes' => true,
                 'sustainability_plan.responsibles' => true,
                 'sustainability_plan.checklist' => true,

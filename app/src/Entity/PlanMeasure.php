@@ -70,6 +70,9 @@ class PlanMeasure
     private ?string $observations = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $executionIncident = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $internalNotes = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
@@ -219,8 +222,8 @@ class PlanMeasure
     public function getObservations(): ?string { return $this->observations; }
     public function setObservations(?string $observations): self { $this->observations = $observations; return $this; }
 
-    public function getPublicComment(): ?string { return $this->observations; }
-    public function setPublicComment(?string $comment): self { $this->observations = $comment; return $this; }
+    public function getExecutionIncident(): ?string { return $this->executionIncident; }
+    public function setExecutionIncident(?string $executionIncident): self { $this->executionIncident = $executionIncident; return $this; }
 
     public function getInternalNotes(): ?string { return $this->internalNotes; }
     public function setInternalNotes(?string $internalNotes): self { $this->internalNotes = $internalNotes; return $this; }

@@ -32,9 +32,14 @@ final class PlanMeasureOperationalStateResolverTest extends TestCase
         self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setEvidence('/uploads/evidences/evidence.pdf')));
     }
 
-    public function testResolvesInProgressMeasureWithObservation(): void
+    public function testResolvesInProgressMeasureWithExecutionIncident(): void
     {
-        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setObservations('Observación de ejecución')));
+        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setExecutionIncident('Incidencia de ejecución')));
+    }
+
+    public function testGeneralObservationsDoNotCountAsExecutionActivity(): void
+    {
+        self::assertSame(PlanMeasureOperationalStateResolver::PENDING, $this->resolver->resolve($this->executableMeasure()->setObservations('Observación general')));
     }
 
     public function testResolvesInProgressMeasureWithInternalNote(): void

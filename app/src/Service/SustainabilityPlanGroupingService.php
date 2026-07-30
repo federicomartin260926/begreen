@@ -208,7 +208,7 @@ final class SustainabilityPlanGroupingService
             'implemented' => $planMeasure->isImplemented(),
             'verified' => $planMeasure->isVerification(),
             'responsibles' => $responsibles !== [] ? implode(', ', array_filter($responsibles)) : '—',
-            'publicComment' => (string) ($planMeasure->getPublicComment() ?? ''),
+            'executionIncident' => (string) ($planMeasure->getExecutionIncident() ?? ''),
             'evidenceCount' => count(array_filter(array_map('trim', preg_split('/\R/u', (string) $planMeasure->getEvidence()) ?: []))),
             'description' => (string) ($measure->getDescription() ?? ''),
         ];
@@ -236,7 +236,7 @@ final class SustainabilityPlanGroupingService
             'implemented' => in_array($customMeasure['state'], ['implemented', 'verified'], true),
             'verified' => $customMeasure['state'] === 'verified',
             'responsibles' => '—',
-            'publicComment' => '',
+            'executionIncident' => '',
             'evidenceCount' => 0,
             'description' => $customMeasure['description'] !== '' ? $customMeasure['description'] : $this->translator->trans('backend.plan.custom_measures.no_description'),
             'statusLabel' => $this->translator->trans('backend.plan.review.custom_measures.state.' . $customMeasure['state']),

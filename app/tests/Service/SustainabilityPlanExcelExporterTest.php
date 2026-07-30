@@ -33,7 +33,7 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
                 'implemented' => true,
                 'verified' => false,
                 'responsibles' => 'Ana García',
-                'publicComment' => 'Comentario visible',
+                'executionIncident' => 'Incidencia visible',
                 'description' => 'Descripción de prueba',
                 'statusLabel' => 'Implementada',
             ]],
@@ -44,12 +44,12 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
         self::assertSame('Group', (string) $sheet->getCell('A1')->getValue());
         self::assertSame('Measure', (string) $sheet->getCell('D1')->getValue());
         self::assertSame('Implemented', (string) $sheet->getCell('K1')->getValue());
-        self::assertSame('Visible comment', (string) $sheet->getCell('N1')->getValue());
+        self::assertSame('Execution incident', (string) $sheet->getCell('N1')->getValue());
         self::assertSame('Producción', (string) $sheet->getCell('A2')->getValue());
         self::assertSame('Medida A', (string) $sheet->getCell('D2')->getValue());
         self::assertSame('Yes', (string) $sheet->getCell('K2')->getValue());
         self::assertSame('Ana García', (string) $sheet->getCell('M2')->getValue());
-        self::assertSame('Comentario visible', (string) $sheet->getCell('N2')->getValue());
+        self::assertSame('Incidencia visible', (string) $sheet->getCell('N2')->getValue());
         self::assertSame('Descripción de prueba', (string) $sheet->getCell('O2')->getValue());
         self::assertSame('Implementada', (string) $sheet->getCell('P2')->getValue());
     }
@@ -72,7 +72,7 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
             'backend.plan.exports.excel.implemented' => 'Implemented',
             'backend.plan.exports.excel.verified' => 'Verified',
             'backend.plan.exports.excel.responsibles' => 'Responsibles',
-            'backend.plan.exports.excel.public_comment' => 'Visible comment',
+            'backend.plan.exports.excel.execution_incident' => 'Execution incident',
             'backend.plan.exports.excel.status' => 'Status',
             'backend.common.yes' => 'Yes',
             'backend.common.no' => 'No',

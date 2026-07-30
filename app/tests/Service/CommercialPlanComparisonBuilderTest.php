@@ -97,6 +97,11 @@ final class CommercialPlanComparisonBuilderTest extends KernelTestCase
         self::assertSame(2000, $comparison['plans']['pro']['upgrade']['priceAmount']);
         self::assertTrue($comparison['plans']['standard']['current']);
         self::assertSame('static', $this->findRow($comparison, 'level_alerts')['source']);
+        $observations = $this->findRow($comparison, 'observations');
+        self::assertSame('static', $observations['source']);
+        self::assertTrue($observations['values']['basic']['enabled']);
+        self::assertTrue($observations['values']['standard']['enabled']);
+        self::assertTrue($observations['values']['pro']['enabled']);
     }
 
     /**

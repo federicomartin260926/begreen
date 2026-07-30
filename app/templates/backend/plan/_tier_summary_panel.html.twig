@@ -3,6 +3,16 @@
     <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <strong>{{ 'backend.plan.tier.phase_current'|trans({'%phase%': phaseLabel, '%tier%': summaryTierLabel}) }}</strong>
         <div class="d-flex align-items-center flex-wrap gap-2">
+            {% if exportModalId|default(null) %}
+                <button
+                    type="button"
+                    class="btn btn-outline-success btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#{{ exportModalId }}"
+                    aria-controls="{{ exportModalId }}">
+                    <i class="bi bi-download me-1"></i>{{ 'backend.plan.exports.panel_open'|trans }}
+                </button>
+            {% endif %}
             {% if projectTier != 'pro' %}
                 {% include 'backend/plan/_upgrade_cta.html.twig' with {
                     upgradeCta: upgradeCta|merge({buttonLabel: phaseUpgradeLabel, comparisonFrom: comparisonFrom|default('measures'), buttonClass: 'btn btn-outline-success btn-sm px-3'}),

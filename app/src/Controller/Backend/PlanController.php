@@ -51,7 +51,7 @@ class PlanController extends AbstractController
         'evidence',
         'evidence_metadata',
         'evidenceMetadata',
-        'observations',
+        'executionIncident',
         'internalNotes',
         'internal_notes',
         'responsibles',
@@ -773,6 +773,7 @@ class PlanController extends AbstractController
             'canUseChecklist'  => $this->featureGate->canUseFeature($project, $reviewPhase, 'sustainability_plan.checklist'),
             'canUseResponsibles'=> $this->featureGate->canUseFeature($project, $reviewPhase, 'sustainability_plan.responsibles'),
             'canUseInternalNotes'=> $this->featureGate->canUseFeature($project, $reviewPhase, 'sustainability_plan.internal_notes'),
+            'reviewExportOptions' => $this->buildReviewExportOptions($project),
             'evidenceCount'    => $this->countProjectEvidenceFiles($plan),
             'evidenceLimit'    => $this->featureGate->getMaxEvidenceCount($project, $reviewPhase),
             'commercialCards'  => $this->buildCommercialFeatureCards($project, $reviewPhase),
@@ -1127,6 +1128,11 @@ class PlanController extends AbstractController
             case 'observations':
                 $text = trim((string)$value);
                 $planMeasure->setObservations($text !== '' ? $text : null);
+                break;
+
+            case 'executionIncident':
+                $text = trim((string) $value);
+                $planMeasure->setExecutionIncident($text !== '' ? $text : null);
                 $planMeasure->markAsManual();
                 break;
 
@@ -1168,6 +1174,15 @@ class PlanController extends AbstractController
 
         $em->persist($planMeasure);
         $em->flush();
+
+        if ($field === 'observations' && $plan->getStatus() !== 'completo') {
+            return new JsonResponse([
+                'success' => true,
+                'nextUrl' => null,
+                'unchangedDecision' => false,
+                'implemented' => $planMeasure->isImplemented(),
+            ]);
+        }
 
         if ($gamificationBefore !== null && !$samePrimaryDecision) {
             $this->gamificationService->evaluateWithLock(
@@ -1335,6 +1350,112 @@ class PlanController extends AbstractController
         }
 
         return $this->featureGate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, $fieldFeatureMap[$field]);
+    }
+
+    /**
+     * @return array{
+     *     generalPdf: true,
+     *     excel: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string},
+     *     groupings: array<string, array{
+     *         pdf: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string},
+     *         excel: array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string}
+     *     }>
+     * }
+     */
+    private function buildReviewExportOptions(Project $project): array
+    {
+        $phase = CommercialPhase::IMPLEMENTATION;
+        $excel = $this->featureGate->getFeatureState(
+            $project,
+            $phase,
+            'sustainability_plan.export.excel'
+        );
+        $groupingFeatures = [
+            'department' => [
+                'pdf' => [
+                    'sustainability_plan.department_pdf',
+                    'sustainability_plan.export.department_pdf',
+                    'sustainability_plan.export.department',
+                ],
+                'excel' => 'sustainability_plan.export.department',
+            ],
+            'category' => [
+                'pdf' => ['sustainability_plan.export.category'],
+                'excel' => 'sustainability_plan.export.category',
+            ],
+            'impact_area' => [
+                'pdf' => ['sustainability_plan.export.impact_area'],
+                'excel' => 'sustainability_plan.export.impact_area',
+            ],
+            'triple_balance' => [
+                'pdf' => ['sustainability_plan.export.triple_balance'],
+                'excel' => 'sustainability_plan.export.triple_balance',
+            ],
+            'ods' => [
+                'pdf' => ['sustainability_plan.export.ods'],
+                'excel' => 'sustainability_plan.export.ods',
+            ],
+        ];
+
+        $groupings = [];
+        foreach ($groupingFeatures as $grouping => $features) {
+            $pdf = $this->combineAlternativeFeatureStates(array_map(
+                fn (string $feature): array => $this->featureGate->getFeatureState($project, $phase, $feature),
+                $features['pdf']
+            ));
+            $groupingExcel = $this->featureGate->getFeatureState($project, $phase, $features['excel']);
+            $groupings[$grouping] = [
+                'pdf' => $pdf,
+                'excel' => array_replace($groupingExcel, [
+                    'enabled' => $excel['enabled'] && $groupingExcel['enabled'],
+                ]),
+            ];
+        }
+
+        return [
+            // El PDF general es una capacidad base de Implementación en todos los tiers.
+            'generalPdf' => true,
+            'excel' => $excel,
+            'groupings' => $groupings,
+        ];
+    }
+
+    /**
+     * @param array<int, array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string}> $states
+     * @return array{visible: bool, enabled: bool, requiredTier: ?string, reason: ?string}
+     */
+    private function combineAlternativeFeatureStates(array $states): array
+    {
+        $visible = false;
+        foreach ($states as $state) {
+            $visible = $visible || $state['visible'];
+            if ($state['enabled']) {
+                return [
+                    'visible' => true,
+                    'enabled' => true,
+                    'requiredTier' => null,
+                    'reason' => null,
+                ];
+            }
+        }
+
+        foreach ($states as $state) {
+            if ($state['requiredTier'] !== null) {
+                return [
+                    'visible' => $visible,
+                    'enabled' => false,
+                    'requiredTier' => $state['requiredTier'],
+                    'reason' => $state['reason'],
+                ];
+            }
+        }
+
+        return [
+            'visible' => $visible,
+            'enabled' => false,
+            'requiredTier' => null,
+            'reason' => null,
+        ];
     }
 
     private function isImplementationField(string $field): bool
@@ -2851,7 +2972,6 @@ class PlanController extends AbstractController
             : [
                 'sustainability_plan.department_pdf' => 'PDF por departamentos',
                 'sustainability_plan.advanced_exports' => 'Exportaciones avanzadas',
-                'sustainability_plan.public_comments' => 'Comentarios personalizados',
                 'sustainability_plan.custom_measures' => 'Medidas personalizadas',
             ];
 

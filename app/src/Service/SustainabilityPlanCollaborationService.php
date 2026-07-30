@@ -24,7 +24,7 @@ final class SustainabilityPlanCollaborationService
      *     verified:int,
      *     evidenceFiles:int,
      *     responsibles:int,
-     *     publicComments:int,
+     *     executionIncidents:int,
      *     internalNotes:int,
      *     customMeasures:int,
      *     hasImplementationActivity:bool
@@ -38,7 +38,7 @@ final class SustainabilityPlanCollaborationService
             'verified' => 0,
             'evidenceFiles' => 0,
             'responsibles' => 0,
-            'publicComments' => 0,
+            'executionIncidents' => 0,
             'internalNotes' => 0,
             'customMeasures' => count($this->customMeasureParser->parse($plan->getCustomMeasures())),
             'hasImplementationActivity' => $this->containsImplementationActivity($plan),
@@ -75,8 +75,8 @@ final class SustainabilityPlanCollaborationService
                 $summary['verified']++;
             }
 
-            if ((string) $planMeasure->getPublicComment() !== '') {
-                $summary['publicComments']++;
+            if ((string) $planMeasure->getExecutionIncident() !== '') {
+                $summary['executionIncidents']++;
             }
 
             if ((string) $planMeasure->getInternalNotes() !== '') {
@@ -119,7 +119,7 @@ final class SustainabilityPlanCollaborationService
         return $planMeasure->hasActionTaken()
             || $planMeasure->hasEvidence()
             || !$planMeasure->getResponsibleCrewMembers()->isEmpty()
-            || trim((string) $planMeasure->getPublicComment()) !== ''
+            || trim((string) $planMeasure->getExecutionIncident()) !== ''
             || trim((string) $planMeasure->getInternalNotes()) !== ''
             || $planMeasure->isImplemented() === true
             || $planMeasure->isVerification();

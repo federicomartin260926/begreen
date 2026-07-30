@@ -160,7 +160,7 @@
                       class="btn btn-outline-primary btn-sm py-1 px-2 text-decoration-none"
                       data-controller="download-state"
                       data-action="click->download-state#start"
-                      data-download-state-loading-label-value="Generando PDF…">
+                      data-download-state-loading-label-value="{{ 'backend.plan.actions.spinner_pdf'|trans }}">
                       <i class="bi bi-download me-1" aria-hidden="true"></i>{{ 'backend.plan.closure.download'|trans }}
                     </a>
                   {% else %}
@@ -304,7 +304,8 @@
               class="btn btn-primary"
               data-controller="download-state"
               data-action="click->download-state#start"
-              data-download-state-loading-label-value="Enviando PDF…"
+              data-download-state-loading-label-value="{{ 'backend.plan.review.et_modal.processing'|trans }}"
+              data-download-state-require-checked-name-value="crew_ids[]"
               {{ emailCrewMembers is empty ? 'disabled' : '' }}>
               <i class="bi bi-send me-1" aria-hidden="true"></i>{{ 'backend.plan.closure.email_send'|trans }}
             </button>

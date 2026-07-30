@@ -4,6 +4,7 @@ export default class extends Controller {
   static values = {
     loadingLabel: { type: String, default: 'Generando PDF…' },
     resetAfter: { type: Number, default: 180000 },
+    requireCheckedName: String,
   }
 
   connect() {
@@ -24,10 +25,16 @@ export default class extends Controller {
       return
     }
 
-    this.setLoadingState()
+    if (!this.canStartForSubmitButton()) {
+      return
+    }
+
+    if (!this.startManaged()) {
+      event.preventDefault()
+      return
+    }
 
     if (!(this.element instanceof HTMLAnchorElement)) {
-      this.scheduleFallbackReset()
       return
     }
 
@@ -60,6 +67,34 @@ export default class extends Controller {
     } finally {
       this.reset()
     }
+  }
+
+  startManaged() {
+    if (this.element.getAttribute('aria-busy') === 'true') {
+      return false
+    }
+
+    this.setLoadingState()
+    this.scheduleFallbackReset()
+
+    return true
+  }
+
+  canStartForSubmitButton() {
+    if (!(this.element instanceof HTMLButtonElement) || this.element.type !== 'submit') {
+      return true
+    }
+
+    const form = this.element.form
+    if (!form || !form.checkValidity()) {
+      return false
+    }
+
+    if (!this.hasRequireCheckedNameValue) {
+      return true
+    }
+
+    return new FormData(form).getAll(this.requireCheckedNameValue).length > 0
   }
 
   setLoadingState() {

@@ -250,7 +250,8 @@ final class SustainabilityPlanExportController extends AbstractController
     private function isPdfAllowed(Project $project, string $grouping, CommercialPhase $phase): bool
     {
         return match ($grouping) {
-            'department' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.department_pdf')
+            'department' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.department_pdf')
+                || $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.department_pdf')
                 || $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.department'),
             'category' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.category'),
             'impact_area' => $this->featureGate->canUseFeature($project, $phase, 'sustainability_plan.export.impact_area'),

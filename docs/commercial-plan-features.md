@@ -51,26 +51,6 @@ Estado:
 
 - sí tiene efecto real.
 
-### Comentarios personalizados
-
-Clave canónica:
-
-- `sustainability_plan.public_comments`
-
-Alias compatible:
-
-- `sustainability_plan.custom_comments`
-
-Efecto actual:
-
-- desbloquea el campo de comentarios públicos/observaciones en la revisión del plan;
-- forma parte de los bloqueos comerciales en `PlanController` para campos Pro-only;
-- se guarda como `public_comments` en la ficha comercial, con `custom_comments` solo como alias de lectura.
-
-Estado:
-
-- sí tiene efecto real.
-
 ### Notas internas
 
 Clave:
@@ -166,7 +146,6 @@ Estado:
 ## Observaciones sobre la UI comercial
 
 - La ficha de edición de planes mezcla features ya operativas con otras que todavía son declarativas.
-- `Comentarios personalizados` usa `public_comments` como clave real; `custom_comments` queda como alias técnico para no romper compatibilidad.
 - `PDF por departamentos` y `Exportaciones avanzadas` no son simples etiquetas: ya están conectadas a exportación real.
 
 ## Relación con tiers

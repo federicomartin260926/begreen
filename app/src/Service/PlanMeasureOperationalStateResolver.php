@@ -43,7 +43,7 @@ final class PlanMeasureOperationalStateResolver
     {
         return $planMeasure->hasActionTaken()
             || $planMeasure->hasEvidence()
-            || trim((string) $planMeasure->getObservations()) !== ''
+            || trim((string) $planMeasure->getExecutionIncident()) !== ''
             || trim((string) $planMeasure->getInternalNotes()) !== ''
             || !$planMeasure->getResponsibleCrewMembers()->isEmpty()
             || $planMeasure->isVerification();

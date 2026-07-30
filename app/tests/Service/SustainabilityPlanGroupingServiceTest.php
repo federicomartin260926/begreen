@@ -38,7 +38,7 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
         $measureA = $this->createCanonicalMeasure(101, 'Medida A', 5, $protocol);
         $measureA->addDepartment($deptA);
         $measureA->addDepartment($deptB);
-        $plan->addPlanMeasure($this->createPlanMeasure($measureA));
+        $plan->addPlanMeasure($this->createPlanMeasure($measureA)->setExecutionIncident('Incidencia independiente'));
 
         $measureB = $this->createCanonicalMeasure(102, 'Medida B', 4, $protocol);
         $measureB->addDepartment($deptA);
@@ -52,6 +52,8 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
 
         self::assertSame(['Medida A', 'Medida B'], array_column($productionGroup['rows'], 'displayName'));
         self::assertSame(['Medida A', 'Medida B'], array_column($productionGroup['rows'], 'measureTitle'));
+        self::assertSame('Incidencia independiente', $productionGroup['rows'][0]['executionIncident']);
+        self::assertArrayNotHasKey('publicComment', $productionGroup['rows'][0]);
         self::assertSame(['Medida A'], array_column($postGroup['rows'], 'displayName'));
     }
 

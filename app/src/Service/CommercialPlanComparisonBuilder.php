@@ -113,7 +113,7 @@ final class CommercialPlanComparisonBuilder
                 )
             )),
             $this->staticRow('critical', 'backend.commercial_plan_comparison.elaboration.critical', ['basic' => 'yes', 'standard' => 'yes', 'pro' => 'yes']),
-            $this->featureRow('observations', 'backend.commercial_plan_comparison.elaboration.observations', $plans, 'sustainability_plan.public_comments'),
+            $this->staticRow('observations', 'backend.commercial_plan_comparison.elaboration.observations', ['basic' => 'yes', 'standard' => 'yes', 'pro' => 'yes']),
             $this->row('pdf', 'backend.commercial_plan_comparison.elaboration.pdf', 'derived:department_pdf+advanced_exports', $this->mapPlans(
                 $plans,
                 fn (CommercialPlan $plan): array => $this->value($this->translator->trans(
@@ -166,7 +166,7 @@ final class CommercialPlanComparisonBuilder
             $this->staticRow('progress', 'backend.commercial_plan_comparison.implementation.progress', ['basic' => 'global_percentage', 'standard' => 'global_percentage', 'pro' => 'global_percentage']),
             $this->staticRow('commitment_levels', 'backend.commercial_plan_comparison.implementation.commitment_levels', ['basic' => 'yes', 'standard' => 'yes', 'pro' => 'yes']),
             $this->staticRow('concurrent_projects', 'backend.commercial_plan_comparison.implementation.concurrent_projects', ['basic' => 'unlimited', 'standard' => 'unlimited', 'pro' => 'unlimited']),
-            $this->featureRow('observations', 'backend.commercial_plan_comparison.implementation.observations', $plans, 'sustainability_plan.public_comments'),
+            $this->staticRow('observations', 'backend.commercial_plan_comparison.implementation.observations', ['basic' => 'yes', 'standard' => 'yes', 'pro' => 'yes']),
             $this->featureRow('internal_notes', 'backend.commercial_plans.form.internal_notes', $plans, 'sustainability_plan.internal_notes'),
             $this->featureRow('responsibles', 'backend.commercial_plans.form.responsibles', $plans, 'sustainability_plan.responsibles'),
             $this->featureRow('checklist', 'backend.commercial_plans.form.checklist', $plans, 'sustainability_plan.checklist'),

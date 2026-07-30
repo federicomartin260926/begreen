@@ -45,7 +45,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
             ->setImplemented(true)
             ->setVerification(true)
             ->setEvidence("/uploads/evidences/1/a.pdf\n/uploads/evidences/1/b.pdf")
-            ->setPublicComment('Visible comment')
+            ->setExecutionIncident('Execution incident')
             ->setInternalNotes('Internal comment');
         $planMeasure->addResponsibleCrewMember($crew1);
         $planMeasure->addResponsibleCrewMember($crew2);
@@ -60,7 +60,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         self::assertSame(1, $summary['verified']);
         self::assertSame(2, $summary['evidenceFiles']);
         self::assertSame(1, $summary['responsibles']);
-        self::assertSame(1, $summary['publicComments']);
+        self::assertSame(1, $summary['executionIncidents']);
         self::assertSame(1, $summary['internalNotes']);
         self::assertSame(2, $summary['customMeasures']);
     }
@@ -96,7 +96,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
                 ->setImplemented(true)
                 ->setVerification(true)
                 ->setEvidence("/uploads/evidences/1/a.pdf")
-                ->setPublicComment('Visible comment')
+                ->setExecutionIncident('Execution incident')
                 ->setInternalNotes('Internal comment')
         );
 
@@ -110,7 +110,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
                 ->setImplemented(null)
                 ->setVerification(true)
                 ->setEvidence("/uploads/evidences/1/b.pdf")
-                ->setPublicComment('Skipped comment')
+                ->setExecutionIncident('Skipped comment')
                 ->setInternalNotes('Skipped internal')
         );
 
@@ -121,7 +121,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         self::assertSame(1, $summary['verified']);
         self::assertSame(1, $summary['evidenceFiles']);
         self::assertSame(0, $summary['responsibles']);
-        self::assertSame(1, $summary['publicComments']);
+        self::assertSame(1, $summary['executionIncidents']);
         self::assertSame(1, $summary['internalNotes']);
     }
 
@@ -190,9 +190,13 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         self::assertTrue($service->hasImplementationActivity($plan));
         $planMeasure->removeResponsibleCrewMember($responsible);
 
-        $planMeasure->setPublicComment('Observación operativa');
+        $planMeasure->setExecutionIncident('Incidencia operativa');
         self::assertTrue($service->hasImplementationActivity($plan));
-        $planMeasure->setPublicComment(null);
+        $planMeasure->setExecutionIncident(null);
+
+        $planMeasure->setObservations('Observación general');
+        self::assertFalse($service->hasImplementationActivity($plan));
+        $planMeasure->setObservations(null);
 
         $planMeasure->setInternalNotes('Nota operativa');
         self::assertTrue($service->hasImplementationActivity($plan));

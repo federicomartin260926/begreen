@@ -13,7 +13,7 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 
 final class PlanClosureTemplateTest extends KernelTestCase
 {
-    public function testClosureShowsSummaryAllActionsCsrfAndImplementationCta(): void
+    public function testClosureShowsSummaryActionsCsrfAndDownloadStates(): void
     {
         self::bootKernel();
 
@@ -62,6 +62,16 @@ final class PlanClosureTemplateTest extends KernelTestCase
                     'custom' => 2,
                 ],
             ],
+            'commitmentSummary' => [
+                'totalOfficialPoints' => 100,
+                'planned' => [
+                    'points' => 62,
+                    'percentageRounded' => 62,
+                    'labelKey' => 'backend.plan.commitment.levels.forest.label',
+                    'levelKey' => 'forest',
+                    'pointsToNextLevel' => null,
+                ],
+            ],
             'closureFeatures' => [
                 'unifiedPdf' => $enabled,
                 'departmentPdf' => $lockedStandard,
@@ -91,8 +101,21 @@ final class PlanClosureTemplateTest extends KernelTestCase
         self::assertStringContainsString('Exportación Excel', $html);
         self::assertStringContainsString('Enviar por email', $html);
         self::assertStringNotContainsString('PDF por categorías', $html);
+        self::assertStringContainsString(
+            'data-download-state-loading-label-value="Generando PDF…"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-download-state-loading-label-value="Generando PDF y enviando…"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-download-state-require-checked-name-value="crew_ids[]"',
+            $html
+        );
+        self::assertStringContainsString('click->download-state#start', $html);
         self::assertStringContainsString('name="_token"', $html);
-        self::assertStringContainsString('/backend/plan/review?state=pending', $html);
+        self::assertStringNotContainsString('/backend/plan/review?state=pending', $html);
     }
 
     private function setEntityId(object $entity, int $id): void

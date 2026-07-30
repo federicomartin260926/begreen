@@ -16,11 +16,6 @@ class CommercialPlan
 {
     use TimestampableTrait;
 
-    // `public_comments` es la clave canónica; `custom_comments` queda como alias compatible.
-    private const FEATURE_ALIASES = [
-        'sustainability_plan.custom_comments' => 'sustainability_plan.public_comments',
-    ];
-
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -241,7 +236,7 @@ class CommercialPlan
     {
         $normalized = [];
         foreach ($features as $feature => $value) {
-            $normalized[$this->normalizeFeatureKey((string) $feature)] = $value;
+            $normalized[trim((string) $feature)] = $value;
         }
 
         $this->features = $normalized;
@@ -251,29 +246,21 @@ class CommercialPlan
 
     public function hasFeature(string $feature): bool
     {
-        foreach ($this->featureKeysForLookup($feature) as $candidate) {
-            if (array_key_exists($candidate, $this->features)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_key_exists(trim($feature), $this->features);
     }
 
     public function getFeature(string $feature, mixed $default = null): mixed
     {
-        foreach ($this->featureKeysForLookup($feature) as $candidate) {
-            if (array_key_exists($candidate, $this->features)) {
-                return $this->features[$candidate];
-            }
-        }
+        $feature = trim($feature);
 
-        return $default;
+        return array_key_exists($feature, $this->features)
+            ? $this->features[$feature]
+            : $default;
     }
 
     public function setFeature(string $feature, mixed $value): self
     {
-        $this->features[$this->normalizeFeatureKey($feature)] = $value;
+        $this->features[trim($feature)] = $value;
 
         return $this;
     }
@@ -299,27 +286,5 @@ class CommercialPlan
         $this->features['allowed_scores'] = array_values(array_map(static fn (mixed $score): int => (int) $score, $scores));
 
         return $this;
-    }
-
-    /**
-     * @return string[]
-     */
-    private function featureKeysForLookup(string $feature): array
-    {
-        $normalized = $this->normalizeFeatureKey($feature);
-        $keys = [$normalized];
-
-        if ($normalized !== $feature) {
-            $keys[] = $feature;
-        }
-
-        return array_values(array_unique($keys));
-    }
-
-    private function normalizeFeatureKey(string $feature): string
-    {
-        $feature = trim($feature);
-
-        return self::FEATURE_ALIASES[$feature] ?? $feature;
     }
 }
