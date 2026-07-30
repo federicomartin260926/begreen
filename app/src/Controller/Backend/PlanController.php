@@ -290,8 +290,7 @@ class PlanController extends AbstractController
             ? max(0, min(max($total - 1, 0), $request->query->getInt('i', 0)))
             : $this->resumeService->resolveIndex($measures, $plan->getPlanMeasures());
         $currentMeasure = $measures[$index] ?? null;
-        $progressIndex = $currentMeasure ? $this->findVisibleMeasureIndex($allMeasures, $currentMeasure) : null;
-        $catalogMeasuresTotal = count($allMeasures);
+        $progressIndex = $currentMeasure ? $this->findVisibleMeasureIndex($measures, $currentMeasure) : null;
 
         // ===== PM actual (si existe) y lógica de navegación =====
         $currentPm = $currentMeasure
@@ -385,7 +384,6 @@ class PlanController extends AbstractController
             'index'            => $index,
             'progressIndex'    => $progressIndex,
             'total'            => $total,
-            'catalogMeasuresTotal' => $catalogMeasuresTotal,
             'measure'          => $planComplete ? null : $currentMeasure,
             'planMeasures'     => $visiblePlanMeasures,
             'canGoNext'        => !$planComplete && $canGoNext,

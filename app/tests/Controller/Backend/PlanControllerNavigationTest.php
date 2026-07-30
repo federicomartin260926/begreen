@@ -2983,7 +2983,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame($currentPlanMeasure, $persistedEntities[0]);
     }
 
-    public function testMeasuresProgressCountsSkippedBlockMeasuresInBaseTotal(): void
+    public function testMeasuresProgressUsesNavigableMeasuresAfterSkippingBlock(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -3077,7 +3077,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $currentIndexBefore = $planCompletionService->findVisibleMeasureIndex($visibleMeasuresBefore, $measure2);
         self::assertNotNull($currentIndexBefore);
 
-        $beforeRequest = $this->createRequest([], ['i' => $currentIndexBefore]);
+        $beforeRequest = $this->createRequest([], ['i' => 0]);
         $beforeRequest->attributes->set('_route', 'backend_plan_measures');
         $beforeRequest->attributes->set('_route_params', []);
 
@@ -3095,7 +3095,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         )->getContent();
 
         self::assertIsString($beforeHtml);
-        self::assertStringContainsString('Medida 2 de 4', $beforeHtml);
+        self::assertStringContainsString('Medida 1 de 4', $beforeHtml);
 
         $request = $this->createRequest([
             'measureId' => (string) $measure2->getId(),
@@ -3141,7 +3141,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         )->getContent();
 
         self::assertIsString($nextHtml);
-        self::assertStringContainsString('Medida 3 de 4', $nextHtml);
+        self::assertStringContainsString('Medida 2 de 3', $nextHtml);
 
         $progressRequest = $this->createRequest([
             'measureId' => (string) $measure3->getId(),
@@ -3186,7 +3186,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         )->getContent();
 
         self::assertIsString($lastHtml);
-        self::assertStringContainsString('Medida 4 de 4', $lastHtml);
+        self::assertStringContainsString('Medida 3 de 3', $lastHtml);
 
         $finalRequest = $this->createRequest([
             'measureId' => (string) $measure4->getId(),
@@ -3213,6 +3213,98 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($finalData['success']);
         self::assertStringContainsString('/backend/plan/measures', (string) $finalData['nextUrl']);
         self::assertStringContainsString('i=3', (string) $finalData['nextUrl']);
+    }
+
+    public function testEventMeasuresStartAtOneAfterEntriesExcludedFromNavigation(): void
+    {
+        $controller = $this->getController();
+        $this->setAdminToken();
+        self::getContainer()->get('twig')->addGlobal('userProjects', []);
+
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO)
+            ->setType('evento');
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_EVENT_CODE)
+            ->setName('Be Green My Event')
+            ->setType(Protocol::TYPE_EVENTO)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 701);
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setUser(new User())
+            ->setProtocol($protocol);
+
+        $skippedBlock = (new MeasureBlock())
+            ->setProtocol($protocol)
+            ->setCode('event-precheck')
+            ->setName('Precheck evento')
+            ->setHasScreeningQuestion(true);
+        $this->setEntityId($skippedBlock, 702);
+        $plan->addBlockAnswer(
+            (new SustainabilityPlanBlockAnswer())
+                ->setMeasureBlock($skippedBlock)
+                ->setApplies(false)
+        );
+
+        $measures = [];
+        foreach (range(1, 7) as $position) {
+            $measure = (new Measure())
+                ->setProtocol($protocol)
+                ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_EVENT_IMPORT_VERSION)
+                ->setScore(5)
+                ->setName('Medida evento ' . $position);
+            if ($position <= 5) {
+                $measure->setMeasureBlock($skippedBlock);
+            }
+            $this->setEntityId($measure, 710 + $position);
+            $measures[] = $measure;
+        }
+
+        $measureRepository = $this->createMeasureRepositoryMock($measures, $measures[5]);
+        $planRepository = $this->createPlanRepositoryMock($plan);
+        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
+        $planMeasureRepository->method('findOneBy')->willReturn(null);
+        $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
+        $activeProjectService = $this->createActiveProjectServiceMock($project);
+
+        $firstRequest = $this->createRequest([], ['i' => 0]);
+        $firstRequest->attributes->set('_route', 'backend_plan_measures');
+        $firstRequest->attributes->set('_route_params', []);
+        $firstHtml = $this->invokeMeasures(
+            $controller,
+            $firstRequest,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $this->createEntityManagerMockForMeasuresView(),
+            $this->newStripeCheckoutServiceStubForProTier(),
+            self::getContainer()->get(CommercialPlanRepository::class)
+        )->getContent();
+
+        self::assertIsString($firstHtml);
+        self::assertStringContainsString('Medida 1 de 2', $firstHtml);
+        self::assertStringNotContainsString('Medida 6 de 7', $firstHtml);
+
+        $lastRequest = $this->createRequest([], ['i' => 1]);
+        $lastRequest->attributes->set('_route', 'backend_plan_measures');
+        $lastRequest->attributes->set('_route_params', []);
+        $lastHtml = $this->invokeMeasures(
+            $controller,
+            $lastRequest,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $this->createEntityManagerMockForMeasuresView(),
+            $this->newStripeCheckoutServiceStubForProTier(),
+            self::getContainer()->get(CommercialPlanRepository::class)
+        )->getContent();
+
+        self::assertIsString($lastHtml);
+        self::assertStringContainsString('Medida 2 de 2', $lastHtml);
     }
 
     public function testSkippedBlockDoesNotPreventPlanCompletion(): void

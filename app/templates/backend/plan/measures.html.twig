@@ -212,7 +212,7 @@
                         prevHref: path('backend_plan_measures', navigationQuery|merge({ i: index - 1 })),
                         nextHref: path('backend_plan_measures', navigationQuery|merge({ i: index + 1 })),
                         current: progressIndex|default(index),
-                        total: catalogMeasuresTotal|default(total)
+                        total: total
                     } %}
 
                     {% include 'backend/plan/_measure_card.html.twig' with {
