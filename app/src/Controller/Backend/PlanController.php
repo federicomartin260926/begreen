@@ -472,6 +472,7 @@ class PlanController extends AbstractController
             'closureSummary' => $closureSummary,
             'closureFeatures' => $closureFeatures,
             'elaborationUpgradeCta' => $elaborationUpgradeCta,
+            'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'implementationTier' => $implementationTier,
             'implementationTierLabel' => $this->t->trans('backend.plan.tier.level.' . $implementationTier),
             'hasImplementationActivity' => $hasImplementationActivity,
