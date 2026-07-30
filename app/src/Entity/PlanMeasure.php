@@ -79,6 +79,7 @@ class PlanMeasure
     private ?array $evidenceMetadata = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    // En la gamificación actual actúa como hito persistente de la primera aceptación afirmativa.
     private ?\DateTimeImmutable $firstDecisionAnsweredAt = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]

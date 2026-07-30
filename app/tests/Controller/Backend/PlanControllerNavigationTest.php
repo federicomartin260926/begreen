@@ -23,6 +23,9 @@ use App\Repository\SustainabilityPlanBlockAnswerRepository;
 use App\Service\ActiveProjectService;
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\ProjectFeatureGate;
+use App\Service\SustainabilityCommitmentLevelService;
+use App\Service\SustainabilityGamificationMessageCatalog;
+use App\Service\SustainabilityGamificationService;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
@@ -1747,7 +1750,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
-    public function testUpdateSelectionDecisionYesMarksMeasureAsIncludedAndStaysOnCriticalStep(): void
+    public function testNewYesQueuesSpecificMessageAndConsumesItOnlyAfterNavigatingToNextMeasure(): void
     {
         [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('true');
 
@@ -1770,6 +1773,73 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($currentPlanMeasure->isApplicable());
         self::assertNull($currentPlanMeasure->isCritical());
         self::assertTrue($currentPlanMeasure->willImplement());
+        $plan = $currentPlanMeasure->getPlan();
+        self::assertInstanceOf(Plan::class, $plan);
+        self::assertSame('measure', $plan->getPendingGamificationType());
+        self::assertSame('measure.901', $plan->getPendingGamificationKey());
+        self::assertSame(901, $plan->getPendingGamificationSourceMeasureId());
+        self::getContainer()->get('twig')->addGlobal('userProjects', []);
+
+        $sourceRequest = $this->createRequest([], ['i' => 0]);
+        $sourceRequest->attributes->set('_route', 'backend_plan_measures');
+        $sourceRequest->attributes->set('_route_params', []);
+        $sourceHtml = $this->invokeMeasures(
+            $controller,
+            $sourceRequest,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $this->createEntityManagerMockForMeasuresView(),
+            $this->newStripeCheckoutServiceStubForProTier(),
+            self::getContainer()->get(CommercialPlanRepository::class)
+        )->getContent();
+
+        self::assertIsString($sourceHtml);
+        self::assertStringNotContainsString('Mensaje específico de la medida', $sourceHtml);
+        self::assertTrue($plan->hasPendingGamificationMessage());
+
+        $criticalRequest = $this->createRequest([
+            'measureId' => '901',
+            'field' => 'critical',
+            'value' => 'false',
+        ]);
+        $criticalResponse = $this->invokeUpdateSelection(
+            $controller,
+            $criticalRequest,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $this->createEntityManagerMock($currentPlanMeasure)
+        );
+        $criticalData = json_decode((string) $criticalResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertStringContainsString('/backend/plan/measures', (string) $criticalData['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $criticalData['nextUrl']);
+        self::assertTrue($plan->hasPendingGamificationMessage());
+
+        $nextRequest = $this->createRequest([], ['i' => 1]);
+        $nextRequest->attributes->set('_route', 'backend_plan_measures');
+        $nextRequest->attributes->set('_route_params', []);
+        $nextHtml = $this->invokeMeasures(
+            $controller,
+            $nextRequest,
+            $activeProjectService,
+            $planRepository,
+            $measureRepository,
+            $planMeasureRepository,
+            $blockAnswerRepository,
+            $this->createEntityManagerMockForMeasuresView(),
+            $this->newStripeCheckoutServiceStubForProTier(),
+            self::getContainer()->get(CommercialPlanRepository::class)
+        )->getContent();
+
+        self::assertIsString($nextHtml);
+        self::assertStringContainsString('Mensaje específico de la medida', $nextHtml);
+        self::assertFalse($plan->hasPendingGamificationMessage());
     }
 
     public function testSavingTheSameYesDecisionPreservesCriticalDataAndDoesNotGenerateMessage(): void
@@ -1801,6 +1871,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($data['unchangedDecision']);
         self::assertArrayNotHasKey('gamification', $data);
         self::assertNull($data['nextUrl']);
+        self::assertFalse($currentPlanMeasure->getPlan()->hasPendingGamificationMessage());
         self::assertTrue($currentPlanMeasure->isCritical());
         self::assertSame('Motivo conservado', $currentPlanMeasure->getCriticalReason());
         self::assertSame($answeredAt, $currentPlanMeasure->getFirstDecisionAnsweredAt());
@@ -1828,11 +1899,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=1', (string) $data['nextUrl']);
         self::assertArrayNotHasKey('gamification', $data);
-        self::assertSame('welcome', $currentPlanMeasure->getPlan()->getPendingGamificationType());
-        self::assertStringStartsWith(
-            'welcome.seed.',
-            (string) $currentPlanMeasure->getPlan()->getPendingGamificationKey()
-        );
+        self::assertFalse($currentPlanMeasure->getPlan()->hasPendingGamificationMessage());
         self::assertTrue($currentPlanMeasure->isApplicable());
         self::assertNull($currentPlanMeasure->isCritical());
         self::assertFalse($currentPlanMeasure->willImplement());
@@ -1885,6 +1952,60 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertFalse($currentPlanMeasure->isApplicable());
         self::assertNull($currentPlanMeasure->isCritical());
         self::assertNull($currentPlanMeasure->willImplement());
+        self::assertFalse($currentPlanMeasure->getPlan()->hasPendingGamificationMessage());
+    }
+
+    public function testUpdateSelectionLevelUpReplacesSpecificMeasureMessage(): void
+    {
+        [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('true', false);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame('level_up', $currentPlanMeasure->getPlan()->getPendingGamificationType());
+        self::assertStringStartsWith(
+            'level_up.tree.',
+            (string) $currentPlanMeasure->getPlan()->getPendingGamificationKey()
+        );
+    }
+
+    public function testUpdateSelectionCompletedHundredReplacesSpecificMeasureMessage(): void
+    {
+        [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('true');
+        $plan = $currentPlanMeasure->getPlan();
+        self::assertInstanceOf(Plan::class, $plan);
+        $nextPlanMeasure = $plan->getPlanMeasures()->get(1);
+        self::assertInstanceOf(PlanMeasure::class, $nextPlanMeasure);
+        $nextPlanMeasure
+            ->setIsApplicable(true)
+            ->setWillImplement(true)
+            ->markFirstDecisionAnswered();
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($data['success']);
+        self::assertSame('completed_100', $plan->getPendingGamificationType());
+        self::assertStringStartsWith('completed_100.', (string) $plan->getPendingGamificationKey());
     }
 
     public function testUpdateSelectionDecisionNoOnLastMeasureRedirectsToDone(): void
@@ -3120,9 +3241,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
      *     8: PlanMeasure
      * }
      */
-    private function buildDecisionScenario(string $decisionValue): array
+    private function buildDecisionScenario(string $decisionValue, bool $resultingLevelAlreadyPresented = true): array
     {
-        $controller = $this->getController();
+        self::bootKernel();
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -3136,13 +3257,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $plan = (new Plan())
             ->setProject($project)
             ->setUser(new User())
-            ->setProtocol($protocol);
+            ->setProtocol($protocol)
+            ->markGamificationLevelPresented('seed');
+        if ($resultingLevelAlreadyPresented) {
+            $plan->markGamificationLevelPresented('tree');
+        }
 
         $currentMeasure = (new Measure())
             ->setProtocol($protocol)
             ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
             ->setScore(5)
-            ->setName('Medida actual');
+            ->setName('Medida actual')
+            ->setGamificationMessage('Mensaje específico de la medida');
         $this->setEntityId($currentMeasure, 901);
 
         $nextMeasure = (new Measure())
@@ -3162,6 +3288,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setApplicabilitySource('manual');
         $plan->addPlanMeasure($nextPlanMeasure);
 
+        $controller = $this->getControllerWithGamificationMeasures([$currentMeasure, $nextMeasure]);
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
             'field' => 'decision',
@@ -3186,6 +3313,29 @@ final class PlanControllerNavigationTest extends KernelTestCase
             $entityManager,
             $currentPlanMeasure,
         ];
+    }
+
+    /**
+     * @param Measure[] $measures
+     */
+    private function getControllerWithGamificationMeasures(array $measures): PlanController
+    {
+        $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
+        $resolver = new PlanMeasureCatalogResolver($gate);
+        $measureRepository = $this->createMock(MeasureRepository::class);
+        $measureRepository->method('getCatalogMeasuresForProtocol')->willReturn($measures);
+        $commitmentService = new SustainabilityCommitmentLevelService($measureRepository, $resolver);
+        $gamificationService = new SustainabilityGamificationService(
+            $commitmentService,
+            self::getContainer()->get(SustainabilityGamificationMessageCatalog::class)
+        );
+        self::getContainer()->set(SustainabilityGamificationService::class, $gamificationService);
+
+        /** @var PlanController $controller */
+        $controller = self::getContainer()->get(PlanController::class);
+        $controller->setContainer(self::getContainer());
+
+        return $controller;
     }
 
     /**
@@ -3355,6 +3505,11 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $reflection = new \ReflectionProperty($service, 'featureGate');
         $reflection->setAccessible(true);
         $reflection->setValue($service, $featureGate);
+        $commercialPlanRepository = $this->createMock(CommercialPlanRepository::class);
+        $commercialPlanRepository->method('findActiveByPhaseAndCode')->willReturn(null);
+        $reflection = new \ReflectionProperty($service, 'commercialPlanRepository');
+        $reflection->setAccessible(true);
+        $reflection->setValue($service, $commercialPlanRepository);
 
         return $service;
     }

@@ -889,10 +889,9 @@ class PlanController extends AbstractController
             // Deja el resto en NULL hasta respuesta explícita del usuario
         }
 
-        $gamificationFields = ['decision', 'critical', 'criticalReason', 'critical_reason', 'willImplement'];
         $samePrimaryDecision = $field === 'decision'
             && $planMeasure->getPrimaryDecision() === (string) $value;
-        $gamificationBefore = in_array((string) $field, $gamificationFields, true) && !$samePrimaryDecision
+        $gamificationBefore = $field === 'decision' && !$samePrimaryDecision
             ? $this->gamificationService->captureTransition($plan, $project, $planMeasure)
             : null;
 

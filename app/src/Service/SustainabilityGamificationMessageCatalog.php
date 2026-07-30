@@ -8,10 +8,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 class SustainabilityGamificationMessageCatalog
 {
     public const EVENT_WELCOME = 'welcome';
-    public const EVENT_PROGRESS = 'progress';
     public const EVENT_LEVEL_UP = 'level_up';
     public const EVENT_COMPLETED_100 = 'completed_100';
-    public const EVENT_CRITICAL = 'critical';
 
     public function __construct(
         private readonly TranslatorInterface $translator,

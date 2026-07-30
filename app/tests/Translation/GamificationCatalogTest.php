@@ -12,16 +12,15 @@ final class GamificationCatalogTest extends TestCase
         $spanish = $this->flatten(Yaml::parseFile(dirname(__DIR__, 2) . '/translations/gamification.es.yaml'));
         $english = $this->flatten(Yaml::parseFile(dirname(__DIR__, 2) . '/translations/gamification.en.yaml'));
 
-        self::assertCount(160, $spanish);
+        self::assertCount(100, $spanish);
         self::assertSame(array_keys($spanish), array_keys($english));
         self::assertNotContains('', array_map('trim', $spanish));
         self::assertNotContains('', array_map('trim', $english));
 
         $groups = [
             'welcome.seed', 'welcome.plant', 'welcome.tree', 'welcome.forest', 'welcome.jungle',
-            'progress.seed', 'progress.plant', 'progress.tree', 'progress.forest', 'progress.jungle',
             'level_up.plant', 'level_up.tree', 'level_up.forest', 'level_up.jungle',
-            'completed_100', 'critical',
+            'completed_100',
         ];
 
         foreach ($groups as $group) {

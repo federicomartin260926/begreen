@@ -10,7 +10,6 @@ use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
 use App\Enum\CommercialPhase;
 use App\Repository\MeasureRepository;
-use App\Repository\PlanMeasureRepository;
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\SustainabilityGamificationMessageCatalog;
@@ -23,90 +22,260 @@ final class SustainabilityGamificationServiceTest extends TestCase
 {
     use CommercialPlanTestHelpers;
 
-    public function testEverySecondFirstDecisionUsesResultingLevelAndDoesNotCountEdits(): void
+    public function testFirstAffirmativeDecisionQueuesMeasureMessageAndConsumesItOnlyOnceOnNextMeasure(): void
+    {
+        [$service, $catalog, $plan, $project, $measures] = $this->createScenario(
+            10,
+            array_fill(0, 10, 1),
+            ['Mensaje específico']
+        );
+        $plan->markGamificationLevelPresented('seed');
+        $current = $this->attachPending($plan, $measures[0]);
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setIsApplicable(true)->setWillImplement(true);
+
+        $message = $service->evaluate($plan, $project, $current, $before, 'decision');
+
+        self::assertSame(
+            ['key' => 'measure.1000', 'type' => 'measure', 'text' => 'Mensaje específico'],
+            $message
+        );
+        self::assertSame('measure.1000', $plan->getPendingGamificationKey());
+        self::assertSame('measure', $plan->getPendingGamificationType());
+        self::assertSame(1000, $plan->getPendingGamificationSourceMeasureId());
+        self::assertSame([], $catalog->calls);
+        self::assertNull($service->claimPendingMessageForDisplay($plan, $project, 1000));
+        self::assertTrue($plan->hasPendingGamificationMessage());
+        self::assertSame(
+            $message,
+            $service->claimPendingMessageForDisplay($plan, $project, 1001)
+        );
+        self::assertFalse($plan->hasPendingGamificationMessage());
+        self::assertNull($service->claimPendingMessageForDisplay($plan, $project, 1001));
+    }
+
+    #[DataProvider('nonAffirmativeDecisions')]
+    public function testNonAffirmativeDecisionDoesNotQueueMessage(string $decision): void
+    {
+        [$service, $catalog, $plan, $project, $measures] = $this->createScenario(
+            10,
+            array_fill(0, 10, 1),
+            ['No debe mostrarse']
+        );
+        $current = $this->attachPending($plan, $measures[0]);
+        $before = $service->captureTransition($plan, $project, $current);
+
+        if ($decision === 'na') {
+            $current->setIsApplicable(false)->setWillImplement(null);
+        } else {
+            $current->setIsApplicable(true)->setWillImplement(false);
+        }
+
+        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
+        self::assertFalse($plan->hasPendingGamificationMessage());
+        self::assertSame([], $catalog->calls);
+    }
+
+    public static function nonAffirmativeDecisions(): iterable
+    {
+        yield 'No' => ['false'];
+        yield 'No aplica' => ['na'];
+    }
+
+    public function testAffirmativeDecisionWithoutMeasureMessageDoesNotQueueFallback(): void
     {
         [$service, $catalog, $plan, $project, $measures] = $this->createScenario(10, array_fill(0, 10, 1));
+        $current = $this->attachPending($plan, $measures[0]);
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setIsApplicable(true)->setWillImplement(true);
+
+        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
+        self::assertFalse($plan->hasPendingGamificationMessage());
+        self::assertSame([], $catalog->calls);
+    }
+
+    public function testLevelUpReplacesLowerPriorityPendingMessageAndSuppressesMeasureMessage(): void
+    {
+        [$service, $catalog, $plan, $project, $measures] = $this->createScenario(
+            10,
+            array_fill(0, 10, 1),
+            [null, null, 'Mensaje específico']
+        );
         $plan->markGamificationLevelPresented('seed');
+        $this->attachAccepted($plan, $measures[0])->markFirstDecisionAnswered();
+        $this->attachAccepted($plan, $measures[1])->markFirstDecisionAnswered();
+        $plan->queueGamificationMessage('measure.1001', 'measure', 1001);
+        $current = $this->attachPending($plan, $measures[2]);
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setIsApplicable(true)->setWillImplement(true);
 
-        $first = $this->attachPending($plan, $measures[0]);
-        $before = $service->captureTransition($plan, $project, $first);
-        $first->setIsApplicable(true)->setWillImplement(false);
+        $message = $service->evaluate($plan, $project, $current, $before, 'decision');
 
-        self::assertNull($service->evaluate($plan, $project, $first, $before, 'decision'));
-        self::assertNotNull($first->getFirstDecisionAnsweredAt());
+        self::assertSame('level_up.plant.001', $message['key']);
+        self::assertSame('level_up.plant.001', $plan->getPendingGamificationKey());
+        self::assertSame([['level_up', 'plant', null]], $catalog->calls);
+        self::assertTrue($plan->hasPresentedGamificationLevel('plant'));
+    }
 
-        $second = $this->attachPending($plan, $measures[1]);
-        $before = $service->captureTransition($plan, $project, $second);
-        $second->setIsApplicable(false)->setWillImplement(null);
-        $message = $service->evaluate($plan, $project, $second, $before, 'decision');
-
-        self::assertSame('progress.seed.001', $message['key']);
-        self::assertSame('progress.seed.001', $plan->getLastGamificationProgressKey());
-        self::assertSame('progress.seed.001', $plan->getPendingGamificationKey());
-        self::assertSame(2, $this->countFirstDecisions($plan));
-
-        $before = $service->captureTransition($plan, $project, $second);
-        self::assertNull($service->evaluate($plan, $project, $second, $before, 'decision'));
-        self::assertSame(2, $this->countFirstDecisions($plan));
-        self::assertSame(
-            ['progress', 'seed', null],
-            $catalog->calls[0]
+    public function testExactHundredHasMaximumPriorityAndSuppressesMeasureMessage(): void
+    {
+        [$service, $catalog, $plan, $project, $measures] = $this->createScenario(
+            2,
+            [5, 5],
+            [null, 'Mensaje específico']
         );
-        self::assertSame(
-            'progress.seed.001',
-            $service->claimPendingMessageForDisplay($plan, $project, $measures[2]->getId())['key']
+        $plan->markGamificationLevelPresented('tree');
+        $this->attachAccepted($plan, $measures[0])->markFirstDecisionAnswered();
+        $plan->queueGamificationMessage('measure.1000', 'measure', 1000);
+        $current = $this->attachPending($plan, $measures[1]);
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setIsApplicable(true)->setWillImplement(true);
+
+        $message = $service->evaluate($plan, $project, $current, $before, 'decision');
+
+        self::assertSame('completed_100.001', $message['key']);
+        self::assertSame('completed_100.001', $plan->getPendingGamificationKey());
+        self::assertSame([['completed_100', null, null]], $catalog->calls);
+        self::assertNotNull($plan->getGamificationCompleted100At());
+        self::assertTrue($plan->hasPresentedGamificationLevel('jungle'));
+    }
+
+    public function testSavingAnAlreadyAffirmativeMeasureDoesNotQueueAgain(): void
+    {
+        [$service, , $plan, $project, $measures] = $this->createScenario(
+            10,
+            array_fill(0, 10, 1),
+            ['Mensaje específico']
         );
+        $plan->markGamificationLevelPresented('seed');
+        $current = $this->attachPending($plan, $measures[0]);
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setIsApplicable(true)->setWillImplement(true);
+        $service->evaluate($plan, $project, $current, $before, 'decision');
+        $service->claimPendingMessageForDisplay($plan, $project, 1001);
 
-        $third = $this->attachPending($plan, $measures[2]);
-        $before = $service->captureTransition($plan, $project, $third);
-        $third->setIsApplicable(true)->setWillImplement(false);
-        self::assertNull($service->evaluate($plan, $project, $third, $before, 'decision'));
+        $before = $service->captureTransition($plan, $project, $current);
 
-        $fourth = $this->attachPending($plan, $measures[3]);
-        $before = $service->captureTransition($plan, $project, $fourth);
-        $fourth->setIsApplicable(false);
-        $service->evaluate($plan, $project, $fourth, $before, 'decision');
+        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
+        self::assertFalse($plan->hasPendingGamificationMessage());
+    }
 
+    public function testFirstAffirmativeTransitionAfterNoQueuesOnceButLaterReacceptanceDoesNot(): void
+    {
+        [$service, , $plan, $project, $measures] = $this->createScenario(
+            10,
+            array_fill(0, 10, 1),
+            ['Mensaje específico']
+        );
+        $plan->markGamificationLevelPresented('seed');
+        $current = $this->attachPending($plan, $measures[0]);
+
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setIsApplicable(true)->setWillImplement(false);
+        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
+        self::assertNull($current->getFirstDecisionAnsweredAt());
+
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setWillImplement(true);
         self::assertSame(
-            ['progress', 'seed', 'progress.seed.001'],
-            $catalog->calls[1]
+            'Mensaje específico',
+            $service->evaluate($plan, $project, $current, $before, 'decision')['text']
+        );
+        self::assertNotNull($current->getFirstDecisionAnsweredAt());
+        $service->claimPendingMessageForDisplay($plan, $project, 1001);
+
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setWillImplement(false);
+        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
+
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setWillImplement(true);
+        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
+        self::assertFalse($plan->hasPendingGamificationMessage());
+    }
+
+    public function testLocalizedEnglishMeasureMessageIsUsedAsLoadedByGedmo(): void
+    {
+        [$service, , $plan, $project, $measures] = $this->createScenario(
+            10,
+            array_fill(0, 10, 1),
+            ['English inspirational message']
+        );
+        $plan->markGamificationLevelPresented('seed');
+        $current = $this->attachPending($plan, $measures[0]);
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setIsApplicable(true)->setWillImplement(true);
+
+        $message = $service->evaluate($plan, $project, $current, $before, 'decision');
+
+        self::assertSame('English inspirational message', $message['text']);
+        self::assertSame(
+            'English inspirational message',
+            $service->claimPendingMessageForDisplay($plan, $project, 1001)['text']
         );
     }
 
-    public function testBlockSkipDoesNotCountAndHistoricalMarkerPreventsRecountAfterReopen(): void
+    public function testEventProtocolUsesMeasureMessageWithoutProtocolSpecificBranch(): void
     {
-        [$service, , $plan, $project, $measures] = $this->createScenario(2, [1, 1]);
+        [$service, , $plan, $project, $measures] = $this->createScenario(
+            10,
+            array_fill(0, 10, 1),
+            ['Mensaje Event'],
+            PlanMeasureCatalogResolver::BE_GREEN_MY_EVENT_CODE
+        );
         $plan->markGamificationLevelPresented('seed');
-        $planMeasure = $this->attachPending($plan, $measures[0]);
-        $planMeasure
+        $current = $this->attachPending($plan, $measures[0]);
+        $before = $service->captureTransition($plan, $project, $current);
+        $current->setIsApplicable(true)->setWillImplement(true);
+
+        self::assertSame(
+            'Mensaje Event',
+            $service->evaluate($plan, $project, $current, $before, 'decision')['text']
+        );
+    }
+
+    public function testPeriodicCriticalAndHighScoreMessagesAreNoLongerTriggered(): void
+    {
+        [$service, $catalog, $plan, $project, $measures] = $this->createScenario(3, [4, 5, 1]);
+        $plan
+            ->markGamificationLevelPresented('seed')
+            ->markGamificationLevelPresented('plant')
+            ->markGamificationLevelPresented('tree')
+            ->markGamificationLevelPresented('forest')
+            ->markGamificationLevelPresented('jungle')
+            ->markGamificationCompleted100();
+
+        foreach ([$measures[0], $measures[1]] as $measure) {
+            $current = $this->attachPending($plan, $measure);
+            $before = $service->captureTransition($plan, $project, $current);
+            $current->setIsApplicable(true)->setWillImplement(false);
+            self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
+        }
+
+        $critical = $plan->getPlanMeasures()->first();
+        $before = $service->captureTransition($plan, $project, $critical);
+        $critical
+            ->setWillImplement(true)
+            ->setIsCritical(true)
+            ->setCriticalReason('Motivo obligatorio');
+
+        self::assertNull($service->evaluate($plan, $project, $critical, $before, 'criticalReason'));
+        self::assertSame([], $catalog->calls);
+        self::assertFalse($plan->hasPendingGamificationMessage());
+    }
+
+    public function testBlockSkipDoesNotConsumeTheFirstDecisionMarker(): void
+    {
+        [$service, , $plan, $project, $measures] = $this->createScenario(2, [1, 1], ['Mensaje']);
+        $plan->markGamificationLevelPresented('seed');
+        $current = $this->attachPending($plan, $measures[0]);
+        $current
             ->setIsApplicable(false)
             ->setApplicabilitySource('block_skip');
+        $before = $service->captureTransition($plan, $project, $current);
 
-        $before = $service->captureTransition($plan, $project, $planMeasure);
-        self::assertNull($service->evaluate($plan, $project, $planMeasure, $before, 'decision'));
-        self::assertNull($planMeasure->getFirstDecisionAnsweredAt());
-
-        $planMeasure
-            ->setIsApplicable(null)
-            ->setApplicabilitySource('manual');
-        $before = $service->captureTransition($plan, $project, $planMeasure);
-        $planMeasure->setIsApplicable(true)->setWillImplement(false);
-        $service->evaluate($plan, $project, $planMeasure, $before, 'decision');
-        $firstAnsweredAt = $planMeasure->getFirstDecisionAnsweredAt();
-
-        $planMeasure
-            ->setIsApplicable(false)
-            ->setWillImplement(null)
-            ->setApplicabilitySource('block_skip');
-        $planMeasure
-            ->setIsApplicable(null)
-            ->setApplicabilitySource('manual');
-        $before = $service->captureTransition($plan, $project, $planMeasure);
-        $planMeasure->setIsApplicable(true)->setWillImplement(false);
-
-        self::assertNull($service->evaluate($plan, $project, $planMeasure, $before, 'decision'));
-        self::assertSame($firstAnsweredAt, $planMeasure->getFirstDecisionAnsweredAt());
-        self::assertSame(1, $this->countFirstDecisions($plan));
+        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
+        self::assertNull($current->getFirstDecisionAnsweredAt());
     }
 
     #[DataProvider('welcomeLevels')]
@@ -121,7 +290,6 @@ final class SustainabilityGamificationServiceTest extends TestCase
 
         self::assertSame('welcome.' . $expectedLevel . '.001', $message['key']);
         self::assertTrue($plan->hasPresentedGamificationLevel($expectedLevel));
-        self::assertSame('welcome.' . $expectedLevel . '.001', $plan->getPendingGamificationKey());
         self::assertNull($service->claimCurrentLevelWelcome($plan, $project));
     }
 
@@ -134,201 +302,23 @@ final class SustainabilityGamificationServiceTest extends TestCase
         yield 'jungle' => [81, 'jungle'];
     }
 
-    public function testLevelUpHasPriorityOverPeriodicAndIsNotRepeatedAfterReentry(): void
-    {
-        [$service, , $plan, $project, $measures] = $this->createScenario(10, array_fill(0, 10, 1));
-        $plan->markGamificationLevelPresented('seed');
-        $this->attachAccepted($plan, $measures[0])->markFirstDecisionAnswered();
-        $this->attachAccepted($plan, $measures[1]);
-
-        $current = $this->attachPending($plan, $measures[2]);
-        $before = $service->captureTransition($plan, $project, $current);
-        $current->setIsApplicable(true)->setWillImplement(true);
-        $message = $service->evaluate($plan, $project, $current, $before, 'decision');
-
-        self::assertSame('level_up.plant.001', $message['key']);
-        self::assertTrue($plan->hasPresentedGamificationLevel('plant'));
-
-        $current->setWillImplement(false);
-        $before = $service->captureTransition($plan, $project, $current);
-        $current->setWillImplement(true);
-
-        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
-    }
-
-    public function testJumpAcrossSeveralLevelsUsesResultingLevel(): void
-    {
-        [$service, , $plan, $project, $measures] = $this->createScenario(2, [5, 5]);
-        $plan->markGamificationLevelPresented('seed');
-        $current = $this->attachPending($plan, $measures[0]);
-        $before = $service->captureTransition($plan, $project, $current);
-        $current->setIsApplicable(true)->setWillImplement(true);
-
-        $message = $service->evaluate($plan, $project, $current, $before, 'decision');
-
-        self::assertSame('level_up.tree.001', $message['key']);
-        self::assertTrue($plan->hasPresentedGamificationLevel('tree'));
-        self::assertFalse($plan->hasPresentedGamificationLevel('plant'));
-    }
-
-    public function testExactHundredHasMaximumPriorityAndOnlyRunsOnce(): void
-    {
-        [$service, $catalog, $plan, $project, $measures] = $this->createScenario(2, [5, 5]);
-        $plan->markGamificationLevelPresented('tree');
-        $this->attachAccepted($plan, $measures[0])->markFirstDecisionAnswered();
-        $plan->queueGamificationMessage('progress.forest.005', 'progress', $measures[0]->getId());
-        $current = $this->attachPending($plan, $measures[1]);
-        $before = $service->captureTransition($plan, $project, $current);
-        $current->setIsApplicable(true)->setWillImplement(true);
-
-        $message = $service->evaluate($plan, $project, $current, $before, 'decision');
-        $after = $service->captureTransition($plan, $project, $current);
-
-        self::assertGreaterThan(0, $after['summary']['totalOfficialPoints']);
-        self::assertSame(
-            $after['summary']['totalOfficialPoints'],
-            $after['summary']['planned']['points']
-        );
-        self::assertSame('completed_100.001', $message['key']);
-        self::assertSame('completed_100.001', $plan->getPendingGamificationKey());
-        self::assertSame('completed_100', $plan->getPendingGamificationType());
-        self::assertSame($measures[1]->getId(), $plan->getPendingGamificationSourceMeasureId());
-        self::assertNotNull($plan->getGamificationCompleted100At());
-        self::assertTrue($plan->hasPresentedGamificationLevel('jungle'));
-        self::assertSame(
-            [['completed_100', null, null]],
-            $catalog->calls,
-            'No lower-priority catalogue may be evaluated after selecting completed_100.'
-        );
-
-        $displayed = $service->claimPendingMessageForDisplay($plan, $project, null);
-        self::assertStringStartsWith('completed_100.', $displayed['key']);
-        self::assertStringNotContainsString('progress.', $displayed['key']);
-        self::assertStringNotContainsString('level_up.', $displayed['key']);
-        self::assertStringNotContainsString('welcome.', $displayed['key']);
-        self::assertFalse($plan->hasPendingGamificationMessage());
-        self::assertNull($service->claimPendingMessageForDisplay($plan, $project, null));
-
-        $current->setWillImplement(false);
-        $before = $service->captureTransition($plan, $project, $current);
-        $current->setWillImplement(true);
-        self::assertNull($service->evaluate($plan, $project, $current, $before, 'decision'));
-    }
-
-    #[DataProvider('criticalScores')]
-    public function testCriticalMessageRequiresCompleteConfirmationAndIsIndependentOfScore(int $score): void
-    {
-        [$service, , $plan, $project, $measures] = $this->createScenario(2, [$score, $score]);
-        $plan
-            ->markGamificationLevelPresented('tree')
-            ->markGamificationCompleted100()
-            ->markGamificationLevelPresented('jungle');
-        $planMeasure = $this->attachAccepted($plan, $measures[0]);
-
-        $before = $service->captureTransition($plan, $project, $planMeasure);
-        $planMeasure->setIsCritical(true);
-        self::assertNull($service->evaluate($plan, $project, $planMeasure, $before, 'critical'));
-
-        $before = $service->captureTransition($plan, $project, $planMeasure);
-        $planMeasure->setCriticalReason('Motivo obligatorio');
-        $message = $service->evaluate($plan, $project, $planMeasure, $before, 'criticalReason');
-
-        self::assertSame('critical.001', $message['key']);
-        self::assertNotNull($planMeasure->getCriticalGamificationHandledAt());
-
-        $before = $service->captureTransition($plan, $project, $planMeasure);
-        self::assertNull($service->evaluate($plan, $project, $planMeasure, $before, 'willImplement'));
-    }
-
-    public static function criticalScores(): iterable
-    {
-        yield 'one point' => [1];
-        yield 'five points' => [5];
-    }
-
-    public function testPendingWelcomeBeatsCriticalAndConsumesCriticalTrigger(): void
-    {
-        [$service, , $plan, $project, $measures] = $this->createScenario(2, [1, 1]);
-        $planMeasure = $this->attachAccepted($plan, $measures[0]);
-        $planMeasure->setIsCritical(true)->setCriticalReason('Motivo');
-        $before = $service->captureTransition($plan, $project, $planMeasure);
-
-        $message = $service->evaluate($plan, $project, $planMeasure, $before, 'criticalReason');
-
-        self::assertSame('welcome.tree.001', $message['key']);
-        self::assertNotNull($planMeasure->getCriticalGamificationHandledAt());
-
-        $before = $service->captureTransition($plan, $project, $planMeasure);
-        self::assertNull($service->evaluate($plan, $project, $planMeasure, $before, 'willImplement'));
-    }
-
-    public function testPendingMessageWaitsForAnotherMeasureAndIsConsumedOnlyOnce(): void
-    {
-        [$service, , $plan, $project, $measures] = $this->createScenario(10, array_fill(0, 10, 1));
-        $plan->markGamificationLevelPresented('seed');
-        $this->attachAccepted($plan, $measures[0])->markFirstDecisionAnswered();
-        $current = $this->attachPending($plan, $measures[1]);
-        $before = $service->captureTransition($plan, $project, $current);
-        $current->setIsApplicable(true)->setWillImplement(false);
-
-        $service->evaluate($plan, $project, $current, $before, 'decision');
-
-        self::assertSame($measures[1]->getId(), $plan->getPendingGamificationSourceMeasureId());
-        self::assertNull(
-            $service->claimPendingMessageForDisplay($plan, $project, $measures[1]->getId()),
-            'Reloading the source measure must not consume the pending message.'
-        );
-
-        $message = $service->claimPendingMessageForDisplay($plan, $project, $measures[2]->getId());
-
-        self::assertSame('progress.seed.001', $message['key']);
-        self::assertFalse($plan->hasPendingGamificationMessage());
-        self::assertNull($service->claimPendingMessageForDisplay($plan, $project, $measures[2]->getId()));
-    }
-
-    public function testPendingMessageCanBeConsumedOnTerminalScreenWithoutBeingLost(): void
-    {
-        [$service, , $plan, $project, $measures] = $this->createScenario(2, [5, 5]);
-        $plan->markGamificationLevelPresented('tree');
-        $this->attachAccepted($plan, $measures[0])->markFirstDecisionAnswered();
-        $current = $this->attachPending($plan, $measures[1]);
-        $before = $service->captureTransition($plan, $project, $current);
-        $current->setIsApplicable(true)->setWillImplement(true);
-
-        $service->evaluate($plan, $project, $current, $before, 'decision');
-
-        self::assertSame('completed_100.001', $plan->getPendingGamificationKey());
-        self::assertSame(
-            'completed_100.001',
-            $service->claimPendingMessageForDisplay($plan, $project, null)['key']
-        );
-        self::assertNull($service->claimPendingMessageForDisplay($plan, $project, null));
-    }
-
-    public function testInitialWelcomeIsClaimedForIntegratedDisplayOnlyOnce(): void
-    {
-        [$service, , $plan, $project] = $this->createScenario(2, [1, 1]);
-
-        $message = $service->claimPendingMessageForDisplay($plan, $project, 1000);
-
-        self::assertSame('welcome.seed.001', $message['key']);
-        self::assertTrue($plan->hasPresentedGamificationLevel('seed'));
-        self::assertFalse($plan->hasPendingGamificationMessage());
-        self::assertNull($service->claimPendingMessageForDisplay($plan, $project, 1000));
-    }
-
     /**
      * @param int[] $scores
+     * @param array<int, string|null> $messages
      * @return array{SustainabilityGamificationService, RecordingGamificationCatalog, Plan, Project, Measure[]}
      */
-    private function createScenario(int $measureCount, array $scores): array
-    {
+    private function createScenario(
+        int $measureCount,
+        array $scores,
+        array $messages = [],
+        string $protocolCode = PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE,
+    ): array {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $resolver = new PlanMeasureCatalogResolver($gate);
         $measureRepository = $this->createMock(MeasureRepository::class);
         $protocol = (new Protocol())
-            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
-            ->setName('Be Green My Film');
+            ->setCode($protocolCode)
+            ->setName($protocolCode);
         $this->setEntityId($protocol, 9001);
 
         $project = new Project();
@@ -346,8 +336,9 @@ final class SustainabilityGamificationServiceTest extends TestCase
             $measure = (new Measure())
                 ->setName('Measure ' . ($index + 1))
                 ->setProtocol($protocol)
-                ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
-                ->setScore($scores[$index] ?? 1);
+                ->setImportVersion(PlanMeasureCatalogResolver::CATALOG_IMPORT_VERSION)
+                ->setScore($scores[$index] ?? 1)
+                ->setGamificationMessage($messages[$index] ?? null);
             $this->setEntityId($measure, 1000 + $index);
             $measures[] = $measure;
         }
@@ -355,16 +346,9 @@ final class SustainabilityGamificationServiceTest extends TestCase
 
         $commitmentService = new SustainabilityCommitmentLevelService($measureRepository, $resolver);
         $catalog = new RecordingGamificationCatalog();
-        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
-        $planMeasureRepository->method('countFirstDecisionsForPlan')->willReturnCallback(
-            static fn (Plan $candidate): int => count(array_filter(
-                $candidate->getPlanMeasures()->toArray(),
-                static fn (PlanMeasure $planMeasure): bool => $planMeasure->getFirstDecisionAnsweredAt() !== null
-            ))
-        );
 
         return [
-            new SustainabilityGamificationService($commitmentService, $catalog, $planMeasureRepository),
+            new SustainabilityGamificationService($commitmentService, $catalog),
             $catalog,
             $plan,
             $project,
@@ -386,14 +370,6 @@ final class SustainabilityGamificationServiceTest extends TestCase
         $planMeasure->setIsApplicable(true)->setWillImplement(true);
 
         return $planMeasure;
-    }
-
-    private function countFirstDecisions(Plan $plan): int
-    {
-        return count(array_filter(
-            $plan->getPlanMeasures()->toArray(),
-            static fn (PlanMeasure $planMeasure): bool => $planMeasure->getFirstDecisionAnsweredAt() !== null
-        ));
     }
 
     private function setEntityId(object $entity, int $id): void

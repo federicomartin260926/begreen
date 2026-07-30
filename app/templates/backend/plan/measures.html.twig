@@ -257,13 +257,14 @@
     {% if app.request.query.has('i') and measure %}
         <script>
             window.addEventListener('load', () => {
-                const card = document.getElementById('measure-card');
-                if (!card) {
+                const target = document.querySelector('[data-gamification-message]')
+                    || document.getElementById('measure-card');
+                if (!target) {
                     return;
                 }
 
-                const offset = 88;
-                const top = card.getBoundingClientRect().top + window.scrollY - offset;
+                const offset = 96;
+                const top = target.getBoundingClientRect().top + window.scrollY - offset;
                 window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
             });
         </script>

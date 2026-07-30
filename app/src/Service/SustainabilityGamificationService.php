@@ -5,16 +5,16 @@ namespace App\Service;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Project;
-use App\Repository\PlanMeasureRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class SustainabilityGamificationService
 {
+    private const EVENT_MEASURE = 'measure';
+
     public function __construct(
         private readonly SustainabilityCommitmentLevelService $commitmentLevelService,
         private readonly SustainabilityGamificationMessageCatalog $messageCatalog,
-        private readonly PlanMeasureRepository $planMeasureRepository,
     ) {
     }
 
@@ -92,14 +92,13 @@ final class SustainabilityGamificationService
         array $before,
         string $field,
     ): ?array {
-        $firstDecision = $field === 'decision'
-            && $before['primaryDecision'] === null
-            && $planMeasure->hasPrimaryDecision()
+        $firstAffirmativeDecision = $field === 'decision'
+            && $before['primaryDecision'] !== 'true'
+            && $planMeasure->getPrimaryDecision() === 'true'
             && $planMeasure->getApplicabilitySource() !== 'block_skip'
             && $planMeasure->getFirstDecisionAnsweredAt() === null;
-        $firstDecisionCount = $firstDecision ? $this->countPersistedFirstDecisions($plan) + 1 : null;
 
-        if ($firstDecision) {
+        if ($firstAffirmativeDecision) {
             $planMeasure->markFirstDecisionAnswered();
         }
 
@@ -115,15 +114,6 @@ final class SustainabilityGamificationService
         $reached100 = $field === 'decision'
             && $plan->getGamificationCompleted100At() === null
             && $this->commitmentLevelService->hasReachedExactPlannedMaximum($after);
-
-        $criticalConfirmed = $planMeasure->getCriticalGamificationHandledAt() === null
-            && $planMeasure->willImplement() === true
-            && $planMeasure->isCritical() === true
-            && trim((string) $planMeasure->getCriticalReason()) !== '';
-
-        if ($criticalConfirmed) {
-            $planMeasure->markCriticalGamificationHandled();
-        }
 
         if ($reached100) {
             $plan
@@ -145,42 +135,13 @@ final class SustainabilityGamificationService
                 $plan,
                 $planMeasure,
                 SustainabilityGamificationMessageCatalog::EVENT_LEVEL_UP,
-                $resultingLevel
-            );
-        }
-
-        if (!$plan->hasPresentedGamificationLevel($resultingLevel)) {
-            $plan->markGamificationLevelPresented($resultingLevel);
-
-            return $this->chooseAndQueue(
-                $plan,
-                $planMeasure,
-                SustainabilityGamificationMessageCatalog::EVENT_WELCOME,
-                $resultingLevel
-            );
-        }
-
-        if ($criticalConfirmed) {
-            return $this->chooseAndQueue(
-                $plan,
-                $planMeasure,
-                SustainabilityGamificationMessageCatalog::EVENT_CRITICAL
-            );
-        }
-
-        if ($firstDecision && $firstDecisionCount % 2 === 0) {
-            $message = $this->chooseAndQueue(
-                $plan,
-                $planMeasure,
-                SustainabilityGamificationMessageCatalog::EVENT_PROGRESS,
                 $resultingLevel,
-                $plan->getLastGamificationProgressKey()
+                replacePending: true
             );
-            if ($message !== null) {
-                $plan->setLastGamificationProgressKey($message['key']);
-            }
+        }
 
-            return $message;
+        if ($firstAffirmativeDecision) {
+            return $this->queueMeasureMessage($plan, $planMeasure);
         }
 
         return null;
@@ -263,6 +224,10 @@ final class SustainabilityGamificationService
 
         $plan->clearPendingGamificationMessage();
 
+        if ($type === self::EVENT_MEASURE) {
+            return $this->resolveMeasureMessage($plan, $sourceMeasureId, $key);
+        }
+
         return $this->messageCatalog->translate($key, $type);
     }
 
@@ -292,15 +257,50 @@ final class SustainabilityGamificationService
         return $message;
     }
 
-    private function countPersistedFirstDecisions(Plan $plan): int
+    /**
+     * @return array{key:string,type:string,text:string}|null
+     */
+    private function queueMeasureMessage(Plan $plan, PlanMeasure $planMeasure): ?array
     {
-        if ($plan->getId() !== null) {
-            return $this->planMeasureRepository->countFirstDecisionsForPlan($plan);
+        if ($plan->hasPendingGamificationMessage()) {
+            return null;
         }
 
-        return count(array_filter(
-            $plan->getPlanMeasures()->toArray(),
-            static fn (PlanMeasure $planMeasure): bool => $planMeasure->getFirstDecisionAnsweredAt() !== null
-        ));
+        $measure = $planMeasure->getMeasure();
+        $measureId = $measure?->getId();
+        $text = trim((string) $measure?->getGamificationMessage());
+        if ($measureId === null || $text === '') {
+            return null;
+        }
+
+        $key = 'measure.' . $measureId;
+        $plan->queueGamificationMessage($key, self::EVENT_MEASURE, $measureId);
+
+        return ['key' => $key, 'type' => self::EVENT_MEASURE, 'text' => $text];
+    }
+
+    /**
+     * @return array{key:string,type:string,text:string}|null
+     */
+    private function resolveMeasureMessage(Plan $plan, ?int $sourceMeasureId, string $key): ?array
+    {
+        if ($sourceMeasureId === null) {
+            return null;
+        }
+
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            $measure = $planMeasure->getMeasure();
+            if ($measure?->getId() !== $sourceMeasureId) {
+                continue;
+            }
+
+            $text = trim((string) $measure->getGamificationMessage());
+
+            return $text === ''
+                ? null
+                : ['key' => $key, 'type' => self::EVENT_MEASURE, 'text' => $text];
+        }
+
+        return null;
     }
 }
