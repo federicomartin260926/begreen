@@ -25,6 +25,7 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
     private const REVIEW_DEFAULTS = [
         'is_applicable' => '1',
         'will_implement' => '1',
+        'state' => 'all',
     ];
 
     public function __construct(

@@ -1596,7 +1596,7 @@ class ProjectController extends AbstractController
         return match ($target) {
             'plan' => $this->redirectToRoute('backend_plan_index'),
             'elaboration_done' => $this->redirectToRoute('backend_plan_done'),
-            'implementation' => $this->redirectToRoute('backend_plan_review', ['state' => 'pending']),
+            'implementation' => $this->redirectToRoute('backend_plan_review', ['state' => 'all']),
             'emissions' => $this->redirectToRoute('backend_emission_index'),
             'report' => $this->redirectToRoute('report_emission_overview_pdf'),
             default => $this->redirectToRoute('app_backend'),

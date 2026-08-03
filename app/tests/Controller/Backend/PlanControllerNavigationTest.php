@@ -70,7 +70,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $filters = $this->invokeReviewDefaultFilters($controller);
 
         self::assertSame([
-            'state' => 'pending',
+            'state' => 'all',
         ], $filters);
     }
 
@@ -1282,8 +1282,13 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $html = $twig->render('backend/plan/_list.html.twig', [
             'project' => (new Project())->setName('Proyecto demo'),
             'plan' => (new Plan())->setStatus('completo'),
-            'measures' => [$measure],
-            'planMeasures' => [$planMeasure],
+            'implementationItems' => [[
+                'measure' => $measure,
+                'planMeasure' => $planMeasure,
+                'operationalState' => 'implemented',
+            ]],
+            'positionById' => [$measure->getId() => 1],
+            'openId' => 0,
             'projectTier' => ProjectSubscription::TIER_PRO,
             'projectTierLabel' => 'Pro',
             'projectTierSummary' => 'Resumen de prueba',
@@ -1313,7 +1318,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'canUseChecklist' => false,
             'canUseResponsibles' => false,
             'canUseInternalNotes' => false,
-            'operationalStateResolver' => self::getContainer()->get(\App\Service\PlanMeasureOperationalStateResolver::class),
         ]);
 
         self::assertMatchesRegularExpression('/<input[^>]*name="implement-' . $measure->getId() . '"[^>]*value="true"[^>]*checked[^>]*>/', $html);
@@ -1324,6 +1328,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('id="decision-observations-' . $measure->getId() . '"', $html);
         self::assertStringContainsString('data-save-section="state"', $html);
         self::assertStringContainsString('Modificar decisión', $html);
+        self::assertStringContainsString('Decisión de Elaboración', $html);
+        self::assertStringContainsString('Contexto y clasificación', $html);
         self::assertStringContainsString('Descripción', $html);
         self::assertStringContainsString('Ejecución', $html);
         self::assertStringContainsString('Incidencia de ejecución de la medida', $html);
@@ -1331,18 +1337,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('Observaciones', $html);
         self::assertStringContainsString('Observación independiente', $html);
         self::assertStringContainsString('rows="2"', $html);
-        self::assertLessThan(
-            strpos($html, 'Incidencia de ejecución de la medida'),
-            strpos($html, 'Acción realizada')
-        );
-        self::assertLessThan(
-            strpos($html, 'Incidencia de ejecución de la medida'),
-            strpos($html, '>Observaciones</label>')
-        );
-        self::assertMatchesRegularExpression(
-            '/<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">(?:(?!<\\/div>).)*Más información(?:(?!<\\/div>).)*Guardar cambios(?:(?!<\\/div>).)*<\\/div>/s',
-            $html
-        );
+        self::assertStringContainsString('id="action-taken-' . $measure->getId() . '"', $html);
+        self::assertStringContainsString('id="execution-incident-' . $measure->getId() . '"', $html);
+        self::assertStringContainsString('data-execution-panel="null"', $html);
+        self::assertStringContainsString('data-execution-panel="false"', $html);
+        self::assertStringContainsString('data-execution-panel="true"', $html);
+        self::assertMatchesRegularExpression('/implementation-execution-panel--null[^>]*aria-hidden="false"/', $html);
+        self::assertMatchesRegularExpression('/implementation-execution-panel--false[^>]*d-none[^>]*aria-hidden="true"/', $html);
+        self::assertStringContainsString('Evidencias', $html);
+        self::assertSame(1, substr_count($html, 'id="decision-modal-' . $measure->getId() . '"'));
+        self::assertSame(1, substr_count($html, 'id="evidence-modal-' . $measure->getId() . '"'));
+        self::assertSame(1, substr_count($html, 'id="action-taken-' . $measure->getId() . '"'));
+        self::assertSame(1, substr_count($html, 'id="execution-incident-' . $measure->getId() . '"'));
         self::assertStringNotContainsString('Fuentes de verificación sugeridas', $html);
         self::assertStringContainsString('data-action="change->plan-review#toggleImplemented"', $html);
 

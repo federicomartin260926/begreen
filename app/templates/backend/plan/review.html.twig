@@ -171,14 +171,83 @@
                 } %}
             </div>
 
-            {# TABLA DE MEDIDAS #}
-            {% include 'backend/plan/_list.html.twig' %}
+            {# MEDIDAS AGRUPADAS POR CATEGORÍA #}
+            {% if implementationGroups is not empty %}
+                <div class="implementation-categories d-flex flex-column gap-3" data-implementation-categories>
+                    {% for group in implementationGroups %}
+                        {% set categoryCollapseId = 'implementation-category-' ~ group.key %}
+                        <section class="implementation-category card border-0 shadow-sm {{ group.completed ? 'implementation-category--completed' : '' }}"
+                                 data-implementation-category="{{ group.key }}">
+                            <div class="implementation-category__header card-header bg-body p-3">
+                                <div class="d-flex align-items-start gap-3">
+                                    <div class="flex-grow-1 min-w-0">
+                                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                            <h3 class="h6 mb-0 text-success-emphasis">{{ group.name }}</h3>
+                                            <span class="badge bg-light text-dark border">
+                                                {% if group.outsideProgress or group.visibleCount == group.totalComputable %}
+                                                    {{ 'backend.plan.review.implementation_categories.measures'|trans({'%count%': group.visibleCount}) }}
+                                                {% else %}
+                                                    {{ 'backend.plan.review.implementation_categories.visible_of_total'|trans({'%visible%': group.visibleCount, '%total%': group.totalComputable}) }}
+                                                {% endif %}
+                                            </span>
+                                            {% if group.completed %}
+                                                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
+                                                    <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>{{ 'backend.plan.review.implementation_categories.completed'|trans }}
+                                                </span>
+                                            {% endif %}
+                                        </div>
 
-            {# PAGINACIÓN #}
-            {% include 'backend/plan/_pagination.html.twig' with {
-                currentPage: currentPage,
-                totalPages: totalPages
-            } %}
+                                        {% if group.outsideProgress %}
+                                            <div class="small text-muted">
+                                                <i class="bi bi-info-circle me-1" aria-hidden="true"></i>{{ 'backend.plan.review.implementation_categories.outside_progress'|trans }}
+                                            </div>
+                                        {% else %}
+                                            <div class="d-flex flex-wrap align-items-center gap-2 small mb-1">
+                                                <span>{{ 'backend.plan.review.implementation_categories.resolved'|trans({'%resolved%': group.resolved, '%total%': group.totalComputable}) }}</span>
+                                                <span class="text-muted">{{ 'backend.plan.review.implementation_categories.progress'|trans({'%percentage%': group.progressPercentage}) }}</span>
+                                            </div>
+                                            <div class="progress implementation-category__progress"
+                                                 role="progressbar"
+                                                 aria-label="{{ 'backend.plan.review.implementation_categories.progress_label'|trans({'%category%': group.name}) }}"
+                                                 aria-valuenow="{{ group.progressPercentage }}"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100">
+                                                <div class="progress-bar bg-success" style="width: {{ group.progressPercentage }}%"></div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <button class="btn btn-sm {{ group.isOpen ? 'btn-success' : 'btn-outline-success' }} flex-shrink-0"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#{{ categoryCollapseId }}"
+                                            data-implementation-category-toggle
+                                            data-collapse-static-class="1"
+                                            data-expand-label="{{ 'backend.plan.review.implementation_categories.expand'|trans({'%category%': group.name}) }}"
+                                            data-collapse-label="{{ 'backend.plan.review.implementation_categories.collapse'|trans({'%category%': group.name}) }}"
+                                            aria-expanded="{{ group.isOpen ? 'true' : 'false' }}"
+                                            aria-controls="{{ categoryCollapseId }}"
+                                            aria-label="{{ group.isOpen ? 'backend.plan.review.implementation_categories.collapse'|trans({'%category%': group.name}) : 'backend.plan.review.implementation_categories.expand'|trans({'%category%': group.name}) }}">
+                                        <i class="bi {{ group.isOpen ? 'bi-chevron-down' : 'bi-chevron-right' }}" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="{{ categoryCollapseId }}"
+                                 class="collapse {{ group.isOpen ? 'show' : '' }}"
+                                 data-implementation-category-collapse>
+                                <div class="card-body p-2 p-md-3">
+                                    {% include 'backend/plan/_list.html.twig' with {
+                                        implementationItems: group.items
+                                    } %}
+                                </div>
+                            </div>
+                        </section>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">{{ 'backend.plan.review.empty_filters'|trans }}</div>
+            {% endif %}
 
             {# GRÁFICOS #}
             <div

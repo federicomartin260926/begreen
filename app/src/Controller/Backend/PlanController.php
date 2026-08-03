@@ -11,6 +11,7 @@ use App\Service\PlanBlockQuestionService;
 use App\Service\SustainabilityPlanCompletionService;
 use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanMeasureOrderer;
+use App\Service\SustainabilityPlanImplementationViewService;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanCustomMeasureService;
 use App\Service\PlanMeasureOperationalStateResolver;
@@ -66,6 +67,7 @@ class PlanController extends AbstractController
         private PlanBlockQuestionService $blockQuestionService,
         private SustainabilityPlanCompletionService $planCompletionService,
         private SustainabilityPlanMeasureOrderer $measureOrderer,
+        private SustainabilityPlanImplementationViewService $implementationViewService,
         private SustainabilityPlanCollaborationService $collaborationService,
         private SustainabilityPlanCustomMeasureService $customMeasureService,
         private PlanMeasureOperationalStateResolver $operationalStateResolver,
@@ -590,6 +592,7 @@ class PlanController extends AbstractController
         $pendingSelection = $request->query->get('pending_selection');
         $onlyImplemented  = $request->query->get('only_implemented');
         $openId           = $request->query->getInt('open', 0);
+        $openCategory     = trim($request->query->getString('open_category')) ?: null;
         $isCritical       = $request->query->get('is_critical');
         $state            = $request->query->get('state');
 
@@ -603,20 +606,8 @@ class PlanController extends AbstractController
             PlanMeasureOperationalStateResolver::NOT_APPLICABLE,
         ];
         if (!is_string($state) || !in_array($state, $allowedStates, true)) {
-            $state = PlanMeasureOperationalStateResolver::PENDING;
+            $state = PlanMeasureOperationalStateResolver::ALL;
         }
-
-        $paginationQuery = $request->query->all();
-        unset($paginationQuery['open']);
-        if (!array_key_exists('is_applicable', $paginationQuery) && $isApplicable !== null && $isApplicable !== '') {
-            $paginationQuery['is_applicable'] = $isApplicable;
-        }
-        if (!array_key_exists('will_implement', $paginationQuery) && $willImplement !== null && $willImplement !== '') {
-            $paginationQuery['will_implement'] = $willImplement;
-        }
-
-        $page    = max(1, (int)$request->query->get('page', 1));
-        $perPage = 10;
 
         // START Número medida
         $baseQb = $measureRepository->createQueryBuilder('m')
@@ -637,72 +628,6 @@ class PlanController extends AbstractController
         }
         // END Número medida
 
-        // Query de Measure filtrada
-        $qb = $measureRepository->createQueryBuilder('m')
-            ->join('m.protocol', 'p')
-            ->leftJoin('m.category', 'c')
-            ->leftJoin('m.planMeasures', 'pm', 'WITH', 'pm.plan = :plan')
-            ->setParameter('plan', $plan)
-            ->andWhere('p = :protocol')
-            ->setParameter('protocol', $plan->getProtocol())
-            ->addSelect(
-            "CASE
-                WHEN pm.isApplicable = true AND pm.willImplement = true AND pm.isCritical = true THEN 1
-                WHEN pm.isApplicable = true AND pm.willImplement = true THEN 2
-                WHEN pm.isApplicable = true AND pm.willImplement = false THEN 3
-                WHEN pm.isApplicable = false THEN 4
-                ELSE 5
-            END AS HIDDEN rank"
-        );
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
-        $measureRepository->applyPlanTaxonomyFilters($qb, [
-            'category' => $category,
-            'department' => $department,
-            'ods' => $ods,
-            'impact_area' => $impactArea,
-            'triple_balance_axis' => $tripleBalance,
-            'scope' => $scope,
-            'esg' => $esg,
-        ]);
-
-        // Orden por ranking y luego por nombre de la medida
-        // Nombre para orden secundario: nameReview si existe, si no name
-        $qb->addSelect("
-            CASE
-                WHEN m.nameReview IS NULL OR m.nameReview = '' THEN m.name
-                ELSE m.nameReview
-            END AS HIDDEN sortName
-        ");
-
-        // Orden final
-        $qb->addOrderBy('rank', 'ASC')
-        ->addOrderBy('sortName', 'ASC');
-
-        if ($isCritical) {
-            $qb->andWhere('pm.isCritical = true');
-        }
-
-        $planMeasuresByMeasureId = [];
-        foreach ($plan->getPlanMeasures() as $planMeasure) {
-            $planMeasureId = $planMeasure->getMeasure()?->getId();
-            if ($planMeasureId !== null) {
-                $planMeasuresByMeasureId[(int) $planMeasureId] = $planMeasure;
-            }
-        }
-
-        // La fase de implementación debe incluir los block_skip como "No aplica".
-        $allMeasures = array_values(array_filter(
-            $qb->getQuery()->getResult(),
-            fn (Measure $measure): bool => isset($planMeasuresByMeasureId[(int) $measure->getId()])
-                && $this->operationalStateResolver->matches($planMeasuresByMeasureId[(int) $measure->getId()], $state)
-        ));
-        $total = count($allMeasures);
-
-        $page    = max(1, (int)$request->query->get('page', 1));
-        $perPage = 10;
-        $offset  = ($page - 1) * $perPage;
-        $measures = array_slice($allMeasures, $offset, $perPage);
-
         // Datos para gráficos (WEB, con filtros)
         $filtersArr = [
             'protocol'          => $protocol,
@@ -718,8 +643,28 @@ class PlanController extends AbstractController
             'pending_selection' => $pendingSelection,
             'only_implemented'  => $onlyImplemented,
             'state'             => $state,
+            'is_critical'       => $isCritical,
         ];
         $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $project, $filtersArr);
+        $allImplementationPlanMeasures = $this->getFilteredPlanMeasures($plan, $project, [
+            'protocol' => null,
+            'category' => null,
+            'department' => null,
+            'ods' => null,
+            'impact_area' => null,
+            'triple_balance_axis' => null,
+            'scope' => null,
+            'esg' => null,
+            'is_critical' => null,
+            'state' => PlanMeasureOperationalStateResolver::ALL,
+        ]);
+        $implementationView = $this->implementationViewService->build(
+            $allImplementationPlanMeasures,
+            $filteredPlanMeasures,
+            $state,
+            $openId > 0 ? $openId : null,
+            $openCategory,
+        );
 
         $effective = 0; $nonApplicable = 0; $agreed = 0; $implemented = 0;
         foreach ($filteredPlanMeasures as $pm) {
@@ -729,7 +674,7 @@ class PlanController extends AbstractController
             if ($pm->isImplemented())          $implemented++;
         }
 
-        $measuresTotal = (int) $total;
+        $measuresTotal = $implementationView['visibleCount'];
 
         $planChartsConfig = $this->buildReviewChartsConfig(
             $filteredPlanMeasures,
@@ -785,14 +730,8 @@ class PlanController extends AbstractController
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
             'crewMembersByMeasure' => $this->buildCrewMembersByMeasure($plan, $project),
-            'planMeasures'     => $plan->getPlanMeasures(),
-            'measures'         => $measures,
-            'currentPage'      => $page,
-            'totalPages'       => max(1, (int)ceil($total / $perPage)),
-            'offset'           => $offset,
-            'perPage'          => $perPage,
+            'implementationGroups' => $implementationView['groups'],
             'positionById'     => $positionById,
-            'paginationQuery'  => $paginationQuery,
             'filters'          => [
                 'protocol'          => $protocol,
                 'category'          => $category,
@@ -821,7 +760,6 @@ class PlanController extends AbstractController
             'scoreMax'         => $scoreMax,
             'scoreGained'      => $scoreGained,
             'openId'           => $openId,
-            'operationalStateResolver' => $this->operationalStateResolver,
         ]);
     }
 
@@ -2312,7 +2250,7 @@ class PlanController extends AbstractController
     private function getFilteredPlanMeasures(Plan $plan, Project $project, array $filters): array
     {
         $result = [];
-        $state = $filters['state'] ?? PlanMeasureOperationalStateResolver::PENDING;
+        $state = $filters['state'] ?? PlanMeasureOperationalStateResolver::ALL;
 
         foreach ($plan->getPlanMeasures() as $pm) {
             $m = $pm->getMeasure();
@@ -2945,7 +2883,7 @@ class PlanController extends AbstractController
     private function reviewDefaultFilters(): array
     {
         return [
-            'state' => PlanMeasureOperationalStateResolver::PENDING,
+            'state' => PlanMeasureOperationalStateResolver::ALL,
         ];
     }
 

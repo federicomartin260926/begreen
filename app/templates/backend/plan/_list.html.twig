@@ -1,559 +1,81 @@
-{# ---- LISTADO PLEGABLE ---- #}
-{% if measures is not empty %}
-    <div class="table-responsive">
-        <table class="table align-middle green_table_1 table-hover">
-            <thead class="table-light">
-                <tr>
-                    <th style="width:48px;"></th>
-                    <th style="width:80px;"></th>
-                    <th>{{ 'backend.plan.review.th.measure'|trans }}</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% set openId = app.request.query.get('open') %}
-            {% for measure in measures %}
-                {% set collapseId = 'mrow_' ~ measure.id %}
+{# ---- MEDIDAS COMPACTAS CON DETALLE PLEGABLE ---- #}
+{% if implementationItems is not empty %}
+    <div class="d-flex flex-column gap-2">
+        {% for item in implementationItems %}
+            {% set measure = item.measure %}
+            {% set pm = item.planMeasure %}
+            {% set operationalState = item.operationalState %}
+            {% set collapseId = 'mrow_' ~ measure.id %}
+            {% set isOpen = openId and openId == measure.id %}
+            {% set statusColor = 'plan-measure-status-dot--' ~ operationalState %}
+            {% set statusTitle = ('backend.plan.review.status_' ~ operationalState)|trans %}
+            {% set showStar = pm.isCritical is same as(true) %}
 
-                {% set isOpen = openId and openId == measure.id %}
-
-                {# pm debe definirse ANTES de usarlo #}
-                {% set pm = null %}
-                {% for item in planMeasures %}
-                    {% if item.measure.id == measure.id %}
-                        {% set pm = item %}
-                    {% endif %}
-                {% endfor %}
-
-                {% set operationalState = pm ? operationalStateResolver.resolve(pm) : 'pending' %}
-                <tr class="plan-measure-row--{{ operationalState }}">
-                    <td class="text-center">
+            <article class="implementation-measure implementation-measure-row--{{ operationalState }}"
+                     data-implementation-measure
+                     data-measure-id="{{ measure.id }}">
+                <div class="implementation-measure-row d-flex flex-wrap align-items-center gap-2 gap-md-3 p-2 p-md-3 rounded-3"
+                     data-measure-summary>
+                    <span class="implementation-measure-row__position text-muted small fw-semibold">
+                        #{{ positionById[measure.id]|default(loop.index) }}
+                    </span>
+                    <span class="plan-measure-status-dot {{ statusColor }}" title="{{ statusTitle }}" aria-label="{{ statusTitle }}"></span>
+                    <div class="implementation-measure-row__title flex-grow-1 min-w-0 fw-semibold">
+                        {{ measure.displayNameForReview }}
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
+                        <span class="badge border {{ showStar ? 'bg-warning-subtle text-warning-emphasis' : 'bg-light text-muted' }}"
+                              {% if showStar %}title="{{ 'backend.plan.review.critical_measure'|trans }}"{% endif %}>
+                            {% if showStar %}<i class="bi bi-star-fill me-1" aria-hidden="true"></i>{% endif %}
+                            {{ 'backend.plan.review.critical_short'|trans }}:
+                            {{ pm.isCritical is same as(true) ? 'backend.common.yes'|trans : (pm.isCritical is same as(false) ? 'backend.common.no'|trans : '—') }}
+                        </span>
+                        {% if measure.score is not null %}
+                            <span class="badge bg-light text-dark border" title="{{ 'backend.plan.review.score_badge_title'|trans }}">
+                                {{ measure.score }} {{ 'backend.common.points'|trans }}
+                            </span>
+                        {% endif %}
+                        <span class="badge implementation-measure-row__state">{{ statusTitle }}</span>
+                        {% if is_granted('ROLE_SUPER_ADMIN') %}
+                            <a href="{{ path('admin_measures_edit', { id: measure.id }) }}"
+                               class="btn btn-sm btn-link text-muted p-1"
+                               target="_blank" rel="noopener"
+                               aria-label="{{ 'backend.plan.review.edit_in_admin'|trans }}"
+                               title="{{ 'backend.plan.review.edit_in_admin'|trans }}">
+                                <i class="bi bi-gear" aria-hidden="true"></i>
+                            </a>
+                        {% endif %}
                         <button class="btn btn-sm {{ isOpen ? 'btn-primary' : 'btn-outline-primary' }}"
                                 type="button"
                                 data-bs-toggle="collapse"
                                 data-bs-target="#{{ collapseId }}"
+                                data-implementation-measure-toggle
                                 aria-expanded="{{ isOpen ? 'true' : 'false' }}"
                                 aria-controls="{{ collapseId }}"
                                 aria-label="{{ isOpen ? 'backend.plan.review.collapse_measure'|trans : 'backend.plan.review.expand_measure'|trans }}">
-                            <i class="bi {{ isOpen ? 'bi-chevron-down' : 'bi-chevron-right' }}"></i>
+                            <i class="bi {{ isOpen ? 'bi-chevron-down' : 'bi-chevron-right' }}" aria-hidden="true"></i>
                         </button>
-                    </td>
+                    </div>
+                </div>
 
-                    {% set statusColor = 'plan-measure-status-dot--' ~ operationalState %}
-                    {% set statusTitle = ('backend.plan.review.status_' ~ operationalState)|trans %}
-                    {% set showStar = pm and pm.isCritical is same as(true) %}
-
-                    <td class="text-muted text-nowrap">
-                        <span class="d-inline-flex align-items-center flex-nowrap">
-                            <span class="plan-measure-status-dot me-2 {{ statusColor }}" title="{{ statusTitle }}" aria-label="{{ statusTitle }}"></span>
-                            {% if showStar %}
-                                <i class="bi bi-star-fill text-warning me-1" title="{{ 'backend.plan.review.critical_measure'|trans }}" aria-label="{{ 'backend.plan.review.critical_measure'|trans }}"></i>
-                            {% endif %}
-                        </span>
-                    </td>
-
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="flex-grow-1 min-w-0">
-                                {{ measure.displayNameForReview }}
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                                {% if measure.score is not null %}
-                                    <span class="badge bg-light text-dark border" title="{{ 'backend.plan.review.score_badge_title'|trans }}">
-                                        <i class="bi bi-star-fill text-warning me-1"></i>{{ measure.score }} {{ 'backend.common.points'|trans }}
-                                    </span>
-                                {% endif %}
-                                {% if is_granted('ROLE_SUPER_ADMIN') %}
-                                    <a
-                                        href="{{ path('admin_measures_edit', { id: measure.id }) }}"
-                                        class="text-muted small text-decoration-none"
-                                        target="_blank" rel="noopener"
-                                        data-bs-toggle="popover"
-                                        data-bs-trigger="hover"
-                                        data-bs-html="true"
-                                        data-bs-content="{{ 'backend.plan.review.edit_in_admin'|trans }}"
-                                        aria-label="{{ 'backend.plan.review.edit_in_admin'|trans }}">
-                                        <i class="bi bi-gear"></i>
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </td>
-
-                </tr>
-
-                {# Fila plegable con detalles de la medida #}
-                <tr class="collapse plan-measure-row--{{ operationalState }} {{ isOpen ? 'show' : '' }}" id="{{ collapseId }}">
-                    <td colspan="3">
-                        <div class="plan-measure-detail p-3 p-lg-4 border rounded-4 shadow-sm bg-body-tertiary"
-                             data-plan-measure-row
-                             data-measure-id="{{ measure.id }}">
-                            <div class="d-flex flex-column flex-md-row gap-2 gap-md-4 py-2 border-bottom">
-                                <div class="small text-muted flex-shrink-0">{{ 'backend.plan.measure.description'|trans }}</div>
-                                <div class="flex-grow-1">
-                                    {% include 'backend/plan/_description_toggle.html.twig' with {
-                                        description: measure.description,
-                                        toggleId: 'review-description-' ~ measure.id,
-                                        excerptLength: 200
-                                    } %}
-                                </div>
-                            </div>
-
-                            <div class="py-3 border-bottom">
-                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
-                                    <div>
-                                        <div class="fw-semibold text-success-emphasis mb-2">{{ 'backend.plan.review.decision_title'|trans }}</div>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <span class="badge rounded-pill bg-light text-dark border">
-                                                {{ 'backend.plan.q.apply'|trans }}:
-                                                {{ pm and pm.isApplicable is same as(true)
-                                                    ? 'backend.common.yes'|trans
-                                                    : (pm and pm.isApplicable is same as(false)
-                                                        ? 'backend.common.no'|trans
-                                                        : 'backend.common.no_answer'|trans) }}
-                                            </span>
-
-                                            {% if pm and pm.isApplicable %}
-                                                <span class="badge rounded-pill {{ pm.isCritical is same as(true) ? 'bg-success' : (pm.isCritical is same as(false) ? 'bg-danger' : 'bg-secondary') }}">
-                                                    {{ 'backend.plan.review.critical_short'|trans }}: {{ pm.isCritical is same as(true) ? 'backend.common.yes'|trans : (pm.isCritical is same as(false) ? 'backend.common.no'|trans : '—') }}
-                                                </span>
-                                                <span class="badge rounded-pill {{ pm.willImplement is same as(true) ? 'bg-success' : (pm.willImplement is same as(false) ? 'bg-danger' : 'bg-secondary') }}">
-                                                    {{ 'backend.plan.review.implement_state'|trans }}: {{ pm.willImplement is same as(true) ? 'backend.common.yes'|trans : (pm.willImplement is same as(false) ? 'backend.common.no'|trans : '—') }}
-                                                </span>
-                                            {% endif %}
-                                        </div>
-                                        {% if pm and pm.observations %}
-                                            <div class="small text-muted mt-2">
-                                                {{ 'backend.plan.q.observations'|trans }}: <span class="text-body">{{ pm.observations }}</span>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-
-                                    {% if pm %}
-                                        <button type="button"
-                                                class="btn btn-outline-primary btn-sm"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#decision-modal-{{ measure.id }}">
-                                            <i class="bi bi-pencil-square me-1"></i>{{ 'backend.plan.review.modify_decision'|trans }}
-                                        </button>
-                                    {% endif %}
-                                </div>
-
-                                {% if pm %}
-                                    <div class="modal fade"
-                                         id="decision-modal-{{ measure.id }}"
-                                         tabindex="-1"
-                                         aria-labelledby="decision-modal-label-{{ measure.id }}"
-                                         aria-hidden="true">
-                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="decision-modal-label-{{ measure.id }}">
-                                                        {{ 'backend.plan.review.modify_decision'|trans }}
-                                                    </h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
-                                                </div>
-                                                <div class="modal-body"
-                                                     data-plan-review-target="inlineEdit"
-                                                     id="inline-edit-{{ measure.id }}">
-                                                <div class="row g-3">
-                                                    <div class="col-12 col-lg-4">
-                                                        <div class="small text-muted mb-1">{{ 'backend.plan.q.apply'|trans }}</div>
-                                                        <div class="d-flex gap-3 flex-wrap">
-                                                            <div class="form-check">
-                                                                <input class="form-check-input"
-                                                                       type="radio"
-                                                                       name="applies-{{ measure.id }}"
-                                                                       id="applies-yes-{{ measure.id }}"
-                                                                       value="true"
-                                                                       {% if pm.isApplicable is same as(true) %}checked{% endif %}
-                                                                       data-action="change->plan-review#onAppliesChange">
-                                                                <label class="form-check-label" for="applies-yes-{{ measure.id }}">{{ 'backend.common.yes'|trans }}</label>
-                                                            </div>
-                                                            <div class="form-check">
-                                                                <input class="form-check-input"
-                                                                       type="radio"
-                                                                       name="applies-{{ measure.id }}"
-                                                                       id="applies-no-{{ measure.id }}"
-                                                                       value="false"
-                                                                       {% if pm.isApplicable is same as(false) %}checked{% endif %}
-                                                                       data-action="change->plan-review#onAppliesChange">
-                                                                <label class="form-check-label" for="applies-no-{{ measure.id }}">{{ 'backend.common.no'|trans }}</label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="col-12 col-lg-4" data-implement-block>
-                                                        <div class="small text-muted mb-1">{{ 'backend.plan.review.implement_state'|trans }}</div>
-                                                        <div class="d-flex gap-3 flex-wrap">
-                                                            <div class="form-check">
-                                                                <input class="form-check-input"
-                                                                       type="radio"
-                                                                       name="implement-{{ measure.id }}"
-                                                                       id="implement-yes-{{ measure.id }}"
-                                                                       value="true"
-                                                                       data-field="willImplement"
-                                                                       {% if pm.willImplement is same as(true) %}checked{% endif %}
-                                                                       {% if pm.isApplicable is same as(false) %}disabled{% endif %}
-                                                                       data-action="change->plan-review#onImplementChange">
-                                                                <label class="form-check-label" for="implement-yes-{{ measure.id }}">{{ 'backend.common.yes'|trans }}</label>
-                                                            </div>
-                                                            <div class="form-check">
-                                                                <input class="form-check-input"
-                                                                       type="radio"
-                                                                       name="implement-{{ measure.id }}"
-                                                                       id="implement-no-{{ measure.id }}"
-                                                                       value="false"
-                                                                       data-field="willImplement"
-                                                                       {% if pm.willImplement is same as(false) %}checked{% endif %}
-                                                                       {% if pm.isApplicable is same as(false) %}disabled{% endif %}
-                                                                       data-action="change->plan-review#onImplementChange">
-                                                                <label class="form-check-label" for="implement-no-{{ measure.id }}">{{ 'backend.common.no'|trans }}</label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="col-12 col-lg-4" data-critical-block>
-                                                        <div class="small text-muted mb-1">{{ 'backend.plan.review.critical_q'|trans }}</div>
-                                                        <div class="d-flex gap-3 flex-wrap">
-                                                            <div class="form-check">
-                                                                <input class="form-check-input"
-                                                                       type="radio"
-                                                                       name="critical-{{ measure.id }}"
-                                                                       id="critical-yes-{{ measure.id }}"
-                                                                       value="true"
-                                                                       {% if pm.isCritical is same as(true) %}checked{% endif %}
-                                                                       {% if pm.isApplicable is same as(false) or pm.willImplement is not same as(true) %}disabled{% endif %}>
-                                                                <label class="form-check-label" for="critical-yes-{{ measure.id }}">{{ 'backend.common.yes'|trans }}</label>
-                                                            </div>
-                                                            <div class="form-check">
-                                                                <input class="form-check-input"
-                                                                       type="radio"
-                                                                       name="critical-{{ measure.id }}"
-                                                                       id="critical-no-{{ measure.id }}"
-                                                                       value="false"
-                                                                       {% if pm.isCritical is same as(false) %}checked{% endif %}
-                                                                       {% if pm.isApplicable is same as(false) or pm.willImplement is not same as(true) %}disabled{% endif %}>
-                                                                <label class="form-check-label" for="critical-no-{{ measure.id }}">{{ 'backend.common.no'|trans }}</label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="mt-3">
-                                                    <label class="small text-muted mb-1" for="decision-observations-{{ measure.id }}">{{ 'backend.plan.q.observations'|trans }}</label>
-                                                    <textarea
-                                                        id="decision-observations-{{ measure.id }}"
-                                                        class="form-control"
-                                                        rows="3"
-                                                        required
-                                                        placeholder="{{ 'backend.plan.q.observations_ph'|trans }}"
-                                                    >{{ pm.observations ?? '' }}</textarea>
-                                                </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                                                        {{ 'backend.common.cancel'|trans }}
-                                                    </button>
-                                                    <button type="button"
-                                                            class="btn btn-primary"
-                                                            data-action="click->plan-review#saveInlineEdit"
-                                                            data-save-section="state"
-                                                            data-measure-id="{{ measure.id }}">
-                                                        {{ 'backend.common.save_changes'|trans }}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            </div>
-
-                            <section  class="mt-3">
-                                <div class="d-flex align-items-center justify-content-between gap-2">
-                                    <div class="fw-semibold text-success-emphasis">{{ 'backend.plan.review.execution_title'|trans }}</div>
-                                    {% if pm and pm.willImplement is not same as(true) %}
-                                        <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border">{{ 'backend.plan.review.execution_locked'|trans }}</span>
-                                    {% endif %}
-                                </div>
-
-                                {% set executionDecisionLocked = not (pm and pm.willImplement is same as(true)) %}
-                                <div class="mt-3 d-flex flex-column flex-md-row flex-wrap gap-3 align-items-md-center"
-                                     data-measure-id="{{ measure.id }}">
-                                    <div class="mb-0">
-                                        <div id="implemented-label-{{ measure.id }}" class="form-label mb-1">
-                                            {{ 'backend.plan.review.flag_implemented'|trans }}
-                                            <i class="bi bi-info-circle ms-1 text-muted"
-                                               tabindex="0"
-                                               role="img"
-                                               aria-label="{{ 'backend.plan.review.execution_decision.help'|trans }}"
-                                               data-bs-toggle="tooltip"
-                                               title="{{ 'backend.plan.review.execution_decision.help'|trans }}"></i>
-                                        </div>
-                                        <div class="implemented-switch-row">
-                                            <div class="implemented-switch"
-                                                 role="radiogroup"
-                                                 aria-labelledby="implemented-label-{{ measure.id }}"
-                                                 data-implemented-control
-                                                 data-locked="{{ executionDecisionLocked ? '1' : '0' }}"
-                                                 data-current-value="{{ pm and pm.isImplemented is same as(true) ? 'true' : (pm and pm.isImplemented is same as(false) ? 'false' : 'null') }}">
-                                                {% for value, labelKey in {
-                                                    'false': 'not_executable',
-                                                    'null': 'undecided',
-                                                    'true': 'executed'
-                                                } %}
-                                                    <input class="implemented-switch__input"
-                                                           type="radio"
-                                                           name="implemented-{{ measure.id }}"
-                                                           id="implemented-{{ value }}-{{ measure.id }}"
-                                                           value="{{ value }}"
-                                                           aria-label="{{ ('backend.plan.review.execution_decision.' ~ labelKey)|trans }}"
-                                                           data-action="change->plan-review#toggleImplemented"
-                                                           data-measure-id="{{ measure.id }}"
-                                                           data-url="{{ path('backend_plan_update_selection') }}"
-                                                           {% if executionDecisionLocked %}disabled{% endif %}
-                                                           {% if (value == 'true' and pm and pm.isImplemented is same as(true))
-                                                               or (value == 'false' and pm and pm.isImplemented is same as(false))
-                                                               or (value == 'null' and (not pm or pm.isImplemented is null)) %}checked{% endif %}>
-                                                    <label class="implemented-switch__zone implemented-switch__zone--{{ value == 'false' ? 'left' : (value == 'true' ? 'right' : 'center') }}" for="implemented-{{ value }}-{{ measure.id }}">
-                                                        <span class="visually-hidden">{{ ('backend.plan.review.execution_decision.' ~ labelKey)|trans }}</span>
-                                                    </label>
-                                                {% endfor %}
-                                                <span class="implemented-switch__track" aria-hidden="true">
-                                                    <span class="implemented-switch__mark implemented-switch__mark--left"></span>
-                                                    <span class="implemented-switch__mark implemented-switch__mark--center"></span>
-                                                    <span class="implemented-switch__mark implemented-switch__mark--right"></span>
-                                                    <span class="implemented-switch__knob"></span>
-                                                </span>
-                                            </div>
-                                            <span class="implemented-switch__selected-state" aria-live="polite">
-                                                <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--false">{{ 'backend.plan.review.execution_decision.not_executable'|trans }}</span>
-                                                <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--null">-</span>
-                                                <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--true">{{ 'backend.plan.review.execution_decision.executed'|trans }}</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {% if pm and pm.willImplement is same as(true) %}
-                                    {% set canAll = is_granted('ROLE_SUPER_ADMIN') or is_granted('ROLE_ADMIN') %}
-                                    {% set canVerify = canAll %}
-                                    {% set canManageEvidence = canAll or is_granted('ROLE_MANAGER') %}
-                                    {% set canUseChecklist = canUseChecklist|default(false) %}
-                                    {% set canUseResponsibles = canUseResponsibles|default(false) %}
-                                    {% set canUseInternalNotes = canUseInternalNotes|default(false) %}
-                                    {% set hasSecondaryExecutionFields = canUseResponsibles or canUseInternalNotes %}
-                                    {% set measureCrewMembers = crewMembersByMeasure[measure.id]|default([]) %}
-                                    {% set responsibleIds = [] %}
-                                    {% if pm %}
-                                        {% for responsible in pm.responsibleCrewMembers %}
-                                            {% set responsibleIds = responsibleIds|merge([responsible.id]) %}
-                                        {% endfor %}
-                                    {% endif %}
-
-                                    <div class="mt-1 d-flex flex-column flex-md-row flex-wrap gap-3 align-items-md-center"
-                                         data-measure-id="{{ measure.id }}">
-                                        {% if canUseChecklist %}
-                                            <div class="form-check form-switch mb-0">
-                                                {% if canVerify %}
-                                                    <input
-                                                        class="form-check-input"
-                                                        type="checkbox"
-                                                        id="verification-{{ measure.id }}"
-                                                        {% if pm and pm.verification %}checked{% endif %}>
-                                                    <label class="form-check-label" for="verification-{{ measure.id }}">
-                                                        {{ 'backend.plan.review.flag_verified'|trans }}
-                                                    </label>
-                                                {% else %}
-                                                    <input
-                                                        class="form-check-input"
-                                                        type="checkbox"
-                                                        id="verification-{{ measure.id }}"
-                                                        {% if pm and pm.verification %}checked{% endif %}
-                                                        disabled data-locked="1">
-                                                    <label class="form-check-label" for="verification-{{ measure.id }}">
-                                                        {{ 'backend.plan.review.flag_verified'|trans }}
-                                                    </label>
-                                                {% endif %}
-                                            </div>
-                                        {% endif %}
-                                    </div>
-
-                                    {% set evidenceList = (pm and pm.evidence) ? pm.evidence|split("\n")|filter(path => path|trim) : [] %}
-                                    {% set evidenceMetadata = pm and pm.evidenceMetadata ? pm.evidenceMetadata : {} %}
-                                    {% set verificationSources = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
-                                    {% set evidenceCount = evidenceList|length %}
-                                    {% if hasSecondaryExecutionFields %}
-                                        <div class="row g-4 mt-0 align-items-start">
-                                            <div class="col-12 col-lg-6 mt-3">
-                                                <label class="form-label small" for="action-taken-{{ measure.id }}">{{ 'backend.plan.review.action_taken'|trans }}</label>
-                                                <textarea
-                                                    id="action-taken-{{ measure.id }}"
-                                                    class="form-control"
-                                                    rows="2"
-                                                    placeholder="{{ 'backend.plan.review.action_taken_ph'|trans }}">{{ pm.actionTaken ?? '' }}</textarea>
-
-                                                <label class="form-label small mt-3" for="execution-incident-{{ measure.id }}">{{ 'backend.plan.review.execution_incident'|trans }}</label>
-                                                <textarea
-                                                    id="execution-incident-{{ measure.id }}"
-                                                    class="form-control"
-                                                    rows="2"
-                                                    autocomplete="off"
-                                                    placeholder="{{ 'backend.plan.review.execution_incident_ph'|trans }}">{{ pm.executionIncident ?? '' }}</textarea>
-
-                                                {% if canManageEvidence or evidenceCount > 0 %}
-                                                    {% include 'backend/plan/_evidence_block.html.twig' with {
-                                                        measure: measure,
-                                                        canManageEvidence: canManageEvidence,
-                                                        evidenceList: evidenceList,
-                                                        evidenceMetadata: evidenceMetadata,
-                                                        verificationSources: verificationSources,
-                                                        evidenceCount: evidenceCount,
-                                                        evidenceBlockWrapperClass: 'mt-3'
-                                                    } %}
-                                                {% endif %}
-                                            </div>
-
-                                            <div class="col-12 col-lg-6 mt-3">
-                                                {% if canUseResponsibles %}
-                                                    <div>
-                                                        <label class="form-label small d-flex justify-content-between align-items-center" for="responsibles-{{ measure.id }}">
-                                                            <span>{{ 'backend.plan.review.responsibles'|trans }}</span>
-                                                        </label>
-                                                        <select
-                                                            id="responsibles-{{ measure.id }}"
-                                                            class="form-select"
-                                                            multiple
-                                                            size="3">
-                                                            {% for crewMember in measureCrewMembers %}
-                                                                {% set fullName = (crewMember.name ?? '') ~ ' ' ~ (crewMember.lastName ?? '') %}
-                                                                <option value="{{ crewMember.id }}"
-                                                                        {% if crewMember.id in responsibleIds %}selected{% endif %}>
-                                                                    {{ fullName|trim }}{% if crewMember.department %} · {{ crewMember.department.displayName }}{% endif %}
-                                                                </option>
-                                                            {% endfor %}
-                                                        </select>
-                                                        <div class="form-text">{{ 'backend.plan.review.responsibles_hint'|trans }}</div>
-                                                    </div>
-                                                {% endif %}
-
-                                                {% if canUseInternalNotes %}
-                                                    <div{% if canUseResponsibles %} class="mt-3"{% endif %}>
-                                                        <label class="form-label small mb-1" for="internal-notes-{{ measure.id }}">
-                                                            {{ 'backend.plan.review.internal_notes'|trans }}
-                                                        </label>
-                                                        <textarea
-                                                            id="internal-notes-{{ measure.id }}"
-                                                            class="form-control"
-                                                            rows="2"
-                                                            placeholder="{{ 'backend.plan.review.internal_notes_ph'|trans }}">{{ pm.internalNotes ?? '' }}</textarea>
-                                                        <div class="form-text mt-1">{{ 'backend.plan.review.internal_notes_hint'|trans }}</div>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    {% else %}
-                                        <div class="row g-4 mt-0 align-items-start">
-                                            <div class="col-12 col-lg-6 mt-3">
-                                                <label class="form-label small" for="action-taken-{{ measure.id }}">{{ 'backend.plan.review.action_taken'|trans }}</label>
-                                                <textarea
-                                                    id="action-taken-{{ measure.id }}"
-                                                    class="form-control"
-                                                    rows="2"
-                                                    placeholder="{{ 'backend.plan.review.action_taken_ph'|trans }}">{{ pm.actionTaken ?? '' }}</textarea>
-
-                                                <label class="form-label small mt-3" for="execution-incident-{{ measure.id }}">{{ 'backend.plan.review.execution_incident'|trans }}</label>
-                                                <textarea
-                                                    id="execution-incident-{{ measure.id }}"
-                                                    class="form-control"
-                                                    rows="2"
-                                                    autocomplete="off"
-                                                    placeholder="{{ 'backend.plan.review.execution_incident_ph'|trans }}">{{ pm.executionIncident ?? '' }}</textarea>
-
-                                            </div>
-
-                                            <div class="col-12 col-lg-6 mt-3">
-                                                {% if canManageEvidence or evidenceCount > 0 %}
-                                                    {% include 'backend/plan/_evidence_block.html.twig' with {
-                                                        measure: measure,
-                                                        canManageEvidence: canManageEvidence,
-                                                        evidenceList: evidenceList,
-                                                        evidenceMetadata: evidenceMetadata,
-                                                        verificationSources: verificationSources,
-                                                        evidenceCount: evidenceCount,
-                                                        evidenceBlockWrapperClass: 'mt-0'
-                                                    } %}
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    {% endif %}
-
-                                {% else %}
-                                    <div class="text-muted small mt-2">{{ 'backend.plan.review.execution_hint'|trans }}</div>
-                                {% endif %}
-                            </section>
-
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
-                                <button
-                                    class="btn btn-outline-success btn-sm px-3 py-2 rounded-pill d-inline-flex align-items-center gap-1 fw-semibold classification-toggle"
-                                    type="button"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#classification-{{ measure.id }}"
-                                    data-collapse-static-class="1"
-                                    aria-expanded="false"
-                                    aria-controls="classification-{{ measure.id }}">
-                                    <i class="bi bi-diagram-3 me-1"></i><span class="classification-toggle__label">{{ 'backend.plan.review.classification_title'|trans }}</span>
-                                </button>
-
-                                {% if pm and pm.willImplement is same as(true) %}
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-primary"
-                                        data-action="click->plan-review#saveInlineEdit"
-                                        data-save-section="actions"
-                                        data-measure-id="{{ measure.id }}">
-                                        {{ 'backend.common.save_changes'|trans }}
-                                    </button>
-                                {% endif %}
-                            </div>
-
-                            <div class="collapse mt-2" id="classification-{{ measure.id }}">
-                                <div class="pt-2">
-                                        {% if measure.category %}
-                                            <div class="row g-2 align-items-start mb-2">
-                                                <dt class="col-12 col-md-4 col-lg-3">{{ 'backend.plan.measure.category'|trans }}</dt>
-                                                <dd class="col-12 col-md-8 col-lg-9 d-flex flex-wrap gap-1 mb-0">
-                                                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis border">
-                                                        {{ measure.category.name }}
-                                                    </span>
-                                                </dd>
-                                            </div>
-                                        {% else %}
-                                            <div class="row g-2 align-items-start mb-2">
-                                                <dt class="col-12 col-md-4 col-lg-3">{{ 'backend.plan.measure.category'|trans }}</dt>
-                                                <dd class="col-12 col-md-8 col-lg-9 mb-0 text-muted">—</dd>
-                                            </div>
-                                        {% endif %}
-
-                                        <div class="row g-2">
-                                            {% include 'backend/plan/_measure_taxonomy.html.twig' with {
-                                                measure: measure,
-                                                taxonomyPresenter: taxonomyPresenter,
-                                                projectType: project.type|default(null),
-                                                dtClass: 'col-12 col-md-4 col-lg-3',
-                                                ddClass: 'col-12 col-md-8 col-lg-9',
-                                                showVerificationSources: false
-                                            } %}
-                                        </div>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-
-            {% endfor %}
-            </tbody>
-        </table>
+                <div class="collapse implementation-measure-detail {{ isOpen ? 'show' : '' }}"
+                     id="{{ collapseId }}"
+                     data-implementation-measure-collapse>
+                    {% include 'backend/plan/_implementation_measure_detail.html.twig' with {
+                        measure: measure,
+                        pm: pm,
+                        operationalState: operationalState,
+                        statusTitle: statusTitle,
+                        position: positionById[measure.id]|default(loop.index),
+                        taxonomyPresenter: taxonomyPresenter,
+                        project: project,
+                        crewMembersByMeasure: crewMembersByMeasure|default([]),
+                        canUseChecklist: canUseChecklist|default(false),
+                        canUseResponsibles: canUseResponsibles|default(false),
+                        canUseInternalNotes: canUseInternalNotes|default(false)
+                    } only %}
+                </div>
+            </article>
+        {% endfor %}
     </div>
-{% else %}
-    <div class="alert alert-info">{{ 'backend.plan.review.empty_filters'|trans }}</div>
 {% endif %}

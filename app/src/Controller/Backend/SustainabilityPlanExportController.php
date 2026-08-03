@@ -106,6 +106,7 @@ final class SustainabilityPlanExportController extends AbstractController
                 : $this->redirectToRoute('backend_plan_review', [
                 'is_applicable' => '1',
                 'will_implement' => '1',
+                'state' => 'all',
             ]);
         }
 
@@ -202,6 +203,7 @@ final class SustainabilityPlanExportController extends AbstractController
                 : $this->redirectToRoute('backend_plan_review', [
                 'is_applicable' => '1',
                 'will_implement' => '1',
+                'state' => 'all',
             ]);
         }
 

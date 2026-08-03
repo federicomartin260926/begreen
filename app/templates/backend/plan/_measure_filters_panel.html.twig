@@ -28,7 +28,7 @@
 {% if filters.scope|default('') is not empty %}
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.scope'|trans]) %}
 {% endif %}
-{% set stateValue = filters.state|default('pending') %}
+{% set stateValue = filters.state|default('all') %}
 {% if stateValue == 'all' %}
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_all'|trans]) %}
 {% elseif stateValue == 'pending' %}
@@ -37,6 +37,8 @@
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_in_progress'|trans]) %}
 {% elseif stateValue == 'implemented' %}
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_implemented'|trans]) %}
+{% elseif stateValue == 'not_implemented' %}
+    {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_not_implemented'|trans]) %}
 {% elseif stateValue == 'discarded' %}
     {% set activeFilterLabels = activeFilterLabels|merge(['backend.plan.filters.state_discarded'|trans]) %}
 {% elseif stateValue == 'not_applicable' %}

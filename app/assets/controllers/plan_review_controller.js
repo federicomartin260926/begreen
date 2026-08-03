@@ -28,6 +28,7 @@ export default class extends Controller {
 
   connect() {
     this.initializeImplementedSwitches();
+    this.initializeImplementationCollapses();
 
     // --- Filtros ---
     const filtersForm = this.element.querySelector('#plan-filters-form');
@@ -43,7 +44,7 @@ export default class extends Controller {
         e.preventDefault();
         filtersForm.querySelectorAll('select').forEach(s => { s.value = ''; });
         filtersForm.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-        const defaultState = filtersForm.querySelector('input[name="state"][value="pending"]');
+        const defaultState = filtersForm.querySelector('input[name="state"][value="all"]');
         if (defaultState) {
           defaultState.checked = true;
         }
@@ -174,6 +175,68 @@ export default class extends Controller {
 
   disconnect() {
     this.implementedSwitchAbortController?.abort();
+    this.implementationCollapseAbortController?.abort();
+  }
+
+  initializeImplementationCollapses() {
+    this.implementationCollapseAbortController?.abort();
+    this.implementationCollapseAbortController = new AbortController();
+    const { signal } = this.implementationCollapseAbortController;
+
+    this.element.querySelectorAll('[data-implementation-category-collapse]').forEach((collapse) => {
+      collapse.addEventListener('shown.bs.collapse', () => {
+        const category = collapse.closest('[data-implementation-category]');
+        const toggle = category?.querySelector('[data-implementation-category-toggle]');
+        toggle?.classList.remove('btn-outline-success');
+        toggle?.classList.add('btn-success');
+        if (toggle?.dataset.collapseLabel) toggle.setAttribute('aria-label', toggle.dataset.collapseLabel);
+        this.replaceReviewContext({ open_category: category?.dataset.implementationCategory || null });
+      }, { signal });
+      collapse.addEventListener('hidden.bs.collapse', () => {
+        const category = collapse.closest('[data-implementation-category]');
+        const toggle = category?.querySelector('[data-implementation-category-toggle]');
+        toggle?.classList.remove('btn-success');
+        toggle?.classList.add('btn-outline-success');
+        if (toggle?.dataset.expandLabel) toggle.setAttribute('aria-label', toggle.dataset.expandLabel);
+        const categoryKey = category?.dataset.implementationCategory || null;
+        const params = new URLSearchParams(window.location.search);
+        const updates = params.get('open_category') === categoryKey ? { open_category: null } : {};
+        const openMeasure = category?.querySelector('[data-implementation-measure-collapse].show');
+        if (openMeasure && params.get('open') === openMeasure.id.replace('mrow_', '')) {
+          updates.open = null;
+        }
+        this.replaceReviewContext(updates);
+      }, { signal });
+    });
+
+    this.element.querySelectorAll('[data-implementation-measure-collapse]').forEach((collapse) => {
+      collapse.addEventListener('shown.bs.collapse', () => {
+        const measure = collapse.closest('[data-implementation-measure]');
+        const category = collapse.closest('[data-implementation-category]');
+        this.replaceReviewContext({
+          open: measure?.dataset.measureId || null,
+          open_category: category?.dataset.implementationCategory || null,
+        });
+      }, { signal });
+      collapse.addEventListener('hidden.bs.collapse', () => {
+        const measure = collapse.closest('[data-implementation-measure]');
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('open') === measure?.dataset.measureId) {
+          this.replaceReviewContext({ open: null });
+        }
+      }, { signal });
+    });
+  }
+
+  replaceReviewContext(updates) {
+    if (Object.keys(updates).length === 0) return;
+
+    const url = new URL(window.location.href);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '') url.searchParams.delete(key);
+      else url.searchParams.set(key, String(value));
+    });
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
   }
 
   initializeImplementedSwitches() {
@@ -182,6 +245,9 @@ export default class extends Controller {
     const { signal } = this.implementedSwitchAbortController;
 
     this.element.querySelectorAll('[data-implemented-control]').forEach((control) => {
+      const measureContainer = control.closest('[data-plan-measure-row]');
+      this.updateExecutionDecisionPanels(measureContainer, control.dataset.currentValue || 'null');
+
       const knob = control.querySelector('.implemented-switch__knob');
       if (!knob) return;
 
@@ -291,6 +357,8 @@ export default class extends Controller {
       return;
     }
 
+    this.updateExecutionDecisionPanels(measureContainer, value);
+
     if (control) {
       control.dataset.saving = '1';
       control.querySelectorAll('input').forEach((radio) => {
@@ -301,18 +369,23 @@ export default class extends Controller {
 
     try {
       if (value === 'false') {
-        const incident = String(measureContainer.querySelector(`#execution-incident-${measureId}`)?.value || '').trim();
-        if (incident !== '') {
-          await this.persistSelectionField(url, measureId, 'executionIncident', incident);
+        const incidentEl = measureContainer.querySelector(`#execution-incident-${measureId}`);
+        const incident = String(incidentEl?.value || '').trim();
+        if (incident === '') {
+          incidentEl?.focus({ preventScroll: true });
+          return;
         }
+        await this.persistSelectionField(url, measureId, 'executionIncident', incident);
       }
 
       const data = await this.persistSelectionField(url, measureId, 'implemented', value);
       if (control) control.dataset.currentValue = value;
+      this.updateExecutionDecisionPanels(measureContainer, value);
       this.updateOperationalState(measureContainer, data.operationalState);
     } catch (err) {
       const previousInput = control?.querySelector(`input[value="${previousValue}"]`);
       if (previousInput) previousInput.checked = true;
+      this.updateExecutionDecisionPanels(measureContainer, previousValue);
       console.error(err);
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
     } finally {
@@ -326,20 +399,37 @@ export default class extends Controller {
     }
   }
 
+  updateExecutionDecisionPanels(measureContainer, value) {
+    if (!measureContainer) return;
+
+    const normalizedValue = ['false', 'null', 'true'].includes(String(value)) ? String(value) : 'null';
+    const executionContainer = measureContainer.querySelector('[data-execution-decision]');
+    if (executionContainer) executionContainer.dataset.executionDecision = normalizedValue;
+
+    measureContainer.querySelectorAll('[data-execution-panel]').forEach((panel) => {
+      const active = panel.dataset.executionPanel === normalizedValue;
+      panel.classList.toggle('d-none', !active);
+      panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+
+      panel.querySelectorAll('[data-execution-incident]').forEach((incident) => {
+        incident.required = active && normalizedValue === 'false';
+      });
+    });
+  }
+
   updateOperationalState(measureContainer, state) {
     if (!state) return;
 
-    const detailRow = measureContainer.closest('tr');
-    const summaryRow = detailRow?.previousElementSibling;
-    [detailRow, summaryRow].forEach((row) => {
-      if (!row) return;
-      Array.from(row.classList)
-        .filter(className => className.startsWith('plan-measure-row--'))
-        .forEach(className => row.classList.remove(className));
-      row.classList.add(`plan-measure-row--${state}`);
-    });
+    const measure = measureContainer.closest('[data-implementation-measure]');
+    const summary = measure?.querySelector('[data-measure-summary]');
+    if (!measure || !summary) return;
 
-    const dot = summaryRow?.querySelector('.plan-measure-status-dot');
+    Array.from(measure.classList)
+      .filter(className => className.startsWith('implementation-measure-row--'))
+      .forEach(className => measure.classList.remove(className));
+    measure.classList.add(`implementation-measure-row--${state}`);
+
+    const dot = summary.querySelector('.plan-measure-status-dot');
     if (dot) {
       Array.from(dot.classList)
         .filter(className => className.startsWith('plan-measure-status-dot--'))
@@ -349,6 +439,12 @@ export default class extends Controller {
       dot.title = label;
       dot.setAttribute('aria-label', label);
     }
+
+    const stateLabel = summary.querySelector('.implementation-measure-row__state');
+    if (stateLabel) stateLabel.textContent = this.t(`status_${state}`);
+    measure.querySelectorAll('[data-operational-state-label]').forEach((label) => {
+      label.textContent = this.t(`status_${state}`);
+    });
   }
 
   // ========== ET EMAIL ==========
@@ -563,6 +659,8 @@ export default class extends Controller {
     const measureId = btn.dataset.measureId;
     const saveSection = btn.dataset.saveSection;
     const inlineBox = document.getElementById(`inline-edit-${measureId}`);
+    const measureContainer = btn.closest('[data-plan-measure-row]')
+      || this.element.querySelector(`[data-plan-measure-row][data-measure-id="${measureId}"]`);
     const canSend = (el) => el && !el.disabled && el.dataset.locked !== '1';
     const updates = [];
 
@@ -597,37 +695,43 @@ export default class extends Controller {
       updates.push({ field: 'completeDecision', value: observations });
     } else if (saveSection === 'actions') {
       // ======= BLOQUE: ACCIONES =======
-      const implementedEl   = document.querySelector(`input[name="implemented-${measureId}"]:checked`);
-      const verificationEl  = document.getElementById(`verification-${measureId}`);
-      const actionTakenEl   = document.getElementById(`action-taken-${measureId}`);
-      const executionIncidentEl = document.getElementById(`execution-incident-${measureId}`);
-      const internalNotesEl = document.getElementById(`internal-notes-${measureId}`);
-      const responsiblesEl  = document.getElementById(`responsibles-${measureId}`);
+      const implementedEl = measureContainer?.querySelector(`input[name="implemented-${measureId}"]:checked`);
+      const decision = String(implementedEl?.value || 'null');
+      const activePanel = measureContainer?.querySelector(`[data-execution-panel="${decision}"]`);
 
-      if (canSend(verificationEl)) updates.push({ field: 'verification', value: verificationEl.checked ? 'true' : 'false' });
-      if (canSend(actionTakenEl))  updates.push({ field: 'action_taken', value: (actionTakenEl.value || '').trim() });
-      if (canSend(executionIncidentEl)) updates.push({ field: 'executionIncident', value: (executionIncidentEl.value || '').trim() });
-      if (canSend(internalNotesEl)) updates.push({ field: 'internal_notes', value: (internalNotesEl.value || '').trim() });
-      if (responsiblesEl && !responsiblesEl.disabled) {
-        const selectedResponsibleIds = Array.from(responsiblesEl.selectedOptions || []).map(opt => opt.value).join(',');
-        updates.push({ field: 'responsibles', value: selectedResponsibleIds });
-      }
-
-      const evidenceMetadata = {};
-      const existingEvidenceSourceSelects = inlineBox.querySelectorAll('[data-evidence-source-select="1"][data-evidence-path]');
-      existingEvidenceSourceSelects.forEach((select) => {
-        const path = String(select.dataset.evidencePath || '').trim();
-        const sourceCode = String(select.value || '').trim();
-        if (path !== '' && sourceCode !== '') {
-          evidenceMetadata[path] = sourceCode;
+      if (decision === 'false' && activePanel) {
+        const executionIncidentEl = activePanel.querySelector(`#execution-incident-${measureId}`);
+        if (canSend(executionIncidentEl)) {
+          updates.push({ field: 'executionIncident', value: (executionIncidentEl.value || '').trim() });
         }
-      });
-      if (existingEvidenceSourceSelects.length > 0) {
-        updates.push({ field: 'evidence_metadata', value: JSON.stringify(evidenceMetadata) });
+      } else if (decision === 'true' && activePanel) {
+        const verificationEl = activePanel.querySelector(`#verification-${measureId}`);
+        const actionTakenEl = activePanel.querySelector(`#action-taken-${measureId}`);
+        const internalNotesEl = activePanel.querySelector(`#internal-notes-${measureId}`);
+        const responsiblesEl = activePanel.querySelector(`#responsibles-${measureId}`);
+
+        if (canSend(verificationEl)) updates.push({ field: 'verification', value: verificationEl.checked ? 'true' : 'false' });
+        if (canSend(actionTakenEl)) updates.push({ field: 'action_taken', value: (actionTakenEl.value || '').trim() });
+        if (canSend(internalNotesEl)) updates.push({ field: 'internal_notes', value: (internalNotesEl.value || '').trim() });
+        if (responsiblesEl && !responsiblesEl.disabled) {
+          const selectedResponsibleIds = Array.from(responsiblesEl.selectedOptions || []).map(opt => opt.value).join(',');
+          updates.push({ field: 'responsibles', value: selectedResponsibleIds });
+        }
+
+        const evidenceMetadata = {};
+        const existingEvidenceSourceSelects = activePanel.querySelectorAll('[data-evidence-source-select="1"][data-evidence-path]');
+        existingEvidenceSourceSelects.forEach((select) => {
+          const path = String(select.dataset.evidencePath || '').trim();
+          const sourceCode = String(select.value || '').trim();
+          if (path !== '' && sourceCode !== '') evidenceMetadata[path] = sourceCode;
+        });
+        if (existingEvidenceSourceSelects.length > 0) {
+          updates.push({ field: 'evidence_metadata', value: JSON.stringify(evidenceMetadata) });
+        }
       }
 
-      if (implementedEl && !implementedEl.disabled) {
-        updates.push({ field: 'implemented', value: implementedEl.value });
+      if (implementedEl && !implementedEl.disabled && decision !== 'null') {
+        updates.push({ field: 'implemented', value: decision });
       }
     }
 
@@ -761,7 +865,7 @@ export default class extends Controller {
       }
 
       bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-      this.reloadReviewWithQuery({ open: measureId });
+      this.reloadReviewWithQuery({ open: measureId }, null, measureId);
     } catch (err) {
       console.error(err);
       if (this.isEvidenceModalSourceRequiredError(err?.message)) {
@@ -807,7 +911,7 @@ export default class extends Controller {
       .then(r => r.json())
       .then(data => {
         if (!data?.success) throw new Error(data?.error || this.t('evidence_delete_error'));
-        this.reloadReviewWithQuery({ open: measureId });
+        this.reloadReviewWithQuery({ open: measureId }, null, measureId);
       })
       .catch(err => {
         console.error(err);

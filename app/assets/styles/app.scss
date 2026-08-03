@@ -2051,6 +2051,95 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
     #implementation-filters {
         scroll-margin-top: 110px;
     }
+    .implementation-category {
+        overflow: hidden;
+        border: 1px solid rgba(25, 135, 84, .12) !important;
+    }
+    .implementation-category--completed .implementation-category__header {
+        background-color: rgba(25, 135, 84, .045) !important;
+    }
+    .implementation-category__progress {
+        height: .45rem;
+        background-color: rgba(25, 135, 84, .12);
+    }
+    .implementation-measure {
+        scroll-margin-top: 110px;
+    }
+    .implementation-measure-row {
+        border: 1px solid rgba(0, 0, 0, .08);
+        background-color: #fff;
+        transition: background-color .15s ease, border-color .15s ease;
+    }
+    .implementation-measure-row__position {
+        min-width: 2.5rem;
+    }
+    .implementation-measure-row__title {
+        flex-basis: 18rem;
+    }
+    .implementation-measure-row__state {
+        color: #495057;
+        background-color: rgba(108, 117, 125, .12);
+        border: 1px solid rgba(108, 117, 125, .2);
+    }
+    .implementation-measure-row--pending .implementation-measure-row {
+        background-color: #fff8f8;
+    }
+    .implementation-measure-row--in_progress .implementation-measure-row {
+        background-color: #fff8ee;
+    }
+    .implementation-measure-row--implemented .implementation-measure-row {
+        background-color: #eef9f2;
+    }
+    .implementation-measure-row--not_implemented .implementation-measure-row,
+    .implementation-measure-row--discarded .implementation-measure-row,
+    .implementation-measure-row--not_applicable .implementation-measure-row {
+        background-color: #f6f7f8;
+    }
+    .implementation-measure-detail {
+        margin-top: .35rem;
+    }
+    .implementation-measure-detail-card {
+        border: 1px solid rgba(0, 0, 0, .08);
+        background-color: #fff;
+    }
+    .implementation-measure-detail__header {
+        border-bottom: 1px solid rgba(0, 0, 0, .08);
+    }
+    .implementation-measure-detail__meta {
+        font-size: .875rem;
+    }
+    .implementation-execution {
+        margin-top: 1rem;
+        border: 1px solid rgba(25, 135, 84, .18);
+        background-color: rgba(25, 135, 84, .04);
+    }
+    .implementation-execution-panel {
+        min-width: 0;
+    }
+    .implementation-execution-panel--false {
+        border-top: 1px solid rgba(108, 117, 125, .18);
+        padding-top: 1rem;
+    }
+    .implementation-execution-panel--true {
+        border-top: 1px solid rgba(25, 135, 84, .16);
+        padding-top: 1rem;
+    }
+    .implementation-elaboration-trace {
+        border: 1px solid rgba(108, 117, 125, .18);
+        background-color: var(--bs-tertiary-bg);
+    }
+    .implementation-measure-context {
+        min-width: 0;
+    }
+    @media (max-width: 575.98px) {
+        .implementation-measure-row__title {
+            flex-basis: calc(100% - 4.5rem);
+        }
+        .implementation-measure-row > .d-flex:last-child {
+            width: 100%;
+            margin-left: 0 !important;
+        }
+    }
     .green_table_1 > tbody > tr.plan-measure-row--pending > *,
     .green_table_1 > tbody > tr.plan-measure-row--in_progress > *,
     .green_table_1 > tbody > tr.plan-measure-row--implemented > *,
