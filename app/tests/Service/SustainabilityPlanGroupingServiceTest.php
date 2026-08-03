@@ -17,6 +17,7 @@ use App\Entity\Protocol;
 use App\Entity\TripleBalanceAxis;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\PlanMeasureOperationalStateResolver;
 use App\Service\SustainabilityPlanCustomMeasureParser;
 use App\Service\SustainabilityPlanGroupingService;
 use PHPUnit\Framework\TestCase;
@@ -53,6 +54,8 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
         self::assertSame(['Medida A', 'Medida B'], array_column($productionGroup['rows'], 'displayName'));
         self::assertSame(['Medida A', 'Medida B'], array_column($productionGroup['rows'], 'measureTitle'));
         self::assertSame('Incidencia independiente', $productionGroup['rows'][0]['executionIncident']);
+        self::assertSame('pending', $productionGroup['rows'][0]['operationalState']);
+        self::assertSame('backend.plan.review.status_pending', $productionGroup['rows'][0]['statusLabel']);
         self::assertArrayNotHasKey('publicComment', $productionGroup['rows'][0]);
         self::assertSame(['Medida A'], array_column($postGroup['rows'], 'displayName'));
     }
@@ -108,7 +111,8 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
             $resolver,
             new MeasureTaxonomyPresenter(),
             $translator,
-            new SustainabilityPlanCustomMeasureParser()
+            new SustainabilityPlanCustomMeasureParser(),
+            new PlanMeasureOperationalStateResolver()
         );
     }
 

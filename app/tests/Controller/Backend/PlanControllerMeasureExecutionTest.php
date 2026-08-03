@@ -264,11 +264,12 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         self::assertTrue($scenario['planMeasure']->isImplemented());
     }
 
-    public function testUpdateSelectionRejectsImplementedWhenActionIsBlank(): void
+    public function testUpdateSelectionAllowsTrueWithoutActionAndReturnsInProgress(): void
     {
         $scenario = $this->buildScenario([
             'measure_id' => 995,
             'measure_name' => 'Medida sin acción',
+            'is_applicable' => true,
             'evidence' => '/uploads/evidences/doc.pdf',
         ]);
 
@@ -291,19 +292,20 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         );
 
         self::assertInstanceOf(JsonResponse::class, $response);
-        self::assertSame(400, $response->getStatusCode());
+        self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertFalse($data['success']);
-        self::assertSame('Para que puedas dar la medida como ejecutada es obligatorio rellenar el campo de acción y subir una evidencia', $data['error']);
-        self::assertFalse($data['implemented']);
-        self::assertFalse($scenario['planMeasure']->isImplemented());
+        self::assertTrue($data['success']);
+        self::assertTrue($data['implemented']);
+        self::assertSame('in_progress', $data['operationalState']);
+        self::assertTrue($scenario['planMeasure']->isImplemented());
     }
 
-    public function testUpdateSelectionRejectsImplementedWhenEvidenceIsMissing(): void
+    public function testUpdateSelectionAllowsTrueWithoutEvidenceAndReturnsInProgress(): void
     {
         $scenario = $this->buildScenario([
             'measure_id' => 996,
             'measure_name' => 'Medida sin evidencia',
+            'is_applicable' => true,
             'action_taken' => 'Acción realizada',
         ]);
 
@@ -326,28 +328,29 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         );
 
         self::assertInstanceOf(JsonResponse::class, $response);
-        self::assertSame(400, $response->getStatusCode());
+        self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertFalse($data['success']);
-        self::assertSame('Para que puedas dar la medida como ejecutada es obligatorio rellenar el campo de acción y subir una evidencia', $data['error']);
-        self::assertFalse($data['implemented']);
-        self::assertFalse($scenario['planMeasure']->isImplemented());
+        self::assertTrue($data['success']);
+        self::assertTrue($data['implemented']);
+        self::assertSame('in_progress', $data['operationalState']);
+        self::assertTrue($scenario['planMeasure']->isImplemented());
     }
 
-    public function testUpdateSelectionAllowsImplementedFalseWithIncompleteData(): void
+    public function testUpdateSelectionRejectsFalseWithoutIncidentAndKeepsPreviousValue(): void
     {
         $scenario = $this->buildScenario([
             'measure_id' => 997,
             'measure_name' => 'Medida incompleta',
             'implemented' => true,
         ]);
-
         $request = $this->createRequest([
             'measureId' => (string) $scenario['measure']->getId(),
             'field' => 'implemented',
             'value' => 'false',
         ]);
-        $entityManager = $this->createEntityManagerMock($scenario['planMeasure']);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::never())->method('flush');
 
         $response = $this->invokeUpdateSelection(
             $scenario['controller'],
@@ -361,14 +364,14 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         );
 
         self::assertInstanceOf(JsonResponse::class, $response);
-        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(400, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertTrue($data['success']);
-        self::assertFalse($data['implemented']);
-        self::assertFalse($scenario['planMeasure']->isImplemented());
+        self::assertFalse($data['success']);
+        self::assertSame('Para marcar la medida como No ejecutable debes indicar una Incidencia.', $data['error']);
+        self::assertTrue($scenario['planMeasure']->isImplemented());
     }
 
-    public function testDeleteEvidenceUnmarksImplementedWhenTheLastEvidenceIsRemoved(): void
+    public function testDeleteEvidenceKeepsTrueDecisionWhenTheLastEvidenceIsRemoved(): void
     {
         $scenario = $this->buildScenario([
             'measure_id' => 998,
@@ -398,12 +401,12 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
         self::assertTrue($data['removed']);
-        self::assertFalse($data['implemented']);
+        self::assertTrue($data['implemented']);
         self::assertSame('', trim((string) $scenario['planMeasure']->getEvidence()));
-        self::assertFalse($scenario['planMeasure']->isImplemented());
+        self::assertTrue($scenario['planMeasure']->isImplemented());
     }
 
-    public function testUpdateSelectionClearsImplementedWhenActionBecomesBlank(): void
+    public function testUpdateSelectionKeepsTrueDecisionWhenActionBecomesBlank(): void
     {
         $scenario = $this->buildScenario([
             'measure_id' => 999,
@@ -435,12 +438,12 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertFalse($data['implemented']);
+        self::assertTrue($data['implemented']);
         self::assertNull($scenario['planMeasure']->getActionTaken());
-        self::assertFalse($scenario['planMeasure']->isImplemented());
+        self::assertTrue($scenario['planMeasure']->isImplemented());
     }
 
-    public function testUpdateSelectionClearsImplementedWhenEvidenceBecomesBlank(): void
+    public function testUpdateSelectionKeepsTrueDecisionWhenEvidenceBecomesBlank(): void
     {
         $scenario = $this->buildScenario([
             'measure_id' => 1000,
@@ -472,9 +475,9 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertFalse($data['implemented']);
+        self::assertTrue($data['implemented']);
         self::assertSame('', trim((string) $scenario['planMeasure']->getEvidence()));
-        self::assertFalse($scenario['planMeasure']->isImplemented());
+        self::assertTrue($scenario['planMeasure']->isImplemented());
     }
 
     public function testUpdateSelectionKeepsImplementedWhenUnrelatedFieldChanges(): void
@@ -486,7 +489,6 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
             'evidence' => '/uploads/evidences/doc.pdf',
             'implemented' => true,
         ]);
-
         $request = $this->createRequest([
             'measureId' => (string) $scenario['measure']->getId(),
             'field' => 'completeDecision',
@@ -513,19 +515,57 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         self::assertTrue($scenario['planMeasure']->isImplemented());
     }
 
-    public function testUpdateSelectionRejectsImplementedWhenActionContainsOnlySpaces(): void
+    public function testUpdateSelectionStoresNullWithoutClearingExecutionData(): void
+    {
+        $scenario = $this->buildScenario([
+            'measure_id' => 1003,
+            'is_applicable' => true,
+            'action_taken' => 'Acción previa',
+            'evidence' => '/uploads/evidences/doc.pdf',
+            'execution_incident' => 'Incidencia previa',
+            'implemented' => true,
+        ]);
+
+        $response = $this->invokeUpdateSelection(
+            $scenario['controller'],
+            $this->createRequest([
+                'measureId' => (string) $scenario['measure']->getId(),
+                'field' => 'implemented',
+                'value' => 'null',
+            ]),
+            $scenario['measureRepository'],
+            $scenario['planMeasureRepository'],
+            $scenario['planRepository'],
+            $scenario['blockAnswerRepository'],
+            $scenario['activeProjectService'],
+            $this->createEntityManagerMock($scenario['planMeasure'])
+        );
+
+        self::assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertNull($data['implemented']);
+        self::assertSame('pending', $data['operationalState']);
+        self::assertSame('Acción previa', $scenario['planMeasure']->getActionTaken());
+        self::assertSame('/uploads/evidences/doc.pdf', $scenario['planMeasure']->getEvidence());
+        self::assertSame('Incidencia previa', $scenario['planMeasure']->getExecutionIncident());
+    }
+
+    public function testUpdateSelectionAllowsFalseWithIncidentAndKeepsPreviousExecutionData(): void
     {
         $scenario = $this->buildScenario([
             'measure_id' => 1002,
             'measure_name' => 'Medida con acción en blanco',
+            'is_applicable' => true,
             'action_taken' => '   ',
             'evidence' => '/uploads/evidences/doc.pdf',
+            'execution_incident' => 'No puede ejecutarse',
+            'implemented' => true,
         ]);
 
         $request = $this->createRequest([
             'measureId' => (string) $scenario['measure']->getId(),
             'field' => 'implemented',
-            'value' => 'true',
+            'value' => 'false',
         ]);
         $entityManager = $this->createEntityManagerMock($scenario['planMeasure']);
 
@@ -541,12 +581,61 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         );
 
         self::assertInstanceOf(JsonResponse::class, $response);
-        self::assertSame(400, $response->getStatusCode());
+        self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertFalse($data['success']);
-        self::assertSame('Para que puedas dar la medida como ejecutada es obligatorio rellenar el campo de acción y subir una evidencia', $data['error']);
+        self::assertTrue($data['success']);
         self::assertFalse($data['implemented']);
+        self::assertSame('not_implemented', $data['operationalState']);
         self::assertFalse($scenario['planMeasure']->isImplemented());
+        self::assertSame('/uploads/evidences/doc.pdf', $scenario['planMeasure']->getEvidence());
+    }
+
+    public function testUpdateSelectionRejectsAmbiguousDecisionAndCannotClearRequiredIncident(): void
+    {
+        $scenario = $this->buildScenario([
+            'measure_id' => 1004,
+            'implemented' => false,
+            'execution_incident' => 'Incidencia requerida',
+        ]);
+        $unusedEntityManager = $this->createMock(EntityManagerInterface::class);
+        $unusedEntityManager->expects(self::never())->method('persist');
+        $unusedEntityManager->expects(self::never())->method('flush');
+
+        $invalidResponse = $this->invokeUpdateSelection(
+            $scenario['controller'],
+            $this->createRequest([
+                'measureId' => (string) $scenario['measure']->getId(),
+                'field' => 'implemented',
+                'value' => 'yes',
+            ]),
+            $scenario['measureRepository'],
+            $scenario['planMeasureRepository'],
+            $scenario['planRepository'],
+            $scenario['blockAnswerRepository'],
+            $scenario['activeProjectService'],
+            $unusedEntityManager
+        );
+
+        self::assertSame(400, $invalidResponse->getStatusCode());
+        self::assertFalse($scenario['planMeasure']->isImplemented());
+
+        $clearResponse = $this->invokeUpdateSelection(
+            $scenario['controller'],
+            $this->createRequest([
+                'measureId' => (string) $scenario['measure']->getId(),
+                'field' => 'executionIncident',
+                'value' => '   ',
+            ]),
+            $scenario['measureRepository'],
+            $scenario['planMeasureRepository'],
+            $scenario['planRepository'],
+            $scenario['blockAnswerRepository'],
+            $scenario['activeProjectService'],
+            $unusedEntityManager
+        );
+
+        self::assertSame(400, $clearResponse->getStatusCode());
+        self::assertSame('Incidencia requerida', $scenario['planMeasure']->getExecutionIncident());
     }
 
     /**
@@ -593,6 +682,10 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
             ->setMeasure($measure)
             ->setWillImplement((bool) ($options['will_implement'] ?? true))
             ->markAsManual();
+
+        if (array_key_exists('is_applicable', $options)) {
+            $planMeasure->setIsApplicable($options['is_applicable']);
+        }
 
         if (array_key_exists('action_taken', $options)) {
             $planMeasure->setActionTaken($options['action_taken']);

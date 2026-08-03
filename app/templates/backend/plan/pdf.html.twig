@@ -97,6 +97,9 @@
       <ul style="margin:6px 0 0 20px;padding:0;">
         <li>{{ 'backend.plan.pdf.follow_up.to_implement'|trans }}: {{ collaborationSummary.toImplement }}</li>
         <li>{{ 'backend.plan.pdf.follow_up.implemented'|trans }}: {{ collaborationSummary.implemented }}</li>
+        <li>{{ 'backend.plan.review.status_not_implemented'|trans }}: {{ collaborationSummary.notImplemented }}</li>
+        <li>{{ 'backend.plan.review.status_in_progress'|trans }}: {{ collaborationSummary.inProgress }}</li>
+        <li>{{ 'backend.plan.review.status_pending'|trans }}: {{ collaborationSummary.pending }}</li>
         <li>{{ 'backend.plan.pdf.follow_up.verified_count'|trans }}: {{ collaborationSummary.verified }}</li>
         <li>{{ 'backend.plan.pdf.follow_up.evidences'|trans }}: {{ collaborationSummary.evidenceFiles }}</li>
       </ul>
@@ -168,7 +171,7 @@
           <td>{{ measures|filter(pm => pm.willImplement)|length }}</td>
           <td>{{ measures|filter(pm => pm.isCritical)|length }}</td>
           {% if plan.status == 'completo' %}
-            <td>{{ measures|filter(pm => pm.isImplemented)|length }}</td>
+            <td>{{ measures|filter(pm => operationalStateResolver.resolve(pm) == 'implemented')|length }}</td>
           {% endif %}
         </tr>
       {% endfor %}
@@ -214,7 +217,7 @@
             <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
             <td>{{ pm.willImplement ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
             {% if plan.status == 'completo' %}
-              <td>{{ pm.isImplemented ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+              <td>{{ ('backend.plan.review.status_' ~ operationalStateResolver.resolve(pm))|trans }}</td>
             {% endif %}
             <td>
               {{ pm.isCritical is same as(true)
@@ -285,7 +288,7 @@
               {% endif %}
             </td>
             <td>
-              <div><strong>{{ 'backend.plan.pdf.follow_up.implemented'|trans }}:</strong> {{ pm.isImplemented ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
+              <div><strong>{{ 'backend.plan.pdf.follow_up.implemented'|trans }}:</strong> {{ ('backend.plan.review.status_' ~ operationalStateResolver.resolve(pm))|trans }}</div>
               <div><strong>{{ 'backend.plan.pdf.follow_up.verified'|trans }}:</strong> {{ pm.isVerification() ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
               <div><strong>{{ 'backend.plan.pdf.follow_up.evidences'|trans }}:</strong> {{ pm.evidence ? pm.evidence|split("\n")|filter(v => v)|length : 0 }}</div>
               <div>

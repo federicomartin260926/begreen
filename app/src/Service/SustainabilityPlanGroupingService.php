@@ -22,7 +22,8 @@ final class SustainabilityPlanGroupingService
         private readonly PlanMeasureCatalogResolver $catalogResolver,
         private readonly MeasureTaxonomyPresenter $taxonomyPresenter,
         private readonly TranslatorInterface $translator,
-        private readonly SustainabilityPlanCustomMeasureParser $customMeasureParser
+        private readonly SustainabilityPlanCustomMeasureParser $customMeasureParser,
+        private readonly PlanMeasureOperationalStateResolver $operationalStateResolver,
     ) {
     }
 
@@ -192,6 +193,8 @@ final class SustainabilityPlanGroupingService
             $responsibles[] = trim((string) $crewMember->getName() . ' ' . (string) $crewMember->getLastName());
         }
 
+        $operationalState = $this->operationalStateResolver->resolve($planMeasure);
+
         return [
             'grouping' => $grouping,
             'measureId' => $measure->getId(),
@@ -206,6 +209,8 @@ final class SustainabilityPlanGroupingService
             'tripleBalanceAxes' => $tripleBalanceAxes !== [] ? implode(', ', $tripleBalanceAxes) : $this->translator->trans('backend.plan.exports.no_triple_balance'),
             'verificationSources' => $verificationSources !== [] ? implode(' | ', $verificationSources) : ($measure->getVerificationSourcesSummary() ?? '—'),
             'implemented' => $planMeasure->isImplemented(),
+            'operationalState' => $operationalState,
+            'statusLabel' => $this->translator->trans('backend.plan.review.status_' . $operationalState),
             'verified' => $planMeasure->isVerification(),
             'responsibles' => $responsibles !== [] ? implode(', ', array_filter($responsibles)) : '—',
             'executionIncident' => (string) ($planMeasure->getExecutionIncident() ?? ''),

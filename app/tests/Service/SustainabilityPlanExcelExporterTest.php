@@ -47,7 +47,7 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
         self::assertSame('Execution incident', (string) $sheet->getCell('N1')->getValue());
         self::assertSame('Producción', (string) $sheet->getCell('A2')->getValue());
         self::assertSame('Medida A', (string) $sheet->getCell('D2')->getValue());
-        self::assertSame('Yes', (string) $sheet->getCell('K2')->getValue());
+        self::assertSame('Executed', (string) $sheet->getCell('K2')->getValue());
         self::assertSame('Ana García', (string) $sheet->getCell('M2')->getValue());
         self::assertSame('Incidencia visible', (string) $sheet->getCell('N2')->getValue());
         self::assertSame('Descripción de prueba', (string) $sheet->getCell('O2')->getValue());
@@ -76,6 +76,9 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
             'backend.plan.exports.excel.status' => 'Status',
             'backend.common.yes' => 'Yes',
             'backend.common.no' => 'No',
+            'backend.plan.review.execution_decision.executed' => 'Executed',
+            'backend.plan.review.execution_decision.not_executable' => 'Not executable',
+            'backend.plan.review.execution_decision.undecided' => 'Undecided',
             default => $id,
         });
 

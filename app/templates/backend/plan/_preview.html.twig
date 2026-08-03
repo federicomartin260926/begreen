@@ -80,7 +80,7 @@
                             <td>{{ measures|filter(pm => pm.willImplement)|length }}</td>
                             <td>{{ measures|filter(pm => pm.isCritical)|length }}</td>
                             {% if plan.status == 'completo' %}
-                                <td>{{ measures|filter(pm => pm.isImplemented)|length }}</td>
+                                <td>{{ measures|filter(pm => operationalStateResolver.resolve(pm) == 'implemented')|length }}</td>
                             {% endif %}
                         </tr>
                         {% endfor %}
@@ -119,7 +119,7 @@
                                     <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
                                     <td>{{ pm.willImplement ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
                                     {% if plan.status == 'completo' %}
-                                        <td>{{ pm.isImplemented ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
+                                        <td>{{ ('backend.plan.review.status_' ~ operationalStateResolver.resolve(pm))|trans }}</td>
                                     {% endif %}
                                     <td>
                                         {{ pm.isCritical is same as(true)
@@ -190,7 +190,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <div><span class="fw-semibold">{{ 'backend.plan.preview.implemented'|trans }}:</span> {{ pm.isImplemented ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
+                                        <div><span class="fw-semibold">{{ 'backend.plan.preview.implemented'|trans }}:</span> {{ ('backend.plan.review.status_' ~ operationalStateResolver.resolve(pm))|trans }}</div>
                                         <div><span class="fw-semibold">{{ 'backend.plan.preview.verified'|trans }}:</span> {{ pm.verification ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}</div>
                                         <div><span class="fw-semibold">{{ 'backend.plan.preview.evidences'|trans }}:</span> {{ pm.evidence ? pm.evidence|split("\n")|filter(v => v)|length : 0 }}</div>
                                         <div>

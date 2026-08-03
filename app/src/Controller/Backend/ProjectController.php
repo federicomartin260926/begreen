@@ -13,6 +13,7 @@ use App\Service\ProjectFeatureGate;
 use App\Service\ProjectCompanyLogoStorage;
 use App\Service\StripeInvoiceStorageService;
 use App\Service\SustainabilityPlanCollaborationService;
+use App\Service\SustainabilityPlanImplementationPhaseService;
 use Gedmo\Translatable\Entity\Translation;
 
 use Doctrine\Common\Collections\ArrayCollection;
@@ -44,6 +45,7 @@ class ProjectController extends AbstractController
         private readonly ProjectBillingDocumentRepository $billingDocumentRepository,
         private readonly StripeInvoiceStorageService $invoiceStorageService,
         private readonly SustainabilityPlanCollaborationService $collaborationService,
+        private readonly SustainabilityPlanImplementationPhaseService $implementationPhaseService,
         private readonly ProjectCompanyLogoStorage $companyLogoStorage,
     ) {}
 
@@ -319,26 +321,13 @@ class ProjectController extends AbstractController
         $emissionPhaseNote = $emissionCount > 0
             ? 'kgCO₂e'
             : $this->t->trans('backend.projects.dashboard.phases.co2.no_records');
-        $implementationProgress = $plan instanceof Plan
-            ? $this->collaborationService->buildProgressSummary($plan, $project)
-            : null;
+        $elaborationComplete = $planStatus === 'completo';
         $hasImplementationActivity = $plan instanceof Plan
             && $this->collaborationService->hasImplementationActivity($plan);
-        $implementationCompleted = $implementationProgress !== null
-            && $implementationProgress['toImplement'] > 0
-            && $implementationProgress['implemented'] >= $implementationProgress['toImplement'];
-        $elaborationComplete = $planStatus === 'completo';
-
-        if ($implementationCompleted) {
-            $implementationState = 'completed';
-            $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.common.completed');
-        } elseif ($hasImplementationActivity) {
-            $implementationState = 'in_progress';
-            $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.common.in_progress');
-        } else {
-            $implementationState = 'not_started';
-            $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.common.not_started');
-        }
+        $implementationState = $plan instanceof Plan
+            ? $this->implementationPhaseService->resolve($plan, $project)
+            : SustainabilityPlanImplementationPhaseService::NOT_STARTED;
+        $implementationStateLabel = $this->t->trans('backend.projects.dashboard.phases.common.' . $implementationState);
 
         return [
             'id' => $project->getId(),

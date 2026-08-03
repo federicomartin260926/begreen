@@ -1,7 +1,7 @@
 # Modelo funcional de estados del Plan de Sostenibilidad
 
 Este documento fija el modelo funcional objetivo del Plan de Sostenibilidad y de sus medidas.
-No introduce estados nuevos en código; solo deja cerradas las reglas de negocio que el repositorio debe respetar.
+Deja cerradas las reglas de negocio que el repositorio debe respetar.
 
 ## 1. Principios generales
 
@@ -40,12 +40,15 @@ Estados funcionales que deben distinguirse:
 - `Pendiente`.
 - `En curso`.
 - `Implementada`.
+- `No implementada`.
 
 Reglas:
 
-- `Pendiente` cubre la medida que debe ejecutarse pero todavía no ha empezado.
-- `En curso` cubre la medida que ya tiene avance material o actividad registrada.
-- `Implementada` cubre la medida completada para la fase operativa.
+- `Pendiente` cubre una medida planificada cuyo resultado de ejecución sigue sin decidir (`implemented === null`), aunque conserve datos auxiliares previos.
+- `En curso` cubre una medida marcada como ejecutada (`implemented === true`) que todavía no tiene Acción realizada o Evidencia.
+- `Implementada` cubre una medida marcada como ejecutada con Acción realizada y al menos una Evidencia.
+- `No implementada` cubre una medida no ejecutable (`implemented === false`) y exige una Incidencia que justifique la decisión.
+- `Implementada` y `No implementada` resuelven la medida para el cierre de la fase; `Pendiente` y `En curso` la bloquean.
 - `Descartada` no es equivalente a `No aplica`.
 - Si una medida implementada reabre trabajo, debe volver a un estado operativo coherente sin perder el historial funcional necesario.
 
@@ -58,6 +61,7 @@ Las vistas del plan pueden agrupar medidas por estos filtros:
 - Pendientes.
 - En curso.
 - Implementadas.
+- No implementadas.
 - Descartadas.
 - No aplican.
 
@@ -73,7 +77,8 @@ Las incidencias no constituyen un estado autónomo de la medida.
 
 Reglas:
 
-- Una incidencia activa debe impulsar la lectura de la medida como `En curso` si hay trabajo real asociado.
+- Una incidencia aislada no cambia una decisión de ejecución `null`: la medida continúa `Pendiente`.
+- La Incidencia es obligatoria cuando la decisión de ejecución es `false` (`No implementada`).
 - Una medida puede estar `Implementada` y seguir teniendo incidencias abiertas si el flujo operativo así lo registra.
 - La incidencia debe usarse como señal de seguimiento, no como sustituto del estado de implementación.
 
@@ -103,6 +108,7 @@ Reglas:
 - Este estado es global y no reemplaza el detalle por medida.
 - El plan puede reabrirse si un cambio de contexto obliga a revisar medidas ya tratadas.
 - La elaboración y la implementación pueden avanzar a ritmos distintos.
+- La implementación solo queda completada cuando existe al menos una medida aplicable y planificada, y todas las medidas de ese conjunto están `Implementada` o `No implementada`.
 
 ## 8. Estado comercial o de contratación
 

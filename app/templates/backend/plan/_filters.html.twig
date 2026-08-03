@@ -183,6 +183,12 @@
                         <i class="bi bi-check-circle"></i>{{ 'backend.plan.filters.state_implemented'|trans }}
                     </label>
 
+                    <input class="btn-check" type="radio" name="state" id="filter-state-not-implemented" value="not_implemented"
+                        {{ filters.state|default('pending') == 'not_implemented' ? 'checked' : '' }} data-dt-filter="state">
+                    <label class="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 {{ filters.state|default('pending') == 'not_implemented' ? 'btn-success' : 'btn-outline-success' }}" for="filter-state-not-implemented">
+                        <i class="bi bi-x-circle"></i>{{ 'backend.plan.filters.state_not_implemented'|trans }}
+                    </label>
+
                     <input
                         class="btn-check"
                         type="radio"

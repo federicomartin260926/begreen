@@ -10,6 +10,7 @@ final class PlanMeasureOperationalStateResolver
     public const PENDING = 'pending';
     public const IN_PROGRESS = 'in_progress';
     public const IMPLEMENTED = 'implemented';
+    public const NOT_IMPLEMENTED = 'not_implemented';
     public const DISCARDED = 'discarded';
     public const NOT_APPLICABLE = 'not_applicable';
 
@@ -24,11 +25,15 @@ final class PlanMeasureOperationalStateResolver
         }
 
         if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true) {
-            if ($planMeasure->isImplemented() === true) {
-                return self::IMPLEMENTED;
+            if ($planMeasure->isImplemented() === null) {
+                return self::PENDING;
             }
 
-            return $this->hasExecutionActivity($planMeasure) ? self::IN_PROGRESS : self::PENDING;
+            if ($planMeasure->isImplemented() === false) {
+                return self::NOT_IMPLEMENTED;
+            }
+
+            return $planMeasure->canBeMarkedAsImplemented() ? self::IMPLEMENTED : self::IN_PROGRESS;
         }
 
         return self::PENDING;

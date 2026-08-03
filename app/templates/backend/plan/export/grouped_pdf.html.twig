@@ -97,7 +97,7 @@
                                 <td>
                                     <div class="taxonomy-line">
                                         <span class="taxonomy-label">{{ 'backend.plan.exports.pdf.implemented'|trans }}:</span>
-                                        {{ row.implemented ? ('backend.common.yes'|trans) : ('backend.common.no'|trans) }}
+                                        {{ row.statusLabel|default('—') }}
                                     </div>
                                     <div class="taxonomy-line">
                                         <span class="taxonomy-label">{{ 'backend.plan.exports.pdf.verified'|trans }}:</span>

@@ -58,7 +58,11 @@ final class SustainabilityPlanExcelExporter
                     $row['impactAreas'] ?? '',
                     $row['tripleBalanceAxes'] ?? '',
                     $row['verificationSources'] ?? '',
-                    !empty($row['implemented']) ? $this->translator->trans('backend.common.yes') : $this->translator->trans('backend.common.no'),
+                    match ($row['implemented'] ?? null) {
+                        true => $this->translator->trans('backend.plan.review.execution_decision.executed'),
+                        false => $this->translator->trans('backend.plan.review.execution_decision.not_executable'),
+                        default => $this->translator->trans('backend.plan.review.execution_decision.undecided'),
+                    },
                     !empty($row['verified']) ? $this->translator->trans('backend.common.yes') : $this->translator->trans('backend.common.no'),
                     $row['responsibles'] ?? '',
                     $row['executionIncident'] ?? '',

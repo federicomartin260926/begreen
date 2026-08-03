@@ -22,19 +22,17 @@ final class PlanMeasureOperationalStateResolverTest extends TestCase
         self::assertSame(PlanMeasureOperationalStateResolver::PENDING, $this->resolver->resolve($this->executableMeasure()));
     }
 
-    public function testResolvesInProgressMeasureWithOnlyAction(): void
+    public function testNullDecisionStaysPendingWithAuxiliaryExecutionData(): void
     {
-        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setActionTaken('Acción iniciada')));
-    }
+        $planMeasure = $this->executableMeasure()
+            ->setActionTaken('Acción iniciada')
+            ->setEvidence('/uploads/evidences/evidence.pdf')
+            ->setExecutionIncident('Incidencia de ejecución')
+            ->setInternalNotes('Nota interna')
+            ->addResponsibleCrewMember(new CrewMember())
+            ->setVerification(true);
 
-    public function testResolvesInProgressMeasureWithOnlyEvidence(): void
-    {
-        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setEvidence('/uploads/evidences/evidence.pdf')));
-    }
-
-    public function testResolvesInProgressMeasureWithExecutionIncident(): void
-    {
-        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setExecutionIncident('Incidencia de ejecución')));
+        self::assertSame(PlanMeasureOperationalStateResolver::PENDING, $this->resolver->resolve($planMeasure));
     }
 
     public function testGeneralObservationsDoNotCountAsExecutionActivity(): void
@@ -42,26 +40,33 @@ final class PlanMeasureOperationalStateResolverTest extends TestCase
         self::assertSame(PlanMeasureOperationalStateResolver::PENDING, $this->resolver->resolve($this->executableMeasure()->setObservations('Observación general')));
     }
 
-    public function testResolvesInProgressMeasureWithInternalNote(): void
+    public function testTrueDecisionWithoutActionOrEvidenceIsInProgress(): void
     {
-        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setInternalNotes('Nota interna')));
+        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setImplemented(true)));
     }
 
-    public function testResolvesInProgressMeasureWithResponsible(): void
+    public function testTrueDecisionWithOnlyActionIsInProgress(): void
     {
-        $planMeasure = $this->executableMeasure()->addResponsibleCrewMember(new CrewMember());
-
-        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($planMeasure));
+        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setImplemented(true)->setActionTaken('Acción')));
     }
 
-    public function testResolvesInProgressMeasureWithVerification(): void
+    public function testFalseDecisionIsNotImplementedRegardlessOfPreviousData(): void
     {
-        self::assertSame(PlanMeasureOperationalStateResolver::IN_PROGRESS, $this->resolver->resolve($this->executableMeasure()->setVerification(true)));
+        $planMeasure = $this->executableMeasure()
+            ->setImplemented(false)
+            ->setExecutionIncident('Imposible ejecutar')
+            ->setActionTaken('Acción previa')
+            ->setEvidence('/uploads/evidences/evidence.pdf');
+
+        self::assertSame(PlanMeasureOperationalStateResolver::NOT_IMPLEMENTED, $this->resolver->resolve($planMeasure));
     }
 
     public function testResolvesImplementedMeasure(): void
     {
-        self::assertSame(PlanMeasureOperationalStateResolver::IMPLEMENTED, $this->resolver->resolve($this->executableMeasure()->setImplemented(true)));
+        self::assertSame(PlanMeasureOperationalStateResolver::IMPLEMENTED, $this->resolver->resolve($this->executableMeasure()
+            ->setImplemented(true)
+            ->setActionTaken('Acción completada')
+            ->setEvidence('/uploads/evidences/evidence.pdf')));
     }
 
     public function testResolvesDiscardedMeasure(): void
@@ -99,6 +104,6 @@ final class PlanMeasureOperationalStateResolverTest extends TestCase
         return (new PlanMeasure())
             ->setIsApplicable(true)
             ->setWillImplement(true)
-            ->setImplemented(false);
+            ->setImplemented(null);
     }
 }

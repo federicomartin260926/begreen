@@ -254,17 +254,6 @@ class PlanMeasure
         return $this->hasActionTaken() && $this->hasEvidence();
     }
 
-    public function normalizeImplementedState(): bool
-    {
-        if ($this->implemented === true && !$this->canBeMarkedAsImplemented()) {
-            $this->implemented = false;
-
-            return true;
-        }
-
-        return false;
-    }
-
     /**
      * @return array<string, string>|null
      */

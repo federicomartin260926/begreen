@@ -276,6 +276,64 @@
                                     {% endif %}
                                 </div>
 
+                                {% set executionDecisionLocked = not (pm and pm.willImplement is same as(true)) %}
+                                <div class="mt-3 d-flex flex-column flex-md-row flex-wrap gap-3 align-items-md-center"
+                                     data-measure-id="{{ measure.id }}">
+                                    <div class="mb-0">
+                                        <div id="implemented-label-{{ measure.id }}" class="form-label mb-1">
+                                            {{ 'backend.plan.review.flag_implemented'|trans }}
+                                            <i class="bi bi-info-circle ms-1 text-muted"
+                                               tabindex="0"
+                                               role="img"
+                                               aria-label="{{ 'backend.plan.review.execution_decision.help'|trans }}"
+                                               data-bs-toggle="tooltip"
+                                               title="{{ 'backend.plan.review.execution_decision.help'|trans }}"></i>
+                                        </div>
+                                        <div class="implemented-switch-row">
+                                            <div class="implemented-switch"
+                                                 role="radiogroup"
+                                                 aria-labelledby="implemented-label-{{ measure.id }}"
+                                                 data-implemented-control
+                                                 data-locked="{{ executionDecisionLocked ? '1' : '0' }}"
+                                                 data-current-value="{{ pm and pm.isImplemented is same as(true) ? 'true' : (pm and pm.isImplemented is same as(false) ? 'false' : 'null') }}">
+                                                {% for value, labelKey in {
+                                                    'false': 'not_executable',
+                                                    'null': 'undecided',
+                                                    'true': 'executed'
+                                                } %}
+                                                    <input class="implemented-switch__input"
+                                                           type="radio"
+                                                           name="implemented-{{ measure.id }}"
+                                                           id="implemented-{{ value }}-{{ measure.id }}"
+                                                           value="{{ value }}"
+                                                           aria-label="{{ ('backend.plan.review.execution_decision.' ~ labelKey)|trans }}"
+                                                           data-action="change->plan-review#toggleImplemented"
+                                                           data-measure-id="{{ measure.id }}"
+                                                           data-url="{{ path('backend_plan_update_selection') }}"
+                                                           {% if executionDecisionLocked %}disabled{% endif %}
+                                                           {% if (value == 'true' and pm and pm.isImplemented is same as(true))
+                                                               or (value == 'false' and pm and pm.isImplemented is same as(false))
+                                                               or (value == 'null' and (not pm or pm.isImplemented is null)) %}checked{% endif %}>
+                                                    <label class="implemented-switch__zone implemented-switch__zone--{{ value == 'false' ? 'left' : (value == 'true' ? 'right' : 'center') }}" for="implemented-{{ value }}-{{ measure.id }}">
+                                                        <span class="visually-hidden">{{ ('backend.plan.review.execution_decision.' ~ labelKey)|trans }}</span>
+                                                    </label>
+                                                {% endfor %}
+                                                <span class="implemented-switch__track" aria-hidden="true">
+                                                    <span class="implemented-switch__mark implemented-switch__mark--left"></span>
+                                                    <span class="implemented-switch__mark implemented-switch__mark--center"></span>
+                                                    <span class="implemented-switch__mark implemented-switch__mark--right"></span>
+                                                    <span class="implemented-switch__knob"></span>
+                                                </span>
+                                            </div>
+                                            <span class="implemented-switch__selected-state" aria-live="polite">
+                                                <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--false">{{ 'backend.plan.review.execution_decision.not_executable'|trans }}</span>
+                                                <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--null">-</span>
+                                                <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--true">{{ 'backend.plan.review.execution_decision.executed'|trans }}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {% if pm and pm.willImplement is same as(true) %}
                                     {% set canAll = is_granted('ROLE_SUPER_ADMIN') or is_granted('ROLE_ADMIN') %}
                                     {% set canVerify = canAll %}
@@ -292,25 +350,8 @@
                                         {% endfor %}
                                     {% endif %}
 
-                                    <div class="mt-3 d-flex flex-column flex-md-row flex-wrap gap-3 align-items-md-center"
+                                    <div class="mt-1 d-flex flex-column flex-md-row flex-wrap gap-3 align-items-md-center"
                                          data-measure-id="{{ measure.id }}">
-                                        <div class="form-check form-switch mb-0">
-                                            <input
-                                                class="form-check-input"
-                                                type="checkbox"
-                                                id="implemented-{{ measure.id }}"
-                                                data-action="change->plan-review#toggleImplemented"
-                                                data-measure-id="{{ measure.id }}"
-                                                data-url="{{ path('backend_plan_update_selection') }}"
-                                                {% if pm and pm.isImplemented is same as(true) %}checked{% endif %}
-                                                {% if not (pm and pm.willImplement is same as(true)) %}disabled{% endif %}>
-                                            <label class="form-check-label" for="implemented-{{ measure.id }}">
-                                                {{ 'backend.plan.review.flag_implemented'|trans }}
-                                            </label>
-                                            {% if not (pm and pm.willImplement is same as(true)) %}
-                                                <div class="form-text text-muted">{{ 'backend.plan.review.flag_implemented_hint'|trans }}</div>
-                                            {% endif %}
-                                        </div>
                                         {% if canUseChecklist %}
                                             <div class="form-check form-switch mb-0">
                                                 {% if canVerify %}

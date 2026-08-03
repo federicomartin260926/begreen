@@ -111,6 +111,7 @@ final class ProjectControllerDashboardTest extends KernelTestCase
             $billingRepository,
             $invoiceStorage,
             $container->get(\App\Service\SustainabilityPlanCollaborationService::class),
+            $container->get(\App\Service\SustainabilityPlanImplementationPhaseService::class),
             $container->get(ProjectCompanyLogoStorage::class),
         );
         $controller->setContainer($container);

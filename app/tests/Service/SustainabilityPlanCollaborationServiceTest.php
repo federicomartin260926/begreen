@@ -14,6 +14,7 @@ use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
 use App\Entity\Protocol;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\PlanMeasureOperationalStateResolver;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanCustomMeasureParser;
 use PHPUnit\Framework\TestCase;
@@ -43,6 +44,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
             ->setIsApplicable(true)
             ->setWillImplement(true)
             ->setImplemented(true)
+            ->setActionTaken('Acción completada')
             ->setVerification(true)
             ->setEvidence("/uploads/evidences/1/a.pdf\n/uploads/evidences/1/b.pdf")
             ->setExecutionIncident('Execution incident')
@@ -94,6 +96,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
                 ->setIsApplicable(true)
                 ->setWillImplement(true)
                 ->setImplemented(true)
+                ->setActionTaken('Acción completada')
                 ->setVerification(true)
                 ->setEvidence("/uploads/evidences/1/a.pdf")
                 ->setExecutionIncident('Execution incident')
@@ -138,7 +141,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         self::assertFalse($service->hasImplementationActivity($plan));
     }
 
-    public function testImplementationActivityIsFalseForFalseImplementedWithoutOperationalData(): void
+    public function testImplementationActivityIsTrueForFalseDecision(): void
     {
         $service = $this->createService();
         [$plan, , $protocol] = $this->createPlanContext();
@@ -148,10 +151,10 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
                 ->setImplemented(false)
         );
 
-        self::assertFalse($service->hasImplementationActivity($plan));
+        self::assertTrue($service->hasImplementationActivity($plan));
     }
 
-    public function testImplementationActivityIsFalseForSeedLikeElaborationData(): void
+    public function testImplementationActivityIsTrueForExplicitExecutionDecision(): void
     {
         $service = $this->createService();
         [$plan, , $protocol] = $this->createPlanContext();
@@ -165,7 +168,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
                 ->setImplemented(false)
         );
 
-        self::assertFalse($service->hasImplementationActivity($plan));
+        self::assertTrue($service->hasImplementationActivity($plan));
     }
 
     public function testImplementationActivityIsTrueForFalseImplementedWithOperationalData(): void
@@ -195,7 +198,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         $planMeasure->setExecutionIncident(null);
 
         $planMeasure->setObservations('Observación general');
-        self::assertFalse($service->hasImplementationActivity($plan));
+        self::assertTrue($service->hasImplementationActivity($plan));
         $planMeasure->setObservations(null);
 
         $planMeasure->setInternalNotes('Nota operativa');
@@ -255,7 +258,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         $resolver = new PlanMeasureCatalogResolver($gate);
         $parser = new SustainabilityPlanCustomMeasureParser();
 
-        return new SustainabilityPlanCollaborationService($resolver, $parser);
+        return new SustainabilityPlanCollaborationService($resolver, $parser, new PlanMeasureOperationalStateResolver());
     }
 
     /**

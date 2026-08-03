@@ -54,7 +54,7 @@ final class PlanControllerReviewChartsTest extends KernelTestCase
 
         self::assertEquals([100, 90.0, 10.0], $config['applicability']['datasets'][0]['data']);
         self::assertEquals([100, 55.6], $config['commitment']['datasets'][0]['data']);
-        self::assertEquals([100, 40.0, 60.0], $config['compliance']['datasets'][0]['data']);
+        self::assertEquals([100, 0.0, 60.0, 40.0, 0.0], $config['compliance']['datasets'][0]['data']);
         self::assertEquals([100, 22.2, 77.8], $config['achievements']['datasets'][0]['data']);
 
         self::assertTrue($config['applicability']['percentValues']);

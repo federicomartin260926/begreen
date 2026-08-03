@@ -598,6 +598,7 @@ class PlanController extends AbstractController
             PlanMeasureOperationalStateResolver::PENDING,
             PlanMeasureOperationalStateResolver::IN_PROGRESS,
             PlanMeasureOperationalStateResolver::IMPLEMENTED,
+            PlanMeasureOperationalStateResolver::NOT_IMPLEMENTED,
             PlanMeasureOperationalStateResolver::DISCARDED,
             PlanMeasureOperationalStateResolver::NOT_APPLICABLE,
         ];
@@ -901,8 +902,6 @@ class PlanController extends AbstractController
 
         // --- Mutaciones por campo ---
         $nextUrl = null;
-        $implementedError = null;
-
         switch ($field) {
             case 'blockQuestion':
                 $block = $measure->getMeasureBlock();
@@ -1044,12 +1043,20 @@ class PlanController extends AbstractController
                         'error'   => 'Solo puedes marcar como implementada una medida marcada para implementar.',
                     ], 400);
                 }
-                $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
-                if ($bool === true && !$planMeasure->canBeMarkedAsImplemented()) {
-                    $planMeasure->setImplemented(false);
-                    $planMeasure->markAsManual();
-                    $implementedError = $this->implementedRequirementsMessage();
-                    break;
+                $bool = match ($value) {
+                    'true' => true,
+                    'false' => false,
+                    'null' => null,
+                    default => null,
+                };
+                if (!in_array($value, ['true', 'false', 'null'], true)) {
+                    return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
+                }
+                if ($bool === false && trim((string) $planMeasure->getExecutionIncident()) === '') {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => $this->t->trans('backend.plan.review.stimulus.not_implemented_requires_incident'),
+                    ], 400);
                 }
 
                 $planMeasure->setImplemented($bool);
@@ -1066,14 +1073,12 @@ class PlanController extends AbstractController
                 $text = trim((string)$value);
                 $planMeasure->setActionTaken($text !== '' ? $text : null);
                 $planMeasure->markAsManual();
-                $planMeasure->normalizeImplementedState();
                 break;
 
             case 'evidence':
                 $text = trim((string)$value);
                 $planMeasure->setEvidence($text !== '' ? $text : null);
                 $planMeasure->markAsManual();
-                $planMeasure->normalizeImplementedState();
                 break;
 
             case 'evidence_metadata':
@@ -1106,7 +1111,6 @@ class PlanController extends AbstractController
 
                 $planMeasure->setEvidenceMetadata($metadata);
                 $planMeasure->markAsManual();
-                $planMeasure->normalizeImplementedState();
                 break;
 
             case 'completeDecision':
@@ -1119,6 +1123,12 @@ class PlanController extends AbstractController
 
             case 'executionIncident':
                 $text = trim((string) $value);
+                if ($text === '' && $planMeasure->isImplemented() === false) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => $this->t->trans('backend.plan.review.stimulus.not_implemented_requires_incident'),
+                    ], 400);
+                }
                 $planMeasure->setExecutionIncident($text !== '' ? $text : null);
                 $planMeasure->markAsManual();
                 break;
@@ -1177,14 +1187,6 @@ class PlanController extends AbstractController
         $complete = $this->planCompletionService->syncStatus($plan, $project, $measureRepo);
         $em->flush();
 
-        if ($implementedError !== null) {
-            return new JsonResponse([
-                'success' => false,
-                'error'   => $implementedError,
-                'implemented' => $planMeasure->isImplemented(),
-            ], 400);
-        }
-
         if ($this->isTerminalSelectionAction($field, $value)) {
             $visibleMeasures = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
             $currentVisibleIndex = $this->planCompletionService->findVisibleMeasureIndex($visibleMeasures, $measure);
@@ -1231,6 +1233,7 @@ class PlanController extends AbstractController
             'nextUrl' => $nextUrl,
             'unchangedDecision' => $samePrimaryDecision,
             'implemented' => $planMeasure->isImplemented(),
+            'operationalState' => $this->operationalStateResolver->resolve($planMeasure),
         ]);
     }
 
@@ -1626,7 +1629,6 @@ class PlanController extends AbstractController
         $existing = array_values(array_unique($existing));
         $pm->setEvidence(implode("\n", $existing));
         $pm->setEvidenceMetadata($metadata);
-        $pm->normalizeImplementedState();
         $em->persist($pm);
         $em->flush();
 
@@ -1700,7 +1702,6 @@ class PlanController extends AbstractController
 
         if ($removed) {
             $pm->setEvidence(implode("\n", $newList));
-            $pm->normalizeImplementedState();
             $em->persist($pm);
             $em->flush();
         }
@@ -1987,6 +1988,7 @@ class PlanController extends AbstractController
             'scoreGained'    => $ctx['scoreGained'],
             'scorePct'       => $ctx['scorePct'],
             'commitmentSummary' => $ctx['commitmentSummary'],
+            'operationalStateResolver' => $ctx['operationalStateResolver'],
             // 'planChartsUrls' => $ctx['planChartsUrls'],
             'preview'        => true,
         ]);
@@ -2187,15 +2189,31 @@ class PlanController extends AbstractController
 
         $scorePct = $scoreMax > 0 ? round(100 * $scoreGained / $scoreMax) : null;
 
-        $effective = $nonApplicable = $agreed = $implemented = 0;
+        $effective = $nonApplicable = $agreed = $implemented = $notImplemented = $inProgress = $pending = 0;
         foreach ($filteredPlanMeasures as $pm) {
             if ($pm->isApplicable() === true)  $effective++;
             if ($pm->isApplicable() === false) $nonApplicable++;
-            if ($pm->willImplement())          $agreed++;
-            if ($pm->isImplemented())          $implemented++;
+            if ($pm->isApplicable() === true && $pm->willImplement() === true) {
+                $agreed++;
+                match ($this->operationalStateResolver->resolve($pm)) {
+                    PlanMeasureOperationalStateResolver::IMPLEMENTED => $implemented++,
+                    PlanMeasureOperationalStateResolver::NOT_IMPLEMENTED => $notImplemented++,
+                    PlanMeasureOperationalStateResolver::IN_PROGRESS => $inProgress++,
+                    default => $pending++,
+                };
+            }
         }
 
-        $planChartsConfig = $this->buildChartsConfig($measuresTotal, $effective, $nonApplicable, $agreed, $implemented);
+        $planChartsConfig = $this->buildChartsConfig(
+            $measuresTotal,
+            $effective,
+            $nonApplicable,
+            $agreed,
+            $implemented,
+            $notImplemented,
+            $inProgress,
+            $pending,
+        );
         $planChartsUrls   = $this->buildQuickChartUrlsFromConfig($planChartsConfig);
 
         $activeMain = $this->buildActiveFilterLabels(
@@ -2218,6 +2236,7 @@ class PlanController extends AbstractController
             PlanMeasureOperationalStateResolver::PENDING => $translator->trans('backend.plan.filters.state_pending'),
             PlanMeasureOperationalStateResolver::IN_PROGRESS => $translator->trans('backend.plan.filters.state_in_progress'),
             PlanMeasureOperationalStateResolver::IMPLEMENTED => $translator->trans('backend.plan.filters.state_implemented'),
+            PlanMeasureOperationalStateResolver::NOT_IMPLEMENTED => $translator->trans('backend.plan.filters.state_not_implemented'),
             'discarded' => $translator->trans('backend.plan.filters.state_discarded'),
             PlanMeasureOperationalStateResolver::NOT_APPLICABLE => $translator->trans('backend.plan.filters.state_not_applicable'),
         ];
@@ -2241,6 +2260,7 @@ class PlanController extends AbstractController
             'currentUserLabel'=> $this->buildCurrentUserLabel(),
             'hasWatermark'   => $this->featureGate->hasWatermark($project, $phase),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
+            'operationalStateResolver' => $this->operationalStateResolver,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures' => $this->collaborationService->getCustomMeasures($plan),
@@ -2439,11 +2459,6 @@ class PlanController extends AbstractController
         return null;
     }
 
-    private function implementedRequirementsMessage(): string
-    {
-        return $this->t->trans('backend.plan.review.stimulus.implemented_require_action_and_evidence');
-    }
-
     private function canAdvanceFromCurrentMeasure(PlanMeasure $planMeasure): bool
     {
         return $this->hasCompleteDecisionStructure($planMeasure)
@@ -2575,6 +2590,10 @@ class PlanController extends AbstractController
         $nonApplicablePoints = 0;
         $assumedPoints = 0;
         $implementedPoints = 0;
+        $executedPoints = 0;
+        $notImplementedPoints = 0;
+        $inProgressPoints = 0;
+        $pendingPoints = 0;
 
         foreach ($applicabilitySource as $planMeasure) {
             if (!$planMeasure instanceof PlanMeasure) {
@@ -2618,10 +2637,15 @@ class PlanController extends AbstractController
 
             if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true) {
                 $assumedPoints += $points;
-            }
-
-            if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true && $planMeasure->isImplemented() === true) {
-                $implementedPoints += $points;
+                if ($planMeasure->isImplemented() === true) {
+                    $executedPoints += $points;
+                }
+                match ($this->operationalStateResolver->resolve($planMeasure)) {
+                    PlanMeasureOperationalStateResolver::IMPLEMENTED => $implementedPoints += $points,
+                    PlanMeasureOperationalStateResolver::NOT_IMPLEMENTED => $notImplementedPoints += $points,
+                    PlanMeasureOperationalStateResolver::IN_PROGRESS => $inProgressPoints += $points,
+                    default => $pendingPoints += $points,
+                };
             }
         }
 
@@ -2631,9 +2655,11 @@ class PlanController extends AbstractController
         $commitmentPct = $this->percentageFromPoints($assumedPoints, $applicablePoints);
 
         $complianceImplementedPct = $this->percentageFromPoints($implementedPoints, $assumedPoints);
-        $complianceNotImplementedPct = $assumedPoints > 0 ? round(100 - $complianceImplementedPct, 1) : 0.0;
+        $complianceNotImplementedPct = $this->percentageFromPoints($notImplementedPoints, $assumedPoints);
+        $complianceInProgressPct = $this->percentageFromPoints($inProgressPoints, $assumedPoints);
+        $compliancePendingPct = $this->percentageFromPoints($pendingPoints, $assumedPoints);
 
-        $achievementsPct = $this->percentageFromPoints($implementedPoints, $applicablePoints);
+        $achievementsPct = $this->percentageFromPoints($executedPoints, $applicablePoints);
         $achievementsNotPct = $applicablePoints > 0 ? round(100 - $achievementsPct, 1) : 0.0;
 
         return [
@@ -2710,13 +2736,15 @@ class PlanController extends AbstractController
                     $this->t->trans('backend.plan.review.charts.compliance.total_possible'),
                     $this->t->trans('backend.plan.review.charts.compliance.implemented'),
                     $this->t->trans('backend.plan.review.charts.compliance.not_implemented'),
+                    $this->t->trans('backend.plan.review.charts.compliance.in_progress'),
+                    $this->t->trans('backend.plan.review.charts.compliance.pending'),
                 ],
                 'datasets' => [[
-                    'data' => [100, $complianceImplementedPct, $complianceNotImplementedPct],
-                    'backgroundColor' => [$c2, $c1, $c3],
-                    'borderColor' => [$c2Border, $c1Border, $c3Border],
+                    'data' => [100, $complianceImplementedPct, $complianceNotImplementedPct, $complianceInProgressPct, $compliancePendingPct],
+                    'backgroundColor' => [$c2, $c1, '#6c757d', '#f28c28', $c3],
+                    'borderColor' => [$c2Border, $c1Border, '#495057', '#cc6f12', $c3Border],
                     'borderWidth' => 1,
-                    'hoverBackgroundColor' => [$c2, $c1, $c3],
+                    'hoverBackgroundColor' => [$c2, $c1, '#6c757d', '#f28c28', $c3],
                 ]],
                 'percentValues' => true,
                 'showLegend' => false,
@@ -2795,7 +2823,10 @@ class PlanController extends AbstractController
         int $effective,
         int $nonApplicable,
         int $agreed,
-        int $implemented
+        int $implemented,
+        int $notImplemented,
+        int $inProgress,
+        int $pending,
     ): array {
         // Paleta
         $c1       = '#2ecc71';
@@ -2817,7 +2848,7 @@ class PlanController extends AbstractController
         // Valores ABSOLUTOS para pies (antes del “safe pie”)
         $alcanceDataRaw        = [$measuresTotal - $effective, $effective];     // Fuera, En
         $commitmentDataRaw     = [$effective - $agreed, $agreed];               // No implementar, Implementar
-        $implementationDataRaw = [$agreed - $implemented, $implemented];        // No implementadas, Implementadas
+        $implementationDataRaw = [$notImplemented, $inProgress, $pending, $implemented];
 
         // Evitar datasets [0,0] que no renderizan
         $alcanceData        = $this->safePie($alcanceDataRaw);
@@ -2886,21 +2917,23 @@ class PlanController extends AbstractController
                 ]],
             ],
 
-            // 4) Pie: implementación (Implementadas vs No implementadas, base Implementar)
+            // 4) Pie: estado operativo de las medidas acordadas para implementar.
             'implementation' => [
                 'type'          => 'pie',
                 'title'         => $this->t->trans('backend.plan.charts.performance_title', ['%pct%' => $implementationPct]),
                 'labels'        => [
                     $this->t->trans('backend.plan.charts.not_implemented'),
+                    $this->t->trans('backend.plan.charts.in_progress'),
+                    $this->t->trans('backend.plan.charts.pending'),
                     $this->t->trans('backend.plan.charts.implemented'),
                 ],
                 'datasets'      => [[
                     'label' => $this->t->trans('backend.plan.charts.performance'),
                     'data'  => $implementationData,
-                    'backgroundColor' => [$c3, $c1],
-                    'borderColor'     => [$c3Border, $c1Border],
+                    'backgroundColor' => ['#6c757d', '#f28c28', $c3, $c1],
+                    'borderColor'     => ['#495057', '#cc6f12', $c3Border, $c1Border],
                     'borderWidth'     => 1,
-                    'hoverBackgroundColor' => [$c3, $c1],
+                    'hoverBackgroundColor' => ['#6c757d', '#f28c28', $c3, $c1],
                 ]],
             ],
         ];

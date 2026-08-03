@@ -27,6 +27,8 @@ export default class extends Controller {
   }
 
   connect() {
+    this.initializeImplementedSwitches();
+
     // --- Filtros ---
     const filtersForm = this.element.querySelector('#plan-filters-form');
     if (filtersForm) {
@@ -170,75 +172,182 @@ export default class extends Controller {
     }
   }
 
+  disconnect() {
+    this.implementedSwitchAbortController?.abort();
+  }
+
+  initializeImplementedSwitches() {
+    this.implementedSwitchAbortController?.abort();
+    this.implementedSwitchAbortController = new AbortController();
+    const { signal } = this.implementedSwitchAbortController;
+
+    this.element.querySelectorAll('[data-implemented-control]').forEach((control) => {
+      const knob = control.querySelector('.implemented-switch__knob');
+      if (!knob) return;
+
+      knob.addEventListener('pointerdown', (event) => {
+        this.startImplementedSwitchDrag(event, control, knob);
+      }, { signal });
+    });
+  }
+
+  startImplementedSwitchDrag(event, control, knob) {
+    if (!event.isPrimary || control.dataset.saving === '1' || control.dataset.locked === '1') return;
+
+    const selectedInput = control.querySelector('.implemented-switch__input:checked');
+    if (!selectedInput || selectedInput.disabled) return;
+
+    event.preventDefault();
+    selectedInput.focus({ preventScroll: true });
+    knob.setPointerCapture(event.pointerId);
+    control.classList.add('is-dragging');
+
+    const updateKnobPosition = (pointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
+
+      const track = control.querySelector('.implemented-switch__track');
+      if (!track) return;
+
+      const trackRect = track.getBoundingClientRect();
+      const knobWidth = knob.getBoundingClientRect().width;
+      const minLeft = 2;
+      const maxLeft = trackRect.width - knobWidth - 2;
+      const left = Math.min(maxLeft, Math.max(minLeft, pointerEvent.clientX - trackRect.left - (knobWidth / 2)));
+      control.style.setProperty('--implemented-knob-left', `${left}px`);
+    };
+
+    const finishDrag = (pointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
+
+      updateKnobPosition(pointerEvent);
+      const track = control.querySelector('.implemented-switch__track');
+      const trackRect = track?.getBoundingClientRect();
+      const knobWidth = knob.getBoundingClientRect().width;
+      const minLeft = 2;
+      const maxLeft = (trackRect?.width ?? knobWidth) - knobWidth - 2;
+      const currentLeft = Number.parseFloat(control.style.getPropertyValue('--implemented-knob-left'));
+      const positions = [
+        { value: 'false', left: minLeft },
+        { value: 'null', left: (minLeft + maxLeft) / 2 },
+        { value: 'true', left: maxLeft },
+      ];
+      const closest = positions.reduce((current, candidate) => (
+        Math.abs(candidate.left - currentLeft) < Math.abs(current.left - currentLeft) ? candidate : current
+      ));
+
+      control.classList.remove('is-dragging');
+      control.style.removeProperty('--implemented-knob-left');
+      knob.removeEventListener('pointermove', updateKnobPosition);
+      knob.removeEventListener('pointerup', finishDrag);
+      knob.removeEventListener('pointercancel', cancelDrag);
+      if (knob.hasPointerCapture(event.pointerId)) knob.releasePointerCapture(event.pointerId);
+
+      const input = control.querySelector(`.implemented-switch__input[value="${closest.value}"]`);
+      if (!input || input.checked || input.disabled) return;
+
+      input.checked = true;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const cancelDrag = (pointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
+
+      control.classList.remove('is-dragging');
+      control.style.removeProperty('--implemented-knob-left');
+      knob.removeEventListener('pointermove', updateKnobPosition);
+      knob.removeEventListener('pointerup', finishDrag);
+      knob.removeEventListener('pointercancel', cancelDrag);
+    };
+
+    knob.addEventListener('pointermove', updateKnobPosition);
+    knob.addEventListener('pointerup', finishDrag);
+    knob.addEventListener('pointercancel', cancelDrag);
+    updateKnobPosition(event);
+  }
+
   async toggleImplemented(event) {
     const input = event.currentTarget;
-    const checked = input.checked;
+    if (!input.checked) return;
+
+    const value = String(input.value);
     const measureId = input.dataset.measureId;
     const url = input.dataset.url;
     const measureContainer = input.closest('[data-plan-measure-row]');
+    const control = input.closest('[data-implemented-control]');
+    const previousValue = String(control?.dataset.currentValue || 'null');
     if (!measureContainer) {
       console.error('plan-review: measure container not found for implemented toggle', { measureId, input });
       this.showModal(this.t('modal.error_title'), this.t('network_error'));
       return;
     }
-
-    if (checked) {
-      const selectedWillImplement = measureContainer.querySelector('input[data-field="willImplement"]:checked');
-      const selectedValue = String(selectedWillImplement?.value ?? '').trim().toLowerCase();
-      const willImplement = selectedValue === 'true' || selectedValue === '1';
-      if (willImplement !== true) {
-        input.checked = false;
-        this.showModal(this.t('modal.notice_title'), this.t('implemented_require_will_html'));
-        return;
-      }
-
-      const actionTakenEl = measureContainer.querySelector(`#action-taken-${measureId}`);
-      const actionTakenValue = String(actionTakenEl?.value || '').trim();
-      const evidenceCount = this.getEvidenceCount(measureContainer, measureId);
-      if (actionTakenValue === '' || evidenceCount === 0) {
-        input.checked = false;
-        this.showModal(this.t('modal.notice_title'), this.t('implemented_require_action_and_evidence'));
-        return;
-      }
-
-      try {
-        await this.persistSelectionField(url, measureId, 'action_taken', actionTakenValue);
-        const result = await this.persistSelectionField(url, measureId, 'implemented', 'true');
-        const badge = document.querySelector(`[data-role="badge-implemented"][data-measure-id="${measureId}"]`);
-        if (badge) {
-          badge.classList.remove('bg-success', 'bg-secondary');
-          badge.classList.add(result.implemented ? 'bg-success' : 'bg-secondary');
-          badge.textContent = result.implemented ? this.t('implemented_yes') : this.t('implemented_no');
-        }
-        input.checked = !!result.implemented;
-        return;
-      } catch (err) {
-        input.checked = false;
-        console.error(err);
-        this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
-        return;
-      }
+    if (control?.dataset.saving === '1') {
+      const previousInput = control.querySelector(`input[value="${previousValue}"]`);
+      if (previousInput) previousInput.checked = true;
+      return;
+    }
+    if (control?.dataset.locked === '1') {
+      const previousInput = control.querySelector(`input[value="${previousValue}"]`);
+      if (previousInput) previousInput.checked = true;
+      return;
     }
 
-    const prevChecked = !checked;
+    if (control) {
+      control.dataset.saving = '1';
+      control.querySelectorAll('input').forEach((radio) => {
+        radio.dataset.wasDisabled = radio.disabled ? '1' : '0';
+        radio.disabled = true;
+      });
+    }
 
     try {
-      const data = await this.persistSelectionField(url, measureId, 'implemented', checked ? 'true' : 'false');
-      const badge = document.querySelector(`[data-role="badge-implemented"][data-measure-id="${measureId}"]`);
-      if (badge) {
-        badge.classList.remove('bg-success', 'bg-secondary');
-        if (data.implemented) {
-          badge.classList.add('bg-success');
-          badge.textContent = this.t('implemented_yes');
-        } else {
-          badge.classList.add('bg-secondary');
-          badge.textContent = this.t('implemented_no');
+      if (value === 'false') {
+        const incident = String(measureContainer.querySelector(`#execution-incident-${measureId}`)?.value || '').trim();
+        if (incident !== '') {
+          await this.persistSelectionField(url, measureId, 'executionIncident', incident);
         }
       }
+
+      const data = await this.persistSelectionField(url, measureId, 'implemented', value);
+      if (control) control.dataset.currentValue = value;
+      this.updateOperationalState(measureContainer, data.operationalState);
     } catch (err) {
-      input.checked = prevChecked;
+      const previousInput = control?.querySelector(`input[value="${previousValue}"]`);
+      if (previousInput) previousInput.checked = true;
       console.error(err);
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
+    } finally {
+      if (control) {
+        delete control.dataset.saving;
+        control.querySelectorAll('input').forEach((radio) => {
+          radio.disabled = control.dataset.locked === '1' || radio.dataset.wasDisabled === '1';
+          delete radio.dataset.wasDisabled;
+        });
+      }
+    }
+  }
+
+  updateOperationalState(measureContainer, state) {
+    if (!state) return;
+
+    const detailRow = measureContainer.closest('tr');
+    const summaryRow = detailRow?.previousElementSibling;
+    [detailRow, summaryRow].forEach((row) => {
+      if (!row) return;
+      Array.from(row.classList)
+        .filter(className => className.startsWith('plan-measure-row--'))
+        .forEach(className => row.classList.remove(className));
+      row.classList.add(`plan-measure-row--${state}`);
+    });
+
+    const dot = summaryRow?.querySelector('.plan-measure-status-dot');
+    if (dot) {
+      Array.from(dot.classList)
+        .filter(className => className.startsWith('plan-measure-status-dot--'))
+        .forEach(className => dot.classList.remove(className));
+      dot.classList.add(`plan-measure-status-dot--${state}`);
+      const label = this.t(`status_${state}`);
+      dot.title = label;
+      dot.setAttribute('aria-label', label);
     }
   }
 
@@ -456,7 +565,6 @@ export default class extends Controller {
     const inlineBox = document.getElementById(`inline-edit-${measureId}`);
     const canSend = (el) => el && !el.disabled && el.dataset.locked !== '1';
     const updates = [];
-    let implementedBlocked = false;
 
     if (saveSection === 'state' && inlineBox) {
       // ======= BLOQUE: ESTADO EN EL PLAN =======
@@ -489,7 +597,7 @@ export default class extends Controller {
       updates.push({ field: 'completeDecision', value: observations });
     } else if (saveSection === 'actions') {
       // ======= BLOQUE: ACCIONES =======
-      const implementedEl   = document.getElementById(`implemented-${measureId}`);
+      const implementedEl   = document.querySelector(`input[name="implemented-${measureId}"]:checked`);
       const verificationEl  = document.getElementById(`verification-${measureId}`);
       const actionTakenEl   = document.getElementById(`action-taken-${measureId}`);
       const executionIncidentEl = document.getElementById(`execution-incident-${measureId}`);
@@ -519,7 +627,7 @@ export default class extends Controller {
       }
 
       if (implementedEl && !implementedEl.disabled) {
-        updates.push({ field: 'implemented', value: implementedEl.checked ? 'true' : 'false' });
+        updates.push({ field: 'implemented', value: implementedEl.value });
       }
     }
 
@@ -529,10 +637,6 @@ export default class extends Controller {
 
     try {
       for (const up of updates) {
-        if (implementedBlocked && up.field === 'implemented' && up.value === 'true') {
-          continue;
-        }
-
         const body = new URLSearchParams({ measureId, field: up.field, value: up.value });
         const res = await fetch('/index.php/backend/plan/update-selection', {
           method: 'POST',
@@ -546,28 +650,6 @@ export default class extends Controller {
           throw new Error(msg);
         }
 
-        if (typeof data.implemented === 'boolean') {
-          const implementedEl = document.getElementById(`implemented-${measureId}`);
-          if (implementedEl) {
-            implementedEl.checked = data.implemented;
-          }
-
-          const badge = document.querySelector(`[data-role="badge-implemented"][data-measure-id="${measureId}"]`);
-          if (badge) {
-            badge.classList.remove('bg-success', 'bg-secondary');
-            if (data.implemented) {
-              badge.classList.add('bg-success');
-              badge.textContent = this.t('implemented_yes');
-            } else {
-              badge.classList.add('bg-secondary');
-              badge.textContent = this.t('implemented_no');
-            }
-          }
-
-          if (!data.implemented) {
-            implementedBlocked = true;
-          }
-        }
       }
 
       const decisionModal = btn.closest('.modal');
@@ -583,19 +665,6 @@ export default class extends Controller {
       this.reloadReviewWithQuery({ open: measureId }, null, measureId);
     } catch (err) {
       console.error(err);
-      if (err?.message === this.t('implemented_require_action_and_evidence')) {
-        const implementedEl = document.getElementById(`implemented-${measureId}`);
-        if (implementedEl) {
-          implementedEl.checked = false;
-        }
-
-        const badge = document.querySelector(`[data-role="badge-implemented"][data-measure-id="${measureId}"]`);
-        if (badge) {
-          badge.classList.remove('bg-success');
-          badge.classList.add('bg-secondary');
-          badge.textContent = this.t('implemented_no');
-        }
-      }
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
     } finally {
       btn.disabled = false;

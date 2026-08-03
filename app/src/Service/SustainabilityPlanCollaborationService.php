@@ -14,6 +14,7 @@ final class SustainabilityPlanCollaborationService
     public function __construct(
         private readonly PlanMeasureCatalogResolver $catalogResolver,
         private readonly SustainabilityPlanCustomMeasureParser $customMeasureParser,
+        private readonly PlanMeasureOperationalStateResolver $operationalStateResolver,
     ) {
     }
 
@@ -21,6 +22,9 @@ final class SustainabilityPlanCollaborationService
      * @return array{
      *     toImplement:int,
      *     implemented:int,
+     *     notImplemented:int,
+     *     inProgress:int,
+     *     pending:int,
      *     verified:int,
      *     evidenceFiles:int,
      *     responsibles:int,
@@ -35,6 +39,9 @@ final class SustainabilityPlanCollaborationService
         $summary = [
             'toImplement' => 0,
             'implemented' => 0,
+            'notImplemented' => 0,
+            'inProgress' => 0,
+            'pending' => 0,
             'verified' => 0,
             'evidenceFiles' => 0,
             'responsibles' => 0,
@@ -65,10 +72,12 @@ final class SustainabilityPlanCollaborationService
 
             if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true) {
                 $summary['toImplement']++;
-            }
-
-            if ($planMeasure->isImplemented()) {
-                $summary['implemented']++;
+                match ($this->operationalStateResolver->resolve($planMeasure)) {
+                    PlanMeasureOperationalStateResolver::IMPLEMENTED => $summary['implemented']++,
+                    PlanMeasureOperationalStateResolver::NOT_IMPLEMENTED => $summary['notImplemented']++,
+                    PlanMeasureOperationalStateResolver::IN_PROGRESS => $summary['inProgress']++,
+                    default => $summary['pending']++,
+                };
             }
 
             if ($planMeasure->isVerification()) {
@@ -121,7 +130,7 @@ final class SustainabilityPlanCollaborationService
             || !$planMeasure->getResponsibleCrewMembers()->isEmpty()
             || trim((string) $planMeasure->getExecutionIncident()) !== ''
             || trim((string) $planMeasure->getInternalNotes()) !== ''
-            || $planMeasure->isImplemented() === true
+            || $planMeasure->isImplemented() !== null
             || $planMeasure->isVerification();
     }
 

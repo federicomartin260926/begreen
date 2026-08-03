@@ -85,11 +85,13 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
             return (int) $left->getId() <=> (int) $right->getId();
         });
 
+        $demoEvidencePath = $this->ensureDemoEvidence();
         $states = [
-            ['isApplicable' => true,  'willImplement' => true,  'implemented' => true,  'isCritical' => true],
+            ['isApplicable' => true,  'willImplement' => true,  'implemented' => null,  'isCritical' => true],
+            ['isApplicable' => true,  'willImplement' => true,  'implemented' => true,  'isCritical' => false, 'actionTaken' => 'Acción de ejemplo iniciada.'],
+            ['isApplicable' => true,  'willImplement' => true,  'implemented' => true,  'isCritical' => true, 'actionTaken' => 'Acción de ejemplo completada.', 'evidence' => $demoEvidencePath],
+            ['isApplicable' => true,  'willImplement' => true,  'implemented' => false, 'isCritical' => true, 'executionIncident' => 'La medida no puede ejecutarse en las condiciones actuales del proyecto.'],
             ['isApplicable' => true,  'willImplement' => false, 'implemented' => null,  'isCritical' => null],
-            ['isApplicable' => false, 'willImplement' => null,  'implemented' => null,  'isCritical' => null],
-            ['isApplicable' => true,  'willImplement' => true,  'implemented' => false, 'isCritical' => true],
             ['isApplicable' => false, 'willImplement' => null,  'implemented' => null,  'isCritical' => null],
         ];
 
@@ -103,11 +105,31 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
             $planMeasure->setWillImplement($state['willImplement']);
             $planMeasure->setImplemented($state['implemented']);
             $planMeasure->setIsCritical($state['isCritical']);
+            $planMeasure->setActionTaken($state['actionTaken'] ?? null);
+            $planMeasure->setEvidence($state['evidence'] ?? null);
+            $planMeasure->setExecutionIncident($state['executionIncident'] ?? null);
             $planMeasure->setObservations('Observación de ejemplo sobre la decisión de Elaboración.');
             $manager->persist($planMeasure);
         }
 
         $manager->flush();
+    }
+
+    private function ensureDemoEvidence(): string
+    {
+        $publicPath = '/uploads/evidences/demo/implemented-measure.png';
+        $absolutePath = dirname(__DIR__, 2) . '/public' . $publicPath;
+        $directory = dirname($absolutePath);
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new \RuntimeException(sprintf('Unable to create demo evidence directory "%s".', $directory));
+        }
+
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL8WQAAAABJRU5ErkJggg==', true);
+        if ($png === false || file_put_contents($absolutePath, $png) === false) {
+            throw new \RuntimeException(sprintf('Unable to create demo evidence "%s".', $absolutePath));
+        }
+
+        return $publicPath;
     }
 
     private function resetPlan(Plan $plan): void

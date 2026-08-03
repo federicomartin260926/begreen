@@ -259,7 +259,7 @@ final class SeedSustainabilityPlanCommand extends Command
 
         $willImplement = $this->randomBoolean();
         $planMeasure->setWillImplement($willImplement);
-        $planMeasure->setImplemented(false);
+        $planMeasure->setImplemented(null);
 
         if (!$willImplement) {
             ++$seedSummary['applicableWillNotImplement'];
