@@ -1022,6 +1022,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('Sí', $html);
         self::assertStringContainsString('No', $html);
         self::assertStringContainsString('No aplica al proyecto', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="observations"[^>]*class="[^"]*d-none[^"]*"/', $html);
+        self::assertMatchesRegularExpression('/data-plan-measures-section="continue"[^>]*class="[^"]*d-none[^"]*"/', $html);
         self::assertStringNotContainsString('¿Vas a implementar esta medida en tu proyecto?', $html);
         self::assertStringNotContainsString('No implementar', $html);
         self::assertStringNotContainsString('Implementar', $html);
@@ -1041,7 +1043,6 @@ final class PlanControllerNavigationTest extends KernelTestCase
                 ->setIsApplicable(true)
                 ->setWillImplement(true)
                 ->setIsCritical($critical)
-                ->setCriticalReason($critical ? 'Motivo crítico' : null)
                 ->setObservations($observations)
                 ->markAsManual();
 
@@ -1097,7 +1098,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($measure)
             ->setIsApplicable(true)
             ->setIsCritical(true)
-            ->setCriticalReason('Motivo visible')
+            ->setObservations('Observación visible')
             ->setWillImplement(true)
             ->markAsManual();
 
@@ -1112,8 +1113,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         ]);
 
         self::assertStringContainsString('¿Consideras que es una medida crítica en tu proyecto?', $html);
-        self::assertStringContainsString('¿Por qué la consideras crítica?', $html);
-        self::assertStringContainsString('Motivo visible', $html);
+        self::assertStringContainsString('Observaciones', $html);
+        self::assertStringContainsString('Observación visible', $html);
+        self::assertStringNotContainsString('¿Por qué la consideras crítica?', $html);
         self::assertStringContainsString('Continuar', $html);
         self::assertStringNotContainsString('¿Vas a implementar esta medida en tu proyecto?', $html);
         self::assertStringNotContainsString('No implementar', $html);
@@ -1125,7 +1127,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
     public function testCriticalDecisionShowsYesBeforeNoWithoutChangingBooleanPayloads(): void
     {
         self::bootKernel();
-        $planMeasure = $this->buildLoadedMeasureState(true, true, false, null);
+        $planMeasure = $this->buildLoadedMeasureState(true, true, false, 'Observación no crítica');
         $measure = $planMeasure->getMeasure();
         $html = self::getContainer()->get('twig')->render('backend/plan/_measure_card.html.twig', [
             'measure' => $measure,
@@ -1180,7 +1182,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::bootKernel();
         $twig = self::getContainer()->get('twig');
 
-        $planMeasure = $this->buildLoadedMeasureState(true, true, false, null);
+        $planMeasure = $this->buildLoadedMeasureState(true, true, false, 'Observación no crítica');
 
         self::assertTrue($this->invokeCanAdvanceFromCurrentMeasure($this->getController(), $planMeasure));
 
@@ -1197,8 +1199,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         self::assertStringContainsString('¿Consideras que es una medida crítica en tu proyecto?', $html);
         self::assertMatchesRegularExpression('/data-plan-measures-section="critical"[\s\S]*data-field="critical"[\s\S]*data-value="false"/', $html);
-        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-reason"[^>]*class="[^"]*d-none[^"]*"/', $html);
-        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-continue"[^>]*class="[^"]*d-none[^"]*"/', $html);
+        self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="observations"[^>]*class="[^"]*d-none[^"]*"/', $html);
+        self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="continue"[^>]*class="[^"]*d-none[^"]*"/', $html);
         self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="critical"[^>]*class="[^"]*d-none[^"]*"/', $html);
     }
 
@@ -1206,7 +1208,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
     {
         $controller = $this->getController();
 
-        $planMeasure = $this->buildLoadedMeasureState(true, false, null, null);
+        $planMeasure = $this->buildLoadedMeasureState(true, false, null, 'Observación de descarte');
 
         self::assertTrue($this->invokeCanAdvanceFromCurrentMeasure($controller, $planMeasure));
 
@@ -1226,15 +1228,15 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('data-value="false"', $html);
         self::assertStringContainsString('btn-danger', $html);
         self::assertMatchesRegularExpression('/data-plan-measures-section="critical"\\s+class="d-none"/', $html);
-        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-reason"\\s+class="d-none"/', $html);
-        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-continue"\\s+class="d-none"/', $html);
+        self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="observations"[^>]*class="[^"]*d-none[^"]*"/', $html);
+        self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="continue"[^>]*class="[^"]*d-none[^"]*"/', $html);
     }
 
     public function testMeasuresPageHidesCriticalStepAndAllowsNextWhenDecisionIsNotApplicable(): void
     {
         $controller = $this->getController();
 
-        $planMeasure = $this->buildLoadedMeasureState(false, null, null, null);
+        $planMeasure = $this->buildLoadedMeasureState(false, null, null, 'No aplica al proyecto');
 
         self::assertTrue($this->invokeCanAdvanceFromCurrentMeasure($controller, $planMeasure));
 
@@ -1253,8 +1255,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         self::assertStringContainsString('No aplica al proyecto', $html);
         self::assertMatchesRegularExpression('/data-plan-measures-section="critical"\\s+class="d-none"/', $html);
-        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-reason"\\s+class="d-none"/', $html);
-        self::assertMatchesRegularExpression('/data-plan-measures-section="critical-continue"\\s+class="d-none"/', $html);
+        self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="observations"[^>]*class="[^"]*d-none[^"]*"/', $html);
+        self::assertDoesNotMatchRegularExpression('/data-plan-measures-section="continue"[^>]*class="[^"]*d-none[^"]*"/', $html);
     }
 
     public function testListExposesCheckedImplementRadioWhenWillImplementIsYes(): void
@@ -1319,10 +1321,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('id="decision-modal-' . $measure->getId() . '"', $html);
         self::assertStringContainsString('name="applies-' . $measure->getId() . '"', $html);
         self::assertStringContainsString('name="critical-' . $measure->getId() . '"', $html);
-        self::assertStringContainsString('id="critical-reason-' . $measure->getId() . '"', $html);
+        self::assertStringContainsString('id="decision-observations-' . $measure->getId() . '"', $html);
         self::assertStringContainsString('data-save-section="state"', $html);
         self::assertStringContainsString('Modificar decisión', $html);
-        self::assertStringContainsString('Motivo visible', $html);
         self::assertStringContainsString('Descripción', $html);
         self::assertStringContainsString('Ejecución', $html);
         self::assertStringContainsString('Incidencia de ejecución de la medida', $html);
@@ -1335,8 +1336,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
             strpos($html, 'Acción realizada')
         );
         self::assertLessThan(
-            strpos($html, '>Observaciones</label>'),
-            strpos($html, 'Incidencia de ejecución de la medida')
+            strpos($html, 'Incidencia de ejecución de la medida'),
+            strpos($html, '>Observaciones</label>')
         );
         self::assertMatchesRegularExpression(
             '/<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">(?:(?!<\\/div>).)*Más información(?:(?!<\\/div>).)*Guardar cambios(?:(?!<\\/div>).)*<\\/div>/s',
@@ -1386,6 +1387,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable(true)
             ->setIsCritical(false)
             ->setWillImplement(true)
+            ->setObservations('Medida completa')
             ->markAsManual();
         $plan->addPlanMeasure($planMeasure);
 
@@ -1452,6 +1454,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
                 ->setIsApplicable(true)
                 ->setIsCritical(false)
                 ->setWillImplement(true)
+                ->setObservations('Medida completa')
                 ->markAsManual()
         );
 
@@ -2094,7 +2097,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($pendingMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(true)
-            ->setCriticalReason(null)
+            ->setObservations(null)
             ->setWillImplement(true)
             ->markAsManual();
         $plan->addPlanMeasure($pendingPlanMeasure);
@@ -2103,14 +2106,14 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($currentMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(false)
-            ->setWillImplement(null)
+            ->setWillImplement(true)
             ->markAsManual();
         $plan->addPlanMeasure($currentPlanMeasure);
 
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
-            'field' => 'willImplement',
-            'value' => 'true',
+            'field' => 'completeDecision',
+            'value' => 'Observación actual',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$pendingMeasure, $currentMeasure], $currentMeasure);
@@ -2137,7 +2140,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=0', (string) $data['nextUrl']);
         self::assertStringNotContainsString('only_pending=1', (string) $data['nextUrl']);
-        self::assertSame(['backend.plan.flash.pending_critical_reason'], $request->getSession()->getFlashBag()->peek('warning'));
+        self::assertSame(['backend.plan.flash.pending_observations'], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
     public function testUpdateSelectionDoesNotAppendOnlyPendingWhenFilterIsInactive(): void
@@ -2175,8 +2178,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($currentMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(true)
-            ->setCriticalReason('Razón válida')
-            ->setWillImplement(null)
+            ->setWillImplement(true)
             ->markAsManual();
         $plan->addPlanMeasure($currentPlanMeasure);
 
@@ -2188,8 +2190,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
-            'field' => 'willImplement',
-            'value' => 'true',
+            'field' => 'completeDecision',
+            'value' => 'Observación válida',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
@@ -2265,14 +2267,14 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($currentMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(false)
-            ->setWillImplement(null)
+            ->setWillImplement(true)
             ->markAsManual();
         $plan->addPlanMeasure($currentPlanMeasure);
 
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
-            'field' => 'willImplement',
-            'value' => 'true',
+            'field' => 'completeDecision',
+            'value' => 'Observación actual',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$pendingMeasure, $currentMeasure, $nextMeasure], $currentMeasure);
@@ -2337,6 +2339,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable(true)
             ->setIsCritical(false)
             ->setWillImplement(true)
+            ->setObservations('Observación de la primera medida')
             ->markAsManual();
         $plan->addPlanMeasure($firstPlanMeasure);
 
@@ -2344,14 +2347,14 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($lastMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(false)
-            ->setWillImplement(null)
+            ->setWillImplement(true)
             ->markAsManual();
         $plan->addPlanMeasure($lastPlanMeasure);
 
         $request = $this->createRequest([
             'measureId' => (string) $lastMeasure->getId(),
-            'field' => 'willImplement',
-            'value' => 'true',
+            'field' => 'completeDecision',
+            'value' => 'Observación de la última medida',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$firstMeasure, $lastMeasure], $lastMeasure);
@@ -2446,9 +2449,27 @@ final class PlanControllerNavigationTest extends KernelTestCase
         );
         $criticalData = json_decode((string) $criticalResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
 
-        self::assertStringContainsString('/backend/plan/measures', (string) $criticalData['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $criticalData['nextUrl']);
+        self::assertNull($criticalData['nextUrl']);
         self::assertTrue($plan->hasPendingGamificationMessage());
+
+        $completeRequest = $this->createRequest([
+            'measureId' => '901',
+            'field' => 'completeDecision',
+            'value' => 'Observación no crítica',
+        ]);
+        $completeResponse = $this->invokeUpdateSelection(
+            $controller,
+            $completeRequest,
+            $measureRepository,
+            $planMeasureRepository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $this->createEntityManagerMock($currentPlanMeasure)
+        );
+        $completeData = json_decode((string) $completeResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertStringContainsString('/backend/plan/measures', (string) $completeData['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $completeData['nextUrl']);
 
         $nextRequest = $this->createRequest([], ['i' => 1]);
         $nextRequest->attributes->set('_route', 'backend_plan_measures');
@@ -2480,7 +2501,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable(true)
             ->setWillImplement(true)
             ->setIsCritical(true)
-            ->setCriticalReason('Motivo conservado')
+            ->setObservations('Observación conservada')
             ->markFirstDecisionAnswered($answeredAt)
             ->markCriticalGamificationHandled($criticalHandledAt);
 
@@ -2502,7 +2523,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertNull($data['nextUrl']);
         self::assertFalse($currentPlanMeasure->getPlan()->hasPendingGamificationMessage());
         self::assertTrue($currentPlanMeasure->isCritical());
-        self::assertSame('Motivo conservado', $currentPlanMeasure->getCriticalReason());
+        self::assertSame('Observación conservada', $currentPlanMeasure->getObservations());
         self::assertSame($answeredAt, $currentPlanMeasure->getFirstDecisionAnsweredAt());
         self::assertSame($criticalHandledAt, $currentPlanMeasure->getCriticalGamificationHandledAt());
     }
@@ -2525,8 +2546,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $response);
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertNull($data['nextUrl']);
         self::assertArrayNotHasKey('gamification', $data);
         self::assertFalse($currentPlanMeasure->getPlan()->hasPendingGamificationMessage());
         self::assertTrue($currentPlanMeasure->isApplicable());
@@ -2534,7 +2554,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertFalse($currentPlanMeasure->willImplement());
     }
 
-    public function testUpdateSelectionKeepsImmediateNavigationWhenNoGamificationMessageIsDue(): void
+    public function testUpdateSelectionWaitsForObservationsWhenNoGamificationMessageIsDue(): void
     {
         [$controller, $request, $measureRepository, $planMeasureRepository, $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $currentPlanMeasure] = $this->buildDecisionScenario('false');
         $currentPlanMeasure->getPlan()->markGamificationLevelPresented('seed');
@@ -2554,8 +2574,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($data['success']);
         self::assertArrayNotHasKey('gamification', $data);
         self::assertFalse($currentPlanMeasure->getPlan()->hasPendingGamificationMessage());
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertNull($data['nextUrl']);
     }
 
     public function testUpdateSelectionDecisionNotApplicableClearsApplicability(): void
@@ -2576,8 +2595,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $response);
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertNull($data['nextUrl']);
         self::assertFalse($currentPlanMeasure->isApplicable());
         self::assertNull($currentPlanMeasure->isCritical());
         self::assertNull($currentPlanMeasure->willImplement());
@@ -2637,7 +2655,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringStartsWith('completed_100.', (string) $plan->getPendingGamificationKey());
     }
 
-    public function testUpdateSelectionDecisionNoOnLastMeasureRedirectsToDone(): void
+    public function testUpdateSelectionObservationsForDecisionNoOnLastMeasureRedirectsToDone(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -2672,8 +2690,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $lastMeasure->getId(),
-            'field' => 'decision',
-            'value' => 'false',
+            'field' => 'completeDecision',
+            'value' => 'No se incluirá en el plan',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
@@ -2700,7 +2718,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/done', (string) $data['nextUrl']);
     }
 
-    public function testUpdateSelectionDecisionNotApplicableOnLastMeasureRedirectsToDone(): void
+    public function testUpdateSelectionObservationsForNotApplicableLastMeasureRedirectsToDone(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -2727,7 +2745,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $currentPlanMeasure = (new PlanMeasure())
             ->setMeasure($lastMeasure)
-            ->setIsApplicable(null)
+            ->setIsApplicable(false)
             ->setWillImplement(null)
             ->setIsCritical(null)
             ->setApplicabilitySource('manual');
@@ -2735,8 +2753,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $lastMeasure->getId(),
-            'field' => 'decision',
-            'value' => 'na',
+            'field' => 'completeDecision',
+            'value' => 'No aplica al proyecto',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
@@ -2763,7 +2781,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/done', (string) $data['nextUrl']);
     }
 
-    public function testUpdateSelectionWillImplementWithCriticalReasonOnLastMeasureRedirectsToDone(): void
+    public function testUpdateSelectionObservationsOnLastMeasureRedirectsToDone(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -2792,15 +2810,15 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($lastMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(true)
-            ->setCriticalReason('Motivo válido')
+            ->setObservations('Observación válida')
             ->setWillImplement(true)
             ->setApplicabilitySource('manual');
         $plan->addPlanMeasure($currentPlanMeasure);
 
         $request = $this->createRequest([
             'measureId' => (string) $lastMeasure->getId(),
-            'field' => 'willImplement',
-            'value' => 'true',
+            'field' => 'completeDecision',
+            'value' => 'Observación válida',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
@@ -2827,7 +2845,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/done', (string) $data['nextUrl']);
     }
 
-    public function testUpdateSelectionCriticalNoAdvancesWithoutRequiringReason(): void
+    public function testUpdateSelectionCriticalNoWaitsForObservations(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -2898,13 +2916,12 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $response);
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertNull($data['nextUrl']);
         self::assertFalse($currentPlanMeasure->isCritical());
-        self::assertNull($currentPlanMeasure->getCriticalReason());
+        self::assertNull($currentPlanMeasure->getObservations());
     }
 
-    public function testUpdateSelectionCriticalYesCanBeUnsetToNoAndClearsReason(): void
+    public function testUpdateSelectionCriticalYesCanBeUnsetToNoAndPreservesObservations(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -2940,7 +2957,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable(true)
             ->setWillImplement(true)
             ->setIsCritical(true)
-            ->setCriticalReason('Motivo original')
+            ->setObservations('Observación original')
             ->setApplicabilitySource('manual');
         $plan->addPlanMeasure($currentPlanMeasure);
 
@@ -2976,13 +2993,12 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $response);
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertNull($data['nextUrl']);
         self::assertFalse($currentPlanMeasure->isCritical());
-        self::assertNull($currentPlanMeasure->getCriticalReason());
+        self::assertSame('Observación original', $currentPlanMeasure->getObservations());
     }
 
-    public function testUpdateSelectionCriticalYesRequiresReasonBeforeAdvancing(): void
+    public function testUpdateSelectionCriticalYesRequiresObservationsBeforeAdvancing(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -3056,10 +3072,10 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertArrayHasKey('nextUrl', $data);
         self::assertNull($data['nextUrl']);
         self::assertTrue($currentPlanMeasure->isCritical());
-        self::assertNull($currentPlanMeasure->getCriticalReason());
+        self::assertNull($currentPlanMeasure->getObservations());
     }
 
-    public function testUpdateSelectionWillImplementRequiresCriticalReasonWhenMeasureIsCritical(): void
+    public function testUpdateSelectionCompleteDecisionRejectsBlankObservations(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -3093,7 +3109,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($currentMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(true)
-            ->setCriticalReason(null)
+            ->setObservations(null)
             ->setWillImplement(true)
             ->setApplicabilitySource('manual');
         $plan->addPlanMeasure($currentPlanMeasure);
@@ -3105,8 +3121,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
-            'field' => 'willImplement',
-            'value' => 'true',
+            'field' => 'completeDecision',
+            'value' => '   ',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
@@ -3131,12 +3147,12 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertFalse($data['success']);
         self::assertArrayHasKey('error', $data);
-        self::assertStringContainsString('motivo', (string) $data['error']);
+        self::assertStringContainsString('observación', (string) $data['error']);
         self::assertNull($data['nextUrl'] ?? null);
-        self::assertSame('', $currentPlanMeasure->getCriticalReason() ?? '');
+        self::assertSame('', $currentPlanMeasure->getObservations() ?? '');
     }
 
-    public function testUpdateSelectionWillImplementWithCriticalReasonAdvances(): void
+    public function testUpdateSelectionCompleteDecisionWithObservationsAdvances(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -3170,7 +3186,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($currentMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(true)
-            ->setCriticalReason('Motivo válido')
+            ->setObservations('Observación válida')
             ->setWillImplement(true)
             ->setApplicabilitySource('manual');
         $plan->addPlanMeasure($currentPlanMeasure);
@@ -3182,8 +3198,8 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
-            'field' => 'willImplement',
-            'value' => 'true',
+            'field' => 'completeDecision',
+            'value' => 'Observación válida',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
@@ -3209,7 +3225,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($data['success']);
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=1', (string) $data['nextUrl']);
-        self::assertSame('Motivo válido', $currentPlanMeasure->getCriticalReason());
+        self::assertSame('Observación válida', $currentPlanMeasure->getObservations());
     }
 
     public function testBlockQuestionYesKeepsCurrentMeasurePendingAndReturnsCurrentIndex(): void
@@ -3297,7 +3313,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertNull($currentPlanMeasure->isApplicable());
         self::assertNull($currentPlanMeasure->willImplement());
         self::assertNull($currentPlanMeasure->isCritical());
-        self::assertNull($currentPlanMeasure->getCriticalReason());
+        self::assertNull($currentPlanMeasure->getObservations());
     }
 
     public function testBlockQuestionNoSkipsBlockAndReturnsFirstVisibleMeasureAfterBlock(): void
@@ -3356,6 +3372,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable(true)
             ->setIsCritical(false)
             ->setWillImplement(true)
+            ->setObservations('Observación completa')
             ->markAsManual();
         $plan->addPlanMeasure($previousPlanMeasure);
 
@@ -3479,6 +3496,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable(true)
             ->setIsCritical(false)
             ->setWillImplement(true)
+            ->setObservations('Observación completa')
             ->markAsManual();
         $plan->addPlanMeasure($planMeasure1);
 
@@ -3621,10 +3639,14 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertIsString($lastHtml);
         self::assertStringContainsString('Medida 3 de 3', $lastHtml);
 
+        $planMeasure4
+            ->setIsApplicable(true)
+            ->setWillImplement(false)
+            ->setIsCritical(null);
         $finalRequest = $this->createRequest([
             'measureId' => (string) $measure4->getId(),
-            'field' => 'decision',
-            'value' => 'false',
+            'field' => 'completeDecision',
+            'value' => 'No se incluirá en el plan',
         ]);
         $finalMeasureRepository = $this->createMeasureRepositoryMock([$measure1, $measure2, $measure3, $measure4], $measure4);
         $finalPlanMeasureRepository = $this->createPlanMeasureRepositoryMock($measure4, $planMeasure4);
@@ -3645,7 +3667,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $finalData = json_decode((string) $finalResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($finalData['success']);
         self::assertStringContainsString('/backend/plan/measures', (string) $finalData['nextUrl']);
-        self::assertStringContainsString('i=3', (string) $finalData['nextUrl']);
+        self::assertStringContainsString('i=1', (string) $finalData['nextUrl']);
     }
 
     public function testEventMeasuresStartAtOneAfterEntriesExcludedFromNavigation(): void
@@ -3780,6 +3802,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $planMeasure = (new PlanMeasure())
             ->setMeasure($answeredMeasure)
             ->setIsApplicable(false)
+            ->setObservations('No aplica al proyecto')
             ->markAsManual();
         $plan->addPlanMeasure($planMeasure);
 
@@ -4388,7 +4411,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $property->setValue($entity, $id);
     }
 
-    private function buildLoadedMeasureState(?bool $isApplicable, ?bool $willImplement, ?bool $isCritical, ?string $criticalReason): PlanMeasure
+    private function buildLoadedMeasureState(?bool $isApplicable, ?bool $willImplement, ?bool $isCritical, ?string $observations): PlanMeasure
     {
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
@@ -4409,7 +4432,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable($isApplicable)
             ->setWillImplement($willImplement)
             ->setIsCritical($isCritical)
-            ->setCriticalReason($criticalReason)
+            ->setObservations($observations)
             ->markAsManual();
 
         return $planMeasure;

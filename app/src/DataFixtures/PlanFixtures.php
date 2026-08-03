@@ -86,11 +86,11 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
         });
 
         $states = [
-            ['isApplicable' => true,  'willImplement' => true,  'implemented' => true,  'isCritical' => true,  'criticalReason' => 'Demo'],
-            ['isApplicable' => true,  'willImplement' => false, 'implemented' => null,   'isCritical' => false, 'criticalReason' => null],
-            ['isApplicable' => false, 'willImplement' => null,  'implemented' => null,   'isCritical' => null,  'criticalReason' => null],
-            ['isApplicable' => true,  'willImplement' => true,  'implemented' => false,  'isCritical' => true,  'criticalReason' => 'Demo'],
-            ['isApplicable' => false, 'willImplement' => null,  'implemented' => null,   'isCritical' => null,  'criticalReason' => null],
+            ['isApplicable' => true,  'willImplement' => true,  'implemented' => true,  'isCritical' => true],
+            ['isApplicable' => true,  'willImplement' => false, 'implemented' => null,  'isCritical' => null],
+            ['isApplicable' => false, 'willImplement' => null,  'implemented' => null,  'isCritical' => null],
+            ['isApplicable' => true,  'willImplement' => true,  'implemented' => false, 'isCritical' => true],
+            ['isApplicable' => false, 'willImplement' => null,  'implemented' => null,  'isCritical' => null],
         ];
 
         foreach ($measuresToSeed as $index => $measure) {
@@ -103,7 +103,7 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
             $planMeasure->setWillImplement($state['willImplement']);
             $planMeasure->setImplemented($state['implemented']);
             $planMeasure->setIsCritical($state['isCritical']);
-            $planMeasure->setCriticalReason($state['criticalReason']);
+            $planMeasure->setObservations('Observación de ejemplo sobre la decisión de Elaboración.');
             $manager->persist($planMeasure);
         }
 

@@ -170,7 +170,14 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
         $plan = $this->createPlan($project);
-        $plan->addPlanMeasure($this->createPlanMeasure($measure, true, null, false));
+        $planMeasure = $this->createPlanMeasure($measure, true, null, false);
+        $planMeasure->setObservations(null);
+        $plan->addPlanMeasure($planMeasure);
+
+        self::assertFalse($service->isComplete($plan, $project));
+        self::assertSame('observations_missing', $service->findFirstPendingVisibleMeasure($plan, $project)['reason'] ?? null);
+
+        $planMeasure->setObservations('No se incluirá por falta de encaje en el proyecto.');
 
         self::assertTrue($service->isComplete($plan, $project));
         self::assertSame('completo', $service->syncStatus($plan, $project) ? 'completo' : 'incompleto');
@@ -285,12 +292,18 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
 
     private function createPlanMeasure(Measure $measure, ?bool $applicable, ?bool $critical, ?bool $willImplement): PlanMeasure
     {
-        return (new PlanMeasure())
+        $planMeasure = (new PlanMeasure())
             ->setMeasure($measure)
             ->setIsApplicable($applicable)
             ->setIsCritical($critical)
             ->setWillImplement($willImplement)
             ->markAsManual();
+
+        if ($applicable !== null && ($applicable === false || $willImplement !== null)) {
+            $planMeasure->setObservations('Observación de decisión completa.');
+        }
+
+        return $planMeasure;
     }
 
     private function setEntityId(object $entity, int $id): void

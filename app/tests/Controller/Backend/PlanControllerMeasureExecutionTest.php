@@ -88,7 +88,7 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         self::assertTrue($scenario['planMeasure']->willImplement());
     }
 
-    public function testUpdateSelectionSavesAndClearsObservationsBeforeElaborationIsCompleteWithoutChangingDecisions(): void
+    public function testUpdateSelectionRequiresNonEmptyObservationsWithoutChangingDecisions(): void
     {
         $scenario = $this->buildScenario([
             'measure_id' => 991,
@@ -100,12 +100,12 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         $planMeasure
             ->setIsApplicable(false)
             ->setIsCritical(true)
-            ->setCriticalReason('Motivo conservado')
+            ->setObservations('Observación conservada')
             ->markAsBlockSkipped($blockSkipAnswer);
 
         $saveRequest = $this->createRequest([
             'measureId' => (string) $scenario['measure']->getId(),
-            'field' => 'observations',
+            'field' => 'completeDecision',
             'value' => '  Observación durante Elaboración  ',
         ]);
 
@@ -117,7 +117,7 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
             $scenario['planRepository'],
             $scenario['blockAnswerRepository'],
             $scenario['activeProjectService'],
-            $this->createEntityManagerMock($planMeasure, 1)
+            $this->createEntityManagerMock($planMeasure, 2)
         );
 
         self::assertSame(200, $saveResponse->getStatusCode());
@@ -128,7 +128,7 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         self::assertFalse($planMeasure->isApplicable());
         self::assertFalse($planMeasure->willImplement());
         self::assertTrue($planMeasure->isCritical());
-        self::assertSame('Motivo conservado', $planMeasure->getCriticalReason());
+        self::assertSame('Observación durante Elaboración', $planMeasure->getObservations());
         self::assertSame('block_skip', $planMeasure->getApplicabilitySource());
         self::assertSame($blockSkipAnswer, $planMeasure->getBlockSkipAnswer());
         self::assertFalse(self::getContainer()->get(SustainabilityPlanCollaborationService::class)->hasImplementationActivity($scenario['plan']));
@@ -136,9 +136,12 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
 
         $clearRequest = $this->createRequest([
             'measureId' => (string) $scenario['measure']->getId(),
-            'field' => 'observations',
+            'field' => 'completeDecision',
             'value' => '   ',
         ]);
+        $unusedEntityManager = $this->createMock(EntityManagerInterface::class);
+        $unusedEntityManager->expects(self::never())->method('persist');
+        $unusedEntityManager->expects(self::never())->method('flush');
         $clearResponse = $this->invokeUpdateSelection(
             $scenario['controller'],
             $clearRequest,
@@ -147,31 +150,30 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
             $scenario['planRepository'],
             $scenario['blockAnswerRepository'],
             $scenario['activeProjectService'],
-            $this->createEntityManagerMock($planMeasure, 1)
+            $unusedEntityManager
         );
 
-        self::assertSame(200, $clearResponse->getStatusCode());
+        self::assertSame(400, $clearResponse->getStatusCode());
         $clearData = json_decode((string) $clearResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertTrue($clearData['success']);
+        self::assertFalse($clearData['success']);
         self::assertNull($clearData['nextUrl']);
-        self::assertNull($planMeasure->getObservations());
+        self::assertSame('Observación durante Elaboración', $planMeasure->getObservations());
         self::assertFalse($planMeasure->isApplicable());
         self::assertFalse($planMeasure->willImplement());
         self::assertTrue($planMeasure->isCritical());
-        self::assertSame('Motivo conservado', $planMeasure->getCriticalReason());
         self::assertSame('block_skip', $planMeasure->getApplicabilitySource());
         self::assertSame($blockSkipAnswer, $planMeasure->getBlockSkipAnswer());
         self::assertFalse(self::getContainer()->get(SustainabilityPlanCollaborationService::class)->hasImplementationActivity($scenario['plan']));
         self::assertSame('incompleto', $scenario['plan']->getStatus());
     }
 
-    public function testOnlyObservationsAreAllowedBeforeElaborationIsComplete(): void
+    public function testOnlyCompleteDecisionIsAllowedBeforeElaborationIsComplete(): void
     {
         $controller = $this->getController();
         $method = new \ReflectionMethod($controller, 'isImplementationField');
         $method->setAccessible(true);
 
-        self::assertFalse($method->invoke($controller, 'observations'));
+        self::assertFalse($method->invoke($controller, 'completeDecision'));
         foreach (['implemented', 'verification', 'action_taken', 'executionIncident', 'evidence', 'evidence_metadata', 'evidenceMetadata', 'internalNotes', 'internal_notes', 'responsibles'] as $field) {
             self::assertTrue($method->invoke($controller, $field), $field . ' must remain blocked before Elaboración is complete.');
         }
@@ -225,56 +227,6 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
         self::assertSame(200, $clearResponse->getStatusCode());
         self::assertNull($scenario['planMeasure']->getExecutionIncident());
         self::assertSame('Observación general', $scenario['planMeasure']->getObservations());
-    }
-
-    public function testImplementationSavesAndClearsObservationsWithoutChangingExecutionIncident(): void
-    {
-        $scenario = $this->buildScenario([
-            'measure_id' => 996,
-            'observations' => 'Observación anterior',
-            'execution_incident' => 'Incidencia independiente',
-        ]);
-        $scenario['planMeasure']
-            ->setIsApplicable(true)
-            ->setIsCritical(false);
-
-        $saveResponse = $this->invokeUpdateSelection(
-            $scenario['controller'],
-            $this->createRequest([
-                'measureId' => (string) $scenario['measure']->getId(),
-                'field' => 'observations',
-                'value' => '  Observación nueva  ',
-            ]),
-            $scenario['measureRepository'],
-            $scenario['planMeasureRepository'],
-            $scenario['planRepository'],
-            $scenario['blockAnswerRepository'],
-            $scenario['activeProjectService'],
-            $this->createEntityManagerMock($scenario['planMeasure'])
-        );
-
-        self::assertSame(200, $saveResponse->getStatusCode());
-        self::assertSame('Observación nueva', $scenario['planMeasure']->getObservations());
-        self::assertSame('Incidencia independiente', $scenario['planMeasure']->getExecutionIncident());
-
-        $clearResponse = $this->invokeUpdateSelection(
-            $scenario['controller'],
-            $this->createRequest([
-                'measureId' => (string) $scenario['measure']->getId(),
-                'field' => 'observations',
-                'value' => '   ',
-            ]),
-            $scenario['measureRepository'],
-            $scenario['planMeasureRepository'],
-            $scenario['planRepository'],
-            $scenario['blockAnswerRepository'],
-            $scenario['activeProjectService'],
-            $this->createEntityManagerMock($scenario['planMeasure'])
-        );
-
-        self::assertSame(200, $clearResponse->getStatusCode());
-        self::assertNull($scenario['planMeasure']->getObservations());
-        self::assertSame('Incidencia independiente', $scenario['planMeasure']->getExecutionIncident());
     }
 
     public function testUpdateSelectionAllowsImplementedWhenActionAndEvidenceExist(): void
@@ -537,7 +489,7 @@ final class PlanControllerMeasureExecutionTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $scenario['measure']->getId(),
-            'field' => 'observations',
+            'field' => 'completeDecision',
             'value' => 'Observación nueva',
         ]);
         $entityManager = $this->createEntityManagerMock($scenario['planMeasure']);

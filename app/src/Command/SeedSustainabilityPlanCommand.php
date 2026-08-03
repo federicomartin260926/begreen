@@ -251,8 +251,8 @@ final class SeedSustainabilityPlanCommand extends Command
 
             $planMeasure->setWillImplement(null);
             $planMeasure->setIsCritical(null);
-            $planMeasure->setCriticalReason(null);
             $planMeasure->setImplemented(null);
+            $planMeasure->setObservations($this->randomObservation());
 
             return;
         }
@@ -265,7 +265,7 @@ final class SeedSustainabilityPlanCommand extends Command
             ++$seedSummary['applicableWillNotImplement'];
 
             $planMeasure->setIsCritical(null);
-            $planMeasure->setCriticalReason(null);
+            $planMeasure->setObservations($this->randomObservation());
 
             return;
         }
@@ -277,13 +277,11 @@ final class SeedSustainabilityPlanCommand extends Command
 
         if ($isCritical) {
             ++$seedSummary['critical'];
-            $planMeasure->setCriticalReason($this->randomCriticalReason());
-
-            return;
+        } else {
+            ++$seedSummary['nonCritical'];
         }
 
-        ++$seedSummary['nonCritical'];
-        $planMeasure->setCriticalReason(null);
+        $planMeasure->setObservations($this->randomObservation());
     }
 
     private function randomBoolean(): bool
@@ -291,15 +289,15 @@ final class SeedSustainabilityPlanCommand extends Command
         return random_int(0, 1) === 1;
     }
 
-    private function randomCriticalReason(): string
+    private function randomObservation(): string
     {
-        $reasons = [
+        $observations = [
             'Medida prioritaria por impacto operativo.',
             'Requiere coordinación con el equipo de producción.',
-            'Se ha marcado como crítica para seguimiento.',
+            'Decisión registrada para el seguimiento del plan.',
             'Necesita validación adicional antes de implementarla.',
         ];
 
-        return $reasons[random_int(0, count($reasons) - 1)];
+        return $observations[random_int(0, count($observations) - 1)];
     }
 }

@@ -80,7 +80,7 @@ final class PlanBlockQuestionService
                         ->setWillImplement(null)
                         ->setImplemented(null)
                         ->setIsCritical(null)
-                        ->setCriticalReason(null)
+                        ->setObservations(null)
                         ->setApplicabilitySource('manual')
                         ->setBlockSkipAnswer(null);
                 }
@@ -97,7 +97,7 @@ final class PlanBlockQuestionService
                 ->setWillImplement(null)
                 ->setImplemented(null)
                 ->setIsCritical(null)
-                ->setCriticalReason(null)
+                ->setObservations(null)
                 ->markAsBlockSkipped($blockAnswer);
         }
     }

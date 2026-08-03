@@ -64,6 +64,10 @@ final class PlanMeasureResumeService
                     return $lastIndex;
                 }
             }
+
+            if (trim((string) $planMeasure->getObservations()) === '') {
+                return $lastIndex;
+            }
         }
 
         return $hasMeasures ? $lastIndex : 0;

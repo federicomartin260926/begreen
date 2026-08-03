@@ -161,7 +161,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
                 ->setIsApplicable(true)
                 ->setWillImplement(true)
                 ->setIsCritical(true)
-                ->setCriticalReason('Motivo de Elaboración')
+                ->setObservations('Observación de Elaboración')
                 ->setImplemented(false)
         );
 

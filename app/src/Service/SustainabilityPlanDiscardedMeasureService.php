@@ -51,7 +51,6 @@ final class SustainabilityPlanDiscardedMeasureService
                 ->setIsApplicable(true)
                 ->setWillImplement(true)
                 ->setIsCritical(false)
-                ->setCriticalReason(null)
                 ->setImplemented(null)
                 ->markAsManual();
 

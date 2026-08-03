@@ -99,7 +99,7 @@ final class PlanBlockQuestionServiceTest extends TestCase
                 ->setWillImplement(true)
                 ->setImplemented(true)
                 ->setIsCritical(true)
-                ->setCriticalReason('Razón'),
+                ->setObservations('Observación'),
             202 => (new PlanMeasure())
                 ->setMeasure($blockMeasures[1])
                 ->setIsApplicable(false)
@@ -107,7 +107,7 @@ final class PlanBlockQuestionServiceTest extends TestCase
                 ->setWillImplement(null)
                 ->setImplemented(null)
                 ->setIsCritical(null)
-                ->setCriticalReason(null),
+                ->setObservations(null),
             203 => (new PlanMeasure())
                 ->setMeasure($blockMeasures[2])
                 ->setIsApplicable(false)
@@ -116,7 +116,7 @@ final class PlanBlockQuestionServiceTest extends TestCase
                 ->setWillImplement(true)
                 ->setImplemented(true)
                 ->setIsCritical(true)
-                ->setCriticalReason('Otra razón'),
+                ->setObservations('Otra observación'),
         ];
 
         $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
@@ -138,7 +138,7 @@ final class PlanBlockQuestionServiceTest extends TestCase
         self::assertNull($planMeasures[201]->willImplement());
         self::assertNull($planMeasures[201]->isImplemented());
         self::assertNull($planMeasures[201]->isCritical());
-        self::assertNull($planMeasures[201]->getCriticalReason());
+        self::assertNull($planMeasures[201]->getObservations());
 
         self::assertFalse($planMeasures[202]->isApplicable());
         self::assertSame('manual', $planMeasures[202]->getApplicabilitySource());

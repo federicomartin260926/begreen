@@ -30,7 +30,8 @@ final class PlanMeasureResumeServiceTest extends TestCase
                 ->setMeasure($measures[0])
                 ->setIsApplicable(true)
                 ->setIsCritical(true)
-                ->setWillImplement(true),
+                ->setWillImplement(true)
+                ->setObservations('Observación completa'),
             (new PlanMeasure())
                 ->setMeasure($measures[1])
                 ->setIsApplicable(false)
@@ -62,12 +63,14 @@ final class PlanMeasureResumeServiceTest extends TestCase
                 ->setIsApplicable(true)
                 ->setWillImplement(false)
                 ->setIsCritical(null)
+                ->setObservations('Observación de descarte')
                 ->markAsManual(),
             (new PlanMeasure())
                 ->setMeasure($measures[1])
                 ->setIsApplicable(true)
                 ->setWillImplement(true)
                 ->setIsCritical(true)
+                ->setObservations('Observación crítica')
                 ->markAsManual(),
         ];
 
@@ -87,10 +90,12 @@ final class PlanMeasureResumeServiceTest extends TestCase
                 ->setMeasure($measures[0])
                 ->setIsApplicable(true)
                 ->setIsCritical(false)
-                ->setWillImplement(true),
+                ->setWillImplement(true)
+                ->setObservations('Observación completa'),
             (new PlanMeasure())
                 ->setMeasure($measures[1])
                 ->setIsApplicable(false)
+                ->setObservations('No aplica')
                 ->setApplicabilitySource('manual'),
             (new PlanMeasure())
                 ->setMeasure($measures[2])
@@ -115,7 +120,8 @@ final class PlanMeasureResumeServiceTest extends TestCase
                 ->setMeasure($measures[0])
                 ->setIsApplicable(true)
                 ->setIsCritical(false)
-                ->setWillImplement(true),
+                ->setWillImplement(true)
+                ->setObservations('Observación completa'),
             (new PlanMeasure())
                 ->setMeasure($measures[1])
                 ->setIsApplicable(false)

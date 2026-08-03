@@ -257,9 +257,9 @@ final class SustainabilityGamificationServiceTest extends TestCase
         $critical
             ->setWillImplement(true)
             ->setIsCritical(true)
-            ->setCriticalReason('Motivo obligatorio');
+            ->setObservations('Observación obligatoria');
 
-        self::assertNull($service->evaluate($plan, $project, $critical, $before, 'criticalReason'));
+        self::assertNull($service->evaluate($plan, $project, $critical, $before, 'observations'));
         self::assertSame([], $catalog->calls);
         self::assertFalse($plan->hasPendingGamificationMessage());
     }

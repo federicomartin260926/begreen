@@ -80,6 +80,7 @@ final class SustainabilityPlanDiscardedMeasureServiceTest extends TestCase
             ->setMeasure($notImplemented)
             ->setIsApplicable(true)
             ->setWillImplement(false)
+            ->setObservations('Decisión descartada')
             ->markAsManual();
         $plan->addPlanMeasure($planMeasureNo);
 
@@ -107,7 +108,7 @@ final class SustainabilityPlanDiscardedMeasureServiceTest extends TestCase
         self::assertTrue($planMeasureNo->isApplicable());
         self::assertTrue($planMeasureNo->willImplement());
         self::assertFalse($planMeasureNo->isCritical());
-        self::assertNull($planMeasureNo->getCriticalReason());
+        self::assertSame('Decisión descartada', $planMeasureNo->getObservations());
         self::assertSame('manual', $planMeasureNo->getApplicabilitySource());
 
         self::assertNull($service->recoverDiscardedMeasure($plan, $project, $notApplicable->getId() ?? 0));

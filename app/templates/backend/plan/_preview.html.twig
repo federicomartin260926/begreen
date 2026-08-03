@@ -125,8 +125,8 @@
                                         {{ pm.isCritical is same as(true)
                                             ? ('backend.plan.preview.yes'|trans)
                                             : (pm.isCritical is same as(false) ? ('backend.plan.preview.no'|trans) : '—') }}
-                                        {% if pm.criticalReason %}
-                                            <div class="small text-muted mt-1">{{ pm.criticalReason }}</div>
+                                        {% if pm.observations %}
+                                            <div class="small text-muted mt-1">{{ pm.observations }}</div>
                                         {% endif %}
                                     </td>
                                     <td>

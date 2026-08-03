@@ -412,21 +412,6 @@ export default class extends Controller {
     box.classList.toggle('d-none');
   }
 
-  toggleCriticalReasonVisibility(e) {
-    const inlineBox = e.currentTarget.closest('[data-plan-review-target="inlineEdit"]') || this.element;
-    const group = inlineBox.querySelector('[data-critical-reason-group]');
-    if (!group) return;
-
-    const val = String(e.currentTarget.value).toLowerCase(); // "true" | "false"
-    if (val === 'true') {
-      group.style.display = '';
-    } else {
-      group.style.display = 'none';
-      const input = group.querySelector('input, textarea');
-      if (input) input.value = '';
-    }
-  }
-
   onAppliesChange(e) {
     const box = e.currentTarget.closest('[data-plan-review-target="inlineEdit"]');
     if (!box) return;
@@ -436,19 +421,32 @@ export default class extends Controller {
     const critNo   = box.querySelector('input[id^="critical-no-"]');
     const implYes  = box.querySelector('input[id^="implement-yes-"]');
     const implNo   = box.querySelector('input[id^="implement-no-"]');
-    const reasonGp = box.querySelector('[data-critical-reason-group]');
-    const reasonEl = box.querySelector('#' + (reasonGp?.querySelector('input,textarea')?.id || ''));
     const setDisabled = (el, disabled) => { if (el) el.disabled = disabled; };
 
     if (!appliesYes) {
       [critYes, critNo, implYes, implNo].forEach(el => { if (el) { el.checked = false; setDisabled(el, true); } });
-      if (reasonGp) reasonGp.style.display = 'none';
-      if (reasonEl) reasonEl.value = '';
     } else {
-      [critYes, critNo, implYes, implNo].forEach(el => setDisabled(el, false));
-      const criticalCheckedYes = critYes && critYes.checked;
-      if (reasonGp) reasonGp.style.display = criticalCheckedYes ? '' : 'none';
+      [implYes, implNo].forEach(el => setDisabled(el, false));
+      const implementationSelected = implYes?.checked === true;
+      [critYes, critNo].forEach(el => setDisabled(el, !implementationSelected));
     }
+  }
+
+  onImplementChange(e) {
+    const box = e.currentTarget.closest('[data-plan-review-target="inlineEdit"]');
+    if (!box) return;
+
+    const willImplement = e.currentTarget.value === 'true';
+    const criticalInputs = [
+      box.querySelector('input[id^="critical-yes-"]'),
+      box.querySelector('input[id^="critical-no-"]')
+    ];
+
+    criticalInputs.forEach((input) => {
+      if (!input) return;
+      input.disabled = !willImplement;
+      if (!willImplement) input.checked = false;
+    });
   }
 
   async saveInlineEdit(event) {
@@ -470,40 +468,37 @@ export default class extends Controller {
       const valApplies   = getRadioVal('applies');
       const valCritical  = getRadioVal('critical');
       const valImplement = getRadioVal('implement');
+      const observationsEl = inlineBox.querySelector(`#decision-observations-${measureId}`);
+      const observations = String(observationsEl?.value || '').trim();
 
-      const textReasonEl = inlineBox.querySelector(`#critical-reason-${measureId}`);
-      const reasonText   = textReasonEl ? (textReasonEl.value || '').trim() : '';
-
-      if (valApplies === 'false') {
-        updates.push({ field: 'isApplicable', value: 'false' });
-      } else {
-        if (valApplies === 'true' && (valCritical === null || valImplement === null)) {
-          this.showModal(this.t('modal.missing_title'), this.t('save_missing_fields_html'));
-          return;
-        }
-        if (valCritical === 'true' && reasonText === '') {
-          this.showModal(this.t('modal.missing_title'), this.t('critical_reason_required_html'));
-          return;
-        }
-        if (valApplies !== null)    updates.push({ field: 'isApplicable',    value: valApplies });
-        if (valCritical !== null)   updates.push({ field: 'critical',        value: valCritical });
-        if (valCritical === 'true') updates.push({ field: 'critical_reason', value: reasonText });
-        if (valImplement !== null)  updates.push({ field: 'willImplement',   value: valImplement });
+      if (valApplies === null
+        || (valApplies === 'true' && valImplement === null)
+        || (valApplies === 'true' && valImplement === 'true' && valCritical === null)) {
+        this.showModal(this.t('modal.missing_title'), this.t('save_missing_fields_html'));
+        return;
       }
+
+      if (observations === '') {
+        this.showModal(this.t('modal.missing_title'), this.t('observations_required_html'));
+        return;
+      }
+
+      const decision = valApplies === 'false' ? 'na' : valImplement;
+      updates.push({ field: 'decision', value: decision });
+      if (decision === 'true') updates.push({ field: 'critical', value: valCritical });
+      updates.push({ field: 'completeDecision', value: observations });
     } else if (saveSection === 'actions') {
       // ======= BLOQUE: ACCIONES =======
       const implementedEl   = document.getElementById(`implemented-${measureId}`);
       const verificationEl  = document.getElementById(`verification-${measureId}`);
       const actionTakenEl   = document.getElementById(`action-taken-${measureId}`);
       const executionIncidentEl = document.getElementById(`execution-incident-${measureId}`);
-      const observationsEl  = document.getElementById(`observations-${measureId}`);
       const internalNotesEl = document.getElementById(`internal-notes-${measureId}`);
       const responsiblesEl  = document.getElementById(`responsibles-${measureId}`);
 
       if (canSend(verificationEl)) updates.push({ field: 'verification', value: verificationEl.checked ? 'true' : 'false' });
       if (canSend(actionTakenEl))  updates.push({ field: 'action_taken', value: (actionTakenEl.value || '').trim() });
       if (canSend(executionIncidentEl)) updates.push({ field: 'executionIncident', value: (executionIncidentEl.value || '').trim() });
-      if (canSend(observationsEl)) updates.push({ field: 'observations', value: (observationsEl.value || '').trim() });
       if (canSend(internalNotesEl)) updates.push({ field: 'internal_notes', value: (internalNotesEl.value || '').trim() });
       if (responsiblesEl && !responsiblesEl.disabled) {
         const selectedResponsibleIds = Array.from(responsiblesEl.selectedOptions || []).map(opt => opt.value).join(',');

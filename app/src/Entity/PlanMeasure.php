@@ -61,9 +61,6 @@ class PlanMeasure
     private ?bool $isCritical = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $criticalReason = null;
-
-    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $actionTaken = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
@@ -207,9 +204,6 @@ class PlanMeasure
     // NUEVOS getters/setters
     public function isCritical(): ?bool { return $this->isCritical; }
     public function setIsCritical(?bool $critical): static { $this->isCritical = $critical; return $this; }
-
-    public function getCriticalReason(): ?string { return $this->criticalReason; }
-    public function setCriticalReason(?string $reason): static { $this->criticalReason = $reason; return $this; }
 
     public function getActionTaken(): ?string { return $this->actionTaken; }
     public function setActionTaken(?string $actionTaken): self { $this->actionTaken = $actionTaken; return $this; }

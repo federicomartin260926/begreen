@@ -982,11 +982,13 @@ class PlanController extends AbstractController
 
             case 'isApplicable':
                 $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
+                $sameApplicability = $planMeasure->isApplicable() === $bool;
                 $planMeasure->setIsApplicable($bool);
-                $planMeasure->markAsManual();
+                if (!$sameApplicability) {
+                    $planMeasure->markAsManual();
+                }
                 if ($bool === false) {
                     $planMeasure->setIsCritical(null);
-                    $planMeasure->setCriticalReason(null);
                     $planMeasure->setWillImplement(null);
                     $planMeasure->setImplemented(null);
                 }
@@ -1002,7 +1004,6 @@ class PlanController extends AbstractController
                     $planMeasure->setIsApplicable(true);
                     $planMeasure->setWillImplement($decision === 'true');
                     $planMeasure->setIsCritical(null);
-                    $planMeasure->setCriticalReason(null);
                     $planMeasure->setImplemented(null);
                     $planMeasure->markAsManual();
                     break;
@@ -1011,7 +1012,6 @@ class PlanController extends AbstractController
                 if ($decision === 'na') {
                     $planMeasure->setIsApplicable(false);
                     $planMeasure->setIsCritical(null);
-                    $planMeasure->setCriticalReason(null);
                     $planMeasure->setWillImplement(null);
                     $planMeasure->setImplemented(null);
                     $planMeasure->markAsManual();
@@ -1025,27 +1025,11 @@ class PlanController extends AbstractController
                 $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
                 $planMeasure->setIsCritical($bool);
                 $planMeasure->markAsManual();
-                if ($bool === false) {
-                    $planMeasure->setCriticalReason(null);
-                }
-                break;
-
-            case 'criticalReason':
-            case 'critical_reason':
-                $text = trim((string)($value ?? ''));
-                if ($response = $this->validateCriticalReasonField($planMeasure, $text)) {
-                    return $response;
-                }
-                $planMeasure->setCriticalReason($text !== '' ? $text : null);
-                $planMeasure->markAsManual();
                 break;
 
             case 'willImplement':
                 // Solo permitir elegir implementar si aplica === true y la crítica fue respondida (null=no respondida)
                 if ($planMeasure->isApplicable() === true && $planMeasure->isCritical() !== null) {
-                    if ($response = $this->validateCriticalReasonBeforeImplementing($planMeasure)) {
-                        return $response;
-                    }
                     $bool = ($value === 'true') ? true : (($value === 'false') ? false : null);
                     $planMeasure->setWillImplement($bool);
                     $planMeasure->markAsManual();
@@ -1125,9 +1109,12 @@ class PlanController extends AbstractController
                 $planMeasure->normalizeImplementedState();
                 break;
 
-            case 'observations':
-                $text = trim((string)$value);
-                $planMeasure->setObservations($text !== '' ? $text : null);
+            case 'completeDecision':
+                $text = trim((string) $value);
+                if ($response = $this->validateCompletedDecision($planMeasure, $text)) {
+                    return $response;
+                }
+                $planMeasure->setObservations($text);
                 break;
 
             case 'executionIncident':
@@ -1174,15 +1161,6 @@ class PlanController extends AbstractController
 
         $em->persist($planMeasure);
         $em->flush();
-
-        if ($field === 'observations' && $plan->getStatus() !== 'completo') {
-            return new JsonResponse([
-                'success' => true,
-                'nextUrl' => null,
-                'unchangedDecision' => false,
-                'implemented' => $planMeasure->isImplemented(),
-            ]);
-        }
 
         if ($gamificationBefore !== null && !$samePrimaryDecision) {
             $this->gamificationService->evaluateWithLock(
@@ -2437,29 +2415,24 @@ class PlanController extends AbstractController
         return $result;
     }
 
-    private function hasCriticalReason(PlanMeasure $planMeasure): bool
+    private function hasObservations(PlanMeasure $planMeasure): bool
     {
-        return trim((string) ($planMeasure->getCriticalReason() ?? '')) !== '';
+        return trim((string) ($planMeasure->getObservations() ?? '')) !== '';
     }
 
-    private function validateCriticalReasonField(PlanMeasure $planMeasure, string $text): ?JsonResponse
+    private function validateCompletedDecision(PlanMeasure $planMeasure, string $observations): ?JsonResponse
     {
-        if ($text === '' && $planMeasure->isCritical() === true) {
+        if (!$this->hasCompleteDecisionStructure($planMeasure)) {
             return new JsonResponse([
                 'success' => false,
-                'error'   => $this->criticalReasonRequiredMessage(),
+                'error' => $this->t->trans('backend.plan.flash.pending_measure'),
             ], 400);
         }
 
-        return null;
-    }
-
-    private function validateCriticalReasonBeforeImplementing(PlanMeasure $planMeasure): ?JsonResponse
-    {
-        if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
+        if ($observations === '') {
             return new JsonResponse([
                 'success' => false,
-                'error'   => $this->criticalReasonRequiredMessage(),
+                'error' => $this->observationsRequiredMessage(),
             ], 400);
         }
 
@@ -2472,6 +2445,12 @@ class PlanController extends AbstractController
     }
 
     private function canAdvanceFromCurrentMeasure(PlanMeasure $planMeasure): bool
+    {
+        return $this->hasCompleteDecisionStructure($planMeasure)
+            && $this->hasObservations($planMeasure);
+    }
+
+    private function hasCompleteDecisionStructure(PlanMeasure $planMeasure): bool
     {
         $applies = $planMeasure->isApplicable();
         if ($applies === false) {
@@ -2492,45 +2471,25 @@ class PlanController extends AbstractController
         }
 
         $critical = $planMeasure->isCritical();
-        if ($critical === false) {
-            return true;
-        }
-
-        if ($critical === true) {
-            return $this->hasCriticalReason($planMeasure);
-        }
-
-        return false;
+        return $critical === false || $critical === true;
     }
 
-    private function criticalReasonRequiredMessage(): string
+    private function observationsRequiredMessage(): string
     {
-        return $this->t->trans('backend.plan.measures.critical_reason_required');
+        return $this->t->trans('backend.plan.measures.observations_required');
     }
 
     private function pendingMeasureFlashMessage(string $reason): string
     {
         return match ($reason) {
-            'critical_reason_missing' => 'backend.plan.flash.pending_critical_reason',
+            'observations_missing' => 'backend.plan.flash.pending_observations',
             default => 'backend.plan.flash.pending_measure',
         };
     }
 
     private function isTerminalSelectionAction(string $field, mixed $value): bool
     {
-        if ($field === 'decision') {
-            return in_array((string) $value, ['false', 'na'], true);
-        }
-
-        if ($field === 'critical') {
-            return $value === 'false';
-        }
-
-        if ($field === 'willImplement') {
-            return true;
-        }
-
-        return $field === 'isApplicable' && $value === 'false';
+        return $field === 'completeDecision';
     }
 
     private function resolveTerminalSelectionNextUrl(Plan $plan, bool $planComplete, int $nextIndex): string

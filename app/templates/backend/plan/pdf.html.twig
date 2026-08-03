@@ -189,7 +189,7 @@
             {% if plan.status == 'completo' %}
               <th>{{ 'backend.plan.pdf.th.implemented_q'|trans }}</th>
             {% endif %}
-            <th>{{ 'backend.plan.pdf.th.critical_reason'|trans }}</th>
+            <th>{{ 'backend.plan.pdf.th.critical_observations'|trans }}</th>
             <th>{{ 'backend.plan.measure.department'|trans }}</th>
             <th>{{ 'backend.plan.pdf.th.ods'|trans }}</th>
             <th>{{ 'backend.plan.review.verification_sources'|trans }}</th>
@@ -220,8 +220,8 @@
               {{ pm.isCritical is same as(true)
                   ? ('backend.plan.preview.yes'|trans)
                   : (pm.isCritical is same as(false) ? ('backend.plan.preview.no'|trans) : '—') }}
-              {% if pm.criticalReason %}
-                <div style="font-size:11px;color:#666;margin-top:4px;">{{ pm.criticalReason }}</div>
+              {% if pm.observations %}
+                <div style="font-size:11px;color:#666;margin-top:4px;">{{ pm.observations }}</div>
               {% endif %}
             </td>
             <td>

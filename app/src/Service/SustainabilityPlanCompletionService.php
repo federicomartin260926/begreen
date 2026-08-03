@@ -96,9 +96,9 @@ final class SustainabilityPlanCompletionService
         return null;
     }
 
-    private function hasCriticalReason(PlanMeasure $planMeasure): bool
+    private function hasObservations(PlanMeasure $planMeasure): bool
     {
-        return trim((string) ($planMeasure->getCriticalReason() ?? '')) !== '';
+        return trim((string) ($planMeasure->getObservations() ?? '')) !== '';
     }
 
     /**
@@ -165,15 +165,15 @@ final class SustainabilityPlanCompletionService
                         continue;
                     }
 
-                    if ($planMeasure->isCritical() === true && !$this->hasCriticalReason($planMeasure)) {
-                        $pending[] = [
-                            'measure' => $measure,
-                            'index' => (int) $index,
-                            'reason' => 'critical_reason_missing',
-                        ];
-                        continue;
-                    }
                 }
+            }
+
+            if (!$this->hasObservations($planMeasure)) {
+                $pending[] = [
+                    'measure' => $measure,
+                    'index' => (int) $index,
+                    'reason' => 'observations_missing',
+                ];
             }
         }
 
