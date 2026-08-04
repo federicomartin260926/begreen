@@ -2,7 +2,7 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User};
+use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User, VerificationSource};
 use App\Enum\CommercialPhase;
 use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
 use App\Service\PlanMeasureCatalogResolver;
@@ -711,6 +711,13 @@ class PlanController extends AbstractController
         $projectTierSummary = $this->featureGate->getPlanDescription($project, $reviewPhase) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project, $reviewPhase);
         $upgradeCta = $this->buildUpgradeCta($project, $plan, $reviewPhase, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
+        $verificationSources = $this->taxonomyPresenter->verificationSourceCatalog(
+            $em->getRepository(VerificationSource::class)->findBy([], [
+                'sortOrder' => 'ASC',
+                'name' => 'ASC',
+                'id' => 'ASC',
+            ])
+        );
 
         return $this->render('backend/plan/review.html.twig', [
             'project'          => $project,
@@ -728,6 +735,7 @@ class PlanController extends AbstractController
             'upgradeCta'       => $upgradeCta,
             'hasWatermark'     => $this->featureGate->hasWatermark($project, $reviewPhase),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
+            'verificationSources' => $verificationSources,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
             'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
@@ -1030,13 +1038,7 @@ class PlanController extends AbstractController
 
                 $currentEvidencePaths = array_fill_keys($planMeasure->getEvidencePaths(), true);
 
-                $allowedSourceCodes = [];
-                foreach ($measure->getResolvedVerificationSourceLinks() as $link) {
-                    $sourceCode = $link->getVerificationSource()?->getCode();
-                    if (is_string($sourceCode) && trim($sourceCode) !== '') {
-                        $allowedSourceCodes[$sourceCode] = true;
-                    }
-                }
+                $allowedSourceCodes = $this->verificationSourceCodes($em);
 
                 $metadata = [];
                 foreach ($rawMetadata as $path => $sourceCode) {
@@ -1493,17 +1495,11 @@ class PlanController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
         }
 
-        $allowedSourceCodes = [];
-        foreach ($measure->getResolvedVerificationSourceLinks() as $link) {
-            $code = $link->getVerificationSource()?->getCode();
-            if (is_string($code) && trim($code) !== '') {
-                $allowedSourceCodes[$code] = true;
-            }
-        }
-        if ($allowedSourceCodes !== [] && $sourceCode === '') {
+        $allowedSourceCodes = $this->verificationSourceCodes($em);
+        if ($sourceCode === '') {
             return new JsonResponse(['success' => false, 'error' => 'Debes seleccionar una fuente de verificación.'], 400);
         }
-        if ($sourceCode !== '' && !isset($allowedSourceCodes[$sourceCode])) {
+        if (!isset($allowedSourceCodes[$sourceCode])) {
             return new JsonResponse(['success' => false, 'error' => 'Fuente de verificación inválida.'], 400);
         }
 
@@ -1573,6 +1569,24 @@ class PlanController extends AbstractController
         $em->flush();
 
         return new JsonResponse(['success' => true, 'files' => $added]);
+    }
+
+    /** @return array<string, true> */
+    private function verificationSourceCodes(EntityManagerInterface $em): array
+    {
+        $codes = [];
+        foreach ($em->getRepository(VerificationSource::class)->findAll() as $source) {
+            if (!$source instanceof VerificationSource) {
+                continue;
+            }
+
+            $code = trim($source->getCode());
+            if ($code !== '') {
+                $codes[$code] = true;
+            }
+        }
+
+        return $codes;
     }
 
     #[Route('/delete-evidence', name: 'delete_evidence', methods: ['POST'])]

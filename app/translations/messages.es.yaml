@@ -1547,10 +1547,10 @@ backend:
         implemented_hint: "Primero marca “Se implementará”."
         verified: "Chequeada"
       execution_decision:
-        not_executable: "No ejecutable"
-        undecided: "Sin decisión"
+        not_executed: "No ejecutada"
+        standby: "Standby"
         executed: "Ejecutada"
-        help: "Izquierda: No ejecutable · Centro: Sin decisión · Derecha: Ejecutada. Para quedar Implementada, Ejecutada requiere Acción realizada y Evidencia."
+        help: "Selecciona No ejecutada, Standby o Ejecutada. Para quedar Implementada, Ejecutada requiere Acción realizada y Evidencia."
       action_taken: "Acción realizada"
       action_taken_ph: "Describe la acción realizada…"
       evidences: "Evidencias"

@@ -7,7 +7,6 @@
             {% set operationalState = item.operationalState %}
             {% set collapseId = 'mrow_' ~ measure.id %}
             {% set isOpen = openId and openId == measure.id %}
-            {% set statusColor = 'plan-measure-status-dot--' ~ operationalState %}
             {% set statusTitle = ('backend.plan.review.status_' ~ operationalState)|trans %}
             {% set showStar = pm.isCritical is same as(true) %}
 
@@ -16,10 +15,6 @@
                      data-measure-id="{{ measure.id }}">
                 <div class="implementation-measure-row d-flex flex-wrap align-items-center gap-2 gap-md-3 p-2 p-md-3 rounded-3"
                      data-measure-summary>
-                    <span class="implementation-measure-row__position text-muted small fw-semibold">
-                        #{{ positionById[measure.id]|default(loop.index) }}
-                    </span>
-                    <span class="plan-measure-status-dot {{ statusColor }}" title="{{ statusTitle }}" aria-label="{{ statusTitle }}"></span>
                     <div class="implementation-measure-row__title flex-grow-1 min-w-0 fw-semibold">
                         {{ measure.displayNameForReview }}
                     </div>
@@ -36,15 +31,6 @@
                             </span>
                         {% endif %}
                         <span class="badge implementation-measure-row__state">{{ statusTitle }}</span>
-                        {% if is_granted('ROLE_SUPER_ADMIN') %}
-                            <a href="{{ path('admin_measures_edit', { id: measure.id }) }}"
-                               class="btn btn-sm btn-link text-muted p-1"
-                               target="_blank" rel="noopener"
-                               aria-label="{{ 'backend.plan.review.edit_in_admin'|trans }}"
-                               title="{{ 'backend.plan.review.edit_in_admin'|trans }}">
-                                <i class="bi bi-gear" aria-hidden="true"></i>
-                            </a>
-                        {% endif %}
                         <button class="btn btn-sm {{ isOpen ? 'btn-primary' : 'btn-outline-primary' }}"
                                 type="button"
                                 data-bs-toggle="collapse"
@@ -64,15 +50,13 @@
                     {% include 'backend/plan/_implementation_measure_detail.html.twig' with {
                         measure: measure,
                         pm: pm,
-                        operationalState: operationalState,
-                        statusTitle: statusTitle,
-                        position: positionById[measure.id]|default(loop.index),
                         taxonomyPresenter: taxonomyPresenter,
                         project: project,
                         crewMembersByMeasure: crewMembersByMeasure|default([]),
                         canUseChecklist: canUseChecklist|default(false),
                         canUseResponsibles: canUseResponsibles|default(false),
-                        canUseInternalNotes: canUseInternalNotes|default(false)
+                        canUseInternalNotes: canUseInternalNotes|default(false),
+                        verificationSources: verificationSources|default([])
                     } only %}
                 </div>
             </article>

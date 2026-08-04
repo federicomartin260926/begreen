@@ -28,6 +28,7 @@ use App\Service\SustainabilityGamificationMessageCatalog;
 use App\Service\SustainabilityGamificationService;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -1318,6 +1319,10 @@ final class PlanControllerNavigationTest extends KernelTestCase
             'canUseChecklist' => false,
             'canUseResponsibles' => false,
             'canUseInternalNotes' => false,
+            'verificationSources' => [
+                ['code' => 'invoice', 'displayName' => 'Factura'],
+                ['code' => 'manual', 'displayName' => 'Informe manual'],
+            ],
         ]);
 
         self::assertMatchesRegularExpression('/<input[^>]*name="implement-' . $measure->getId() . '"[^>]*value="true"[^>]*checked[^>]*>/', $html);
@@ -1328,7 +1333,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('id="decision-observations-' . $measure->getId() . '"', $html);
         self::assertStringContainsString('data-save-section="state"', $html);
         self::assertStringContainsString('Modificar decisión', $html);
-        self::assertStringContainsString('Decisión de Elaboración', $html);
+        self::assertStringNotContainsString('Decisión de Elaboración', $html);
         self::assertStringContainsString('Contexto y clasificación', $html);
         self::assertStringContainsString('Descripción', $html);
         self::assertStringContainsString('Ejecución', $html);
@@ -1346,11 +1351,20 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertMatchesRegularExpression('/implementation-execution-panel--false[^>]*d-none[^>]*aria-hidden="true"/', $html);
         self::assertStringContainsString('Evidencias', $html);
         self::assertSame(1, substr_count($html, 'id="decision-modal-' . $measure->getId() . '"'));
-        self::assertSame(1, substr_count($html, 'id="evidence-modal-' . $measure->getId() . '"'));
+        self::assertSame(1, substr_count($html, '<div class="modal fade" id="evidence-modal-' . $measure->getId() . '"'));
         self::assertSame(1, substr_count($html, 'id="action-taken-' . $measure->getId() . '"'));
         self::assertSame(1, substr_count($html, 'id="execution-incident-' . $measure->getId() . '"'));
         self::assertStringNotContainsString('Fuentes de verificación sugeridas', $html);
         self::assertStringContainsString('data-action="change->plan-review#toggleImplemented"', $html);
+        self::assertSame(3, substr_count($html, 'name="implemented-' . $measure->getId() . '"'));
+        self::assertMatchesRegularExpression('/id="implemented-null-' . $measure->getId() . '"[\s\S]*?checked>/', $html);
+        self::assertStringContainsString('No ejecutada', $html);
+        self::assertStringContainsString('Standby', $html);
+        self::assertStringContainsString('Ejecutada', $html);
+        self::assertStringContainsString('class="btn-group w-100"', $html);
+        self::assertStringNotContainsString('implemented-switch', $html);
+        self::assertMatchesRegularExpression('/<option value="invoice">\s*Factura\s*<\/option>/', $html);
+        self::assertMatchesRegularExpression('/<option value="manual">\s*Informe manual\s*<\/option>/', $html);
 
         $requestStack->pop();
     }
@@ -1550,7 +1564,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame('updated private note', $planMeasure->getInternalNotes());
     }
 
-    public function testUpdateSelectionPersistsEvidenceMetadataOnlyForVisibleFilesAndAllowedSources(): void
+    public function testUpdateSelectionPersistsEvidenceMetadataForVisibleFilesAndAnyCatalogSource(): void
     {
         self::bootKernel();
         $basicPlan = $this->makeCommercialPlan('basic', [
@@ -1632,7 +1646,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $planMeasureRepository = $this->createPlanMeasureRepositoryMock($measure, $planMeasure);
         $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
         $activeProjectService = $this->createActiveProjectServiceMock($project);
-        $entityManager = $this->createEntityManagerMock($planMeasure);
+        $entityManager = $this->createEntityManagerMock($planMeasure, [$sourceAllowed, $sourceOther]);
 
         $response = $this->invokeUpdateSelection(
             $controller,
@@ -1650,6 +1664,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($data['success']);
         self::assertSame([
             '/uploads/evidences/doc-1.pdf' => 'invoice',
+            '/uploads/evidences/doc-2.pdf' => 'manual',
         ], $planMeasure->getEvidenceMetadata());
         self::assertSame("/uploads/evidences/doc-1.pdf\n/uploads/evidences/doc-2.pdf", $planMeasure->getEvidence());
     }
@@ -1722,7 +1737,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         ], $planMeasure->getEvidenceMetadata());
     }
 
-    public function testUploadEvidencesStoresMetadataForTheNewFile(): void
+    public function testUploadEvidencesStoresNonPriorityCatalogSourceForTheNewFile(): void
     {
         self::bootKernel();
         $controller = $this->getController();
@@ -1741,6 +1756,12 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setName('Invoice')
             ->setSortOrder(10);
         $this->setEntityId($sourceAllowed, 31);
+
+        $sourceNonPriority = (new VerificationSource())
+            ->setCode('manual')
+            ->setName('Manual note')
+            ->setSortOrder(20);
+        $this->setEntityId($sourceNonPriority, 32);
 
         $measure = (new Measure())
             ->setProtocol($protocol)
@@ -1776,7 +1797,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $measure->getId(),
-            'source_code' => 'invoice',
+            'source_code' => 'manual',
         ]);
         $request->files->set('evidences', [$uploadedFile]);
 
@@ -1786,6 +1807,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('persist')->with($planMeasure);
         $entityManager->expects(self::once())->method('flush');
+        $entityManager->method('getRepository')
+            ->with(VerificationSource::class)
+            ->willReturn($this->createVerificationSourceRepositoryMock([$sourceAllowed, $sourceNonPriority]));
 
         $slugger = $this->createMock(\Symfony\Component\String\Slugger\SluggerInterface::class);
         $activeProjectService = $this->createActiveProjectServiceMock($project);
@@ -1810,7 +1834,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame('/uploads/evidences/existing.pdf' . "\n" . $data['files'][0], $planMeasure->getEvidence());
         self::assertSame([
             '/uploads/evidences/existing.pdf' => 'invoice',
-            $data['files'][0] => 'invoice',
+            $data['files'][0] => 'manual',
         ], $planMeasure->getEvidenceMetadata());
     }
 
@@ -1834,6 +1858,12 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setScore(5)
             ->setName('Medida con límite');
         $this->setEntityId($targetMeasure, 994);
+
+        $source = (new VerificationSource())
+            ->setCode('invoice')
+            ->setName('Invoice')
+            ->setSortOrder(10);
+        $this->setEntityId($source, 33);
 
         $plan = (new Plan())
             ->setProject($project)
@@ -1863,6 +1893,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $targetMeasure->getId(),
+            'source_code' => 'invoice',
         ]);
         $request->files->set('evidences', [$uploadedFile]);
 
@@ -1873,6 +1904,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::never())->method('persist');
         $entityManager->expects(self::never())->method('flush');
+        $entityManager->method('getRepository')
+            ->with(VerificationSource::class)
+            ->willReturn($this->createVerificationSourceRepositoryMock([$source]));
 
         $slugger = $this->createMock(\Symfony\Component\String\Slugger\SluggerInterface::class);
         $activeProjectService = $this->createActiveProjectServiceMock($project);
@@ -2041,6 +2075,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::never())->method('persist');
         $entityManager->expects(self::never())->method('flush');
+        $entityManager->method('getRepository')
+            ->with(VerificationSource::class)
+            ->willReturn($this->createVerificationSourceRepositoryMock([$sourceAllowed]));
 
         $slugger = $this->createMock(\Symfony\Component\String\Slugger\SluggerInterface::class);
         $activeProjectService = $this->createActiveProjectServiceMock($project);
@@ -3955,13 +3992,28 @@ final class PlanControllerNavigationTest extends KernelTestCase
         return $service;
     }
 
-    private function createEntityManagerMock(PlanMeasure $planMeasure): EntityManagerInterface
+    /** @param VerificationSource[]|null $verificationSources */
+    private function createEntityManagerMock(PlanMeasure $planMeasure, ?array $verificationSources = null): EntityManagerInterface
     {
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('persist')->with($planMeasure);
         $entityManager->expects(self::exactly(2))->method('flush');
+        if ($verificationSources !== null) {
+            $entityManager->method('getRepository')
+                ->with(VerificationSource::class)
+                ->willReturn($this->createVerificationSourceRepositoryMock($verificationSources));
+        }
 
         return $entityManager;
+    }
+
+    /** @param VerificationSource[] $sources */
+    private function createVerificationSourceRepositoryMock(array $sources): EntityRepository
+    {
+        $repository = $this->createMock(EntityRepository::class);
+        $repository->method('findAll')->willReturn($sources);
+
+        return $repository;
     }
 
     private function createEntityManagerMockForIgnoredSelection(): EntityManagerInterface

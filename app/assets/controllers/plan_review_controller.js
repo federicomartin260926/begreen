@@ -27,7 +27,6 @@ export default class extends Controller {
   }
 
   connect() {
-    this.initializeImplementedSwitches();
     this.initializeImplementationCollapses();
     this.inlineEditTargets.forEach((box) => this.updateDecisionObservationUi(box));
 
@@ -175,7 +174,6 @@ export default class extends Controller {
   }
 
   disconnect() {
-    this.implementedSwitchAbortController?.abort();
     this.implementationCollapseAbortController?.abort();
   }
 
@@ -238,98 +236,6 @@ export default class extends Controller {
       else url.searchParams.set(key, String(value));
     });
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-  }
-
-  initializeImplementedSwitches() {
-    this.implementedSwitchAbortController?.abort();
-    this.implementedSwitchAbortController = new AbortController();
-    const { signal } = this.implementedSwitchAbortController;
-
-    this.element.querySelectorAll('[data-implemented-control]').forEach((control) => {
-      const measureContainer = control.closest('[data-plan-measure-row]');
-      this.updateExecutionDecisionPanels(measureContainer, control.dataset.currentValue || 'null');
-
-      const knob = control.querySelector('.implemented-switch__knob');
-      if (!knob) return;
-
-      knob.addEventListener('pointerdown', (event) => {
-        this.startImplementedSwitchDrag(event, control, knob);
-      }, { signal });
-    });
-  }
-
-  startImplementedSwitchDrag(event, control, knob) {
-    if (!event.isPrimary || control.dataset.saving === '1' || control.dataset.locked === '1') return;
-
-    const selectedInput = control.querySelector('.implemented-switch__input:checked');
-    if (!selectedInput || selectedInput.disabled) return;
-
-    event.preventDefault();
-    selectedInput.focus({ preventScroll: true });
-    knob.setPointerCapture(event.pointerId);
-    control.classList.add('is-dragging');
-
-    const updateKnobPosition = (pointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-
-      const track = control.querySelector('.implemented-switch__track');
-      if (!track) return;
-
-      const trackRect = track.getBoundingClientRect();
-      const knobWidth = knob.getBoundingClientRect().width;
-      const minLeft = 2;
-      const maxLeft = trackRect.width - knobWidth - 2;
-      const left = Math.min(maxLeft, Math.max(minLeft, pointerEvent.clientX - trackRect.left - (knobWidth / 2)));
-      control.style.setProperty('--implemented-knob-left', `${left}px`);
-    };
-
-    const finishDrag = (pointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-
-      updateKnobPosition(pointerEvent);
-      const track = control.querySelector('.implemented-switch__track');
-      const trackRect = track?.getBoundingClientRect();
-      const knobWidth = knob.getBoundingClientRect().width;
-      const minLeft = 2;
-      const maxLeft = (trackRect?.width ?? knobWidth) - knobWidth - 2;
-      const currentLeft = Number.parseFloat(control.style.getPropertyValue('--implemented-knob-left'));
-      const positions = [
-        { value: 'false', left: minLeft },
-        { value: 'null', left: (minLeft + maxLeft) / 2 },
-        { value: 'true', left: maxLeft },
-      ];
-      const closest = positions.reduce((current, candidate) => (
-        Math.abs(candidate.left - currentLeft) < Math.abs(current.left - currentLeft) ? candidate : current
-      ));
-
-      control.classList.remove('is-dragging');
-      control.style.removeProperty('--implemented-knob-left');
-      knob.removeEventListener('pointermove', updateKnobPosition);
-      knob.removeEventListener('pointerup', finishDrag);
-      knob.removeEventListener('pointercancel', cancelDrag);
-      if (knob.hasPointerCapture(event.pointerId)) knob.releasePointerCapture(event.pointerId);
-
-      const input = control.querySelector(`.implemented-switch__input[value="${closest.value}"]`);
-      if (!input || input.checked || input.disabled) return;
-
-      input.checked = true;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    };
-
-    const cancelDrag = (pointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-
-      control.classList.remove('is-dragging');
-      control.style.removeProperty('--implemented-knob-left');
-      knob.removeEventListener('pointermove', updateKnobPosition);
-      knob.removeEventListener('pointerup', finishDrag);
-      knob.removeEventListener('pointercancel', cancelDrag);
-    };
-
-    knob.addEventListener('pointermove', updateKnobPosition);
-    knob.addEventListener('pointerup', finishDrag);
-    knob.addEventListener('pointercancel', cancelDrag);
-    updateKnobPosition(event);
   }
 
   async toggleImplemented(event) {
@@ -429,17 +335,6 @@ export default class extends Controller {
       .filter(className => className.startsWith('implementation-measure-row--'))
       .forEach(className => measure.classList.remove(className));
     measure.classList.add(`implementation-measure-row--${state}`);
-
-    const dot = summary.querySelector('.plan-measure-status-dot');
-    if (dot) {
-      Array.from(dot.classList)
-        .filter(className => className.startsWith('plan-measure-status-dot--'))
-        .forEach(className => dot.classList.remove(className));
-      dot.classList.add(`plan-measure-status-dot--${state}`);
-      const label = this.t(`status_${state}`);
-      dot.title = label;
-      dot.setAttribute('aria-label', label);
-    }
 
     const stateLabel = summary.querySelector('.implementation-measure-row__state');
     if (stateLabel) stateLabel.textContent = this.t(`status_${state}`);
@@ -595,13 +490,26 @@ export default class extends Controller {
 
     if (!measureId) return;
 
-    const measureRow = document.getElementById(`mrow_${measureId}`);
+    const measureRow = this.element.querySelector(`[data-implementation-measure][data-measure-id="${measureId}"]`)
+      || document.getElementById(`mrow_${measureId}`);
     if (!measureRow) return;
 
     window.requestAnimationFrame(() => {
       const top = measureRow.getBoundingClientRect().top + window.scrollY - 96;
       window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
     });
+  }
+
+  async closeMeasureAfterSuccessfulSave(measureContainer, measureId) {
+    const collapse = measureContainer?.querySelector('[data-implementation-measure-collapse]');
+    if (collapse?.classList.contains('show')) {
+      await new Promise((resolve) => {
+        collapse.addEventListener('hidden.bs.collapse', resolve, { once: true });
+        bootstrap.Collapse.getOrCreateInstance(collapse).hide();
+      });
+    }
+
+    this.reloadReviewWithQuery({ open: null }, null, measureId);
   }
 
   extractFilename(contentDisposition) {
@@ -820,8 +728,7 @@ export default class extends Controller {
         }
       }
 
-      // Reconstruir la tarjeta desde backend, manteniéndola abierta y visible.
-      this.reloadReviewWithQuery({ open: measureId }, null, measureId);
+      await this.closeMeasureAfterSuccessfulSave(measureContainer, measureId);
     } catch (err) {
       console.error(err);
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));

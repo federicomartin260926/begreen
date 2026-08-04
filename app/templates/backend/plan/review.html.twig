@@ -238,7 +238,8 @@
                                  data-implementation-category-collapse>
                                 <div class="card-body p-2 p-md-3">
                                     {% include 'backend/plan/_list.html.twig' with {
-                                        implementationItems: group.items
+                                        implementationItems: group.items,
+                                        verificationSources: verificationSources
                                     } %}
                                 </div>
                             </div>

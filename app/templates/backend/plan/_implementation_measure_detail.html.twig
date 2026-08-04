@@ -13,88 +13,62 @@
 {% endfor %}
 {% set evidenceList = pm.evidence ? pm.evidence|split("\n")|filter(path => path|trim) : [] %}
 {% set evidenceMetadata = pm.evidenceMetadata ? pm.evidenceMetadata : {} %}
-{% set verificationSources = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
+{% set verificationSources = verificationSources|default([]) %}
 {% set evidenceCount = evidenceList|length %}
 {% set contextId = 'implementation-context-' ~ measure.id %}
 
 <div class="plan-measure-detail implementation-measure-detail-card p-3 p-lg-4 rounded-4 shadow-sm"
      data-plan-measure-row
      data-measure-id="{{ measure.id }}">
-    <header class="implementation-measure-detail__header pb-3">
-        <div class="implementation-measure-detail__meta d-flex flex-wrap align-items-center gap-2">
-            {% if measure.category %}
-                <span class="badge bg-success-subtle text-success-emphasis border">{{ measure.category.name }}</span>
-            {% endif %}
-            <span class="badge border {{ pm.isCritical is same as(true) ? 'bg-warning-subtle text-warning-emphasis' : 'bg-light text-muted' }}">
-                {{ 'backend.plan.review.critical_short'|trans }}:
-                {{ pm.isCritical is same as(true) ? 'backend.common.yes'|trans : (pm.isCritical is same as(false) ? 'backend.common.no'|trans : '—') }}
-            </span>
-            <span class="badge implementation-measure-row__state" data-operational-state-label>{{ statusTitle }}</span>
-            {% if measure.score is not null %}
-                <span class="badge bg-light text-dark border">{{ measure.score }} {{ 'backend.common.points'|trans }}</span>
-            {% endif %}
-        </div>
-    </header>
-
-    <section class="implementation-execution rounded-3 p-3"
+    <section class="implementation-execution mt-0 rounded-3 p-2 p-md-3"
              data-execution-decision="{{ executionValue }}">
-        <div class="d-flex align-items-center justify-content-between gap-2">
-            <h5 class="h6 mb-0 text-success-emphasis">{{ 'backend.plan.review.execution_title'|trans }}</h5>
-            {% if executionDecisionLocked %}
-                <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border">{{ 'backend.plan.review.execution_locked'|trans }}</span>
-            {% endif %}
-        </div>
-
-        <div class="mt-3">
-            <div id="implemented-label-{{ measure.id }}" class="form-label mb-1">
-                {{ 'backend.plan.review.flag_implemented'|trans }}
-                <i class="bi bi-info-circle ms-1 text-muted"
-                   tabindex="0"
-                   role="img"
-                   aria-label="{{ 'backend.plan.review.execution_decision.help'|trans }}"
-                   data-bs-toggle="tooltip"
-                   title="{{ 'backend.plan.review.execution_decision.help'|trans }}"></i>
+        <div class="row g-2 align-items-center">
+            <div class="col-auto">
+                <h5 id="implemented-label-{{ measure.id }}" class="h6 mb-0 text-success-emphasis">
+                    {{ 'backend.plan.review.execution_title'|trans }}
+                    <i class="bi bi-info-circle ms-1 text-muted"
+                       tabindex="0"
+                       role="img"
+                       aria-label="{{ 'backend.plan.review.execution_decision.help'|trans }}"
+                       data-bs-toggle="tooltip"
+                       title="{{ 'backend.plan.review.execution_decision.help'|trans }}"></i>
+                </h5>
             </div>
-            <div class="implemented-switch-row">
-                <div class="implemented-switch"
+            {% if executionDecisionLocked %}
+                <div class="col-auto">
+                    <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border">{{ 'backend.plan.review.execution_locked'|trans }}</span>
+                </div>
+            {% endif %}
+            <div class="col-12 col-sm-auto ms-sm-auto">
+                <div class="btn-group w-100"
                      role="radiogroup"
                      aria-labelledby="implemented-label-{{ measure.id }}"
                      data-implemented-control
-                     data-locked="{{ executionDecisionLocked ? '1' : '0' }}"
-                     data-current-value="{{ executionValue }}">
-                    {% for value, labelKey in {
-                        'false': 'not_executable',
-                        'null': 'undecided',
-                        'true': 'executed'
+                    data-locked="{{ executionDecisionLocked ? '1' : '0' }}"
+                    data-current-value="{{ executionValue }}">
+                    {% for value, option in {
+                        'false': {label: 'not_executed'},
+                        'null': {label: 'standby'},
+                        'true': {label: 'executed'}
                     } %}
-                        <input class="implemented-switch__input"
+                        <input class="btn-check"
                                type="radio"
                                name="implemented-{{ measure.id }}"
                                id="implemented-{{ value }}-{{ measure.id }}"
                                value="{{ value }}"
-                               aria-label="{{ ('backend.plan.review.execution_decision.' ~ labelKey)|trans }}"
+                               autocomplete="off"
+                               aria-label="{{ ('backend.plan.review.execution_decision.' ~ option.label)|trans }}"
                                data-action="change->plan-review#toggleImplemented"
                                data-measure-id="{{ measure.id }}"
                                data-url="{{ path('backend_plan_update_selection') }}"
                                {% if executionDecisionLocked %}disabled{% endif %}
                                {% if value == executionValue %}checked{% endif %}>
-                        <label class="implemented-switch__zone implemented-switch__zone--{{ value == 'false' ? 'left' : (value == 'true' ? 'right' : 'center') }}"
+                        <label class="btn btn-sm btn-outline-dark implementation-execution__choice text-nowrap"
                                for="implemented-{{ value }}-{{ measure.id }}">
-                            <span class="visually-hidden">{{ ('backend.plan.review.execution_decision.' ~ labelKey)|trans }}</span>
+                            {{ ('backend.plan.review.execution_decision.' ~ option.label)|trans }}
                         </label>
                     {% endfor %}
-                    <span class="implemented-switch__track" aria-hidden="true">
-                        <span class="implemented-switch__mark implemented-switch__mark--left"></span>
-                        <span class="implemented-switch__mark implemented-switch__mark--center"></span>
-                        <span class="implemented-switch__mark implemented-switch__mark--right"></span>
-                        <span class="implemented-switch__knob"></span>
-                    </span>
                 </div>
-                <span class="implemented-switch__selected-state" aria-live="polite">
-                    <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--false">{{ 'backend.plan.review.execution_decision.not_executable'|trans }}</span>
-                    <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--null">-</span>
-                    <span class="implemented-switch__selected-state-value implemented-switch__selected-state-value--true">{{ 'backend.plan.review.execution_decision.executed'|trans }}</span>
-                </span>
             </div>
         </div>
 
@@ -198,7 +172,7 @@
                 </div>
             {% endif %}
 
-            {% if not executionDecisionLocked %}<div class="d-flex justify-content-end mt-3">
+            {% if not executionDecisionLocked %}<div class="d-flex justify-content-end">
                 <button type="button"
                         class="btn btn-sm btn-primary"
                         data-action="click->plan-review#saveInlineEdit"
@@ -207,39 +181,6 @@
                     {{ 'backend.common.save_changes'|trans }}
                 </button>
             </div>{% endif %}
-        </div>
-    </section>
-
-    <section class="implementation-elaboration-trace mt-3 p-3 rounded-3">
-        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
-            <div>
-                <h5 class="h6 mb-2 text-success-emphasis">{{ 'backend.plan.review.elaboration_decision_title'|trans }}</h5>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="badge rounded-pill bg-light text-dark border">
-                        {{ 'backend.plan.q.apply'|trans }}:
-                        {{ pm.isApplicable is same as(true) ? 'backend.common.yes'|trans : (pm.isApplicable is same as(false) ? 'backend.common.no'|trans : 'backend.common.no_answer'|trans) }}
-                    </span>
-                    {% if pm.isApplicable %}
-                        <span class="badge rounded-pill {{ pm.isCritical is same as(true) ? 'bg-success' : (pm.isCritical is same as(false) ? 'bg-danger' : 'bg-secondary') }}">
-                            {{ 'backend.plan.review.critical_short'|trans }}: {{ pm.isCritical is same as(true) ? 'backend.common.yes'|trans : (pm.isCritical is same as(false) ? 'backend.common.no'|trans : '—') }}
-                        </span>
-                        <span class="badge rounded-pill {{ pm.willImplement is same as(true) ? 'bg-success' : (pm.willImplement is same as(false) ? 'bg-danger' : 'bg-secondary') }}">
-                            {{ 'backend.plan.review.implement_state'|trans }}: {{ pm.willImplement is same as(true) ? 'backend.common.yes'|trans : (pm.willImplement is same as(false) ? 'backend.common.no'|trans : '—') }}
-                        </span>
-                    {% endif %}
-                </div>
-                {% if pm.observations %}
-                    <div class="small text-muted mt-2">
-                        {{ 'backend.plan.q.observations'|trans }}: <span class="text-body">{{ pm.observations }}</span>
-                    </div>
-                {% endif %}
-            </div>
-            <button type="button"
-                    class="btn btn-outline-primary btn-sm"
-                    data-bs-toggle="modal"
-                    data-bs-target="#decision-modal-{{ measure.id }}">
-                <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>{{ 'backend.plan.review.modify_decision'|trans }}
-            </button>
         </div>
     </section>
 
@@ -257,6 +198,35 @@
         </button>
         <div class="collapse implementation-measure-context mt-2" id="{{ contextId }}">
             <div class="p-3 rounded-3 bg-body-tertiary">
+                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 pb-3 mb-3 border-bottom">
+                    <div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge rounded-pill bg-light text-dark border">
+                                {{ 'backend.plan.q.apply'|trans }}:
+                                {{ pm.isApplicable is same as(true) ? 'backend.common.yes'|trans : (pm.isApplicable is same as(false) ? 'backend.common.no'|trans : 'backend.common.no_answer'|trans) }}
+                            </span>
+                            {% if pm.isApplicable %}
+                                <span class="badge rounded-pill {{ pm.isCritical is same as(true) ? 'bg-success' : (pm.isCritical is same as(false) ? 'bg-danger' : 'bg-secondary') }}">
+                                    {{ 'backend.plan.review.critical_short'|trans }}: {{ pm.isCritical is same as(true) ? 'backend.common.yes'|trans : (pm.isCritical is same as(false) ? 'backend.common.no'|trans : '—') }}
+                                </span>
+                                <span class="badge rounded-pill {{ pm.willImplement is same as(true) ? 'bg-success' : (pm.willImplement is same as(false) ? 'bg-danger' : 'bg-secondary') }}">
+                                    {{ 'backend.plan.review.implement_state'|trans }}: {{ pm.willImplement is same as(true) ? 'backend.common.yes'|trans : (pm.willImplement is same as(false) ? 'backend.common.no'|trans : '—') }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        {% if pm.observations %}
+                            <div class="small text-muted mt-2">
+                                {{ 'backend.plan.q.observations'|trans }}: <span class="text-body">{{ pm.observations }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <button type="button"
+                            class="btn btn-outline-primary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#decision-modal-{{ measure.id }}">
+                        <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>{{ 'backend.plan.review.modify_decision'|trans }}
+                    </button>
+                </div>
                 <h5 class="h6 mb-3">{{ 'backend.plan.review.context_classification_title'|trans }}</h5>
                 <div class="d-flex flex-column flex-md-row gap-2 gap-md-4 pb-3 mb-3 border-bottom">
                     <div class="small text-muted flex-shrink-0">{{ 'backend.plan.measure.description'|trans }}</div>

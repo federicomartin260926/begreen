@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Measure;
 use App\Entity\Department;
 use App\Entity\MeasureVerificationSource;
+use App\Entity\VerificationSource;
 use App\Repository\DepartmentRepository;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -130,6 +131,19 @@ final class MeasureTaxonomyPresenter
                 'displayName' => self::normalizeVerificationSourceName((string) ($source?->getName() ?? '')),
             ];
         }, $links);
+    }
+
+    /**
+     * @param VerificationSource[] $sources
+     * @return array<int, array{code:string, name:string, displayName:string}>
+     */
+    public function verificationSourceCatalog(array $sources): array
+    {
+        return array_map(static fn (VerificationSource $source): array => [
+            'code' => $source->getCode(),
+            'name' => $source->getName(),
+            'displayName' => self::normalizeVerificationSourceName($source->getName()),
+        ], $sources);
     }
 
     private static function normalizeVerificationSourceName(string $name): string

@@ -1540,10 +1540,10 @@ backend:
         implemented_hint: "First select “Will implement”."
         verified: "Checked"
       execution_decision:
-        not_executable: "Not executable"
-        undecided: "Undecided"
+        not_executed: "Not executed"
+        standby: "Standby"
         executed: "Executed"
-        help: "Left: Not executable · Centre: Undecided · Right: Executed. To be marked as Implemented, Executed requires an Action taken and Evidence."
+        help: "Select Not executed, Standby or Executed. To be marked as Implemented, Executed requires an Action taken and Evidence."
       action_taken: "Action taken"
       action_taken_ph: "Describe the action taken…"
       evidences: "Evidences"

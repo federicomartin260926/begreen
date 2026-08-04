@@ -2082,18 +2082,44 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         border: 1px solid rgba(108, 117, 125, .2);
     }
     .implementation-measure-row--pending .implementation-measure-row {
-        background-color: #fff8f8;
+        background-color: #fdeced;
+        border-color: #f1b8bd;
     }
     .implementation-measure-row--in_progress .implementation-measure-row {
-        background-color: #fff8ee;
+        background-color: #fff0d5;
+        border-color: #f2c779;
     }
     .implementation-measure-row--implemented .implementation-measure-row {
-        background-color: #eef9f2;
+        background-color: #e0f2e7;
+        border-color: #9dceae;
     }
-    .implementation-measure-row--not_implemented .implementation-measure-row,
+    .implementation-measure-row--not_implemented .implementation-measure-row {
+        background-color: #e9ecef;
+        border-color: #b9c1c9;
+    }
     .implementation-measure-row--discarded .implementation-measure-row,
     .implementation-measure-row--not_applicable .implementation-measure-row {
         background-color: #f6f7f8;
+    }
+    .implementation-measure-row--pending .implementation-measure-row__state {
+        color: #842029;
+        background-color: #f8d7da;
+        border-color: #f1aeb5;
+    }
+    .implementation-measure-row--in_progress .implementation-measure-row__state {
+        color: #7a4a00;
+        background-color: #ffe5b4;
+        border-color: #f2c779;
+    }
+    .implementation-measure-row--implemented .implementation-measure-row__state {
+        color: #146c43;
+        background-color: #cfe9d8;
+        border-color: #9dceae;
+    }
+    .implementation-measure-row--not_implemented .implementation-measure-row__state {
+        color: #343a40;
+        background-color: #dce1e6;
+        border-color: #adb5bd;
     }
     .implementation-measure-detail {
         margin-top: .35rem;
@@ -2112,6 +2138,24 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         margin-top: 1rem;
         border: 1px solid rgba(25, 135, 84, .18);
         background-color: rgba(25, 135, 84, .04);
+    }
+    .implementation-execution__choice {
+        color: #000;
+        background-color: #fff;
+        border-color: #dee2e6;
+        font-weight: 400;
+    }
+    .implementation-execution__choice:hover {
+        color: #000;
+        background-color: #fff;
+        border-color: #adb5bd;
+    }
+    .btn-check:checked + .implementation-execution__choice,
+    .btn-check:active + .implementation-execution__choice {
+        color: #000;
+        background-color: #ffb71b;
+        border-color: #ffb71b;
+        font-weight: 700;
     }
     .implementation-execution-panel {
         min-width: 0;
@@ -2810,142 +2854,4 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         text-decoration: none;
         box-shadow: none;
     }
-}
-
-.implemented-switch-row {
-    display: inline-flex;
-    align-items: center;
-    gap: .45rem;
-}
-
-.implemented-switch {
-    position: relative;
-    width: 70px;
-    height: 24px;
-}
-
-.implemented-switch__input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-.implemented-switch__zone {
-    position: absolute;
-    z-index: 2;
-    top: 0;
-    width: 33.333%;
-    height: 100%;
-    cursor: pointer;
-}
-
-.implemented-switch__zone--left {
-    left: 0;
-}
-
-.implemented-switch__zone--center {
-    left: 33.333%;
-}
-
-.implemented-switch__zone--right {
-    right: 0;
-}
-
-.implemented-switch__track {
-    position: absolute;
-    inset: 0;
-    display: block;
-    pointer-events: none;
-    border: 1px solid #b8c2bd;
-    border-radius: 999px;
-    background: #eef1ef;
-    transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
-}
-
-.implemented-switch__mark {
-    position: absolute;
-    top: 50%;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: rgba(71, 85, 79, .48);
-    transform: translate(-50%, -50%);
-}
-
-.implemented-switch__mark--left { left: 16.667%; }
-.implemented-switch__mark--center { left: 50%; }
-.implemented-switch__mark--right { left: 83.333%; }
-
-.implemented-switch__knob {
-    position: absolute;
-    z-index: 3;
-    top: 2px;
-    left: var(--implemented-knob-left, 2px);
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #6c757d;
-    box-shadow: 0 1px 3px rgba(33, 37, 41, .28);
-    cursor: grab;
-    pointer-events: auto;
-    touch-action: none;
-    transition: left .16s ease, background-color .16s ease;
-}
-
-.implemented-switch:has(.implemented-switch__input[value="null"]:checked) .implemented-switch__knob {
-    --implemented-knob-left: calc(50% - 9px);
-    background: #87928c;
-}
-
-.implemented-switch:has(.implemented-switch__input[value="true"]:checked) .implemented-switch__track {
-    border-color: #58a777;
-    background: #e2f2e7;
-}
-
-.implemented-switch:has(.implemented-switch__input[value="true"]:checked) .implemented-switch__knob {
-    --implemented-knob-left: calc(100% - 20px);
-    background: #198754;
-}
-
-.implemented-switch.is-dragging .implemented-switch__knob {
-    cursor: grabbing;
-    transition: background-color .16s ease;
-}
-
-.implemented-switch:has(.implemented-switch__input:focus-visible) .implemented-switch__track {
-    box-shadow: 0 0 0 .25rem rgba(25, 135, 84, .25);
-}
-
-.implemented-switch:has(.implemented-switch__input:disabled) {
-    opacity: .6;
-}
-
-.implemented-switch:has(.implemented-switch__input:disabled) .implemented-switch__zone {
-    cursor: not-allowed;
-}
-
-.implemented-switch__selected-state {
-    min-width: 5.5rem;
-    color: #687a70;
-    font-size: .8rem;
-    line-height: 1;
-}
-
-.implemented-switch__selected-state-value {
-    display: none;
-}
-
-.implemented-switch-row:has(.implemented-switch__input[value="false"]:checked) .implemented-switch__selected-state-value--false,
-.implemented-switch-row:has(.implemented-switch__input[value="null"]:checked) .implemented-switch__selected-state-value--null,
-.implemented-switch-row:has(.implemented-switch__input[value="true"]:checked) .implemented-switch__selected-state-value--true {
-    display: inline;
-}
-
-.implemented-switch-row:has(.implemented-switch__input:disabled) .implemented-switch__selected-state {
-    opacity: .6;
 }
