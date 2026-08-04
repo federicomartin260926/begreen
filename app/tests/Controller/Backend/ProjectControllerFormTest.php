@@ -47,6 +47,10 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringNotContainsString('Facturación del proyecto', $content);
         self::assertStringNotContainsString('Gestionar facturación', $content);
         self::assertStringContainsString('data-project-wizard-edit-mode-value="false"', $content);
+        self::assertStringContainsString('data-funding-company-select', $content);
+        self::assertStringContainsString('data-project-collection-target="companyModal"', $content);
+        self::assertStringContainsString('Esta empresa ya está asignada a otra fuente de financiación.', $content);
+        self::assertSame(1, substr_count($content, 'data-action="project-collection#openNewCompanyModal"'));
         self::assertStringNotContainsString('Tier actual', $content);
         self::assertMatchesRegularExpression('/<select[^>]*id="project_country"[^>]*>[\s\S]*?<option value="" selected="selected">Selecciona un país<\/option>/', $content);
         self::assertMatchesRegularExpression('/<select[^>]*id="project_type"[^>]*>[\s\S]*?<option value="" selected="selected">Selecciona un tipo de proyecto<\/option>/', $content);
@@ -75,12 +79,20 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringContainsString('/backend/project/', $response->getTargetUrl());
         self::assertStringContainsString('/created', $response->getTargetUrl());
 
-        $project = $entityManager->getRepository(Project::class)->findOneBy(['name' => 'Proyecto wizard test']);
+        $project = $entityManager->getRepository(Project::class)->findOneBy(
+            ['name' => 'Proyecto wizard test'],
+            ['id' => 'DESC']
+        );
         self::assertInstanceOf(Project::class, $project);
         self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
         self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getStatus());
+        self::assertCount(1, $project->getProjectCompanies());
+        self::assertSame('Fantasy', $project->getProjectCompanies()->first()->getName());
+        self::assertCount(1, $project->getProjectFundingSources());
+        self::assertSame('Fantasy', $project->getProjectFundingSources()->first()->getName());
+        self::assertSame('production_company', $project->getProjectFundingSources()->first()->getType());
     }
 
     public function testEventProjectCanBeCreatedWithConditionalFieldsAndAutomaticEmissionSource(): void
@@ -440,8 +452,12 @@ final class ProjectControllerFormTest extends KernelTestCase
                 'mainLocation' => '',
                 'presupuesto' => '',
                 'ecoManagerStatus' => '',
-                'projectCompanies' => [],
-                'projectFundingSources' => [],
+                'projectCompanies' => [
+                    ['type' => 'production_company', 'name' => 'Fantasy'],
+                ],
+                'projectFundingSources' => [
+                    ['type' => 'production_company', 'name' => 'Fantasy', 'percentage' => '100'],
+                ],
                 'phaseDates' => [
                     ['phase' => 'preproduccion', 'startDate' => '2026-07-01', 'endDate' => '2026-07-02'],
                     ['phase' => 'actividad', 'startDate' => '2026-07-03', 'endDate' => '2026-07-04'],

@@ -6,8 +6,8 @@ use App\Entity\ProjectFundingSource;
 use App\Enum\ProjectCatalog;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -15,16 +15,28 @@ class ProjectFundingSourceType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
+        $typeChoices = ProjectCatalog::projectCompanyTypeChoices();
+        $source = $options['data'] ?? null;
+        if ($source instanceof ProjectFundingSource && !ProjectCatalog::isProjectCompanyType($source->getType())) {
+            foreach (ProjectCatalog::projectFundingSourceTypeChoices() as $label => $value) {
+                if ($value === $source->getType()) {
+                    $typeChoices[$label] = $value;
+                    break;
+                }
+            }
+        }
+
         $builder
             ->add('type', ChoiceType::class, [
                 'label' => 'backend.projects.form.project_funding_source.type',
-                'choices' => ProjectCatalog::projectFundingSourceTypeChoices(),
+                'choices' => $typeChoices,
                 'choice_translation_domain' => 'messages',
                 'required' => true,
                 'placeholder' => false,
+                'attr' => ['data-funding-type-select' => '1'],
             ])
-            ->add('name', TextType::class, [
-                'label' => 'backend.projects.form.project_funding_source.name',
+            ->add('name', HiddenType::class, [
+                'label' => false,
                 'required' => true,
             ])
             ->add('percentage', NumberType::class, [

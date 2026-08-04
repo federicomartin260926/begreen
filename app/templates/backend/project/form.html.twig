@@ -62,6 +62,7 @@
         'data-project-wizard-funding-label-value': 'backend.projects.form.wizard.funding_label'|trans,
         'data-project-wizard-companies-label-value': 'backend.projects.form.wizard.companies_label'|trans,
         'data-project-wizard-funding-sources-label-value': 'backend.projects.form.wizard.funding_sources_label'|trans,
+        'data-project-wizard-funding-company-label-value': 'backend.projects.form.project_funding_source.company'|trans,
         'data-project-wizard-eco-manager-label-value': 'backend.projects.form.eco_manager_status.label'|trans,
         'data-project-wizard-summary-empty-label-value': 'backend.projects.form.wizard.summary_empty'|trans,
         'data-project-wizard-no-companies-label-value': 'backend.projects.form.wizard.no_companies'|trans,
@@ -278,6 +279,7 @@
                         <button type="button"
                                 class="btn btn-sm btn-outline-danger"
                                 data-action="project-collection#removeItem"
+                                data-company-row-remove
                                 aria-label="{{ 'backend.common.delete'|trans }}"
                                 title="{{ 'backend.common.delete'|trans }}">
                             <i class="bi bi-trash" aria-hidden="true"></i>
@@ -352,6 +354,7 @@
                                 <button type="button"
                                         class="btn btn-sm btn-outline-danger"
                                         data-action="project-collection#removeItem"
+                                        data-company-row-remove
                                         aria-label="{{ 'backend.common.delete'|trans }}"
                                         title="{{ 'backend.common.delete'|trans }}">
                                     <i class="bi bi-trash" aria-hidden="true"></i>
@@ -458,11 +461,19 @@
         {% set fundingPrototype %}
             <div class="card mb-3 p-3 border position-relative" data-collection-id="__funding__">
                 <div class="row g-3 align-items-end">
-                    <div class="col-12 col-md-3">
-                        {{ form_row(form.projectFundingSources.vars.prototype.type, { row_attr: { class: 'mb-0' } }) }}
-                    </div>
-                    <div class="col-12 col-md-4">
-                        {{ form_row(form.projectFundingSources.vars.prototype.name, { row_attr: { class: 'mb-0' } }) }}
+                    <div class="d-none">{{ form_widget(form.projectFundingSources.vars.prototype.type) }}</div>
+                    <div class="col-12 col-md-7">
+                        <label class="form-label" for="funding-company-__funding__">{{ 'backend.projects.form.project_funding_source.company'|trans }}</label>
+                        <select id="funding-company-__funding__"
+                                class="form-select"
+                                required
+                                data-funding-company-select
+                                data-placeholder="{{ 'backend.common.select'|trans }}"
+                                data-unmatched-label="{{ 'backend.projects.form.project_funding_source.unmatched_company'|trans }}">
+                            <option value="">{{ 'backend.common.select'|trans }}</option>
+                        </select>
+                        {{ form_widget(form.projectFundingSources.vars.prototype.name) }}
+                        {{ form_errors(form.projectFundingSources.vars.prototype.name) }}
                     </div>
                     <div class="col-12 col-md-3">
                         {{ form_row(form.projectFundingSources.vars.prototype.percentage, { row_attr: { class: 'mb-0' } }) }}
@@ -498,11 +509,19 @@
                 {% for fundingForm in form.projectFundingSources %}
                     <div class="card mb-3 p-3 border position-relative" data-collection-id="{{ loop.index0 }}">
                         <div class="row g-3 align-items-end">
-                            <div class="col-12 col-md-3">
-                                {{ form_row(fundingForm.type, { row_attr: { class: 'mb-0' } }) }}
-                            </div>
-                            <div class="col-12 col-md-4">
-                                {{ form_row(fundingForm.name, { row_attr: { class: 'mb-0' } }) }}
+                            <div class="d-none">{{ form_widget(fundingForm.type) }}</div>
+                            <div class="col-12 col-md-7">
+                                <label class="form-label" for="funding-company-{{ loop.index0 }}">{{ 'backend.projects.form.project_funding_source.company'|trans }}</label>
+                                <select id="funding-company-{{ loop.index0 }}"
+                                        class="form-select"
+                                        required
+                                        data-funding-company-select
+                                        data-placeholder="{{ 'backend.common.select'|trans }}"
+                                        data-unmatched-label="{{ 'backend.projects.form.project_funding_source.unmatched_company'|trans }}">
+                                    <option value="">{{ 'backend.common.select'|trans }}</option>
+                                </select>
+                                {{ form_widget(fundingForm.name) }}
+                                {{ form_errors(fundingForm.name) }}
                             </div>
                             <div class="col-12 col-md-3">
                                 {{ form_row(fundingForm.percentage, { row_attr: { class: 'mb-0' } }) }}
@@ -516,10 +535,34 @@
                     </div>
                 {% endfor %}
             </div>
-            <div class="d-flex justify-content-start">
+            <div class="d-flex flex-wrap justify-content-start gap-2">
                 <button type="button" class="btn btn-outline-secondary mb-2" data-project-collection-target="addButton" data-action="project-collection#addItem">
                     <i class="bi bi-plus-circle"></i> {{ 'backend.common.add'|trans }}
                 </button>
+                <button type="button" class="btn btn-outline-secondary mb-2" data-action="project-collection#openNewCompanyModal">
+                    <i class="bi bi-building-add me-1" aria-hidden="true"></i>{{ 'backend.projects.form.project_funding_source.new_company'|trans }}
+                </button>
+            </div>
+
+            <div class="modal fade" tabindex="-1" aria-hidden="true" data-project-collection-target="companyModal">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">{{ 'backend.projects.form.project_funding_source.new_company_title'|trans }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger d-none" role="alert"
+                                 data-project-collection-target="companyModalFeedback"
+                                 data-already-assigned-label="{{ 'backend.projects.form.project_funding_source.company_already_assigned'|trans }}"></div>
+                            <div data-project-collection-target="companyModalHost"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ 'backend.common.cancel'|trans }}</button>
+                            <button type="button" class="btn btn-primary" data-action="project-collection#confirmNewCompany">{{ 'backend.common.add'|trans }}</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

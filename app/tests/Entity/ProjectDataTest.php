@@ -3,6 +3,7 @@
 namespace App\Tests\Entity;
 
 use App\Entity\Project;
+use App\Entity\ProjectCompany;
 use App\Entity\ProjectFundingSource;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -135,5 +136,85 @@ final class ProjectDataTest extends KernelTestCase
         $messages = array_map(static fn ($violation) => $violation->getMessageTemplate(), iterator_to_array($violations));
 
         self::assertContains('backend.projects.form.validation.funding_total_invalid', $messages);
+    }
+
+    public function testProjectCompaniesCannotRepeatNormalizedNames(): void
+    {
+        self::bootKernel();
+        $validator = self::getContainer()->get('validator');
+
+        $project = (new Project())
+            ->setName('Proyecto con empresas duplicadas')
+            ->setType('rodaje')
+            ->setCountry('ES');
+        $project->addProjectCompany(
+            (new ProjectCompany())->setType('production_company')->setName('Fantasy')
+        );
+        $project->addProjectCompany(
+            (new ProjectCompany())->setType('client')->setName(' fantasy ')
+        );
+
+        $messages = array_map(
+            static fn ($violation) => $violation->getMessageTemplate(),
+            iterator_to_array($validator->validate($project))
+        );
+
+        self::assertContains('backend.projects.form.validation.project_company_duplicate', $messages);
+    }
+
+    public function testCompanyFundingMustReferenceACompanyWithMatchingType(): void
+    {
+        self::bootKernel();
+        $validator = self::getContainer()->get('validator');
+
+        $project = (new Project())
+            ->setName('Proyecto con financiación incoherente')
+            ->setType('rodaje')
+            ->setCountry('ES');
+        $project->addProjectCompany(
+            (new ProjectCompany())->setType('production_company')->setName('Fantasy')
+        );
+        $project->addProjectFundingSource(
+            (new ProjectFundingSource())->setType('client')->setName('Fantasy')->setPercentage('50.00')
+        );
+        $project->addProjectFundingSource(
+            (new ProjectFundingSource())->setType('agency')->setName('Empresa ausente')->setPercentage('50.00')
+        );
+
+        $messages = array_map(
+            static fn ($violation) => $violation->getMessageTemplate(),
+            iterator_to_array($validator->validate($project))
+        );
+
+        self::assertContains('backend.projects.form.validation.funding_company_type_mismatch', $messages);
+        self::assertContains('backend.projects.form.validation.funding_company_unknown', $messages);
+        self::assertNotContains('backend.projects.form.validation.funding_total_invalid', $messages);
+    }
+
+    public function testCompanyCannotFundProjectTwice(): void
+    {
+        self::bootKernel();
+        $validator = self::getContainer()->get('validator');
+
+        $project = (new Project())
+            ->setName('Proyecto con financiación duplicada')
+            ->setType('rodaje')
+            ->setCountry('ES');
+        $project->addProjectCompany(
+            (new ProjectCompany())->setType('production_company')->setName('Fantasy')
+        );
+        $project->addProjectFundingSource(
+            (new ProjectFundingSource())->setType('production_company')->setName('Fantasy')->setPercentage('50.00')
+        );
+        $project->addProjectFundingSource(
+            (new ProjectFundingSource())->setType('production_company')->setName(' fantasy ')->setPercentage('50.00')
+        );
+
+        $messages = array_map(
+            static fn ($violation) => $violation->getMessageTemplate(),
+            iterator_to_array($validator->validate($project))
+        );
+
+        self::assertContains('backend.projects.form.validation.funding_company_duplicate', $messages);
     }
 }

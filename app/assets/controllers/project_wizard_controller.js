@@ -21,6 +21,7 @@ export default class extends Controller {
     fundingLabel: String,
     companiesLabel: String,
     fundingSourcesLabel: String,
+    fundingCompanyLabel: String,
     ecoManagerLabel: String,
     summaryEmptyLabel: String,
     summaryNoticeCreateLabel: String,
@@ -372,7 +373,7 @@ export default class extends Controller {
 
     const headers = [
       this.fieldLabel("type") || "Tipo",
-      this.fieldLabel("name") || "Nombre",
+      this.fundingCompanyLabelValue || "Empresa",
       this.fieldLabel("percentage") || "Porcentaje",
     ];
 
@@ -589,11 +590,17 @@ export default class extends Controller {
       return true;
     }
 
+    const names = new Set();
     return rows.every((row, index) => {
       const root = this.collectionRow("company", index);
       const typeControl = root?.querySelector('[name$="[type]"]');
       const nameControl = root?.querySelector('[name$="[name]"]');
-      return this.isFilled(typeControl) && this.isFilled(nameControl);
+      const normalizedName = this.normalizeName(nameControl?.value);
+      if (!this.isFilled(typeControl) || !this.isFilled(nameControl) || names.has(normalizedName)) {
+        return false;
+      }
+      names.add(normalizedName);
+      return true;
     });
   }
 
@@ -649,12 +656,19 @@ export default class extends Controller {
       return true;
     }
 
+    const companyNames = new Set();
     let total = 0;
 
     for (const row of rows) {
       if (!row.type || !row.name || !row.percentage) {
         return false;
       }
+
+      const normalizedName = this.normalizeName(row.name);
+      if (companyNames.has(normalizedName)) {
+        return false;
+      }
+      companyNames.add(normalizedName);
 
       const percentage = this.parseHundredths(row.percentage);
       if (percentage === null || percentage <= 0 || percentage > 10000) {
@@ -739,6 +753,38 @@ export default class extends Controller {
     return this.panelTargets.find((panel) => this.stepFromPanel(panel) === step) || null;
   }
 
+  focusCurrentStep() {
+    const panel = this.panelForStep(this.currentStep);
+    if (!panel) {
+      return;
+    }
+
+    const controls = Array.from(panel.querySelectorAll(
+      'input:not([type="hidden"]), select, textarea, button, a[href], [tabindex]:not([tabindex="-1"])'
+    )).filter((control) => this.isFocusableStepControl(control));
+    const primaryControl = controls.find((control) => !control.matches('button, a, [role="button"]'));
+    const target = primaryControl
+      || controls.find((control) => !this.isRemovalControl(control))
+      || panel;
+
+    try {
+      target.focus({ preventScroll: true });
+    } catch {
+      target.focus();
+    }
+  }
+
+  isFocusableStepControl(control) {
+    return !control.disabled
+      && control.getAttribute("aria-disabled") !== "true"
+      && !control.closest('[hidden], .d-none, [aria-hidden="true"]')
+      && control.getClientRects().length > 0;
+  }
+
+  isRemovalControl(control) {
+    return control.matches('[data-action*="remove"], .btn-outline-danger, .btn-danger');
+  }
+
   isRadioGroupRequired(fieldName) {
     return Array.from(this.element.querySelectorAll(`input[type="radio"][name$="[${fieldName}]"]`))
       .some((radio) => this.isControlRequired(radio));
@@ -813,6 +859,10 @@ export default class extends Controller {
 
     const [integer, decimal = ""] = normalized.split(".");
     return parseInt(integer, 10) * 100 + parseInt((decimal + "00").slice(0, 2), 10);
+  }
+
+  normalizeName(value) {
+    return String(value || "").trim().toLocaleLowerCase();
   }
 
   formatDate(value) {

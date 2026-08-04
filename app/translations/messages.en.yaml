@@ -806,7 +806,12 @@ backend:
       project_funding_source:
         type: "Type"
         name: "Name or description"
+        company: "Company"
         percentage: "Percentage"
+        new_company: "New company"
+        new_company_title: "Add company"
+        unmatched_company: "Not listed under Companies involved"
+        company_already_assigned: "This company is already assigned to another funding source."
 
       project_funding_source_type:
         options:

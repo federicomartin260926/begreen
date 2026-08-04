@@ -630,6 +630,7 @@ class Project
             }
         }
 
+        $this->validateProjectCompanies($context);
         $this->validateFundingSources($context);
     }
 
@@ -662,10 +663,41 @@ class Project
             return;
         }
 
+        $companiesByName = [];
+        foreach ($this->projectCompanies as $company) {
+            if ($company instanceof ProjectCompany) {
+                $companiesByName[self::normalizeCompanyName($company->getName())] = $company;
+            }
+        }
+
+        $usedCompanyNames = [];
         $total = 0;
         foreach ($sources as $index => $source) {
             if (!$source instanceof ProjectFundingSource) {
                 continue;
+            }
+
+            if (ProjectCatalog::isProjectCompanyType($source->getType())) {
+                $normalizedName = self::normalizeCompanyName($source->getName());
+                $company = $companiesByName[$normalizedName] ?? null;
+                if (!$company instanceof ProjectCompany) {
+                    $context->buildViolation('backend.projects.form.validation.funding_company_unknown')
+                        ->atPath("projectFundingSources[$index].name")
+                        ->addViolation();
+                } else {
+                    if ($company->getType() !== $source->getType()) {
+                        $context->buildViolation('backend.projects.form.validation.funding_company_type_mismatch')
+                            ->atPath("projectFundingSources[$index].type")
+                            ->addViolation();
+                    }
+
+                    if (isset($usedCompanyNames[$normalizedName])) {
+                        $context->buildViolation('backend.projects.form.validation.funding_company_duplicate')
+                            ->atPath("projectFundingSources[$index].name")
+                            ->addViolation();
+                    }
+                    $usedCompanyNames[$normalizedName] = true;
+                }
             }
 
             $hundredths = $source->getPercentageHundredths();
@@ -683,5 +715,32 @@ class Project
                 ->setParameter('{{ total }}', $formatted)
                 ->addViolation();
         }
+    }
+
+    private function validateProjectCompanies(ExecutionContextInterface $context): void
+    {
+        $names = [];
+        foreach ($this->projectCompanies as $index => $company) {
+            if (!$company instanceof ProjectCompany) {
+                continue;
+            }
+
+            $normalizedName = self::normalizeCompanyName($company->getName());
+            if ($normalizedName === '') {
+                continue;
+            }
+
+            if (isset($names[$normalizedName])) {
+                $context->buildViolation('backend.projects.form.validation.project_company_duplicate')
+                    ->atPath("projectCompanies[$index].name")
+                    ->addViolation();
+            }
+            $names[$normalizedName] = true;
+        }
+    }
+
+    public static function normalizeCompanyName(string $name): string
+    {
+        return mb_strtolower(trim($name));
     }
 }
