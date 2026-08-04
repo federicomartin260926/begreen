@@ -13,6 +13,7 @@ use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Enum\CommercialPhase;
 use App\Repository\MeasureRepository;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\PlanMeasureElaborationDecisionValidator;
 use App\Service\ProjectFeatureGate;
 use App\Service\SustainabilityPlanCompletionService;
 use App\Service\SustainabilityPlanMeasureOrderer;
@@ -177,11 +178,37 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
         self::assertFalse($service->isComplete($plan, $project));
         self::assertSame('observations_missing', $service->findFirstPendingVisibleMeasure($plan, $project)['reason'] ?? null);
 
-        $planMeasure->setObservations('No se incluirá por falta de encaje en el proyecto.');
+        $planMeasure->setObservations('No se incluirá por falta de encaje en este proyecto concreto.');
 
         self::assertTrue($service->isComplete($plan, $project));
         self::assertSame('completo', $service->syncStatus($plan, $project) ? 'completo' : 'incompleto');
         self::assertSame([], $service->getPendingVisibleMeasures($plan, $project));
+    }
+
+    public function testAllTerminalDecisionsRequireFiftyTrimmedObservationCharacters(): void
+    {
+        $decisions = [
+            [false, null, null],
+            [true, null, false],
+            [true, true, true],
+            [true, false, true],
+        ];
+
+        foreach ($decisions as $offset => [$applicable, $critical, $willImplement]) {
+            $measure = $this->createMeasure(500 + $offset, 5, 'Medida ' . $offset);
+            $service = $this->createService([$measure]);
+            $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+            $plan = $this->createPlan($project);
+            $planMeasure = $this->createPlanMeasure($measure, $applicable, $critical, $willImplement)
+                ->setObservations('  ' . str_repeat('x', 49) . '  ');
+            $plan->addPlanMeasure($planMeasure);
+
+            self::assertFalse($service->isComplete($plan, $project), '49 trimmed characters must remain pending.');
+            self::assertSame('observations_missing', $service->findFirstPendingVisibleMeasure($plan, $project)['reason'] ?? null);
+
+            $planMeasure->setObservations(" \n" . str_repeat('x', 50) . "\t ");
+            self::assertTrue($service->isComplete($plan, $project), '50 trimmed characters must complete the decision.');
+        }
     }
 
     /**
@@ -193,6 +220,7 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
             $this->createMeasureRepositoryMock($measures),
             new PlanMeasureCatalogResolver($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())),
             new SustainabilityPlanMeasureOrderer(),
+            new PlanMeasureElaborationDecisionValidator(),
         );
     }
 
@@ -300,7 +328,7 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
             ->markAsManual();
 
         if ($applicable !== null && ($applicable === false || $willImplement !== null)) {
-            $planMeasure->setObservations('Observación de decisión completa.');
+            $planMeasure->setObservations('Observación completa con el detalle mínimo requerido para cerrar.');
         }
 
         return $planMeasure;

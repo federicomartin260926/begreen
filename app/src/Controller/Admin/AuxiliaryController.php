@@ -107,8 +107,8 @@ class AuxiliaryController extends AbstractController
                 ->leftJoin('b.protocol', 'p')
                 ->addSelect('p')
                 ->orderBy('p.name', 'ASC')
+                ->addOrderBy('b.sortOrder', 'ASC')
                 ->addOrderBy('b.name', 'ASC')
-                ->addOrderBy('b.code', 'ASC')
                 ->getQuery()
                 ->getResult();
         } elseif (in_array($type, ['category', 'department'], true)) {

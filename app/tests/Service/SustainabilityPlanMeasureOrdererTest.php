@@ -12,6 +12,30 @@ use PHPUnit\Framework\TestCase;
 
 final class SustainabilityPlanMeasureOrdererTest extends TestCase
 {
+    public function testCategoryGroupingOrdersOfficeBeforeEnergyThenBlockThenMeasure(): void
+    {
+        $office = (new Category())->setName('Oficina')->setSortOrder(10);
+        $energy = (new Category())->setName('Energía')->setSortOrder(20);
+        $department = (new Department())->setName('Producción')->setSortOrder(10);
+        $firstBlock = (new MeasureBlock())->setName('Bloque inicial')->setSortOrder(10);
+        $secondBlock = (new MeasureBlock())->setName('Bloque posterior')->setSortOrder(20);
+        $measures = [
+            $this->createMeasure('Energía', $energy, $department, $firstBlock, 1, 0),
+            $this->createMeasure('Oficina posterior', $office, $department, $secondBlock, 2, 0),
+            $this->createMeasure('Oficina segunda', $office, $department, $firstBlock, 2, 0),
+            $this->createMeasure('Oficina primera', $office, $department, $firstBlock, 1, 0),
+        ];
+
+        $sorted = (new SustainabilityPlanMeasureOrderer())->sortVisibleMeasures($measures, Protocol::GROUP_BY_CATEGORY);
+
+        self::assertSame([
+            'Oficina primera',
+            'Oficina segunda',
+            'Oficina posterior',
+            'Energía',
+        ], array_map(static fn (Measure $measure): string => (string) $measure->getName(), $sorted));
+    }
+
     public function testSortVisibleMeasuresRespectsCategoryGroupingCategoryThenBlockThenSourceRow(): void
     {
         [$energy, $accommodation, $production, $postproduction, $blockIntro, $blockActions, $measures] = $this->buildMeasures();

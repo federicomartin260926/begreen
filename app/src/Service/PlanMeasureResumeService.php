@@ -7,6 +7,11 @@ use App\Entity\PlanMeasure;
 
 final class PlanMeasureResumeService
 {
+    public function __construct(
+        private readonly PlanMeasureElaborationDecisionValidator $decisionValidator,
+    ) {
+    }
+
     /**
      * @param iterable<int, Measure> $visibleMeasures
      * @param iterable<int, PlanMeasure> $planMeasures
@@ -65,7 +70,7 @@ final class PlanMeasureResumeService
                 }
             }
 
-            if (trim((string) $planMeasure->getObservations()) === '') {
+            if (!$this->decisionValidator->hasValidObservations($planMeasure->getObservations())) {
                 return $lastIndex;
             }
         }

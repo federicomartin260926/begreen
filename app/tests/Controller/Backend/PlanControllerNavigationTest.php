@@ -2119,7 +2119,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => 'Observación actual',
+            'value' => str_repeat('a', 50),
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$pendingMeasure, $currentMeasure], $currentMeasure);
@@ -2146,7 +2146,11 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=0', (string) $data['nextUrl']);
         self::assertStringNotContainsString('only_pending=1', (string) $data['nextUrl']);
-        self::assertSame(['backend.plan.flash.pending_observations'], $request->getSession()->getFlashBag()->peek('warning'));
+        self::assertSame([
+            self::getContainer()->get('translator')->trans('backend.plan.flash.pending_observations', [
+                '%min%' => \App\Service\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH,
+            ]),
+        ], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
     public function testUpdateSelectionDoesNotAppendOnlyPendingWhenFilterIsInactive(): void
@@ -3081,7 +3085,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertNull($currentPlanMeasure->getObservations());
     }
 
-    public function testUpdateSelectionCompleteDecisionRejectsBlankObservations(): void
+    public function testUpdateSelectionCompleteDecisionRejectsFortyNineTrimmedObservationCharacters(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -3128,7 +3132,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => '   ',
+            'value' => '  ' . str_repeat('a', 49) . '  ',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
@@ -3153,7 +3157,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertFalse($data['success']);
         self::assertArrayHasKey('error', $data);
-        self::assertStringContainsString('observación', (string) $data['error']);
+        self::assertStringContainsString('50', (string) $data['error']);
         self::assertNull($data['nextUrl'] ?? null);
         self::assertSame('', $currentPlanMeasure->getObservations() ?? '');
     }
@@ -3192,7 +3196,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($currentMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(true)
-            ->setObservations('Observación válida')
+            ->setObservations(str_repeat('a', 50))
             ->setWillImplement(true)
             ->setApplicabilitySource('manual');
         $plan->addPlanMeasure($currentPlanMeasure);
@@ -3205,7 +3209,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => 'Observación válida',
+            'value' => '  ' . str_repeat('b', 50) . '  ',
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
@@ -3231,7 +3235,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($data['success']);
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringContainsString('i=1', (string) $data['nextUrl']);
-        self::assertSame('Observación válida', $currentPlanMeasure->getObservations());
+        self::assertSame(str_repeat('b', 50), $currentPlanMeasure->getObservations());
     }
 
     public function testBlockQuestionYesKeepsCurrentMeasurePendingAndReturnsCurrentIndex(): void

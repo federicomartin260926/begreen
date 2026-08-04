@@ -11,6 +11,7 @@ export default class extends Controller {
         this.updateUrl = this.element.dataset.updateUrl || '/index.php/backend/plan/update-selection';
         this.reviewUrl = this.element.dataset.reviewUrl || '/index.php/backend/plan/review';
         this.observationsError = this.element.dataset.observationsError || 'Debes escribir una observación para continuar.';
+        this.observationsMinLength = Number(this.element.dataset.observationsMinLength || '50');
 
         // --- Listeners de botones ---
         this.element.querySelectorAll('[data-plan-measures-target="actionBtn"]').forEach(btn => {
@@ -23,10 +24,13 @@ export default class extends Controller {
             });
         });
 
+        this.observationTargets.forEach((input) => this.updateObservationUi(input));
+
     }
 
     updateContinueState(event) {
         const input = event.currentTarget;
+        this.updateObservationUi(input);
         this.syncContinueState(this.getMeasureCard(input.dataset.measureId), input.dataset.measureId);
     }
 
@@ -36,7 +40,7 @@ export default class extends Controller {
         const card = this.getMeasureCardFromElement(button, measureId);
         const observations = String(card?.querySelector(`#observations-${measureId}`)?.value || '').trim();
 
-        if (observations === '') {
+        if (Array.from(observations).length < this.observationsMinLength) {
             this.showInlineError(this.observationsError, card);
             return;
         }
@@ -162,6 +166,7 @@ export default class extends Controller {
             || (decision === 'true' && (critical === 'true' || critical === 'false'));
         const observationsVisible = this.toggleSection(card, 'observations', decisionComplete);
         const continueVisible = this.toggleSection(card, 'continue', decisionComplete);
+        this.updateObservationUi(card.querySelector(`#observations-${measureId}`));
         this.syncContinueState(card, measureId);
 
         if (criticalVisible) {
@@ -271,11 +276,48 @@ export default class extends Controller {
         const decisionComplete = decision === 'false'
             || decision === 'na'
             || (decision === 'true' && (critical === 'true' || critical === 'false'));
-        const enable = decisionComplete && observations !== '';
+        const enable = decisionComplete && Array.from(observations).length >= this.observationsMinLength;
         button.disabled = !enable;
     }
 
+    updateObservationUi(input) {
+        if (!input) return;
+
+        const card = input.closest('.measure-card');
+        const count = Array.from(String(input.value || '').trim()).length;
+        const counter = card?.querySelector('[data-observations-counter]');
+        if (counter) {
+            const template = this.element.dataset.observationsCounter || '{count}/{min}';
+            counter.textContent = template
+                .replaceAll('{count}', String(count))
+                .replaceAll('{min}', String(this.observationsMinLength));
+            counter.classList.toggle('text-danger', count < this.observationsMinLength);
+            counter.classList.toggle('text-success', count >= this.observationsMinLength);
+        }
+
+        const help = card?.querySelector('[data-observations-help]');
+        if (!help) return;
+
+        const measureId = input.dataset.measureId;
+        const decision = this.getSelectedValue(measureId, 'decision', card);
+        const critical = this.getSelectedValue(measureId, 'critical', card);
+        let helpKey = 'observationsHelpNonCritical';
+        if (decision === 'na') helpKey = 'observationsHelpNotApplicable';
+        else if (decision === 'false') helpKey = 'observationsHelpNotImplemented';
+        else if (decision === 'true' && critical === 'true') {
+            helpKey = this.element.dataset.projectType === 'evento'
+                ? 'observationsHelpCriticalEvent'
+                : 'observationsHelpCriticalFilming';
+        }
+        help.textContent = this.element.dataset[helpKey] || '';
+    }
+
     showInlineError(message, card = null) {
+        const inlineError = card?.querySelector('[data-observations-inline-error]');
+        if (inlineError) {
+            inlineError.textContent = message;
+            inlineError.classList.remove('d-none');
+        }
         const alert = card?.querySelector('[data-plan-measures-target="errorAlert"]')
             || (this.hasErrorAlertTarget ? this.errorAlertTarget : null);
         if (!alert) {
@@ -290,6 +332,11 @@ export default class extends Controller {
     }
 
     clearInlineError(card = null) {
+        const inlineError = card?.querySelector('[data-observations-inline-error]');
+        if (inlineError) {
+            inlineError.textContent = '';
+            inlineError.classList.add('d-none');
+        }
         const alert = card?.querySelector('[data-plan-measures-target="errorAlert"]')
             || (this.hasErrorAlertTarget ? this.errorAlertTarget : null);
         if (!alert) {

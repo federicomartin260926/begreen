@@ -14,6 +14,7 @@ use App\Service\StripeCheckoutReconciliationResult;
 use App\Service\StripeInvoiceStorageService;
 use App\Service\SustainabilityPlanCompletionService;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\PlanMeasureElaborationDecisionValidator;
 use App\Service\ProjectFeatureGate;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\StripeProjectCheckoutService;
@@ -796,6 +797,7 @@ final class StripeProjectCheckoutServiceTest extends TestCase
             $this->createMeasureRepositoryMock($measures ?? []),
             new PlanMeasureCatalogResolver($gate),
             new SustainabilityPlanMeasureOrderer(),
+            new PlanMeasureElaborationDecisionValidator(),
         );
 
         return new StripeProjectCheckoutService(

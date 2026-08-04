@@ -40,7 +40,7 @@
         'evidence_selected_files':       'backend.plan.review.stimulus.evidence_selected_files'|trans,
         'evidence_max_size':             'backend.plan.review.stimulus.evidence_max_size'|trans,
         'evidence_oversized_list_intro': 'backend.plan.review.stimulus.evidence_oversized_list_intro'|trans,
-        'observations_required_html':   'backend.plan.review.stimulus.observations_required_html'|trans|raw
+        'observations_required_html':   'backend.plan.review.stimulus.observations_required_html'|trans({'%min%': constant('App\\Service\\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH')})|raw
     }|json_encode|e('html_attr') }}">
     <div class="backend-client-content">
             <div class="mb-4">

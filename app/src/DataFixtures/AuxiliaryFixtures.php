@@ -139,22 +139,22 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         // Categories
         // -------------------------
         foreach ([
-            ['name' => 'Energía', 'sortOrder' => 10],
-            ['name' => 'Alojamientos', 'sortOrder' => 20],
-            ['name' => 'Transporte', 'sortOrder' => 30],
-            ['name' => 'Consumo eficiente de recursos naturales', 'sortOrder' => 40],
-            ['name' => 'Materiales', 'sortOrder' => 50],
-            ['name' => 'Residuos', 'sortOrder' => 60],
-            ['name' => 'Catering', 'sortOrder' => 70],
-            ['name' => 'Biodiversidad', 'sortOrder' => 80],
-            ['name' => 'Comunicación', 'sortOrder' => 90],
-            ['name' => 'Contenido', 'sortOrder' => 100],
-            ['name' => 'Social', 'sortOrder' => 110],
-            ['name' => 'Viajes', 'sortOrder' => 120],
-            ['name' => 'Agua', 'sortOrder' => 130],
-            ['name' => 'Oficina', 'sortOrder' => 140],
-            ['name' => 'Consumo eficiente de recursos', 'sortOrder' => 150],
-            ['name' => 'Contenidos', 'sortOrder' => 160],
+            ['name' => 'Oficina', 'sortOrder' => 10],
+            ['name' => 'Energía', 'sortOrder' => 20],
+            ['name' => 'Alojamientos', 'sortOrder' => 30],
+            ['name' => 'Transporte', 'sortOrder' => 40],
+            ['name' => 'Consumo eficiente de recursos naturales', 'sortOrder' => 50],
+            ['name' => 'Consumo eficiente de recursos', 'sortOrder' => 50],
+            ['name' => 'Materiales', 'sortOrder' => 60],
+            ['name' => 'Residuos', 'sortOrder' => 70],
+            ['name' => 'Catering', 'sortOrder' => 80],
+            ['name' => 'Biodiversidad', 'sortOrder' => 90],
+            ['name' => 'Comunicación', 'sortOrder' => 100],
+            ['name' => 'Contenido', 'sortOrder' => 110],
+            ['name' => 'Contenidos', 'sortOrder' => 110],
+            ['name' => 'Social', 'sortOrder' => 120],
+            ['name' => 'Viajes', 'sortOrder' => 130],
+            ['name' => 'Agua', 'sortOrder' => 140],
         ] as $data) {
             $c = $upsert($manager, Category::class, ['name' => $data['name']], function (?Category $entity = null) use ($data) {
                 $entity ??= new Category();

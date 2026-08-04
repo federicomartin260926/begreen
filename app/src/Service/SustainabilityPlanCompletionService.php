@@ -16,6 +16,7 @@ final class SustainabilityPlanCompletionService
         private readonly MeasureRepository $measureRepository,
         private readonly PlanMeasureCatalogResolver $catalogResolver,
         private readonly SustainabilityPlanMeasureOrderer $measureOrderer,
+        private readonly PlanMeasureElaborationDecisionValidator $decisionValidator,
     ) {
     }
 
@@ -96,11 +97,6 @@ final class SustainabilityPlanCompletionService
         return null;
     }
 
-    private function hasObservations(PlanMeasure $planMeasure): bool
-    {
-        return trim((string) ($planMeasure->getObservations() ?? '')) !== '';
-    }
-
     /**
      * @return array<int, array{measure: Measure, index: int, reason: string}>
      */
@@ -168,7 +164,7 @@ final class SustainabilityPlanCompletionService
                 }
             }
 
-            if (!$this->hasObservations($planMeasure)) {
+            if (!$this->decisionValidator->hasValidObservations($planMeasure->getObservations())) {
                 $pending[] = [
                     'measure' => $measure,
                     'index' => (int) $index,

@@ -8,6 +8,7 @@ use App\Entity\Protocol;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -80,6 +81,12 @@ class AuxiliaryType extends AbstractType
                 ->add('code', TextType::class, [
                     'label' => 'backend.aux.form.code',
                     'attr'  => ['class' => 'form-control'],
+                ])
+                ->add('sortOrder', IntegerType::class, [
+                    'label' => 'backend.aux.form.sort_order',
+                    'required' => false,
+                    'empty_data' => '0',
+                    'attr' => ['class' => 'form-control', 'step' => 1],
                 ])
                 ->add('active', ChoiceType::class, [
                     'label' => 'backend.aux.form.active',

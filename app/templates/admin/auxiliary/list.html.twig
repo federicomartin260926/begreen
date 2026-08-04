@@ -43,6 +43,7 @@
 
                 {% if type == 'measure_block' %}
                   <th class="text-center">{{ 'backend.aux.table.protocol'|trans }}</th>
+                  <th class="text-center">{{ 'backend.aux.table.sort_order'|trans }}</th>
                   <th class="text-center">{{ 'backend.aux.table.code'|trans }}</th>
                   <th class="text-center">{{ 'backend.aux.table.active'|trans }}</th>
                   <th class="text-center">{{ 'backend.aux.table.has_screening_question'|trans }}</th>
@@ -86,6 +87,7 @@
 
                   {% if type == 'measure_block' %}
                     <td class="text-center">{{ item.protocol ? item.protocol.name : '—' }}</td>
+                    <td class="text-center">{{ item.sortOrder }}</td>
                     <td class="text-center">{{ item.code }}</td>
                     <td class="text-center">
                       <span class="badge {{ item.active ? 'bg-success' : 'bg-secondary' }}">

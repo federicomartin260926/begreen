@@ -12,6 +12,7 @@ use App\Repository\ProjectRepository;
 use App\Repository\ProjectSubscriptionRepository;
 use App\Service\CommercialPlanResolver;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\PlanMeasureElaborationDecisionValidator;
 use App\Service\ProjectFeatureGate;
 use App\Service\StripeInvoiceStorageService;
 use App\Service\SustainabilityPlanCompletionService;
@@ -202,6 +203,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
                 $this->createMock(MeasureRepository::class),
                 new PlanMeasureCatalogResolver($this->createFeatureGate()),
                 new SustainabilityPlanMeasureOrderer(),
+                new PlanMeasureElaborationDecisionValidator(),
             ),
             $this->createMock(StripeInvoiceStorageService::class),
             'whsec_test',
@@ -239,6 +241,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
                 $this->createMock(MeasureRepository::class),
                 new PlanMeasureCatalogResolver($this->createFeatureGate()),
                 new SustainabilityPlanMeasureOrderer(),
+                new PlanMeasureElaborationDecisionValidator(),
             ),
             $this->createMock(StripeInvoiceStorageService::class),
             'whsec_test',
@@ -280,6 +283,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
                 $this->createMock(MeasureRepository::class),
                 new PlanMeasureCatalogResolver($this->createFeatureGate()),
                 new SustainabilityPlanMeasureOrderer(),
+                new PlanMeasureElaborationDecisionValidator(),
             ),
             $invoiceStorage,
             'whsec_test',

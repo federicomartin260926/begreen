@@ -15,6 +15,7 @@ use App\Service\SustainabilityPlanImplementationViewService;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanCustomMeasureService;
 use App\Service\PlanMeasureOperationalStateResolver;
+use App\Service\PlanMeasureElaborationDecisionValidator;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\SustainabilityPlanClosureSummaryService;
 use App\Service\SustainabilityPlanClosureEmailRecipientResolver;
@@ -74,6 +75,7 @@ class PlanController extends AbstractController
         private SustainabilityCommitmentLevelService $commitmentLevelService,
         private SustainabilityPlanClosureSummaryService $closureSummaryService,
         private SustainabilityGamificationService $gamificationService,
+        private PlanMeasureElaborationDecisionValidator $decisionValidator,
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -2373,11 +2375,6 @@ class PlanController extends AbstractController
         return $result;
     }
 
-    private function hasObservations(PlanMeasure $planMeasure): bool
-    {
-        return trim((string) ($planMeasure->getObservations() ?? '')) !== '';
-    }
-
     private function validateCompletedDecision(PlanMeasure $planMeasure, string $observations): ?JsonResponse
     {
         if (!$this->hasCompleteDecisionStructure($planMeasure)) {
@@ -2387,7 +2384,7 @@ class PlanController extends AbstractController
             ], 400);
         }
 
-        if ($observations === '') {
+        if (!$this->decisionValidator->hasValidObservations($observations)) {
             return new JsonResponse([
                 'success' => false,
                 'error' => $this->observationsRequiredMessage(),
@@ -2400,7 +2397,7 @@ class PlanController extends AbstractController
     private function canAdvanceFromCurrentMeasure(PlanMeasure $planMeasure): bool
     {
         return $this->hasCompleteDecisionStructure($planMeasure)
-            && $this->hasObservations($planMeasure);
+            && $this->decisionValidator->hasValidObservations($planMeasure->getObservations());
     }
 
     private function hasCompleteDecisionStructure(PlanMeasure $planMeasure): bool
@@ -2429,13 +2426,17 @@ class PlanController extends AbstractController
 
     private function observationsRequiredMessage(): string
     {
-        return $this->t->trans('backend.plan.measures.observations_required');
+        return $this->t->trans('backend.plan.measures.observations_required', [
+            '%min%' => PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH,
+        ]);
     }
 
     private function pendingMeasureFlashMessage(string $reason): string
     {
         return match ($reason) {
-            'observations_missing' => 'backend.plan.flash.pending_observations',
+            'observations_missing' => $this->t->trans('backend.plan.flash.pending_observations', [
+                '%min%' => PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH,
+            ]),
             default => 'backend.plan.flash.pending_measure',
         };
     }

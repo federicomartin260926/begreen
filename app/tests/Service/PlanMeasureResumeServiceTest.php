@@ -8,13 +8,14 @@ use App\Entity\PlanMeasure;
 use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Entity\Protocol;
 use App\Service\PlanMeasureResumeService;
+use App\Service\PlanMeasureElaborationDecisionValidator;
 use PHPUnit\Framework\TestCase;
 
 final class PlanMeasureResumeServiceTest extends TestCase
 {
     public function testResolveIndexReturnsFirstPendingMeasureAndIgnoresBlockSkippedMeasures(): void
     {
-        $service = new PlanMeasureResumeService();
+        $service = $this->createService();
 
         $block = $this->createBlock();
         $blockAnswer = $this->createBlockAnswer($block, false);
@@ -31,7 +32,7 @@ final class PlanMeasureResumeServiceTest extends TestCase
                 ->setIsApplicable(true)
                 ->setIsCritical(true)
                 ->setWillImplement(true)
-                ->setObservations('Observación completa'),
+                ->setObservations(str_repeat('a', 50)),
             (new PlanMeasure())
                 ->setMeasure($measures[1])
                 ->setIsApplicable(false)
@@ -49,7 +50,7 @@ final class PlanMeasureResumeServiceTest extends TestCase
 
     public function testResolveIndexSkipsApplicableMeasuresNotSelectedForImplementation(): void
     {
-        $service = new PlanMeasureResumeService();
+        $service = $this->createService();
 
         $measures = [
             $this->createMeasure(),
@@ -63,14 +64,14 @@ final class PlanMeasureResumeServiceTest extends TestCase
                 ->setIsApplicable(true)
                 ->setWillImplement(false)
                 ->setIsCritical(null)
-                ->setObservations('Observación de descarte')
+                ->setObservations(str_repeat('a', 50))
                 ->markAsManual(),
             (new PlanMeasure())
                 ->setMeasure($measures[1])
                 ->setIsApplicable(true)
                 ->setWillImplement(true)
                 ->setIsCritical(true)
-                ->setObservations('Observación crítica')
+                ->setObservations(str_repeat('b', 50))
                 ->markAsManual(),
         ];
 
@@ -79,7 +80,7 @@ final class PlanMeasureResumeServiceTest extends TestCase
 
     public function testResolveIndexFallsBackToLastVisibleMeasureWhenEverythingIsAnswered(): void
     {
-        $service = new PlanMeasureResumeService();
+        $service = $this->createService();
 
         $block = $this->createBlock();
         $blockAnswer = $this->createBlockAnswer($block, false);
@@ -91,11 +92,11 @@ final class PlanMeasureResumeServiceTest extends TestCase
                 ->setIsApplicable(true)
                 ->setIsCritical(false)
                 ->setWillImplement(true)
-                ->setObservations('Observación completa'),
+                ->setObservations(str_repeat('a', 50)),
             (new PlanMeasure())
                 ->setMeasure($measures[1])
                 ->setIsApplicable(false)
-                ->setObservations('No aplica')
+                ->setObservations(str_repeat('b', 50))
                 ->setApplicabilitySource('manual'),
             (new PlanMeasure())
                 ->setMeasure($measures[2])
@@ -109,7 +110,7 @@ final class PlanMeasureResumeServiceTest extends TestCase
 
     public function testResolveIndexReturnsStaleBlockSkippedMeasureWhenBlockWasReenabled(): void
     {
-        $service = new PlanMeasureResumeService();
+        $service = $this->createService();
 
         $block = $this->createBlock();
         $blockAnswer = $this->createBlockAnswer($block, true);
@@ -121,7 +122,7 @@ final class PlanMeasureResumeServiceTest extends TestCase
                 ->setIsApplicable(true)
                 ->setIsCritical(false)
                 ->setWillImplement(true)
-                ->setObservations('Observación completa'),
+                ->setObservations(str_repeat('a', 50)),
             (new PlanMeasure())
                 ->setMeasure($measures[1])
                 ->setIsApplicable(false)
@@ -145,6 +146,11 @@ final class PlanMeasureResumeServiceTest extends TestCase
         }
 
         return $measure;
+    }
+
+    private function createService(): PlanMeasureResumeService
+    {
+        return new PlanMeasureResumeService(new PlanMeasureElaborationDecisionValidator());
     }
 
     private function createBlock(): MeasureBlock

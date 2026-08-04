@@ -8,6 +8,7 @@
 {% endblock %}
 
 {% block body %}
+{% set observationsMinLength = constant('App\\Service\\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH') %}
 <div
     class="container-fluid px-0 backend-client-shell plan-measures-page"
     data-controller="plan-measures"
@@ -15,7 +16,15 @@
     data-total-measures="{{ total }}"
     data-update-url="{{ path('backend_plan_update_selection') }}"
     data-review-url="{{ path('backend_plan_review', { is_applicable: '1', will_implement: '1', state: 'all' }) }}"
-    data-observations-error="{{ 'backend.plan.measures.observations_required'|trans|e('html_attr') }}">
+    data-observations-min-length="{{ observationsMinLength }}"
+    data-project-type="{{ project.type|default('')|lower }}"
+    data-observations-error="{{ 'backend.plan.measures.observations_required'|trans({'%min%': observationsMinLength})|e('html_attr') }}"
+    data-observations-counter="{{ 'backend.plan.measures.observations_counter'|trans({'%count%': '{count}', '%min%': '{min}'})|e('html_attr') }}"
+    data-observations-help-not-applicable="{{ 'backend.plan.measures.observations_help_not_applicable'|trans|e('html_attr') }}"
+    data-observations-help-not-implemented="{{ 'backend.plan.measures.observations_help_not_implemented'|trans|e('html_attr') }}"
+    data-observations-help-critical-filming="{{ 'backend.plan.measures.observations_help_critical_filming'|trans|e('html_attr') }}"
+    data-observations-help-critical-event="{{ 'backend.plan.measures.observations_help_critical_event'|trans|e('html_attr') }}"
+    data-observations-help-non-critical="{{ 'backend.plan.measures.observations_help_non_critical'|trans|e('html_attr') }}">
     <div class="backend-client-content">
 
             <div class="plan-page-header mb-3">

@@ -301,7 +301,18 @@
                     <h5 class="modal-title" id="decision-modal-label-{{ measure.id }}">{{ 'backend.plan.review.modify_decision'|trans }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
                 </div>
-                <div class="modal-body" data-plan-review-target="inlineEdit" id="inline-edit-{{ measure.id }}">
+                <div class="modal-body"
+                     data-plan-review-target="inlineEdit"
+                     id="inline-edit-{{ measure.id }}"
+                     data-project-type="{{ project.type|default('')|lower }}"
+                     data-observations-min-length="{{ constant('App\\Service\\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH') }}"
+                     data-observations-error="{{ 'backend.plan.measures.observations_required'|trans({'%min%': constant('App\\Service\\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH')})|e('html_attr') }}"
+                     data-observations-counter="{{ 'backend.plan.measures.observations_counter'|trans({'%count%': '{count}', '%min%': '{min}'})|e('html_attr') }}"
+                     data-observations-help-not-applicable="{{ 'backend.plan.measures.observations_help_not_applicable'|trans|e('html_attr') }}"
+                     data-observations-help-not-implemented="{{ 'backend.plan.measures.observations_help_not_implemented'|trans|e('html_attr') }}"
+                     data-observations-help-critical-filming="{{ 'backend.plan.measures.observations_help_critical_filming'|trans|e('html_attr') }}"
+                     data-observations-help-critical-event="{{ 'backend.plan.measures.observations_help_critical_event'|trans|e('html_attr') }}"
+                     data-observations-help-non-critical="{{ 'backend.plan.measures.observations_help_non_critical'|trans|e('html_attr') }}">
                     <div class="row g-3">
                         <div class="col-12 col-lg-4">
                             <div class="small text-muted mb-1">{{ 'backend.plan.q.apply'|trans }}</div>
@@ -350,7 +361,8 @@
                                                id="critical-{{ value == 'true' ? 'yes' : 'no' }}-{{ measure.id }}"
                                                value="{{ value }}"
                                                {% if (value == 'true' and pm.isCritical is same as(true)) or (value == 'false' and pm.isCritical is same as(false)) %}checked{% endif %}
-                                               {% if pm.isApplicable is same as(false) or pm.willImplement is not same as(true) %}disabled{% endif %}>
+                                               {% if pm.isApplicable is same as(false) or pm.willImplement is not same as(true) %}disabled{% endif %}
+                                               data-action="change->plan-review#onDecisionContextChange">
                                         <label class="form-check-label" for="critical-{{ value == 'true' ? 'yes' : 'no' }}-{{ measure.id }}">{{ label|trans }}</label>
                                     </div>
                                 {% endfor %}
@@ -358,12 +370,20 @@
                         </div>
                     </div>
                     <div class="mt-3">
-                        <label class="small text-muted mb-1" for="decision-observations-{{ measure.id }}">{{ 'backend.plan.q.observations'|trans }}</label>
+                        <label class="small text-muted mb-1" for="decision-observations-{{ measure.id }}">
+                            {{ 'backend.plan.q.observations'|trans }} <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
                         <textarea id="decision-observations-{{ measure.id }}"
                                   class="form-control"
                                   rows="3"
                                   required
+                                  minlength="{{ constant('App\\Service\\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH') }}"
+                                  aria-describedby="decision-observations-help-{{ measure.id }} decision-observations-counter-{{ measure.id }} decision-observations-error-{{ measure.id }}"
+                                  data-action="input->plan-review#onDecisionObservationInput"
                                   placeholder="{{ 'backend.plan.q.observations_ph'|trans }}">{{ pm.observations ?? '' }}</textarea>
+                        <div id="decision-observations-help-{{ measure.id }}" class="form-text" data-decision-observations-help></div>
+                        <div id="decision-observations-counter-{{ measure.id }}" class="form-text text-end" data-decision-observations-counter></div>
+                        <div id="decision-observations-error-{{ measure.id }}" class="invalid-feedback d-block d-none" data-decision-observations-error></div>
                     </div>
                 </div>
                 <div class="modal-footer">

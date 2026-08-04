@@ -216,17 +216,24 @@
                 class="{% if not (decision in ['false', 'na'] or (decision == 'true' and critical is not same as(null))) %}d-none{% endif %}">
                 <div class="d-flex justify-content-center mb-3">
                     <div class="w-100 text-center" style="max-width: 500px;">
-                        <label for="observations-{{ measure.id }}" class="form-label">{{ 'backend.plan.q.observations'|trans }}</label>
+                        <label for="observations-{{ measure.id }}" class="form-label">
+                            {{ 'backend.plan.q.observations'|trans }} <span class="text-danger" aria-hidden="true">*</span>
+                        </label>
                         <textarea
                             id="observations-{{ measure.id }}"
                             rows="3"
                             class="form-control"
                             required
+                            minlength="{{ constant('App\\Service\\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH') }}"
+                            aria-describedby="observations-help-{{ measure.id }} observations-counter-{{ measure.id }} observations-error-{{ measure.id }}"
                             placeholder="{{ 'backend.plan.q.observations_ph'|trans }}"
                             data-plan-measures-target="observation"
                             data-action="input->plan-measures#updateContinueState"
                             data-measure-id="{{ measure.id }}"
                         >{{ observations }}</textarea>
+                        <div id="observations-help-{{ measure.id }}" class="form-text text-start" data-observations-help></div>
+                        <div id="observations-counter-{{ measure.id }}" class="form-text text-end" data-observations-counter></div>
+                        <div id="observations-error-{{ measure.id }}" class="invalid-feedback d-block text-start d-none" data-observations-inline-error></div>
                     </div>
                 </div>
             </div>
@@ -238,7 +245,7 @@
                     <button
                         type="button"
                         class="btn btn-success px-4"
-                        {% if observations|trim == '' %}disabled{% endif %}
+                        {% if observations|trim|length < constant('App\\Service\\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH') %}disabled{% endif %}
                         data-plan-measures-action="continue"
                         data-action="click->plan-measures#completeDecision"
                         data-measure-id="{{ measure.id }}">

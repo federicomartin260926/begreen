@@ -20,6 +20,7 @@ use App\Repository\MeasureRepository;
 use App\Repository\PlanRepository;
 use App\Service\ActiveProjectService;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\PlanMeasureElaborationDecisionValidator;
 use App\Service\ProjectFeatureGate;
 use App\Service\SustainabilityPlanCompletionService;
 use App\Service\SustainabilityPlanMeasureOrderer;
@@ -370,6 +371,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
             $this->createMeasureRepositoryMock($measures ?? []),
             new PlanMeasureCatalogResolver($gate),
             new SustainabilityPlanMeasureOrderer(),
+            new PlanMeasureElaborationDecisionValidator(),
         );
 
         return new StripeProjectCheckoutService(

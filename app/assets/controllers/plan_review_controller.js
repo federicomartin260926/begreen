@@ -29,6 +29,7 @@ export default class extends Controller {
   connect() {
     this.initializeImplementedSwitches();
     this.initializeImplementationCollapses();
+    this.inlineEditTargets.forEach((box) => this.updateDecisionObservationUi(box));
 
     // --- Filtros ---
     const filtersForm = this.element.querySelector('#plan-filters-form');
@@ -635,6 +636,7 @@ export default class extends Controller {
       const implementationSelected = implYes?.checked === true;
       [critYes, critNo].forEach(el => setDisabled(el, !implementationSelected));
     }
+    this.updateDecisionObservationUi(box);
   }
 
   onImplementChange(e) {
@@ -652,6 +654,53 @@ export default class extends Controller {
       input.disabled = !willImplement;
       if (!willImplement) input.checked = false;
     });
+    this.updateDecisionObservationUi(box);
+  }
+
+  onDecisionContextChange(event) {
+    this.updateDecisionObservationUi(event.currentTarget.closest('[data-plan-review-target="inlineEdit"]'));
+  }
+
+  onDecisionObservationInput(event) {
+    this.updateDecisionObservationUi(event.currentTarget.closest('[data-plan-review-target="inlineEdit"]'));
+  }
+
+  updateDecisionObservationUi(box) {
+    if (!box) return;
+
+    const textarea = box.querySelector('textarea[id^="decision-observations-"]');
+    if (!textarea) return;
+
+    const minLength = Number(box.dataset.observationsMinLength || '50');
+    const count = Array.from(String(textarea.value || '').trim()).length;
+    const counter = box.querySelector('[data-decision-observations-counter]');
+    if (counter) {
+      counter.textContent = (box.dataset.observationsCounter || '{count}/{min}')
+        .replaceAll('{count}', String(count))
+        .replaceAll('{min}', String(minLength));
+      counter.classList.toggle('text-danger', count < minLength);
+      counter.classList.toggle('text-success', count >= minLength);
+    }
+
+    const applies = box.querySelector('input[name^="applies-"]:checked')?.value ?? null;
+    const implement = box.querySelector('input[name^="implement-"]:checked')?.value ?? null;
+    const critical = box.querySelector('input[name^="critical-"]:checked')?.value ?? null;
+    let helpKey = 'observationsHelpNonCritical';
+    if (applies === 'false') helpKey = 'observationsHelpNotApplicable';
+    else if (implement === 'false') helpKey = 'observationsHelpNotImplemented';
+    else if (implement === 'true' && critical === 'true') {
+      helpKey = box.dataset.projectType === 'evento'
+        ? 'observationsHelpCriticalEvent'
+        : 'observationsHelpCriticalFilming';
+    }
+    const help = box.querySelector('[data-decision-observations-help]');
+    if (help) help.textContent = box.dataset[helpKey] || '';
+
+    const error = box.querySelector('[data-decision-observations-error]');
+    if (error && count >= minLength) {
+      error.textContent = '';
+      error.classList.add('d-none');
+    }
   }
 
   async saveInlineEdit(event) {
@@ -684,8 +733,14 @@ export default class extends Controller {
         return;
       }
 
-      if (observations === '') {
-        this.showModal(this.t('modal.missing_title'), this.t('observations_required_html'));
+      const observationsMinLength = Number(inlineBox.dataset.observationsMinLength || '50');
+      if (Array.from(observations).length < observationsMinLength) {
+        const error = inlineBox.querySelector('[data-decision-observations-error]');
+        if (error) {
+          error.textContent = inlineBox.dataset.observationsError || this.t('observations_required_html');
+          error.classList.remove('d-none');
+        }
+        observationsEl?.focus({ preventScroll: true });
         return;
       }
 
