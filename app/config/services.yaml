@@ -6,6 +6,18 @@
 parameters:
     contact_email: '%env(CONTACT_EMAIL)%'
     app.mail_from: '%env(APP_MAIL_FROM)%'
+    ai.provider: '%env(string:AI_PROVIDER)%'
+    ai.timeout_seconds: '%env(int:AI_TIMEOUT_SECONDS)%'
+    ai.min_measure_score: '%env(int:AI_MIN_MEASURE_SCORE)%'
+    ai.alert_email: '%env(string:AI_ALERT_EMAIL)%'
+    openai.api_key: '%env(string:AI_API_KEY)%'
+    openai.model: '%env(string:AI_MODEL)%'
+    openai.base_url: '%env(string:AI_BASE_URL)%'
+    anthropic.api_key: '%env(string:ANTHROPIC_API_KEY)%'
+    anthropic.model: '%env(string:ANTHROPIC_MODEL)%'
+    anthropic.base_url: '%env(string:ANTHROPIC_BASE_URL)%'
+    anthropic.api_version: '%env(string:ANTHROPIC_API_VERSION)%'
+    anthropic.max_tokens: '%env(int:ANTHROPIC_MAX_TOKENS)%'
     communication_files_directory: '%kernel.project_dir%/public/uploads/communication_files'
     stripe.secret_key: '%env(string:STRIPE_SECRET_KEY)%'
     stripe.webhook_secret: '%env(string:STRIPE_WEBHOOK_SECRET)%'
@@ -68,6 +80,39 @@ services:
         arguments:
             $fromEmail: '%app.mail_from%'
             $notifyEmail: '%contact_email%'
+
+    App\Service\Ai\AiReportConfiguration:
+        arguments:
+            $provider: '%ai.provider%'
+            $timeoutSeconds: '%ai.timeout_seconds%'
+            $minMeasureScore: '%ai.min_measure_score%'
+            $alertEmail: '%ai.alert_email%'
+
+    App\Service\Ai\OpenAiReportConfiguration:
+        arguments:
+            $apiKey: '%openai.api_key%'
+            $model: '%openai.model%'
+            $baseUrl: '%openai.base_url%'
+
+    App\Service\Ai\AnthropicReportConfiguration:
+        arguments:
+            $apiKey: '%anthropic.api_key%'
+            $model: '%anthropic.model%'
+            $baseUrl: '%anthropic.base_url%'
+            $apiVersion: '%anthropic.api_version%'
+            $maxTokens: '%anthropic.max_tokens%'
+
+    App\Service\Ai\AiQuotaAlertNotifier:
+        arguments:
+            $environment: '%kernel.environment%'
+            $fromEmail: '%app.mail_from%'
+
+    App\Service\Ai\ConfiguredAiReportProvider:
+        arguments:
+            $openAiProvider: '@App\Service\Ai\OpenAiReportProvider'
+            $anthropicProvider: '@App\Service\Ai\AnthropicReportProvider'
+
+    App\Service\Ai\AiReportProviderInterface: '@App\Service\Ai\ConfiguredAiReportProvider'
 
     App\Twig\AppExtension:
         tags: ['twig.extension']

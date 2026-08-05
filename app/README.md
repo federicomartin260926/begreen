@@ -151,6 +151,24 @@ La suite PHPUnit se ejecuta con:
 make test
 ```
 
+## Prueba de conexión con el proveedor de IA
+
+El comando `app:ai:test-report` verifica la configuración, autenticación, conexión con el proveedor configurado, generación estructurada y validación y parseo de la respuesta. Opera a través de `AiReportProviderInterface`, por lo que no está ligado conceptualmente a OpenAI ni a Anthropic, y usa exclusivamente datos ficticios sin persistirlos ni escribir archivos.
+
+`AI_PROVIDER` admite `openai` o `anthropic`. Cada proveedor requiere configurar en `app/.env.local` sus variables privadas (`AI_API_KEY` y `AI_MODEL` para OpenAI; `ANTHROPIC_API_KEY` y `ANTHROPIC_MODEL` para Anthropic). `ANTHROPIC_MODEL` no tiene valor por defecto y debe definirse antes de seleccionar Anthropic. No se debe versionar ninguna clave. El comando prueba el proveedor seleccionado realizando una llamada real, por lo que consume saldo o cuota.
+
+Para ejecutarlo en local con una configuración de proveedor válida:
+
+```bash
+docker compose -p begreen \
+  --env-file app/.env \
+  --env-file app/.env.local \
+  -f app/docker-compose.yml \
+  -f app/docker-compose.dev.yml \
+  exec -T php \
+  php bin/console app:ai:test-report
+```
+
 ## Despliegue
 
 Los comandos de producción se ejecutan desde la raíz:
