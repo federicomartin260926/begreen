@@ -81,7 +81,19 @@
                     }) }}
                 </div>
                 <div class="text-muted text-nowrap">{{ 'backend.plan.score.total_inline'|trans({'%gained%': scoreGained|default(0), '%max%': scoreMax|default(0)}) }}</div>
-                <div class="text-muted text-nowrap">{{ 'backend.plan.score.current_inline'|trans({'%score%': measure.score is not null ? measure.score : 0}) }}</div>
+                {% set measureScore = measure.score is not null ? measure.score : 0 %}
+                <div
+                    class="text-warning text-nowrap"
+                    role="img"
+                    aria-label="{{ 'backend.plan.score.current_inline'|trans({'%score%': measureScore}) }}">
+                    {% if measureScore > 0 %}
+                        {% for point in 1..measureScore %}
+                            <i class="bi bi-star-fill" aria-hidden="true"></i>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted">0 {{ 'backend.common.points'|trans }}</span>
+                    {% endif %}
+                </div>
             </div>
         {% endif %}
     </div>

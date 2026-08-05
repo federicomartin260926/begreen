@@ -28,7 +28,7 @@ final class SustainabilityPlanImplementationViewServiceTest extends TestCase
         $pending = $this->planMeasure(1, $implementation, true, null);
         $inProgress = $this->planMeasure(2, $implementation, true, true)->setActionTaken('Acción');
         $implemented = $this->planMeasure(3, $implementation, true, true)
-            ->setActionTaken('Acción')
+            ->setActionTaken('Acción realizada y completada con todos los detalles necesarios.')
             ->setEvidence('/evidence.pdf');
         $notImplemented = $this->planMeasure(4, $implementation, true, false)
             ->setExecutionIncident('Incidencia');
@@ -65,7 +65,7 @@ final class SustainabilityPlanImplementationViewServiceTest extends TestCase
         $category = (new Category())->setName('Completada')->setSortOrder(1);
         $this->setId($category, 10);
         $implemented = $this->planMeasure(1, $category, true, true)
-            ->setActionTaken('Acción')
+            ->setActionTaken('Acción realizada y completada con todos los detalles necesarios.')
             ->setEvidence('/evidence.pdf');
         $notImplemented = $this->planMeasure(2, $category, true, false)
             ->setExecutionIncident('Incidencia');
@@ -117,7 +117,7 @@ final class SustainabilityPlanImplementationViewServiceTest extends TestCase
         $this->setId($category, 10);
         $pending = $this->planMeasure(1, $category, true, null);
         $implemented = $this->planMeasure(2, $category, true, true)
-            ->setActionTaken('Acción')
+            ->setActionTaken('Acción realizada y completada con todos los detalles necesarios.')
             ->setEvidence('/evidence.pdf');
         $notImplemented = $this->planMeasure(3, $category, true, false)
             ->setExecutionIncident('Incidencia');
@@ -144,7 +144,7 @@ final class SustainabilityPlanImplementationViewServiceTest extends TestCase
     private function implementedPlanMeasure(int $id, ?Category $category): PlanMeasure
     {
         return $this->planMeasure($id, $category, true, true)
-            ->setActionTaken('Acción')
+            ->setActionTaken('Acción realizada y completada con todos los detalles necesarios.')
             ->setEvidence('/evidence.pdf');
     }
 

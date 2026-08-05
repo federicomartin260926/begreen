@@ -28,6 +28,8 @@
         'modal.missing_title':           'backend.plan.review.stimulus.modal.missing_title'|trans,
         'modal.default_title':           'backend.plan.review.stimulus.modal.default_title'|trans,
         'save_missing_fields_html':      'backend.plan.review.stimulus.save_missing_fields_html'|trans|raw,
+        'action_taken_required':         'backend.plan.review.stimulus.action_taken_required'|trans({'%min%': constant('App\\Entity\\PlanMeasure::MIN_ACTION_TAKEN_LENGTH')}),
+        'action_taken_counter':          'backend.plan.review.action_taken_counter'|trans({'%count%': '{count}', '%min%': '{min}'}),
         'upload_invalid_response':       'backend.plan.review.stimulus.upload_invalid_response'|trans,
         'upload_failed_http':            'backend.plan.review.stimulus.upload_failed_http'|trans,
         'evidence_upload_failed':        'backend.plan.review.stimulus.evidence_upload_failed'|trans,

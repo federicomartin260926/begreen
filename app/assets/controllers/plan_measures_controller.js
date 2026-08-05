@@ -3,8 +3,6 @@ import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
     static targets = ['actionBtn', 'observation', 'errorAlert'];
-    static scrollOffset = 96;
-
     connect() {
         this.currentIndex = Number(this.element.dataset.currentIndex || '0');
         this.totalMeasures = Number(this.element.dataset.totalMeasures || '0');
@@ -348,20 +346,24 @@ export default class extends Controller {
     }
 
     scrollToSection(sectionElement) {
-        if (!sectionElement || sectionElement.classList.contains('d-none')) {
+        const planSummary = this.element.querySelector('#plan-commercial-summary');
+        const target = planSummary || sectionElement;
+        if (!target || target.classList.contains('d-none')) {
             return;
         }
 
-        this.scrollToElement(sectionElement);
+        this.scrollToElement(target);
     }
 
-    scrollToElement(element, offset = this.constructor.scrollOffset) {
+    scrollToElement(element) {
         if (!element) {
             return;
         }
 
         window.requestAnimationFrame(() => {
             try {
+                const fixedHeader = document.querySelector('.backend-topbar');
+                const offset = fixedHeader?.getBoundingClientRect().height || 0;
                 const top = element.getBoundingClientRect().top + window.scrollY - offset;
                 window.scrollTo({
                     top: Math.max(top, 0),

@@ -29,6 +29,7 @@ export default class extends Controller {
   connect() {
     this.initializeImplementationCollapses();
     this.inlineEditTargets.forEach((box) => this.updateDecisionObservationUi(box));
+    this.element.querySelectorAll('[data-action-taken-input]').forEach((input) => this.updateActionTakenUi(input, false));
 
     // --- Filtros ---
     const filtersForm = this.element.querySelector('#plan-filters-form');
@@ -673,6 +674,11 @@ export default class extends Controller {
         const internalNotesEl = activePanel.querySelector(`#internal-notes-${measureId}`);
         const responsiblesEl = activePanel.querySelector(`#responsibles-${measureId}`);
 
+        if (canSend(actionTakenEl) && !this.updateActionTakenUi(actionTakenEl)) {
+          actionTakenEl.focus({ preventScroll: true });
+          return;
+        }
+
         if (canSend(verificationEl)) updates.push({ field: 'verification', value: verificationEl.checked ? 'true' : 'false' });
         if (canSend(actionTakenEl)) updates.push({ field: 'action_taken', value: (actionTakenEl.value || '').trim() });
         if (canSend(internalNotesEl)) updates.push({ field: 'internal_notes', value: (internalNotesEl.value || '').trim() });
@@ -735,6 +741,28 @@ export default class extends Controller {
     } finally {
       btn.disabled = false;
     }
+  }
+
+  updateActionTakenUi(eventOrInput, showError = true) {
+    const input = eventOrInput?.currentTarget || eventOrInput;
+    if (!input) return false;
+
+    const minLength = Number(input.minLength || '50');
+    const count = Array.from(String(input.value || '').trim()).length;
+    const container = input.parentElement;
+    const counter = container?.querySelector('[data-action-taken-counter]');
+    const isValid = count >= minLength;
+
+    if (counter) {
+      counter.textContent = this.t('action_taken_counter', { count, min: minLength });
+      counter.classList.toggle('text-danger', !isValid);
+      counter.classList.toggle('text-success', isValid);
+    }
+
+    input.classList.toggle('is-invalid', showError && !isValid);
+    input.setAttribute('aria-invalid', isValid ? 'false' : 'true');
+
+    return isValid;
   }
 
   openEvidenceModal(event) {

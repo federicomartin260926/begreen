@@ -122,12 +122,27 @@
 
             <div class="row g-3 align-items-start">
                 <div class="col-12 col-lg-6">
-                    <label class="form-label small" for="action-taken-{{ measure.id }}">{{ 'backend.plan.review.action_taken'|trans }}</label>
+                    <label class="form-label small" for="action-taken-{{ measure.id }}">
+                        {{ 'backend.plan.review.action_taken'|trans }}
+                        <span class="text-danger" aria-hidden="true">*</span>
+                    </label>
                     <textarea id="action-taken-{{ measure.id }}"
                               class="form-control"
                               rows="2"
+                              required
+                              minlength="{{ constant('App\\Entity\\PlanMeasure::MIN_ACTION_TAKEN_LENGTH') }}"
+                              aria-describedby="action-taken-help-{{ measure.id }} action-taken-counter-{{ measure.id }} action-taken-error-{{ measure.id }}"
+                              data-action-taken-input
+                              data-action="input->plan-review#updateActionTakenUi"
                               {% if executionDecisionLocked %}disabled data-locked="1"{% endif %}
                               placeholder="{{ 'backend.plan.review.action_taken_ph'|trans }}">{{ pm.actionTaken ?? '' }}</textarea>
+                    <div id="action-taken-help-{{ measure.id }}" class="form-text">
+                        {{ 'backend.plan.review.action_taken_help'|trans({'%min%': constant('App\\Entity\\PlanMeasure::MIN_ACTION_TAKEN_LENGTH')}) }}
+                    </div>
+                    <div id="action-taken-counter-{{ measure.id }}" class="form-text text-end" data-action-taken-counter></div>
+                    <div id="action-taken-error-{{ measure.id }}" class="invalid-feedback" data-action-taken-error>
+                        {{ 'backend.plan.review.stimulus.action_taken_required'|trans({'%min%': constant('App\\Entity\\PlanMeasure::MIN_ACTION_TAKEN_LENGTH')}) }}
+                    </div>
                 </div>
                 <div class="col-12 col-lg-6">
                     {% include 'backend/plan/_evidence_block.html.twig' with {

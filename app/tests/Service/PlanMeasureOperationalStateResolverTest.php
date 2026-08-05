@@ -65,7 +65,7 @@ final class PlanMeasureOperationalStateResolverTest extends TestCase
     {
         self::assertSame(PlanMeasureOperationalStateResolver::IMPLEMENTED, $this->resolver->resolve($this->executableMeasure()
             ->setImplemented(true)
-            ->setActionTaken('Acción completada')
+            ->setActionTaken('Acción realizada y completada con todos los detalles necesarios.')
             ->setEvidence('/uploads/evidences/evidence.pdf')));
     }
 

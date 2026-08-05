@@ -10,6 +10,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: PlanMeasureRepository::class)]
 class PlanMeasure
 {
+    public const MIN_ACTION_TAKEN_LENGTH = 50;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -213,6 +215,11 @@ class PlanMeasure
         return trim((string) $this->actionTaken) !== '';
     }
 
+    public function hasValidActionTaken(): bool
+    {
+        return mb_strlen(trim((string) $this->actionTaken)) >= self::MIN_ACTION_TAKEN_LENGTH;
+    }
+
     public function getObservations(): ?string { return $this->observations; }
     public function setObservations(?string $observations): self { $this->observations = $observations; return $this; }
 
@@ -251,7 +258,7 @@ class PlanMeasure
 
     public function canBeMarkedAsImplemented(): bool
     {
-        return $this->hasActionTaken() && $this->hasEvidence();
+        return $this->hasValidActionTaken() && $this->hasEvidence();
     }
 
     /**

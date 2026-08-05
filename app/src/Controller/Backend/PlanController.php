@@ -1019,6 +1019,14 @@ class PlanController extends AbstractController
 
             case 'action_taken':
                 $text = trim((string)$value);
+                if (mb_strlen($text) < PlanMeasure::MIN_ACTION_TAKEN_LENGTH) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => $this->t->trans('backend.plan.review.stimulus.action_taken_required', [
+                            '%min%' => PlanMeasure::MIN_ACTION_TAKEN_LENGTH,
+                        ]),
+                    ], 400);
+                }
                 $planMeasure->setActionTaken($text !== '' ? $text : null);
                 $planMeasure->markAsManual();
                 break;
