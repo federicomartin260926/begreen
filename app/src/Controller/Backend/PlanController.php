@@ -1915,7 +1915,10 @@ class PlanController extends AbstractController
         if ($asPdf) {
             // 3A) Renderizar HTML del PDF y generar bytes
             $html    = $this->renderPdfHtml($ctx);
-            $pdfData = $this->pdfBytesFromHtml($html);
+            $pdfData = $this->pdfBytesFromHtml(
+                $html,
+                $phase === CommercialPhase::ELABORATION ? 'portrait' : 'landscape'
+            );
 
             // 4A) Responder como descarga
             /** @var Project $project */
@@ -1978,7 +1981,10 @@ class PlanController extends AbstractController
             $phase
         );
         $html = $this->renderPdfHtml($ctx);
-        return $this->pdfBytesFromHtml($html);
+        return $this->pdfBytesFromHtml(
+            $html,
+            $phase === CommercialPhase::ELABORATION ? 'portrait' : 'landscape'
+        );
     }
 
     private function buildActiveFilterLabels(
@@ -2151,10 +2157,11 @@ class PlanController extends AbstractController
 
         $scorePct = $scoreMax > 0 ? round(100 * $scoreGained / $scoreMax) : null;
 
-        $effective = $nonApplicable = $agreed = $implemented = $notImplemented = $inProgress = $pending = 0;
+        $effective = $nonApplicable = $agreed = $critical = $implemented = $notImplemented = $inProgress = $pending = 0;
         foreach ($filteredPlanMeasures as $pm) {
             if ($pm->isApplicable() === true)  $effective++;
             if ($pm->isApplicable() === false) $nonApplicable++;
+            if ($pm->isCritical() === true) $critical++;
             if ($pm->isApplicable() === true && $pm->willImplement() === true) {
                 $agreed++;
                 match ($this->operationalStateResolver->resolve($pm)) {
@@ -2233,13 +2240,38 @@ class PlanController extends AbstractController
             'scoreMax'       => $scoreMax,
             'scoreGained'    => $scoreGained,
             'scorePct'       => $scorePct,
+            'generatedAt'    => new \DateTimeImmutable('now', new \DateTimeZone('Europe/Madrid')),
+            'coverIndicators' => [
+                'total' => $measuresTotal,
+                'applicable' => $effective,
+                'toImplement' => $agreed,
+                'critical' => $critical,
+            ],
+            'pdfPhase'       => $phase,
             'useDepartmentActionText' => $useDepartmentActionText,
         ];
     }
 
     private function renderPdfHtml(array $context): string
     {
+        if (($context['pdfPhase'] ?? null) === CommercialPhase::ELABORATION) {
+            $context['pdfVisualAssets'] = [
+                'logo' => $this->pdfAssetDataUri('assets/images/logo-white.svg', 'image/svg+xml'),
+                'vegetation' => $this->pdfAssetDataUri('public/images/commitment/commitment-selva-v4.png', 'image/png'),
+            ];
+
+            return $this->renderView('backend/plan/pdf_visual.html.twig', $context);
+        }
+
         return $this->renderView('backend/plan/pdf.html.twig', $context);
+    }
+
+    private function pdfAssetDataUri(string $relativePath, string $mimeType): string
+    {
+        $path = $this->getParameter('kernel.project_dir') . '/' . ltrim($relativePath, '/');
+        $contents = is_file($path) ? file_get_contents($path) : false;
+
+        return $contents === false ? '' : sprintf('data:%s;base64,%s', $mimeType, base64_encode($contents));
     }
 
     private function buildCurrentUserLabel(): string

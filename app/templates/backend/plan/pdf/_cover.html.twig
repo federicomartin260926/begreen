@@ -1,0 +1,73 @@
+{% set typeKey = project.type|default('')|lower %}
+{% set typeLabel = typeKey ? ('backend.project.type.' ~ typeKey)|trans : '—' %}
+{% set statusLabel = ('backend.plan.status.' ~ plan.status)|trans %}
+{% set displayedScorePct = scorePct is not null ? scorePct : 0 %}
+
+<section class="pdf-page pdf-page--cover">
+    {% include 'backend/plan/pdf/_watermark.html.twig' %}
+
+    {% include 'backend/plan/pdf/_header.html.twig' %}
+
+    <main class="pdf-cover">
+        <div class="pdf-cover__eyebrow">{{ 'backend.plan.pdf_visual.cover.eyebrow'|trans }}</div>
+        <h1 class="pdf-cover__title">{{ 'backend.plan.pdf_visual.cover.title'|trans }}</h1>
+        <h2 class="pdf-cover__project">{{ project.name }}</h2>
+
+        <div class="pdf-cover__tags">
+            <span class="pdf-cover__tag">{{ typeLabel }}</span>
+            <span class="pdf-cover__tag">{{ statusLabel }}</span>
+            <span class="pdf-cover__tag">
+                {{ 'backend.plan.pdf_visual.cover.generated_on'|trans({'%date%': generatedAt|date('d/m/Y')}) }}
+            </span>
+        </div>
+
+        <table class="pdf-cover__hero-table" role="presentation">
+            <tr>
+                <td class="pdf-cover__hero-copy">
+                    <div class="pdf-cover__hero-kicker">{{ 'backend.plan.pdf_visual.cover.score_title'|trans }}</div>
+                    <div class="pdf-cover__hero-text">
+                        {% if scoreMax > 0 %}
+                            {{ 'backend.plan.pdf_visual.cover.score_value'|trans({
+                                '%gained%': scoreGained,
+                                '%max%': scoreMax
+                            }) }}
+                        {% else %}
+                            {{ 'backend.plan.pdf.score.na'|trans }}
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="pdf-cover__score-cell">
+                    <div class="pdf-score-circle">
+                        <div class="pdf-score-circle__value">{{ displayedScorePct }}%</div>
+                        <div class="pdf-score-circle__label">{{ 'backend.plan.pdf_visual.cover.score_label'|trans }}</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="pdf-indicators" role="presentation">
+            <tr>
+                <td class="pdf-indicators__cell">
+                    <div class="pdf-indicators__value">{{ coverIndicators.total }}</div>
+                    <div class="pdf-indicators__label">{{ 'backend.plan.pdf_visual.indicators.total'|trans }}</div>
+                </td>
+                <td class="pdf-indicators__cell">
+                    <div class="pdf-indicators__value">{{ coverIndicators.applicable }}</div>
+                    <div class="pdf-indicators__label">{{ 'backend.plan.pdf_visual.indicators.applicable'|trans }}</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="pdf-indicators__cell">
+                    <div class="pdf-indicators__value">{{ coverIndicators.toImplement }}</div>
+                    <div class="pdf-indicators__label">{{ 'backend.plan.pdf_visual.indicators.to_implement'|trans }}</div>
+                </td>
+                <td class="pdf-indicators__cell">
+                    <div class="pdf-indicators__value">{{ coverIndicators.critical }}</div>
+                    <div class="pdf-indicators__label">{{ 'backend.plan.pdf_visual.indicators.critical'|trans }}</div>
+                </td>
+            </tr>
+        </table>
+    </main>
+
+    {% include 'backend/plan/pdf/_footer.html.twig' with { footerVariant: 'cover' } %}
+</section>

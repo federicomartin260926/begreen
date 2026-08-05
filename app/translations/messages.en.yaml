@@ -1678,6 +1678,24 @@ backend:
         title: "Score achieved:"
         value: "%gained% of %max% (%pct%)"
         na: "Not available"
+    pdf_visual:
+      document_title: "Sustainability plan - %project%"
+      brand_alt: "Be green my friend"
+      header_label: "Sustainability report"
+      footer_label: "Be green my friend · Sustainability plan"
+      basic_watermark: "Basic plan · Be green my friend"
+      cover:
+        eyebrow: "Completed plan"
+        title: "Sustainability plan"
+        generated_on: "Generated on %date%"
+        score_title: "Plan score"
+        score_value: "%gained% of %max% points"
+        score_label: "Score"
+      indicators:
+        total: "Plan measures"
+        applicable: "Applicable measures"
+        to_implement: "Selected measures"
+        critical: "Critical measures"
   emission:
     phase:
       preproduccion: "Pre-production"

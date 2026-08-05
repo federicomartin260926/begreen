@@ -1,0 +1,17 @@
+<header class="pdf-brand-header">
+    <table class="pdf-brand-header__table" role="presentation">
+        <tr>
+            <td class="pdf-brand-header__logo-cell">
+                {% if pdfVisualAssets.logo|default('') %}
+                    <img
+                        class="pdf-brand-header__logo"
+                        src="{{ pdfVisualAssets.logo }}"
+                        alt="{{ 'backend.plan.pdf_visual.brand_alt'|trans }}">
+                {% endif %}
+            </td>
+            <td class="pdf-brand-header__meta-cell">
+                {{ 'backend.plan.pdf_visual.header_label'|trans }}
+            </td>
+        </tr>
+    </table>
+</header>

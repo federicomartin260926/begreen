@@ -1686,6 +1686,24 @@ backend:
         title: "Puntuación alcanzada:"
         value: "%gained% de %max% (%pct%)"
         na: "No disponible"
+    pdf_visual:
+      document_title: "Plan de sostenibilidad - %project%"
+      brand_alt: "Be green my friend"
+      header_label: "Informe de sostenibilidad"
+      footer_label: "Be green my friend · Plan de sostenibilidad"
+      basic_watermark: "Plan Basic · Be green my friend"
+      cover:
+        eyebrow: "Plan elaborado"
+        title: "Plan de sostenibilidad"
+        generated_on: "Generado el %date%"
+        score_title: "Puntuación del plan"
+        score_value: "%gained% de %max% puntos"
+        score_label: "Puntuación"
+      indicators:
+        total: "Medidas del plan"
+        applicable: "Medidas aplicables"
+        to_implement: "Medidas seleccionadas"
+        critical: "Medidas críticas"
   emission:
     phase:
       preproduccion: "Preproducción"
