@@ -169,6 +169,48 @@ docker compose -p begreen \
   php bin/console app:ai:test-report
 ```
 
+## Generación manual del informe narrativo de IA
+
+El comando `app:ai:generate-plan-report` genera o reutiliza el informe narrativo de Elaboración del plan asociado a un proyecto existente. Es una herramienta de diagnóstico y prueba manual: no sustituye al flujo normal de generación de PDF.
+
+Sintaxis:
+
+```bash
+php bin/console app:ai:generate-plan-report {projectId} [--locale=es]
+```
+
+`projectId` es obligatorio. El comando resuelve el plan de Elaboración asociado al proyecto. La opción `--locale` usa `es` por defecto y admite actualmente `es` y `en`.
+
+Ejemplos:
+
+```bash
+# Informe en español
+docker compose -p begreen \
+  --env-file app/.env \
+  --env-file app/.env.local \
+  -f app/docker-compose.yml \
+  -f app/docker-compose.dev.yml \
+  exec -T php \
+  php bin/console app:ai:generate-plan-report 123 --locale=es
+
+# Informe en inglés
+docker compose -p begreen \
+  --env-file app/.env \
+  --env-file app/.env.local \
+  -f app/docker-compose.yml \
+  -f app/docker-compose.dev.yml \
+  exec -T php \
+  php bin/console app:ai:generate-plan-report 123 --locale=en
+```
+
+El informe se reutiliza mientras su JSON continúe vigente; si el contexto de Elaboración, el proveedor, el modelo o la versión del prompt cambian, se regenera. El archivo privado se guarda en:
+
+```text
+var/storage/ai/{planId}/{locale}.json
+```
+
+Si no existe un informe vigente, el comando puede llamar al proveedor real y consumir saldo o cuota. No lo ejecutes para comprobaciones que no requieran una generación real.
+
 ## Despliegue
 
 Los comandos de producción se ejecutan desde la raíz:
