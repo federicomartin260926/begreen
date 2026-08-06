@@ -2,72 +2,195 @@
 {% set typeLabel = typeKey ? ('backend.project.type.' ~ typeKey)|trans : '—' %}
 {% set statusLabel = ('backend.plan.status.' ~ plan.status)|trans %}
 {% set displayedScorePct = scorePct is not null ? scorePct : 0 %}
+{% set protocolLabel = plan.protocol ? plan.protocol.name : '—' %}
+{% set plannedCommitment = commitmentSummary.planned %}
+{% set commitmentLevels = [
+    {key: 'seed', labelKey: 'backend.plan.commitment.levels.seed.label'},
+    {key: 'plant', labelKey: 'backend.plan.commitment.levels.plant.label'},
+    {key: 'tree', labelKey: 'backend.plan.commitment.levels.tree.label'},
+    {key: 'forest', labelKey: 'backend.plan.commitment.levels.forest.label'},
+    {key: 'jungle', labelKey: 'backend.plan.commitment.levels.jungle.label'}
+] %}
 
 <section class="pdf-page pdf-page--cover">
     {% include 'backend/plan/pdf/_watermark.html.twig' %}
 
-    {% include 'backend/plan/pdf/_header.html.twig' %}
+    {% include 'backend/plan/pdf/_header.html.twig' with { headerVariant: 'cover' } %}
 
-    <main class="pdf-cover">
-        <div class="pdf-cover__eyebrow">{{ 'backend.plan.pdf_visual.cover.eyebrow'|trans }}</div>
-        <h1 class="pdf-cover__title">{{ 'backend.plan.pdf_visual.cover.title'|trans }}</h1>
-        <h2 class="pdf-cover__project">{{ project.name }}</h2>
-
-        <div class="pdf-cover__tags">
-            <span class="pdf-cover__tag">{{ typeLabel }}</span>
-            <span class="pdf-cover__tag">{{ statusLabel }}</span>
-            <span class="pdf-cover__tag">
-                {{ 'backend.plan.pdf_visual.cover.generated_on'|trans({'%date%': generatedAt|date('d/m/Y')}) }}
-            </span>
-        </div>
-
-        <table class="pdf-cover__hero-table" role="presentation">
+    <main class="pdf-cover pdf-cover--approved">
+        <table class="pdf-cover-approved__hero" role="presentation">
             <tr>
-                <td class="pdf-cover__hero-copy">
-                    <div class="pdf-cover__hero-kicker">{{ 'backend.plan.pdf_visual.cover.score_title'|trans }}</div>
-                    <div class="pdf-cover__hero-text">
-                        {% if scoreMax > 0 %}
-                            {{ 'backend.plan.pdf_visual.cover.score_value'|trans({
-                                '%gained%': scoreGained,
-                                '%max%': scoreMax
-                            }) }}
-                        {% else %}
-                            {{ 'backend.plan.pdf.score.na'|trans }}
-                        {% endif %}
+                <td class="pdf-cover-approved__main">
+                    <div class="pdf-cover__eyebrow">
+                        {{ 'backend.plan.pdf_visual.cover.eyebrow'|trans }}
+                    </div>
+
+                    <h1 class="pdf-cover__title">
+                        {{ 'backend.plan.pdf_visual.cover.title'|trans }}
+                    </h1>
+
+                    <h2 class="pdf-cover__project">{{ project.name }}</h2>
+
+                    <div class="pdf-cover-approved__tags">
+                        <span class="pdf-cover-approved__tag">Plan {{ statusLabel|lower }}</span>
+                        <span class="pdf-cover-approved__tag">{{ protocolLabel }}</span>
+                        <span class="pdf-cover-approved__tag">{{ typeLabel }}</span>
+                        <span class="pdf-cover-approved__tag pdf-cover-approved__tag--tier">
+                            {{ projectTierLabel
+                                |replace({'Elaboración ': '', 'Implementation ': '', 'Plan de ': '', 'Plan ': ''})
+                                |trim }}
+                        </span>
                     </div>
                 </td>
-                <td class="pdf-cover__score-cell">
-                    <div class="pdf-score-circle">
-                        <div class="pdf-score-circle__value">{{ displayedScorePct }}%</div>
-                        <div class="pdf-score-circle__label">{{ 'backend.plan.pdf_visual.cover.score_label'|trans }}</div>
+
+                <td class="pdf-cover-approved__score">
+                    <div class="pdf-score-circle pdf-score-circle--approved">
+                        <div class="pdf-score-circle__inner">
+                            <div class="pdf-score-circle__value">{{ displayedScorePct }}%</div>
+                            <div class="pdf-score-circle__label">
+                                {{ 'backend.plan.pdf_visual.cover.score_label'|trans }}
+                            </div>
+                        </div>
                     </div>
                 </td>
             </tr>
         </table>
 
-        <table class="pdf-indicators" role="presentation">
+        <table class="pdf-indicators pdf-indicators--approved" role="presentation">
             <tr>
                 <td class="pdf-indicators__cell">
                     <div class="pdf-indicators__value">{{ coverIndicators.total }}</div>
-                    <div class="pdf-indicators__label">{{ 'backend.plan.pdf_visual.indicators.total'|trans }}</div>
+                    <div class="pdf-indicators__label">
+                        {{ 'backend.plan.pdf_visual.indicators.total'|trans }}
+                    </div>
                 </td>
                 <td class="pdf-indicators__cell">
                     <div class="pdf-indicators__value">{{ coverIndicators.applicable }}</div>
-                    <div class="pdf-indicators__label">{{ 'backend.plan.pdf_visual.indicators.applicable'|trans }}</div>
+                    <div class="pdf-indicators__label">
+                        {{ 'backend.plan.pdf_visual.indicators.applicable'|trans }}
+                    </div>
                 </td>
-            </tr>
-            <tr>
                 <td class="pdf-indicators__cell">
                     <div class="pdf-indicators__value">{{ coverIndicators.toImplement }}</div>
-                    <div class="pdf-indicators__label">{{ 'backend.plan.pdf_visual.indicators.to_implement'|trans }}</div>
+                    <div class="pdf-indicators__label">
+                        {{ 'backend.plan.pdf_visual.indicators.to_implement'|trans }}
+                    </div>
                 </td>
                 <td class="pdf-indicators__cell">
                     <div class="pdf-indicators__value">{{ coverIndicators.critical }}</div>
-                    <div class="pdf-indicators__label">{{ 'backend.plan.pdf_visual.indicators.critical'|trans }}</div>
+                    <div class="pdf-indicators__label">
+                        {{ 'backend.plan.pdf_visual.indicators.critical'|trans }}
+                    </div>
                 </td>
             </tr>
         </table>
+
     </main>
+
+    <section class="pdf-cover-approved__summary">
+        <h3 class="pdf-cover-approved__summary-title">
+            {{ 'backend.plan.pdf_visual.cover.summary.title'|trans }}
+        </h3>
+
+        <table class="pdf-cover-approved__summary-table" role="presentation">
+            <tr>
+                <td>
+                    <strong>{{ 'backend.plan.pdf_visual.cover.summary.status'|trans }}:</strong>
+                    {{ statusLabel }}
+                </td>
+                <td>
+                    <strong>{{ 'backend.plan.pdf_visual.cover.summary.date'|trans }}:</strong>
+                    {{ generatedAt|date('d/m/Y') }}
+                </td>
+                <td>
+                    <strong>{{ 'backend.plan.pdf_visual.cover.summary.user'|trans }}:</strong>
+                    {{ currentUserLabel ?: '—' }}
+                </td>
+            </tr>
+        </table>
+
+        <div class="pdf-cover-approved__summary-line">
+            <strong>{{ 'backend.plan.pdf_visual.cover.summary.score'|trans }}:</strong>
+            {% if scoreMax > 0 %}
+                {{ scoreGained }} / {{ scoreMax }} ({{ displayedScorePct }}%)
+            {% else %}
+                {{ 'backend.plan.pdf.score.na'|trans }}
+            {% endif %}
+
+            &nbsp;&nbsp;&nbsp;
+
+            <strong>{{ 'backend.plan.pdf_visual.cover.summary.catalog'|trans }}:</strong>
+            {{ coverIndicators.total }}
+        </div>
+    </section>
+
+
+    <section class="pdf-cover-commitment">
+        <table class="pdf-cover-commitment__heading" role="presentation">
+            <tr>
+                <td>
+                    <h3>{{ 'backend.plan.pdf_visual.analytics.commitment.title'|trans }}</h3>
+                </td>
+                <td class="pdf-cover-commitment__level">
+                    {{ plannedCommitment.labelKey|trans }}
+                </td>
+            </tr>
+        </table>
+
+        <table class="pdf-cover-commitment__levels" role="presentation">
+            <tr>
+                {% for level in commitmentLevels %}
+                    <td class="{% if level.key == plannedCommitment.levelKey %}is-current{% endif %}">
+                        {{ level.labelKey|trans }}
+                    </td>
+                {% endfor %}
+            </tr>
+        </table>
+
+        <table class="pdf-progress-track" role="presentation">
+            <tr>
+                {% if plannedCommitment.percentageRounded > 0 %}
+                    <td
+                        class="pdf-progress-track__fill"
+                        style="width: {{ plannedCommitment.percentageRounded }}%">
+                    </td>
+                {% endif %}
+                {% if plannedCommitment.percentageRounded < 100 %}
+                    <td
+                        class="pdf-progress-track__rest"
+                        style="width: {{ 100 - plannedCommitment.percentageRounded }}%">
+                    </td>
+                {% endif %}
+            </tr>
+        </table>
+
+        <table class="pdf-cover-commitment__meta" role="presentation">
+            <tr>
+                <td>
+                    <strong>
+                        {{ plannedCommitment.points }}
+                        /
+                        {{ commitmentSummary.totalOfficialPoints }}
+                        {{ 'backend.plan.pdf_visual.analytics.commitment.points'|trans }}
+                    </strong>
+                    · {{ plannedCommitment.percentageRounded }}%
+                </td>
+                <td>
+                    {% if plannedCommitment.pointsToNextLevel is not null %}
+                        {{ 'backend.plan.pdf_visual.analytics.commitment.next'|trans({
+                            '%points%': plannedCommitment.pointsToNextLevel
+                        }) }}
+                    {% else %}
+                        {{ 'backend.plan.pdf_visual.analytics.commitment.maximum'|trans }}
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+
+        <p class="pdf-cover-commitment__message">
+            {{ plannedCommitment.messageKey|trans }}
+        </p>
+    </section>
 
     {% include 'backend/plan/pdf/_footer.html.twig' with { footerVariant: 'cover' } %}
 </section>

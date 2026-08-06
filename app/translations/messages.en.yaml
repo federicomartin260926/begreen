@@ -1691,11 +1691,47 @@ backend:
         score_title: "Plan score"
         score_value: "%gained% of %max% points"
         score_label: "Score"
+        summary:
+          title: "Document summary"
+          status: "Status"
+          date: "Date"
+          user: "User"
+          score: "Score"
+          catalog: "Catalog measures"
       indicators:
         total: "Plan measures"
         applicable: "Applicable measures"
         to_implement: "Selected measures"
         critical: "Critical measures"
+      ai_report:
+        executive_summary: "Executive summary"
+        category_summaries: "Category summaries"
+        metrics:
+          total: "Total"
+          applicable: "Applicable"
+          to_implement: "Selected"
+          not_applicable: "Not applicable"
+          critical: "Critical"
+        error: "The plan report could not be generated. Please try again."
+      analytics:
+        commitment:
+          title: "Planned commitment level"
+          points: "points"
+          next: "%points% points needed to reach the next level"
+          maximum: "Maximum level reached"
+        departments:
+          title: "Summary by department"
+          department: "Department"
+          total: "Total"
+          applicable: "Applicable"
+          selected: "Selected"
+          critical: "Selected critical"
+          other: "Other"
+        quick_read:
+          title: "At a glance"
+          applicability: "Applicability"
+          selection: "Measure selection"
+          critical_coverage: "Critical measure coverage"
   emission:
     phase:
       preproduccion: "Pre-production"

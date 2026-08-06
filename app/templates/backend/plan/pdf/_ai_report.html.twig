@@ -1,0 +1,76 @@
+{% macro categoryCard(category) %}
+    <table class="pdf-ai-page__category" role="presentation">
+        <tr>
+            <td class="pdf-ai-page__category-cell">
+                <h3 class="pdf-ai-page__category-title">
+                    {{ category.name }}
+                </h3>
+
+                <p class="pdf-ai-page__category-summary">
+                    {{ category.summary }}
+                </p>
+
+                <table class="pdf-ai-page__metrics" role="presentation">
+                    <tr>
+                        <td>
+                            <span class="pdf-ai-page__metric-value">
+                                {{ category.metrics.total }}
+                            </span>
+                            {{ 'backend.plan.pdf_visual.ai_report.metrics.total'|trans }}
+                        </td>
+                        <td>
+                            <span class="pdf-ai-page__metric-value">
+                                {{ category.metrics.applicable }}
+                            </span>
+                            {{ 'backend.plan.pdf_visual.ai_report.metrics.applicable'|trans }}
+                        </td>
+                        <td>
+                            <span class="pdf-ai-page__metric-value">
+                                {{ category.metrics.toImplement }}
+                            </span>
+                            {{ 'backend.plan.pdf_visual.ai_report.metrics.to_implement'|trans }}
+                        </td>
+                        <td>
+                            <span class="pdf-ai-page__metric-value">
+                                {{ category.metrics.notApplicable }}
+                            </span>
+                            {{ 'backend.plan.pdf_visual.ai_report.metrics.not_applicable'|trans }}
+                        </td>
+                        <td>
+                            <span class="pdf-ai-page__metric-value">
+                                {{ category.metrics.critical }}
+                            </span>
+                            {{ 'backend.plan.pdf_visual.ai_report.metrics.critical'|trans }}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+{% endmacro %}
+
+{% import _self as report %}
+
+{% set categoryPages = aiCategorySummaries|batch(4, null) %}
+
+{% for categoryPage in categoryPages %}
+    <section class="pdf-ai-page{% if loop.last %} pdf-ai-page--last{% endif %}">
+        {% include 'backend/plan/pdf/_watermark.html.twig' %}
+
+        {% include 'backend/plan/pdf/_header.html.twig' with {
+            headerVariant: 'cover'
+        } %}
+
+        <main class="pdf-ai-page__content">
+            <h2 class="pdf-ai-page__section-title">
+                {{ 'backend.plan.pdf_visual.ai_report.category_summaries'|trans }}
+            </h2>
+
+            {% for category in categoryPage %}
+                {% if category is not null %}
+                    {{ report.categoryCard(category) }}
+                {% endif %}
+            {% endfor %}
+        </main>
+    </section>
+{% endfor %}

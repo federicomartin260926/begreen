@@ -1,4 +1,5 @@
-<header class="pdf-brand-header">
+{% set headerVariant = headerVariant|default('default') %}
+<header class="pdf-brand-header pdf-brand-header--{{ headerVariant }}">
     <table class="pdf-brand-header__table" role="presentation">
         <tr>
             <td class="pdf-brand-header__logo-cell">

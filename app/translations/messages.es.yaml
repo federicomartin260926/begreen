@@ -1699,11 +1699,47 @@ backend:
         score_title: "Puntuación del plan"
         score_value: "%gained% de %max% puntos"
         score_label: "Puntuación"
+        summary:
+          title: "Resumen del documento"
+          status: "Estado"
+          date: "Fecha"
+          user: "Usuario"
+          score: "Puntuación"
+          catalog: "Medidas del catálogo"
       indicators:
         total: "Medidas del plan"
         applicable: "Medidas aplicables"
         to_implement: "Medidas seleccionadas"
         critical: "Medidas críticas"
+      ai_report:
+        executive_summary: "Resumen ejecutivo"
+        category_summaries: "Resumen por categorías"
+        metrics:
+          total: "Total"
+          applicable: "Aplicables"
+          to_implement: "Seleccionadas"
+          not_applicable: "No aplicables"
+          critical: "Críticas"
+        error: "No se pudo generar el informe del plan. Inténtalo de nuevo."
+      analytics:
+        commitment:
+          title: "Nivel de compromiso previsto"
+          points: "puntos"
+          next: "Faltan %points% puntos para subir de nivel"
+          maximum: "Nivel máximo alcanzado"
+        departments:
+          title: "Resumen por departamento"
+          department: "Departamento"
+          total: "Total"
+          applicable: "Aplicables"
+          selected: "Seleccionadas"
+          critical: "Críticas seleccionadas"
+          other: "Otros"
+        quick_read:
+          title: "Lectura rápida"
+          applicability: "Aplicabilidad"
+          selection: "Selección de medidas"
+          critical_coverage: "Cobertura de medidas críticas"
   emission:
     phase:
       preproduccion: "Preproducción"

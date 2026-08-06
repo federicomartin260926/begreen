@@ -4,6 +4,7 @@ namespace App\Controller\Backend;
 
 use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User, VerificationSource};
 use App\Enum\CommercialPhase;
+use App\Exception\Ai\AiReportException;
 use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
@@ -25,7 +26,9 @@ use App\Service\StripeProjectCheckoutService;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\Ai\PlanAiReportService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{Request, Response, JsonResponse};
@@ -76,6 +79,8 @@ class PlanController extends AbstractController
         private SustainabilityPlanClosureSummaryService $closureSummaryService,
         private SustainabilityGamificationService $gamificationService,
         private PlanMeasureElaborationDecisionValidator $decisionValidator,
+        private PlanAiReportService $planAiReportService,
+        private LoggerInterface $logger,
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -1755,16 +1760,43 @@ class PlanController extends AbstractController
             return $this->redirectToRoute('backend_plan_done');
         }
 
-        $pdfBytes = $this->buildPdfBytesForFilters(
-            $activeProjectService,
-            $planRepository,
-            $measureRepository,
-            $protocolRepository,
-            ['state' => PlanMeasureOperationalStateResolver::ALL],
-            $em,
-            $translator,
-            CommercialPhase::ELABORATION
-        );
+        try {
+            $pdfBytes = $this->buildPdfBytesForFilters(
+                $activeProjectService,
+                $planRepository,
+                $measureRepository,
+                $protocolRepository,
+                ['state' => PlanMeasureOperationalStateResolver::ALL],
+                $em,
+                $translator,
+                $request->getLocale(),
+                CommercialPhase::ELABORATION
+            );
+        } catch (AiReportException $exception) {
+            $this->logger->warning('Unified PDF AI report generation failed.', [
+                'event' => 'unified_pdf_ai_report_failed',
+                'exception_class' => $exception::class,
+                'project_id' => $project->getId(),
+                'plan_id' => $plan->getId(),
+                'locale' => $request->getLocale(),
+            ]);
+            $this->addFlash('danger', 'backend.plan.pdf_visual.ai_report.error');
+
+            return $this->redirectToRoute('backend_plan_done');
+        } catch (\Throwable $exception) {
+            $this->logger->error('Unified PDF generation failed.', [
+                'event' => 'unified_pdf_generation_failed',
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+                'project_id' => $project->getId(),
+                'plan_id' => $plan->getId(),
+                'locale' => $request->getLocale(),
+                'exception' => $exception,
+            ]);
+            $this->addFlash('danger', 'backend.plan.pdf_visual.ai_report.error');
+
+            return $this->redirectToRoute('backend_plan_done');
+        }
 
         [$ok, $fail] = $this->sendPlanPdfEmails(
             $members,
@@ -1901,16 +1933,51 @@ class PlanController extends AbstractController
         }
 
         // 2) Construir contexto unificado
-        $ctx = $this->buildPdfContext(
-            activeProjectService: $activeProjectService,
-            planRepository:       $planRepository,
-            measureRepository:    $measureRepository,
-            protocolRepository:   $protocolRepository,
-            em:                   $em,
-            filters:              $filters,
-            translator:           $translator,
-            phase:                $phase
-        );
+        try {
+            $ctx = $this->buildPdfContext(
+                activeProjectService: $activeProjectService,
+                planRepository:       $planRepository,
+                measureRepository:    $measureRepository,
+                protocolRepository:   $protocolRepository,
+                em:                   $em,
+                filters:              $filters,
+                translator:           $translator,
+                locale:               $request->getLocale(),
+                phase:                $phase
+            );
+        } catch (AiReportException $exception) {
+            if ($phase !== CommercialPhase::ELABORATION) {
+                throw $exception;
+            }
+
+            $this->logger->warning('Unified PDF AI report generation failed.', [
+                'event' => 'unified_pdf_ai_report_failed',
+                'exception_class' => $exception::class,
+                'project_id' => $project->getId(),
+                'plan_id' => $plan->getId(),
+                'locale' => $request->getLocale(),
+            ]);
+            $this->addFlash('danger', 'backend.plan.pdf_visual.ai_report.error');
+
+            return $this->redirectToRoute('backend_plan_done');
+        } catch (\Throwable $exception) {
+            if ($phase !== CommercialPhase::ELABORATION) {
+                throw $exception;
+            }
+
+            $this->logger->error('Unified PDF generation failed.', [
+                'event' => 'unified_pdf_generation_failed',
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+                'project_id' => $project->getId(),
+                'plan_id' => $plan->getId(),
+                'locale' => $request->getLocale(),
+                'exception' => $exception,
+            ]);
+            $this->addFlash('danger', 'backend.plan.pdf_visual.ai_report.error');
+
+            return $this->redirectToRoute('backend_plan_done');
+        }
 
         if ($asPdf) {
             // 3A) Renderizar HTML del PDF y generar bytes
@@ -1967,6 +2034,7 @@ class PlanController extends AbstractController
         array $filters,
         EntityManagerInterface $em,
         TranslatorInterface $translator,
+        string $locale,
         CommercialPhase $phase = CommercialPhase::IMPLEMENTATION
     ): string {
         $ctx  = $this->buildPdfContext(
@@ -1977,6 +2045,7 @@ class PlanController extends AbstractController
             $em,
             $filters,
             $translator,
+            $locale,
             true,
             $phase
         );
@@ -2081,6 +2150,7 @@ class PlanController extends AbstractController
         EntityManagerInterface $em,
         array $filters,
         TranslatorInterface $translator,
+        string $locale,
         bool $useDepartmentActionText = false,
         CommercialPhase $phase = CommercialPhase::IMPLEMENTATION
     ): array {
@@ -2089,6 +2159,14 @@ class PlanController extends AbstractController
 
         $plan = $planRepository->findOneBy(['project' => $project]);
         if (!$plan) throw $this->createNotFoundException('backend.plan.errors.not_found');
+
+        $aiGeneralConclusion = null;
+        $aiCategorySummaries = [];
+        if ($phase === CommercialPhase::ELABORATION) {
+            $aiReport = $this->planAiReportService->getOrGenerate($plan, $locale);
+            $aiGeneralConclusion = $aiReport->generalConclusion;
+            $aiCategorySummaries = $this->buildAiCategorySummaries($plan, $project, $aiReport->categorySummaries);
+        }
 
         $filterDepartment      = $filters['department']         ?? null;
         $filterCategory        = $filters['category']           ?? null;
@@ -2158,10 +2236,22 @@ class PlanController extends AbstractController
         $scorePct = $scoreMax > 0 ? round(100 * $scoreGained / $scoreMax) : null;
 
         $effective = $nonApplicable = $agreed = $critical = $implemented = $notImplemented = $inProgress = $pending = 0;
+        $criticalApplicable = $criticalSelected = 0;
         foreach ($filteredPlanMeasures as $pm) {
             if ($pm->isApplicable() === true)  $effective++;
             if ($pm->isApplicable() === false) $nonApplicable++;
-            if ($pm->isCritical() === true) $critical++;
+            if ($pm->isCritical() === true) {
+                $critical++;
+            }
+
+            if ($pm->isApplicable() === true && $pm->isCritical() === true) {
+                $criticalApplicable++;
+
+                if ($pm->willImplement() === true) {
+                    $criticalSelected++;
+                }
+            }
+
             if ($pm->isApplicable() === true && $pm->willImplement() === true) {
                 $agreed++;
                 match ($this->operationalStateResolver->resolve($pm)) {
@@ -2172,6 +2262,36 @@ class PlanController extends AbstractController
                 };
             }
         }
+
+        $pdfDepartmentSummary = $this->buildPdfDepartmentSummary(
+            $filteredPlanMeasures,
+            $noDeptLabel,
+            $translator->trans('backend.plan.pdf_visual.analytics.departments.other')
+        );
+
+        $pdfQuickRead = [
+            [
+                'key' => 'applicability',
+                'value' => $effective,
+                'total' => $measuresTotal,
+                'percentage' => $this->percentageFromPoints($effective, $measuresTotal),
+            ],
+            [
+                'key' => 'selection',
+                'value' => $agreed,
+                'total' => $effective,
+                'percentage' => $this->percentageFromPoints($agreed, $effective),
+            ],
+            [
+                'key' => 'critical_coverage',
+                'value' => $criticalSelected,
+                'total' => $criticalApplicable,
+                'percentage' => $this->percentageFromPoints(
+                    $criticalSelected,
+                    $criticalApplicable
+                ),
+            ],
+        ];
 
         $planChartsConfig = $this->buildChartsConfig(
             $measuresTotal,
@@ -2247,9 +2367,202 @@ class PlanController extends AbstractController
                 'toImplement' => $agreed,
                 'critical' => $critical,
             ],
+            'aiGeneralConclusion' => $aiGeneralConclusion,
+            'aiCategorySummaries' => $aiCategorySummaries,
+            'pdfDepartmentSummary' => $pdfDepartmentSummary,
+            'pdfQuickRead' => $pdfQuickRead,
             'pdfPhase'       => $phase,
             'useDepartmentActionText' => $useDepartmentActionText,
         ];
+    }
+
+
+    /**
+     * @param array<int, PlanMeasure> $planMeasures
+     * @return list<array{
+     *     name:string,
+     *     total:int,
+     *     applicable:int,
+     *     selected:int,
+     *     critical:int
+     * }>
+     */
+    private function buildPdfDepartmentSummary(
+        array $planMeasures,
+        string $noDepartmentLabel,
+        string $otherLabel
+    ): array {
+        $rows = [];
+
+        foreach ($planMeasures as $planMeasure) {
+            if (!$planMeasure instanceof PlanMeasure) {
+                continue;
+            }
+
+            $measure = $planMeasure->getMeasure();
+            if (!$measure instanceof Measure) {
+                continue;
+            }
+
+            $name = trim(
+                (string) (
+                    $measure->getPrimaryDepartment()?->getDisplayName()
+                    ?? $noDepartmentLabel
+                )
+            );
+
+            if ($name === '') {
+                $name = $noDepartmentLabel;
+            }
+
+            if (!isset($rows[$name])) {
+                $rows[$name] = [
+                    'name' => $name,
+                    'total' => 0,
+                    'applicable' => 0,
+                    'selected' => 0,
+                    'critical' => 0,
+                ];
+            }
+
+            $rows[$name]['total']++;
+
+            if ($planMeasure->isApplicable() === true) {
+                $rows[$name]['applicable']++;
+            }
+
+            if (
+                $planMeasure->isApplicable() === true
+                && $planMeasure->willImplement() === true
+            ) {
+                $rows[$name]['selected']++;
+
+                if ($planMeasure->isCritical() === true) {
+                    $rows[$name]['critical']++;
+                }
+            }
+        }
+
+        $rows = array_values($rows);
+
+        usort(
+            $rows,
+            static function (array $left, array $right): int {
+                foreach (['selected', 'critical', 'applicable', 'total'] as $key) {
+                    $comparison = $right[$key] <=> $left[$key];
+                    if ($comparison !== 0) {
+                        return $comparison;
+                    }
+                }
+
+                return strnatcasecmp($left['name'], $right['name']);
+            }
+        );
+
+        if (count($rows) <= 6) {
+            return $rows;
+        }
+
+        $visibleRows = array_slice($rows, 0, 5);
+        $other = [
+            'name' => $otherLabel,
+            'total' => 0,
+            'applicable' => 0,
+            'selected' => 0,
+            'critical' => 0,
+        ];
+
+        foreach (array_slice($rows, 5) as $row) {
+            foreach (['total', 'applicable', 'selected', 'critical'] as $key) {
+                $other[$key] += $row[$key];
+            }
+        }
+
+        $visibleRows[] = $other;
+
+        return $visibleRows;
+    }
+
+    /**
+     * @param iterable<object> $summaries
+     * @return list<array{key:string, name:string, summary:string, metrics:array{total:int, applicable:int, toImplement:int, notApplicable:int, critical:int}}>
+     */
+    private function buildAiCategorySummaries(Plan $plan, Project $project, iterable $summaries): array
+    {
+        $summariesByKey = [];
+        foreach ($summaries as $summary) {
+            $key = $summary->categoryKey ?? null;
+            $text = $summary->summary ?? null;
+            if (!is_string($key) || !is_string($text)) {
+                continue;
+            }
+
+            $summariesByKey[$key] = $text;
+        }
+
+        /** @var array<int, PlanMeasure> $planMeasuresByMeasure */
+        $planMeasuresByMeasure = [];
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            $measure = $planMeasure->getMeasure();
+            if (
+                $measure instanceof Measure
+                && $measure->getCategory()?->getId() !== null
+                && $this->catalogResolver->isCatalogMeasure($measure, $project)
+            ) {
+                $planMeasuresByMeasure[spl_object_id($measure)] = $planMeasure;
+            }
+        }
+
+        $orderedMeasures = $this->measureOrderer->sortVisibleMeasures(
+            array_map(static fn (PlanMeasure $planMeasure): Measure => $planMeasure->getMeasure(), $planMeasuresByMeasure),
+            Protocol::GROUP_BY_CATEGORY,
+        );
+
+        $categories = [];
+        foreach ($orderedMeasures as $measure) {
+            $planMeasure = $planMeasuresByMeasure[spl_object_id($measure)];
+            $category = $measure->getCategory();
+            $categoryId = $category?->getId();
+            if ($categoryId === null) {
+                continue;
+            }
+
+            $key = sprintf('category:%d', $categoryId);
+            if (!isset($summariesByKey[$key])) {
+                continue;
+            }
+
+            if (!isset($categories[$key])) {
+                $categories[$key] = [
+                    'key' => $key,
+                    'name' => (string) $category->getName(),
+                    'summary' => $summariesByKey[$key],
+                    'metrics' => [
+                        'total' => 0,
+                        'applicable' => 0,
+                        'toImplement' => 0,
+                        'notApplicable' => 0,
+                        'critical' => 0,
+                    ],
+                ];
+            }
+
+            ++$categories[$key]['metrics']['total'];
+            if ($planMeasure->isApplicable() === true) {
+                ++$categories[$key]['metrics']['applicable'];
+            }
+            if ($planMeasure->isApplicable() === false) {
+                ++$categories[$key]['metrics']['notApplicable'];
+            }
+            if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true) {
+                ++$categories[$key]['metrics']['toImplement'];
+            }
+            if ($planMeasure->isCritical() === true) {
+                ++$categories[$key]['metrics']['critical'];
+            }
+        }
+
+        return array_values($categories);
     }
 
     private function renderPdfHtml(array $context): string
