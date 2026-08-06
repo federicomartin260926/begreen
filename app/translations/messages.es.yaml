@@ -1103,7 +1103,7 @@ backend:
       download_now: "Descargar ahora"
       download_pdf: "PDF"
       download_excel: "Excel"
-      unified_pdf: "PDF unificado"
+      unified_pdf: "PDF general"
       unified_pdf_help: "Mantiene el watermark en Basic y respeta el catálogo de medidas filtrado por tier."
       by_department: "Por departamentos"
       by_department_help: "Agrupa las medidas por departamento o departamentos múltiples."
