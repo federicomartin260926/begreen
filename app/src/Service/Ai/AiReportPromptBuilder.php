@@ -8,6 +8,8 @@ use App\Service\Ai\Dto\AiReportRequest;
 
 final class AiReportPromptBuilder
 {
+    public const VERSION = '1';
+
     public function buildInstructions(): string
     {
         return implode("\n", [
