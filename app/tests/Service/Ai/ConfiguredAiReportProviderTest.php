@@ -4,7 +4,6 @@ namespace App\Tests\Service\Ai;
 
 use App\Exception\Ai\AiProviderNotConfiguredException;
 use App\Service\Ai\AiReportConfiguration;
-use App\Service\Ai\AiReportPhase;
 use App\Service\Ai\AiReportProviderInterface;
 use App\Service\Ai\AnthropicReportConfiguration;
 use App\Service\Ai\ConfiguredAiReportProvider;
@@ -73,6 +72,6 @@ final class ConfiguredAiReportProviderTest extends TestCase
 
     private function request(): AiReportRequest
     {
-        return new AiReportRequest(AiReportPhase::ELABORATION, 'es', []);
+        return new AiReportRequest('es', []);
     }
 }

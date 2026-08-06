@@ -62,7 +62,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
                     'Authorization' => 'Bearer '.$this->openAiConfiguration->apiKey,
                     'Content-Type' => 'application/json',
                 ],
-                'json' => $this->buildPayload($context, $request->phase),
+                'json' => $this->buildPayload($context),
                 'timeout' => $this->configuration->timeoutSeconds,
             ]);
 
@@ -130,7 +130,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         }
 
         try {
-            return $this->resultValidator->validate($data);
+            return $this->resultValidator->validate($data, $this->categoryKeys($request));
         } catch (AiInvalidStructureException $exception) {
             $this->logFailure('invalid_structure', $statusCode);
 
@@ -153,12 +153,12 @@ final class OpenAiReportProvider implements AiReportProviderInterface
     }
 
     /** @return array<string, mixed> */
-    private function buildPayload(string $context, AiReportPhase $phase): array
+    private function buildPayload(string $context): array
     {
         return [
             'model' => $this->openAiConfiguration->model,
             'store' => false,
-            'instructions' => $this->promptBuilder->buildInstructions($phase),
+            'instructions' => $this->promptBuilder->buildInstructions(),
             'input' => [[
                 'role' => 'user',
                 'content' => [[
@@ -180,6 +180,12 @@ final class OpenAiReportProvider implements AiReportProviderInterface
     private function endpoint(): string
     {
         return rtrim($this->openAiConfiguration->baseUrl, '/').'/responses';
+    }
+
+    /** @return list<string> */
+    private function categoryKeys(AiReportRequest $request): array
+    {
+        return array_map(static fn ($category): string => $category->key, $request->categories);
     }
 
     /** @param array<string, mixed> $envelope */

@@ -8,7 +8,8 @@ use App\Service\Ai\Dto\AiReportResult;
 
 final class AiReportResultValidator
 {
-    public function validate(mixed $data): AiReportResult
+    /** @param list<string> $expectedCategoryKeys */
+    public function validate(mixed $data, array $expectedCategoryKeys): AiReportResult
     {
         if (
             !is_array($data)
@@ -21,6 +22,14 @@ final class AiReportResultValidator
 
         $summaries = [];
         $seenKeys = [];
+        $expectedKeys = array_fill_keys($expectedCategoryKeys, true);
+        if (
+            count($expectedCategoryKeys) !== count($expectedKeys)
+            || count($data['categorySummaries']) !== count($expectedCategoryKeys)
+        ) {
+            throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
+        }
+
         foreach ($data['categorySummaries'] as $summary) {
             if (
                 !is_array($summary)
@@ -33,12 +42,16 @@ final class AiReportResultValidator
             }
 
             $categoryKey = trim($summary['categoryKey']);
-            if (isset($seenKeys[$categoryKey])) {
+            if (!isset($expectedKeys[$categoryKey]) || isset($seenKeys[$categoryKey])) {
                 throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
             }
 
             $seenKeys[$categoryKey] = true;
             $summaries[] = new AiReportCategorySummary($categoryKey, trim($summary['summary']));
+        }
+
+        if (count($seenKeys) !== count($expectedKeys)) {
+            throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
         }
 
         return new AiReportResult(trim($data['generalConclusion']), $summaries);

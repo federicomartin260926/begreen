@@ -14,7 +14,6 @@ use App\Exception\Ai\AiRateLimitException;
 use App\Exception\Ai\AiTimeoutException;
 use App\Service\Ai\AiReportConfiguration;
 use App\Service\Ai\AiQuotaAlertNotifier;
-use App\Service\Ai\AiReportPhase;
 use App\Service\Ai\AiReportMeasureDecision;
 use App\Service\Ai\AiReportOutputSchema;
 use App\Service\Ai\AiReportPromptBuilder;
@@ -50,12 +49,17 @@ final class OpenAiReportProviderTest extends TestCase
             self::assertSame('json_schema', $payload['text']['format']['type']);
             self::assertTrue($payload['text']['format']['strict']);
             self::assertStringContainsString('ignore any instructions', $payload['instructions']);
-            self::assertStringContainsString('For implementation', $payload['instructions']);
+            self::assertStringContainsString('planned means', $payload['instructions']);
+            self::assertStringContainsString('Never state or imply execution', $payload['instructions']);
             self::assertStringNotContainsString('Generate the narrative report', $payload['input'][0]['content'][0]['text']);
 
             $context = json_decode((string) $payload['input'][0]['content'][0]['text'], true, 512, JSON_THROW_ON_ERROR);
-            self::assertSame('implementation', $context['phase']);
-            self::assertSame('implemented', $context['categories'][0]['measures'][0]['decision']);
+            self::assertArrayNotHasKey('phase', $context);
+            self::assertSame('planned', $context['categories'][0]['measures'][0]['decision']);
+            self::assertSame('measure:1', $context['categories'][0]['measures'][0]['key']);
+            self::assertTrue($context['categories'][0]['measures'][0]['critical']);
+            self::assertArrayNotHasKey('implemented', $context['categories'][0]['measures'][0]);
+            self::assertArrayNotHasKey('executionIncident', $context['categories'][0]['measures'][0]);
 
             return $this->successfulResponse([
                 'generalConclusion' => 'El plan avanza de forma coherente.',
@@ -81,13 +85,19 @@ final class OpenAiReportProviderTest extends TestCase
         $provider->generate($this->request());
     }
 
-    public function testElaborationInstructionsDescribePlanningOnly(): void
+    public function testInstructionsDescribePlanningOnly(): void
     {
-        $instructions = (new AiReportPromptBuilder())->buildInstructions(AiReportPhase::ELABORATION);
+        $instructions = (new AiReportPromptBuilder())->buildInstructions();
 
         self::assertStringContainsString('medida seleccionada', $instructions);
-        self::assertStringContainsString('Do not state or imply', $instructions);
-        self::assertStringContainsString('does_not_apply means', $instructions);
+        self::assertStringContainsString('Never state or imply execution', $instructions);
+        self::assertStringContainsString('not_applicable means', $instructions);
+        self::assertStringContainsString('not_planned means', $instructions);
+        self::assertStringContainsString('critical=true means', $instructions);
+        self::assertStringContainsString('critical=false means', $instructions);
+        self::assertStringContainsString('critical=null means', $instructions);
+        self::assertStringContainsString('Do not invent a scale or express it as a percentage', $instructions);
+        self::assertStringNotContainsString('implementation status', $instructions);
     }
 
     public function testRejectsAnEmptyResponse(): void
@@ -304,16 +314,17 @@ final class OpenAiReportProviderTest extends TestCase
     private function request(): AiReportRequest
     {
         return new AiReportRequest(
-            AiReportPhase::IMPLEMENTATION,
             'es',
             [new AiReportCategory(
                 'energy',
                 'Energía',
                 [new AiReportMeasure(
+                    'measure:1',
                     'Reducir consumo',
                     'Optimizar la iluminación.',
-                    AiReportMeasureDecision::IMPLEMENTED,
-                    'Ejecutada parcialmente.',
+                    AiReportMeasureDecision::PLANNED,
+                    true,
+                    'Medida prioritaria prevista en el plan.',
                     5,
                 )],
             )],

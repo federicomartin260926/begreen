@@ -5,7 +5,6 @@ namespace App\Command;
 use App\Exception\Ai\AiReportException;
 use App\Service\Ai\AiReportConfiguration;
 use App\Service\Ai\AiReportMeasureDecision;
-use App\Service\Ai\AiReportPhase;
 use App\Service\Ai\AiReportProviderInterface;
 use App\Service\Ai\Dto\AiReportCategory;
 use App\Service\Ai\Dto\AiReportMeasure;
@@ -32,23 +31,26 @@ final class TestAiReportCommand extends Command
     {
         try {
             $result = $this->provider->generate(new AiReportRequest(
-                AiReportPhase::ELABORATION,
                 'es',
                 [new AiReportCategory(
-                    'energy',
+                    'category:1',
                     'Energía',
                     [
                         new AiReportMeasure(
+                            'measure:1',
                             'Iluminación eficiente',
                             'Sustitución gradual de luminarias por alternativas eficientes.',
-                            AiReportMeasureDecision::APPLIES,
+                            AiReportMeasureDecision::PLANNED,
+                            true,
                             'Medida prevista para reducir el consumo eléctrico.',
                             4,
                         ),
                         new AiReportMeasure(
+                            'measure:2',
                             'Control de consumo',
                             'Seguimiento periódico del consumo energético.',
-                            AiReportMeasureDecision::DOES_NOT_APPLY,
+                            AiReportMeasureDecision::NOT_APPLICABLE,
+                            false,
                             'No se aplica en esta prueba ficticia.',
                             5,
                         ),

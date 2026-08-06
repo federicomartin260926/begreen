@@ -57,7 +57,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
                 'json' => [
                     'model' => $this->anthropicConfiguration->model,
                     'max_tokens' => $this->anthropicConfiguration->maxTokens,
-                    'system' => $this->promptBuilder->buildInstructions($request->phase),
+                    'system' => $this->promptBuilder->buildInstructions(),
                     'messages' => [[
                         'role' => 'user',
                         'content' => $context,
@@ -137,7 +137,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
         }
 
         try {
-            return $this->resultValidator->validate($data);
+            return $this->resultValidator->validate($data, $this->categoryKeys($request));
         } catch (AiInvalidStructureException $exception) {
             $this->logFailure('invalid_structure', $statusCode, '', $requestId);
 
@@ -164,6 +164,12 @@ final class AnthropicReportProvider implements AiReportProviderInterface
     private function endpoint(): string
     {
         return rtrim($this->anthropicConfiguration->baseUrl, '/').'/messages';
+    }
+
+    /** @return list<string> */
+    private function categoryKeys(AiReportRequest $request): array
+    {
+        return array_map(static fn ($category): string => $category->key, $request->categories);
     }
 
     /** @param array<string, mixed> $envelope */

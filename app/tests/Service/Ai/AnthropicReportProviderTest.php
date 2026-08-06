@@ -15,7 +15,6 @@ use App\Service\Ai\AiQuotaAlertNotifier;
 use App\Service\Ai\AiReportConfiguration;
 use App\Service\Ai\AiReportMeasureDecision;
 use App\Service\Ai\AiReportOutputSchema;
-use App\Service\Ai\AiReportPhase;
 use App\Service\Ai\AiReportPromptBuilder;
 use App\Service\Ai\AiReportResultValidator;
 use App\Service\Ai\AnthropicReportConfiguration;
@@ -58,8 +57,12 @@ final class AnthropicReportProviderTest extends TestCase
             self::assertStringNotContainsString('Generate the narrative report', $payload['messages'][0]['content']);
 
             $context = json_decode($payload['messages'][0]['content'], true, 512, JSON_THROW_ON_ERROR);
-            self::assertSame('implementation', $context['phase']);
-            self::assertSame('implemented', $context['categories'][0]['measures'][0]['decision']);
+            self::assertArrayNotHasKey('phase', $context);
+            self::assertSame('planned', $context['categories'][0]['measures'][0]['decision']);
+            self::assertSame('measure:1', $context['categories'][0]['measures'][0]['key']);
+            self::assertTrue($context['categories'][0]['measures'][0]['critical']);
+            self::assertArrayNotHasKey('implemented', $context['categories'][0]['measures'][0]);
+            self::assertArrayNotHasKey('executionIncident', $context['categories'][0]['measures'][0]);
 
             return $this->successfulResponse([
                 'generalConclusion' => 'Conclusión generada.',
@@ -96,7 +99,7 @@ final class AnthropicReportProviderTest extends TestCase
                 self::assertStringContainsString('Model: claude-test', $body);
                 self::assertStringContainsString('Error code: billing_error', $body);
                 self::assertStringNotContainsString('anthropic-test-key', $body);
-                self::assertStringNotContainsString('Ejecutada parcialmente', $body);
+                self::assertStringNotContainsString('Medida prioritaria prevista', $body);
 
                 return true;
             }));
@@ -253,16 +256,17 @@ final class AnthropicReportProviderTest extends TestCase
     private function request(): AiReportRequest
     {
         return new AiReportRequest(
-            AiReportPhase::IMPLEMENTATION,
             'es',
             [new AiReportCategory(
                 'energy',
                 'Energía',
                 [new AiReportMeasure(
+                    'measure:1',
                     'Reducir consumo',
                     'Optimizar la iluminación.',
-                    AiReportMeasureDecision::IMPLEMENTED,
-                    'Ejecutada parcialmente.',
+                    AiReportMeasureDecision::PLANNED,
+                    true,
+                    'Medida prioritaria prevista en el plan.',
                     5,
                 )],
             )],
