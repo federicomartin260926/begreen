@@ -1946,10 +1946,6 @@ class PlanController extends AbstractController
                 phase:                $phase
             );
         } catch (AiReportException $exception) {
-            if ($phase !== CommercialPhase::ELABORATION) {
-                throw $exception;
-            }
-
             $this->logger->warning('Unified PDF AI report generation failed.', [
                 'event' => 'unified_pdf_ai_report_failed',
                 'exception_class' => $exception::class,
@@ -1961,10 +1957,6 @@ class PlanController extends AbstractController
 
             return $this->redirectToRoute('backend_plan_done');
         } catch (\Throwable $exception) {
-            if ($phase !== CommercialPhase::ELABORATION) {
-                throw $exception;
-            }
-
             $this->logger->error('Unified PDF generation failed.', [
                 'event' => 'unified_pdf_generation_failed',
                 'exception_class' => $exception::class,
@@ -1984,7 +1976,7 @@ class PlanController extends AbstractController
             $html    = $this->renderPdfHtml($ctx);
             $pdfData = $this->pdfBytesFromHtml(
                 $html,
-                $phase === CommercialPhase::ELABORATION ? 'portrait' : 'landscape'
+                'portrait'
             );
 
             // 4A) Responder como descarga
@@ -2052,7 +2044,7 @@ class PlanController extends AbstractController
         $html = $this->renderPdfHtml($ctx);
         return $this->pdfBytesFromHtml(
             $html,
-            $phase === CommercialPhase::ELABORATION ? 'portrait' : 'landscape'
+            'portrait'
         );
     }
 
@@ -2160,13 +2152,13 @@ class PlanController extends AbstractController
         $plan = $planRepository->findOneBy(['project' => $project]);
         if (!$plan) throw $this->createNotFoundException('backend.plan.errors.not_found');
 
-        $aiGeneralConclusion = null;
-        $aiCategorySummaries = [];
-        if ($phase === CommercialPhase::ELABORATION) {
-            $aiReport = $this->planAiReportService->getOrGenerate($plan, $locale);
-            $aiGeneralConclusion = $aiReport->generalConclusion;
-            $aiCategorySummaries = $this->buildAiCategorySummaries($plan, $project, $aiReport->categorySummaries);
-        }
+        $aiReport = $this->planAiReportService->getOrGenerate($plan, $locale);
+        $aiGeneralConclusion = $aiReport->generalConclusion;
+        $aiCategorySummaries = $this->buildAiCategorySummaries(
+            $plan,
+            $project,
+            $aiReport->categorySummaries
+        );
 
         $filterDepartment      = $filters['department']         ?? null;
         $filterCategory        = $filters['category']           ?? null;
@@ -2567,16 +2559,21 @@ class PlanController extends AbstractController
 
     private function renderPdfHtml(array $context): string
     {
-        if (($context['pdfPhase'] ?? null) === CommercialPhase::ELABORATION) {
-            $context['pdfVisualAssets'] = [
-                'logo' => $this->pdfAssetDataUri('assets/images/logo-white.svg', 'image/svg+xml'),
-                'vegetation' => $this->pdfAssetDataUri('public/images/commitment/commitment-selva-v4.png', 'image/png'),
-            ];
+        $context['pdfVisualAssets'] = [
+            'logo' => $this->pdfAssetDataUri(
+                'assets/images/logo-white.svg',
+                'image/svg+xml'
+            ),
+            'vegetation' => $this->pdfAssetDataUri(
+                'public/images/commitment/commitment-selva-v4.png',
+                'image/png'
+            ),
+        ];
 
-            return $this->renderView('backend/plan/pdf_visual.html.twig', $context);
-        }
-
-        return $this->renderView('backend/plan/pdf.html.twig', $context);
+        return $this->renderView(
+            'backend/plan/pdf_visual.html.twig',
+            $context
+        );
     }
 
     private function pdfAssetDataUri(string $relativePath, string $mimeType): string
@@ -2612,6 +2609,23 @@ class PlanController extends AbstractController
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', $orientation);
         $dompdf->render();
+
+        if ($orientation === 'portrait') {
+            $canvas = $dompdf->getCanvas();
+            $font = $dompdf->getFontMetrics()->getFont(
+                'Helvetica',
+                'normal'
+            );
+
+            $canvas->page_text(
+                $canvas->get_width() - 56,
+                $canvas->get_height() - 24,
+                '{PAGE_NUM} / {PAGE_COUNT}',
+                $font,
+                8,
+                [0.34, 0.45, 0.41]
+            );
+        }
 
         return $dompdf->output();
     }

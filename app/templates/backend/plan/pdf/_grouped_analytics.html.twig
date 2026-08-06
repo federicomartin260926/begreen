@@ -1,0 +1,97 @@
+<section class="pdf-analytics-page">
+    {% include 'backend/plan/pdf/_watermark.html.twig' %}
+
+    {% include 'backend/plan/pdf/_header.html.twig' with {
+        headerVariant: 'cover'
+    } %}
+
+    <main class="pdf-analytics-page__content">
+        <h1 class="pdf-analytics-page__title">
+            {{ 'backend.plan.pdf_visual.ai_report.executive_summary'|trans }}
+        </h1>
+
+        <div class="pdf-analytics-page__conclusion">
+            {{ aiGeneralConclusion }}
+        </div>
+
+        <h2 class="pdf-analytics-page__section-title">
+            {{ groupingSummaryTitle }}
+        </h2>
+
+        <table class="pdf-department-summary">
+            <thead>
+                <tr>
+                    <th>{{ groupingLabel }}</th>
+                    <th>
+                        {{ 'backend.plan.pdf_visual.analytics.departments.total'|trans }}
+                    </th>
+                    <th>
+                        {{ 'backend.plan.pdf_visual.analytics.departments.applicable'|trans }}
+                    </th>
+                    <th>
+                        {{ 'backend.plan.pdf_visual.analytics.departments.selected'|trans }}
+                    </th>
+                    <th>
+                        {{ 'backend.plan.pdf_visual.analytics.departments.critical'|trans }}
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in pdfGroupSummary %}
+                    <tr>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.total }}</td>
+                        <td>{{ item.applicable }}</td>
+                        <td>{{ item.selected }}</td>
+                        <td>{{ item.critical }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2 class="pdf-analytics-page__section-title pdf-analytics-page__section-title--quick">
+            {{ 'backend.plan.pdf_visual.analytics.quick_read.title'|trans }}
+        </h2>
+
+        <div class="pdf-quick-read">
+            {% for item in pdfQuickRead %}
+                <table class="pdf-quick-read__row" role="presentation">
+                    <tr>
+                        <td class="pdf-quick-read__label">
+                            {{
+                                (
+                                    'backend.plan.pdf_visual.analytics.quick_read.'
+                                    ~ item.key
+                                )|trans
+                            }}
+                        </td>
+
+                        <td class="pdf-quick-read__bar">
+                            <table class="pdf-progress-track" role="presentation">
+                                <tr>
+                                    {% if item.percentage > 0 %}
+                                        <td
+                                            class="pdf-progress-track__fill{% if item.key == 'selection' %} pdf-progress-track__fill--accent{% endif %}"
+                                            style="width: {{ item.percentage }}%">
+                                        </td>
+                                    {% endif %}
+
+                                    {% if item.percentage < 100 %}
+                                        <td
+                                            class="pdf-progress-track__rest"
+                                            style="width: {{ 100 - item.percentage }}%">
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            </table>
+                        </td>
+
+                        <td class="pdf-quick-read__value">
+                            {{ item.value }} / {{ item.total }}
+                        </td>
+                    </tr>
+                </table>
+            {% endfor %}
+        </div>
+    </main>
+</section>

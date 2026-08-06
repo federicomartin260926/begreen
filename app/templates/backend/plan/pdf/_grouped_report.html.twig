@@ -1,0 +1,44 @@
+{% for page in groupedDetailPages %}
+    <section class="pdf-group-page{% if loop.last %} pdf-group-page--last{% endif %}">
+        {% include 'backend/plan/pdf/_watermark.html.twig' %}
+
+        {% include 'backend/plan/pdf/_header.html.twig' with {
+            headerVariant: 'cover'
+        } %}
+
+        <main class="pdf-group-page__content">
+            <table class="pdf-group-page__heading" role="presentation">
+                <tr>
+                    <td>
+                        <h1 class="pdf-group-page__title">
+                            {{ page.groupLabel }}
+                        </h1>
+                    </td>
+
+                    <td class="pdf-group-page__count">
+                        {{
+                            'backend.plan.exports.pdf.measures_count'
+                                |trans({'%count%': page.groupTotal})
+                        }}
+                    </td>
+                </tr>
+            </table>
+
+            {% for row in page.rows %}
+                <table class="pdf-group-measure" role="presentation">
+                    <tr>
+                        <td class="pdf-group-measure__cell">
+                            <h2 class="pdf-group-measure__title">
+                                {{ row.measureTitle|default(row.displayName) }}
+                            </h2>
+
+                            {% if row.observations|default('')|trim is not empty %}
+                                <p class="pdf-group-measure__observations">{{ row.observations|trim }}</p>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            {% endfor %}
+        </main>
+    </section>
+{% endfor %}

@@ -5,15 +5,18 @@ namespace App\Controller\Backend;
 use App\Entity\Plan;
 use App\Entity\Project;
 use App\Enum\CommercialPhase;
+use App\Exception\Ai\AiReportException;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\Ai\PlanAiReportService;
 use App\Service\SustainabilityPlanExcelExporter;
 use App\Service\SustainabilityPlanGroupedPdfExporter;
 use App\Service\SustainabilityPlanGroupingService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,7 +38,9 @@ final class SustainabilityPlanExportController extends AbstractController
         private readonly SustainabilityCommitmentLevelService $commitmentLevelService,
         private readonly SustainabilityPlanGroupedPdfExporter $pdfExporter,
         private readonly SustainabilityPlanExcelExporter $excelExporter,
-        private readonly TranslatorInterface $translator
+        private readonly PlanAiReportService $planAiReportService,
+        private readonly TranslatorInterface $translator,
+        private readonly LoggerInterface $logger
     ) {
     }
 
@@ -43,12 +48,14 @@ final class SustainabilityPlanExportController extends AbstractController
     public function downloadPdf(
         Plan $plan,
         string $grouping,
-        ActiveProjectService $activeProjectService
+        ActiveProjectService $activeProjectService,
+        Request $request
     ): Response {
         return $this->downloadPdfForPhase(
             $plan,
             $grouping,
             $activeProjectService,
+            $request,
             CommercialPhase::IMPLEMENTATION,
             false
         );
@@ -58,12 +65,14 @@ final class SustainabilityPlanExportController extends AbstractController
     public function downloadClosurePdf(
         Plan $plan,
         string $grouping,
-        ActiveProjectService $activeProjectService
+        ActiveProjectService $activeProjectService,
+        Request $request
     ): Response {
         return $this->downloadPdfForPhase(
             $plan,
             $grouping,
             $activeProjectService,
+            $request,
             CommercialPhase::ELABORATION,
             true
         );
@@ -73,6 +82,7 @@ final class SustainabilityPlanExportController extends AbstractController
         Plan $plan,
         string $grouping,
         ActiveProjectService $activeProjectService,
+        Request $request,
         CommercialPhase $phase,
         bool $closure
     ): Response {
@@ -110,19 +120,144 @@ final class SustainabilityPlanExportController extends AbstractController
             ]);
         }
 
-        $groups = $this->groupingService->groupPlanMeasures($plan, $project, $grouping);
-        $pdf = $this->pdfExporter->generate('backend/plan/export/grouped_pdf.html.twig', [
-            'project' => $project,
-            'plan' => $plan,
-            'grouping' => $grouping,
-            'groupingLabel' => $this->groupingService->getGroupingLabel($grouping),
-            'groups' => $groups,
-            'projectTier' => $this->featureGate->getTier($project, $phase),
-            'projectTierLabel' => $this->featureGate->getPlanLabel($project, $phase),
-            'generatedAt' => new \DateTimeImmutable(),
-            'hasWatermark' => $this->featureGate->hasWatermark($project, $phase),
-            'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
-        ]);
+        $groups = $this->groupingService->groupPlanMeasures(
+            $plan,
+            $project,
+            $grouping
+        );
+
+        try {
+            $aiReport = $this->planAiReportService->getOrGenerate(
+                $plan,
+                $request->getLocale()
+            );
+        } catch (AiReportException $exception) {
+            $this->logger->warning(
+                'Grouped PDF AI report generation failed.',
+                [
+                    'event' => 'grouped_pdf_ai_report_failed',
+                    'exception_class' => $exception::class,
+                    'project_id' => $project->getId(),
+                    'plan_id' => $plan->getId(),
+                    'grouping' => $grouping,
+                    'locale' => $request->getLocale(),
+                ]
+            );
+
+            $this->addFlash(
+                'danger',
+                'backend.plan.pdf_visual.ai_report.error'
+            );
+
+            return $closure
+                ? $this->redirectToRoute('backend_plan_done')
+                : $this->redirectToRoute('backend_plan_review', [
+                    'is_applicable' => '1',
+                    'will_implement' => '1',
+                    'state' => 'all',
+                ]);
+        } catch (\Throwable $exception) {
+            $this->logger->error(
+                'Grouped PDF generation preparation failed.',
+                [
+                    'event' => 'grouped_pdf_generation_failed',
+                    'exception_class' => $exception::class,
+                    'exception_message' => $exception->getMessage(),
+                    'project_id' => $project->getId(),
+                    'plan_id' => $plan->getId(),
+                    'grouping' => $grouping,
+                    'locale' => $request->getLocale(),
+                    'exception' => $exception,
+                ]
+            );
+
+            $this->addFlash(
+                'danger',
+                'backend.plan.pdf_visual.ai_report.error'
+            );
+
+            return $closure
+                ? $this->redirectToRoute('backend_plan_done')
+                : $this->redirectToRoute('backend_plan_review', [
+                    'is_applicable' => '1',
+                    'will_implement' => '1',
+                    'state' => 'all',
+                ]);
+        }
+
+        $groupingLabel = $this->groupingService->getGroupingLabel(
+            $grouping
+        );
+        $visualMetrics = $this->buildGroupedVisualMetrics($groups);
+        $commitmentSummary = $this->commitmentLevelService->buildSummary(
+            $plan,
+            $project
+        );
+
+        $pdf = $this->pdfExporter->generate(
+            'backend/plan/export/grouped_pdf_visual.html.twig',
+            [
+                'project' => $project,
+                'plan' => $plan,
+                'grouping' => $grouping,
+                'groupingLabel' => $groupingLabel,
+                'groupingSummaryTitle' => $this->translator->trans(
+                    'pdf_grouped_visual.summary_title',
+                    [
+                        '%grouping%' => mb_strtolower(
+                            $groupingLabel
+                        ),
+                    ]
+                ),
+                'groups' => $groups,
+                'pdfGroupSummary' => $this->buildGroupedSummary(
+                    $groups,
+                    $this->translator->trans(
+                        'pdf_grouped_visual.other'
+                    )
+                ),
+                'groupedDetailPages' => $this->buildGroupedDetailPages(
+                    $groups
+                ),
+                'projectTier' => $this->featureGate->getTier(
+                    $project,
+                    $phase
+                ),
+                'projectTierLabel' => $this->featureGate->getPlanLabel(
+                    $project,
+                    $phase
+                ),
+                'generatedAt' => new \DateTimeImmutable(
+                    'now',
+                    new \DateTimeZone('Europe/Madrid')
+                ),
+                'hasWatermark' => $this->featureGate->hasWatermark(
+                    $project,
+                    $phase
+                ),
+                'commitmentSummary' => $commitmentSummary,
+                'currentUserLabel' => $this->buildCurrentUserLabel(),
+                'scoreMax' => $visualMetrics['scoreMax'],
+                'scoreGained' => $visualMetrics['scoreGained'],
+                'scorePct' => $visualMetrics['scorePct'],
+                'coverIndicators' => $visualMetrics[
+                    'coverIndicators'
+                ],
+                'pdfQuickRead' => $visualMetrics['quickRead'],
+                'aiGeneralConclusion' => $aiReport->generalConclusion,
+                'pdfVisualAssets' => [
+                    'logo' => $this->pdfAssetDataUri(
+                        'assets/images/logo-white.svg',
+                        'image/svg+xml'
+                    ),
+                    'vegetation' => $this->pdfAssetDataUri(
+                        'public/images/commitment/'
+                        . 'commitment-selva-v4.png',
+                        'image/png'
+                    ),
+                ],
+            ]
+        );
 
         $filename = $this->buildFilename($project, $grouping, 'pdf');
 
@@ -224,6 +359,363 @@ final class SustainabilityPlanExportController extends AbstractController
         );
 
         return $response;
+    }
+
+
+    /**
+     * @param array<int, array{
+     *     label:string,
+     *     rows:array<int, array<string, mixed>>
+     * }> $groups
+     * @return array<string, mixed>
+     */
+    private function buildGroupedVisualMetrics(array $groups): array
+    {
+        $rowsByMeasure = [];
+
+        foreach ($groups as $group) {
+            foreach ($group['rows'] ?? [] as $row) {
+                $measureId = $row['measureId'] ?? null;
+                if ($measureId === null) {
+                    continue;
+                }
+
+                $rowsByMeasure[(string) $measureId] = $row;
+            }
+        }
+
+        $total = count($rowsByMeasure);
+        $applicable = 0;
+        $selected = 0;
+        $critical = 0;
+        $criticalApplicable = 0;
+        $criticalSelected = 0;
+        $scoreMax = 0;
+        $scoreGained = 0;
+
+        foreach ($rowsByMeasure as $row) {
+            $score = max(0, (int) ($row['score'] ?? 0));
+            $isApplicable = ($row['applicable'] ?? null) === true;
+            $isSelected = ($row['selected'] ?? null) === true;
+            $isCritical = ($row['critical'] ?? false) === true;
+
+            $scoreMax += $score;
+
+            if ($isApplicable) {
+                $applicable++;
+            }
+
+            if ($isSelected) {
+                $selected++;
+                $scoreGained += $score;
+            }
+
+            if ($isCritical) {
+                $critical++;
+            }
+
+            if ($isApplicable && $isCritical) {
+                $criticalApplicable++;
+            }
+
+            if ($isSelected && $isCritical) {
+                $criticalSelected++;
+            }
+        }
+
+        return [
+            'scoreMax' => $scoreMax,
+            'scoreGained' => $scoreGained,
+            'scorePct' => $scoreMax > 0
+                ? (int) round(100 * $scoreGained / $scoreMax)
+                : null,
+            'coverIndicators' => [
+                'total' => $total,
+                'applicable' => $applicable,
+                'toImplement' => $selected,
+                'critical' => $critical,
+            ],
+            'quickRead' => [
+                [
+                    'key' => 'applicability',
+                    'value' => $applicable,
+                    'total' => $total,
+                    'percentage' => $this->percentage(
+                        $applicable,
+                        $total
+                    ),
+                ],
+                [
+                    'key' => 'selection',
+                    'value' => $selected,
+                    'total' => $applicable,
+                    'percentage' => $this->percentage(
+                        $selected,
+                        $applicable
+                    ),
+                ],
+                [
+                    'key' => 'critical_coverage',
+                    'value' => $criticalSelected,
+                    'total' => $criticalApplicable,
+                    'percentage' => $this->percentage(
+                        $criticalSelected,
+                        $criticalApplicable
+                    ),
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param array<int, array{
+     *     label:string,
+     *     rows:array<int, array<string, mixed>>
+     * }> $groups
+     * @return list<array<string, int|string>>
+     */
+    private function buildGroupedSummary(
+        array $groups,
+        string $otherLabel
+    ): array {
+        $summary = [];
+
+        foreach ($groups as $group) {
+            $row = [
+                'name' => (string) ($group['label'] ?? ''),
+                'total' => 0,
+                'applicable' => 0,
+                'selected' => 0,
+                'critical' => 0,
+            ];
+
+            foreach ($group['rows'] ?? [] as $measureRow) {
+                if (($measureRow['measureId'] ?? null) === null) {
+                    continue;
+                }
+
+                $row['total']++;
+
+                if (($measureRow['applicable'] ?? null) === true) {
+                    $row['applicable']++;
+                }
+
+                if (($measureRow['selected'] ?? null) === true) {
+                    $row['selected']++;
+                }
+
+                if (
+                    ($measureRow['selected'] ?? null) === true
+                    && ($measureRow['critical'] ?? false) === true
+                ) {
+                    $row['critical']++;
+                }
+            }
+
+            if ($row['total'] > 0) {
+                $summary[] = $row;
+            }
+        }
+
+        usort(
+            $summary,
+            static function (array $left, array $right): int {
+                foreach (
+                    ['selected', 'critical', 'total']
+                    as $key
+                ) {
+                    $comparison = $right[$key] <=> $left[$key];
+
+                    if ($comparison !== 0) {
+                        return $comparison;
+                    }
+                }
+
+                return strnatcasecmp(
+                    (string) $left['name'],
+                    (string) $right['name']
+                );
+            }
+        );
+
+        if (count($summary) <= 6) {
+            return $summary;
+        }
+
+        $visible = array_slice($summary, 0, 5);
+        $other = [
+            'name' => $otherLabel,
+            'total' => 0,
+            'applicable' => 0,
+            'selected' => 0,
+            'critical' => 0,
+        ];
+
+        foreach (array_slice($summary, 5) as $row) {
+            foreach (
+                ['total', 'applicable', 'selected', 'critical']
+                as $key
+            ) {
+                $other[$key] += $row[$key];
+            }
+        }
+
+        $visible[] = $other;
+
+        return $visible;
+    }
+
+    /**
+     * @param array<int, array{
+     *     label:string,
+     *     rows:array<int, array<string, mixed>>
+     * }> $groups
+     * @return list<array<string, mixed>>
+     */
+    private function buildGroupedDetailPages(array $groups): array
+    {
+        $pages = [];
+
+        foreach ($groups as $group) {
+            $rows = array_values($group['rows'] ?? []);
+            $groupTotal = count($rows);
+            $currentRows = [];
+            $currentEstimatedHeight = 0.0;
+
+            foreach ($rows as $row) {
+                $observations = trim(
+                    (string) ($row['observations'] ?? '')
+                );
+                $title = trim(
+                    (string) (
+                        $row['measureTitle']
+                        ?? $row['displayName']
+                        ?? ''
+                    )
+                );
+
+                $titleLines = max(
+                    1,
+                    (int) ceil(max(1, mb_strlen($title)) / 95)
+                );
+                $observationLines = $observations === ''
+                    ? 0
+                    : max(
+                        1,
+                        (int) ceil(mb_strlen($observations) / 140)
+                    );
+
+                $estimatedHeight = 9.0
+                    + ($titleLines * 3.8)
+                    + ($observationLines * 3.2);
+
+                if (
+                    $currentRows !== []
+                    && $currentEstimatedHeight + $estimatedHeight > 236.0
+                ) {
+                    $pages[] = [
+                        'groupLabel' => (string) (
+                            $group['label'] ?? ''
+                        ),
+                        'groupTotal' => $groupTotal,
+                        'rows' => $currentRows,
+                    ];
+
+                    $currentRows = [];
+                    $currentEstimatedHeight = 0.0;
+                }
+
+                $currentRows[] = $row;
+                $currentEstimatedHeight += $estimatedHeight;
+            }
+
+            if ($currentRows !== []) {
+                $pages[] = [
+                    'groupLabel' => (string) (
+                        $group['label'] ?? ''
+                    ),
+                    'groupTotal' => $groupTotal,
+                    'rows' => $currentRows,
+                ];
+            }
+        }
+
+        return $pages;
+    }
+
+    private function percentage(int $value, int $total): int
+    {
+        return $total > 0
+            ? (int) round(100 * $value / $total)
+            : 0;
+    }
+
+    private function buildCurrentUserLabel(): string
+    {
+        $user = $this->getUser();
+
+        if (!is_object($user)) {
+            return '';
+        }
+
+        $firstName = '';
+
+        foreach (['getName', 'getFirstName'] as $method) {
+            if (!method_exists($user, $method)) {
+                continue;
+            }
+
+            $firstName = trim((string) $user->{$method}());
+
+            if ($firstName !== '') {
+                break;
+            }
+        }
+
+        $lastName = '';
+
+        foreach (['getSurnames', 'getLastName'] as $method) {
+            if (!method_exists($user, $method)) {
+                continue;
+            }
+
+            $lastName = trim((string) $user->{$method}());
+
+            if ($lastName !== '') {
+                break;
+            }
+        }
+
+        $fullName = trim($firstName . ' ' . $lastName);
+
+        if ($fullName !== '') {
+            return $fullName;
+        }
+
+        return method_exists($user, 'getUserIdentifier')
+            ? (string) $user->getUserIdentifier()
+            : '';
+    }
+
+    private function pdfAssetDataUri(
+        string $relativePath,
+        string $mimeType
+    ): string {
+        $path = $this->getParameter('kernel.project_dir')
+            . '/'
+            . ltrim($relativePath, '/');
+
+        $contents = is_file($path)
+            ? file_get_contents($path)
+            : false;
+
+        return $contents === false
+            ? ''
+            : sprintf(
+                'data:%s;base64,%s',
+                $mimeType,
+                base64_encode($contents)
+            );
     }
 
     private function isExportAllowed(

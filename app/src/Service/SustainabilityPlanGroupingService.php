@@ -216,6 +216,11 @@ final class SustainabilityPlanGroupingService
             'executionIncident' => (string) ($planMeasure->getExecutionIncident() ?? ''),
             'evidenceCount' => count(array_filter(array_map('trim', preg_split('/\R/u', (string) $planMeasure->getEvidence()) ?: []))),
             'description' => (string) ($measure->getDescription() ?? ''),
+            'observations' => trim((string) ($planMeasure->getObservations() ?? '')),
+            'applicable' => $planMeasure->isApplicable(),
+            'selected' => $planMeasure->isApplicable() === true
+                && $planMeasure->willImplement() === true,
+            'critical' => $planMeasure->isCritical() === true,
         ];
     }
 
@@ -243,7 +248,13 @@ final class SustainabilityPlanGroupingService
             'responsibles' => '—',
             'executionIncident' => '',
             'evidenceCount' => 0,
-            'description' => $customMeasure['description'] !== '' ? $customMeasure['description'] : $this->translator->trans('backend.plan.custom_measures.no_description'),
+            'description' => $customMeasure['description'] !== ''
+                ? $customMeasure['description']
+                : $this->translator->trans('backend.plan.custom_measures.no_description'),
+            'observations' => trim((string) $customMeasure['description']),
+            'applicable' => null,
+            'selected' => null,
+            'critical' => false,
             'statusLabel' => $this->translator->trans('backend.plan.review.custom_measures.state.' . $customMeasure['state']),
         ];
     }

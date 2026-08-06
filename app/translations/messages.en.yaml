@@ -2446,3 +2446,7 @@ backend:
       import:
         file_label: "Excel file"
         invalid_mime: "Please upload a valid Excel file (.xlsx)"
+
+pdf_grouped_visual:
+  summary_title: "Summary by %grouping%"
+  other: "Other"

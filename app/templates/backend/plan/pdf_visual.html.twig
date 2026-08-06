@@ -2,7 +2,7 @@
 <html lang="{{ app.request.locale|default('es') }}">
 <head>
     <meta charset="UTF-8">
-    <title>{{ 'backend.plan.pdf_visual.document_title'|trans({'%project%': project.name}) }}</title>
+    <title>{% block document_title %}{{ 'backend.plan.pdf_visual.document_title'|trans({'%project%': project.name}) }}{% endblock %}</title>
     <style>
         @page {
             size: A4 portrait;
@@ -848,11 +848,14 @@
             text-align: right;
         }
 
+        {% block pdf_extra_styles %}{% endblock %}
     </style>
 </head>
 <body>
-    {% include 'backend/plan/pdf/_cover.html.twig' %}
-    {% include 'backend/plan/pdf/_analytics.html.twig' %}
-    {% include 'backend/plan/pdf/_ai_report.html.twig' %}
+    {% block pdf_body %}
+        {% include 'backend/plan/pdf/_cover.html.twig' %}
+        {% include 'backend/plan/pdf/_analytics.html.twig' %}
+        {% include 'backend/plan/pdf/_ai_report.html.twig' %}
+    {% endblock %}
 </body>
 </html>
