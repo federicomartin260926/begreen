@@ -10,7 +10,6 @@ final readonly class AiReportContextHasher
 {
     public function __construct(
         private AiReportPromptBuilder $promptBuilder,
-        private string $promptVersion = AiReportPromptBuilder::VERSION,
     ) {
     }
 
@@ -25,7 +24,7 @@ final readonly class AiReportContextHasher
         $canonical = sprintf(
             "contract=%d\nprompt=%s\ncontext=%s",
             AiStoredReport::VERSION,
-            $this->promptVersion,
+            $this->promptBuilder->promptVersion(),
             $context,
         );
 
@@ -34,6 +33,6 @@ final readonly class AiReportContextHasher
 
     public function promptVersion(): string
     {
-        return $this->promptVersion;
+        return $this->promptBuilder->promptVersion();
     }
 }

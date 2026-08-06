@@ -11,6 +11,7 @@ parameters:
     ai.min_measure_score: '%env(int:AI_MIN_MEASURE_SCORE)%'
     ai.alert_email: '%env(string:AI_ALERT_EMAIL)%'
     ai.report_storage_dir: '%kernel.project_dir%/var/storage/ai'
+    ai.report_prompt_file: '%kernel.project_dir%/config/ai_report_prompt.yaml'
     ai.report_lock_wait_seconds: 120
     openai.api_key: '%env(string:AI_API_KEY)%'
     openai.model: '%env(string:AI_MODEL)%'
@@ -89,6 +90,10 @@ services:
             $timeoutSeconds: '%ai.timeout_seconds%'
             $minMeasureScore: '%ai.min_measure_score%'
             $alertEmail: '%ai.alert_email%'
+
+    App\Service\Ai\AiReportPromptConfiguration:
+        arguments:
+            $promptFile: '%ai.report_prompt_file%'
 
     App\Service\Ai\OpenAiReportConfiguration:
         arguments:

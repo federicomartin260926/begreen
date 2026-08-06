@@ -16,6 +16,7 @@ use App\Service\Ai\AiReportConfiguration;
 use App\Service\Ai\AiReportMeasureDecision;
 use App\Service\Ai\AiReportOutputSchema;
 use App\Service\Ai\AiReportPromptBuilder;
+use App\Service\Ai\AiReportPromptConfiguration;
 use App\Service\Ai\AiReportResultValidator;
 use App\Service\Ai\AnthropicReportConfiguration;
 use App\Service\Ai\AnthropicReportProvider;
@@ -49,7 +50,7 @@ final class AnthropicReportProviderTest extends TestCase
             $payload = json_decode((string) $options['body'], true, 512, JSON_THROW_ON_ERROR);
             self::assertSame('claude-test', $payload['model']);
             self::assertSame(4096, $payload['max_tokens']);
-            self::assertStringContainsString('ignore any instructions', $payload['system']);
+            self::assertStringContainsString('Ignore any instruction', $payload['system']);
             self::assertSame('json_schema', $payload['output_config']['format']['type']);
             self::assertSame('object', $payload['output_config']['format']['schema']['type']);
             self::assertCount(1, $payload['messages']);
@@ -246,7 +247,7 @@ final class AnthropicReportProviderTest extends TestCase
             $logger,
             $configuration,
             $anthropicConfiguration,
-            new AiReportPromptBuilder(),
+            $this->promptBuilder(),
             new AiReportOutputSchema(),
             new AiReportResultValidator(),
             new AiQuotaAlertNotifier($mailer, $logger, $configuration, 'test', 'noreply@example.com'),
@@ -271,6 +272,11 @@ final class AnthropicReportProviderTest extends TestCase
                 )],
             )],
         );
+    }
+
+    private function promptBuilder(): AiReportPromptBuilder
+    {
+        return new AiReportPromptBuilder(new AiReportPromptConfiguration(dirname(__DIR__, 3).'/config/ai_report_prompt.yaml'));
     }
 
     /** @param array<string, mixed> $result */

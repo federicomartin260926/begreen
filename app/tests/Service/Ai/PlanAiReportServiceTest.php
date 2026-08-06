@@ -10,6 +10,7 @@ use App\Service\Ai\AiReportConfiguration;
 use App\Service\Ai\AiReportContextHasher;
 use App\Service\Ai\AiReportLockInterface;
 use App\Service\Ai\AiReportPromptBuilder;
+use App\Service\Ai\AiReportPromptConfiguration;
 use App\Service\Ai\AiReportProviderInterface;
 use App\Service\Ai\AiReportResultValidator;
 use App\Service\Ai\AiReportStorage;
@@ -111,7 +112,7 @@ final class PlanAiReportServiceTest extends TestCase
         $provider = new CountingAiReportProvider();
         $builder = $this->builder($configuration);
         $request = $builder->build($plan, 'es');
-        $hasher = new AiReportContextHasher(new AiReportPromptBuilder());
+        $hasher = new AiReportContextHasher($this->promptBuilder());
         $lock = new HookAiReportLock(function () use ($storage, $hasher, $request): void {
             $storage->write(new AiStoredReport(
                 AiStoredReport::VERSION,
@@ -119,7 +120,7 @@ final class PlanAiReportServiceTest extends TestCase
                 'es',
                 'openai',
                 'model-a',
-                AiReportPromptBuilder::VERSION,
+                $hasher->promptVersion(),
                 $hasher->hash($request),
                 '2026-08-06T10:00:00+02:00',
                 'Generado por otro proceso.',
@@ -141,7 +142,7 @@ final class PlanAiReportServiceTest extends TestCase
         ?CollectingAiLogger $logger = null,
     ): PlanAiReportService {
         $configuration = $this->configuration();
-        $promptBuilder = new AiReportPromptBuilder();
+        $promptBuilder = $this->promptBuilder();
 
         return new PlanAiReportService(
             $this->builder($configuration),
@@ -167,6 +168,11 @@ final class PlanAiReportServiceTest extends TestCase
             new SustainabilityPlanMeasureOrderer(),
             $doctrine,
         );
+    }
+
+    private function promptBuilder(): AiReportPromptBuilder
+    {
+        return new AiReportPromptBuilder(new AiReportPromptConfiguration(dirname(__DIR__, 3).'/config/ai_report_prompt.yaml'));
     }
 
     private function configuration(): AiReportConfiguration

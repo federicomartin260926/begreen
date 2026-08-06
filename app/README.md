@@ -157,6 +157,8 @@ El comando `app:ai:test-report` verifica la configuración, autenticación, cone
 
 `AI_PROVIDER` admite `openai` o `anthropic`. Cada proveedor requiere configurar en `app/.env.local` sus variables privadas (`AI_API_KEY` y `AI_MODEL` para OpenAI; `ANTHROPIC_API_KEY` y `ANTHROPIC_MODEL` para Anthropic). `ANTHROPIC_MODEL` no tiene valor por defecto y debe definirse antes de seleccionar Anthropic. No se debe versionar ninguna clave. El comando prueba el proveedor seleccionado realizando una llamada real, por lo que consume saldo o cuota.
 
+Las instrucciones del informe narrativo se mantienen en `config/ai_report_prompt.yaml` bajo control de versiones. Su campo `version` forma parte de la vigencia del informe almacenado: debe incrementarse al cambiar las instrucciones para forzar la regeneración automática en la siguiente solicitud, sin incluir el texto completo del prompt en el hash. Las instrucciones actuales están redactadas explícitamente para funcionar bien con `gpt-4.1-mini`, pero siguen siendo compatibles con otros proveedores.
+
 Para ejecutarlo en local con una configuración de proveedor válida:
 
 ```bash
