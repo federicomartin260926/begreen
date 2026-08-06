@@ -1,8 +1,8 @@
-version: "2"
+version: "3"
 
 instructions:
   role:
-    - "Generate the narrative report for a sustainability plan in the elaboration phase."
+    - "Generate the narrative report for a sustainability plan."
     - "Produce exactly one general conclusion and exactly one summary for every category received."
   source_of_truth:
     - "Use only the information supplied in the context."
@@ -20,7 +20,7 @@ instructions:
     - "Interpret not_applicable as a measure that does not apply to the project."
     - "Do not turn a discarded or non-applicable measure into a recommendation."
     - "Do not imply that a non-planned measure may still be carried out unless the observation explicitly says so."
-  elaboration:
+  planning:
     - "Use planning language only."
     - "Prefer expressions equivalent to selected measure, planned measure, expected measure, assumed commitment, it is planned, it is foreseen, and it has been decided to include or exclude."
     - "Never state or imply that a measure was executed, implemented, completed or verified."
@@ -37,7 +37,7 @@ instructions:
     - "Preserve technical, budgetary, logistical or creative nuances."
     - "Do not make negative judgements about discarded decisions."
   priority:
-    - "Interpret critical=true as a measure marked as critical during elaboration."
+    - "Interpret critical=true as a measure marked as critical in the planning data."
     - "Interpret critical=false as a measure not marked as critical."
     - "Interpret critical=null as criticality not supplied and not to be inferred."
     - "Use score only as a relative priority signal within the supplied data."

@@ -5,20 +5,16 @@ namespace App\Controller\Backend;
 use App\Entity\Plan;
 use App\Entity\Project;
 use App\Enum\CommercialPhase;
-use App\Exception\Ai\AiReportException;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
-use App\Service\Ai\PlanAiReportService;
 use App\Service\SustainabilityPlanExcelExporter;
 use App\Service\SustainabilityPlanGroupedPdfExporter;
 use App\Service\SustainabilityPlanGroupingService;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Annotation\Route;
@@ -38,9 +34,7 @@ final class SustainabilityPlanExportController extends AbstractController
         private readonly SustainabilityCommitmentLevelService $commitmentLevelService,
         private readonly SustainabilityPlanGroupedPdfExporter $pdfExporter,
         private readonly SustainabilityPlanExcelExporter $excelExporter,
-        private readonly PlanAiReportService $planAiReportService,
-        private readonly TranslatorInterface $translator,
-        private readonly LoggerInterface $logger
+        private readonly TranslatorInterface $translator
     ) {
     }
 
@@ -48,14 +42,12 @@ final class SustainabilityPlanExportController extends AbstractController
     public function downloadPdf(
         Plan $plan,
         string $grouping,
-        ActiveProjectService $activeProjectService,
-        Request $request
+        ActiveProjectService $activeProjectService
     ): Response {
         return $this->downloadPdfForPhase(
             $plan,
             $grouping,
             $activeProjectService,
-            $request,
             CommercialPhase::IMPLEMENTATION,
             false
         );
@@ -65,14 +57,12 @@ final class SustainabilityPlanExportController extends AbstractController
     public function downloadClosurePdf(
         Plan $plan,
         string $grouping,
-        ActiveProjectService $activeProjectService,
-        Request $request
+        ActiveProjectService $activeProjectService
     ): Response {
         return $this->downloadPdfForPhase(
             $plan,
             $grouping,
             $activeProjectService,
-            $request,
             CommercialPhase::ELABORATION,
             true
         );
@@ -82,7 +72,6 @@ final class SustainabilityPlanExportController extends AbstractController
         Plan $plan,
         string $grouping,
         ActiveProjectService $activeProjectService,
-        Request $request,
         CommercialPhase $phase,
         bool $closure
     ): Response {
@@ -125,65 +114,6 @@ final class SustainabilityPlanExportController extends AbstractController
             $project,
             $grouping
         );
-
-        try {
-            $aiReport = $this->planAiReportService->getOrGenerate(
-                $plan,
-                $request->getLocale()
-            );
-        } catch (AiReportException $exception) {
-            $this->logger->warning(
-                'Grouped PDF AI report generation failed.',
-                [
-                    'event' => 'grouped_pdf_ai_report_failed',
-                    'exception_class' => $exception::class,
-                    'project_id' => $project->getId(),
-                    'plan_id' => $plan->getId(),
-                    'grouping' => $grouping,
-                    'locale' => $request->getLocale(),
-                ]
-            );
-
-            $this->addFlash(
-                'danger',
-                'backend.plan.pdf_visual.ai_report.error'
-            );
-
-            return $closure
-                ? $this->redirectToRoute('backend_plan_done')
-                : $this->redirectToRoute('backend_plan_review', [
-                    'is_applicable' => '1',
-                    'will_implement' => '1',
-                    'state' => 'all',
-                ]);
-        } catch (\Throwable $exception) {
-            $this->logger->error(
-                'Grouped PDF generation preparation failed.',
-                [
-                    'event' => 'grouped_pdf_generation_failed',
-                    'exception_class' => $exception::class,
-                    'exception_message' => $exception->getMessage(),
-                    'project_id' => $project->getId(),
-                    'plan_id' => $plan->getId(),
-                    'grouping' => $grouping,
-                    'locale' => $request->getLocale(),
-                    'exception' => $exception,
-                ]
-            );
-
-            $this->addFlash(
-                'danger',
-                'backend.plan.pdf_visual.ai_report.error'
-            );
-
-            return $closure
-                ? $this->redirectToRoute('backend_plan_done')
-                : $this->redirectToRoute('backend_plan_review', [
-                    'is_applicable' => '1',
-                    'will_implement' => '1',
-                    'state' => 'all',
-                ]);
-        }
 
         $groupingLabel = $this->groupingService->getGroupingLabel(
             $grouping
@@ -244,7 +174,6 @@ final class SustainabilityPlanExportController extends AbstractController
                     'coverIndicators'
                 ],
                 'pdfQuickRead' => $visualMetrics['quickRead'],
-                'aiGeneralConclusion' => $aiReport->generalConclusion,
                 'pdfVisualAssets' => [
                     'logo' => $this->pdfAssetDataUri(
                         'assets/images/logo-white.svg',
