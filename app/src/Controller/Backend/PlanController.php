@@ -2329,17 +2329,19 @@ class PlanController extends AbstractController
         }
 
         $activeFilters = array_merge($activeMain, $activeFlags);
-        $projectTierLabel = $this->featureGate->getPlanLabel($project, $phase);
-        $projectTierSummary = $this->featureGate->getPlanDescription($project, $phase) ?? $this->t->trans('backend.plan.tier.basic_summary');
+        // El PDF general resume siempre Elaboración, incluso si se descarga desde Implementación.
+        $pdfCommercialPhase = CommercialPhase::ELABORATION;
+        $projectTierLabel = $this->featureGate->getPlanLabel($project, $pdfCommercialPhase);
+        $projectTierSummary = $this->featureGate->getPlanDescription($project, $pdfCommercialPhase) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
         return [
             'project'        => $project,
             'plan'           => $plan,
-            'projectTier'    => $this->featureGate->getTier($project, $phase),
+            'projectTier'    => $this->featureGate->getTier($project, $pdfCommercialPhase),
             'projectTierLabel'=> $projectTierLabel,
             'projectTierSummary'=> $projectTierSummary,
             'currentUserLabel'=> $this->buildCurrentUserLabel(),
-            'hasWatermark'   => $this->featureGate->hasWatermark($project, $phase),
+            'hasWatermark'   => $this->featureGate->hasWatermark($project, $pdfCommercialPhase),
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'operationalStateResolver' => $this->operationalStateResolver,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),

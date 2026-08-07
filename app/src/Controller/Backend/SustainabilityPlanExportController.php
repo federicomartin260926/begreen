@@ -149,13 +149,14 @@ final class SustainabilityPlanExportController extends AbstractController
                 'groupedDetailPages' => $this->buildGroupedDetailPages(
                     $groups
                 ),
+                // Los PDFs del plan muestran siempre el tier comercial de Elaboración.
                 'projectTier' => $this->featureGate->getTier(
                     $project,
-                    $phase
+                    CommercialPhase::ELABORATION
                 ),
                 'projectTierLabel' => $this->featureGate->getPlanLabel(
                     $project,
-                    $phase
+                    CommercialPhase::ELABORATION
                 ),
                 'generatedAt' => new \DateTimeImmutable(
                     'now',
@@ -163,7 +164,7 @@ final class SustainabilityPlanExportController extends AbstractController
                 ),
                 'hasWatermark' => $this->featureGate->hasWatermark(
                     $project,
-                    $phase
+                    CommercialPhase::ELABORATION
                 ),
                 'commitmentSummary' => $commitmentSummary,
                 'currentUserLabel' => $this->buildCurrentUserLabel(),
