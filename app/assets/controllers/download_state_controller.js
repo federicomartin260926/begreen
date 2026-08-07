@@ -105,7 +105,10 @@ export default class extends Controller {
       ${this.escapeHtml(this.loadingLabelValue)}
     `
 
-    if (this.element instanceof HTMLButtonElement) {
+    if (
+      this.element instanceof HTMLButtonElement
+      && this.element.type !== 'submit'
+    ) {
       this.element.disabled = true
     }
   }
