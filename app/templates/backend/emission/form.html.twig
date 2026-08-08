@@ -62,7 +62,9 @@
           'data-emission-target': 'form',
           'data-category': category.name|lower|replace({' ': '_'}),
           'data-wood-form-activities-value': materialActivities|json_encode,
-          'data-wood-form-densities-value': densities|json_encode
+          'data-wood-form-densities-value': densities|json_encode,
+          'data-wood-form-scenarios-value': woodScenarios|default({})|json_encode,
+          'data-wood-form-other-label-value': 'backend.emission.wood.board.other'|trans
         }
       }) }}
 

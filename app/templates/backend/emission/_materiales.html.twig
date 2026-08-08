@@ -51,7 +51,7 @@
             </div>
         </div>
     </div>
-    <div data-wood-form-target="dimensionsFields">
+    <div data-wood-form-target="unknownDimensionsFields">
         <div class="row">
             <div class="col-md-6 mb-3">
                 {{ form_row(form.woodClassification, {attr: {
@@ -60,6 +60,18 @@
                 }}) }}
             </div>
         </div>
+    </div>
+    <div data-wood-form-target="solidSpeciesFields">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form_row(form.speciesKey, {attr: {
+                    'data-wood-form-target': 'species',
+                    'data-action': 'change->wood-form#preview'
+                }}) }}
+            </div>
+        </div>
+    </div>
+    <div data-wood-form-target="sharedDimensionsFields">
         <div class="row">
             <div class="col-md-4 mb-3">
                 {{ form_row(form.thicknessM, {attr: {
@@ -76,6 +88,30 @@
             <div class="col-md-4 mb-3">
                 {{ form_row(form.widthM, {attr: {
                     'data-wood-form-target': 'width',
+                    'data-action': 'input->wood-form#preview'
+                }}) }}
+            </div>
+        </div>
+    </div>
+    <div data-wood-form-target="boardFields">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form_row(form.boardFamily, {attr: {
+                    'data-wood-form-target': 'boardFamily',
+                    'data-action': 'change->wood-form#boardFamilyChanged'
+                }}) }}
+            </div>
+            <div class="col-md-6 mb-3" data-wood-form-target="boardOptionWrapper">
+                {{ form_row(form.boardOption, {attr: {
+                    'data-wood-form-target': 'boardOption',
+                    'data-action': 'change->wood-form#boardOptionChanged'
+                }}) }}
+            </div>
+        </div>
+        <div class="row" data-wood-form-target="manualBoardThicknessFields">
+            <div class="col-md-6 mb-3">
+                {{ form_row(form.manualBoardThicknessMm, {attr: {
+                    'data-wood-form-target': 'manualBoardThickness',
                     'data-action': 'input->wood-form#preview'
                 }}) }}
             </div>

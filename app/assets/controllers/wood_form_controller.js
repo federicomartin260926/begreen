@@ -11,22 +11,34 @@ export default class extends Controller {
     'unit',
     'method',
     'knownWeightFields',
-    'dimensionsFields',
+    'unknownDimensionsFields',
+    'solidSpeciesFields',
+    'sharedDimensionsFields',
+    'boardFields',
+    'boardFamily',
+    'boardOption',
+    'boardOptionWrapper',
+    'manualBoardThicknessFields',
+    'manualBoardThickness',
     'quantity',
     'inputWeight',
     'classification',
     'thickness',
     'length',
     'width',
+    'species',
   ]
 
   static values = {
     activities: Object,
     densities: Object,
+    scenarios: Object,
+    otherLabel: String,
   }
 
   connect() {
     this.previousGroup = null
+    this.previousBoardFamily = null
     this.subCategoryChanged()
   }
 
@@ -84,10 +96,64 @@ export default class extends Controller {
     const method = this.methodTarget.value
     const hasMethod = Boolean(method)
     const knownWeight = method === 'known_weight'
+    const dimensions = method === 'unknown_dimensions' || method === 'solid_species'
 
     this.knownWeightFieldsTarget.hidden = !hasMethod || !knownWeight
-    this.dimensionsFieldsTarget.hidden = !hasMethod || knownWeight
+    this.unknownDimensionsFieldsTarget.hidden = method !== 'unknown_dimensions'
+    this.solidSpeciesFieldsTarget.hidden = method !== 'solid_species'
+    this.sharedDimensionsFieldsTarget.hidden = !dimensions
+    this.boardFieldsTarget.hidden = method !== 'board'
 
+    if (method === 'board') {
+      this.boardFamilyChanged()
+      return
+    }
+
+    this.preview()
+  }
+
+  boardFamilyChanged() {
+    const family = this.boardFamilyTarget.value
+    const familyChanged = this.previousBoardFamily !== null
+      && this.previousBoardFamily !== family
+
+    if (familyChanged) {
+      this.manualBoardThicknessTarget.value = ''
+    }
+
+    this.previousBoardFamily = family
+
+    const board = this.scenariosValue.boards?.[family]
+    const selectedOption = this.boardOptionTarget.value
+
+    this.boardOptionTarget.innerHTML = '<option value="">—</option>'
+    if (board) {
+      board.options.forEach((option, index) => {
+        const choice = document.createElement('option')
+        choice.value = family + ':' + index
+        choice.textContent = option.thicknessMm + ' mm'
+        choice.selected = choice.value === selectedOption
+        this.boardOptionTarget.appendChild(choice)
+      })
+      if (board.unknown) {
+        const choice = document.createElement('option')
+        choice.value = family + ':other'
+        choice.textContent = this.otherLabelValue
+        choice.selected = choice.value === selectedOption
+        this.boardOptionTarget.appendChild(choice)
+      }
+      if (board.fixed && this.boardOptionTarget.value === '') {
+        this.boardOptionTarget.selectedIndex = 1
+      }
+    }
+
+    this.boardOptionWrapperTarget.hidden = !board || board.fixed
+    this.boardOptionChanged()
+  }
+
+  boardOptionChanged() {
+    const isOther = this.boardOptionTarget.value.endsWith(':other')
+    this.manualBoardThicknessFieldsTarget.hidden = !isOther
     this.preview()
   }
 
@@ -102,19 +168,38 @@ export default class extends Controller {
 
     if (this.methodTarget.value === 'known_weight') {
       unitWeightKg = Number(this.inputWeightTarget.value)
-    } else {
-      const density = Number(this.densitiesValue[this.classificationTarget.value])
+    } else if (this.methodTarget.value === 'unknown_dimensions' || this.methodTarget.value === 'solid_species') {
+      const density = this.methodTarget.value === 'solid_species'
+        ? Number(this.scenariosValue.solidWoods?.[this.speciesTarget.value]?.densityKgM3)
+        : Number(this.densitiesValue[this.classificationTarget.value])
       const thickness = Number(this.thicknessTarget.value)
       const length = Number(this.lengthTarget.value)
       const width = Number(this.widthTarget.value)
 
       unitWeightKg = thickness * length * width * density
+    } else if (this.methodTarget.value === 'board') {
+      const [family, optionKey] = this.boardOptionTarget.value.split(':')
+      const board = this.scenariosValue.boards?.[family]
+      const option = optionKey === 'other'
+        ? board?.unknown
+        : board?.options?.[Number(optionKey)]
+      const thicknessMm = optionKey === 'other'
+        ? Number(this.manualBoardThicknessTarget.value)
+        : option?.thicknessMm
+      if (!thicknessMm) {
+        this.amountTarget.value = ''
+        return
+      }
+      unitWeightKg = (thicknessMm / 1000) * option.lengthM * option.widthM * option.densityKgM3
+    } else {
+      this.amountTarget.value = ''
+      return
     }
 
     const totalWeightKg = unitWeightKg * quantity
 
     this.amountTarget.value = Number.isFinite(totalWeightKg) && totalWeightKg > 0
-      ? String(totalWeightKg)
+      ? String(Number.parseFloat(totalWeightKg.toPrecision(15)))
       : ''
   }
 }

@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Entity\EmissionRecord;
+use App\Service\Emission\WoodCatalog;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
@@ -14,6 +15,10 @@ use Symfony\Component\Validator\Constraints\Positive;
 
 final class WoodEmissionType extends AbstractType
 {
+    public function __construct(private readonly WoodCatalog $catalog)
+    {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $inputs = $options['wood_details']['inputs'] ?? [];
@@ -26,6 +31,23 @@ final class WoodEmissionType extends AbstractType
                     $label .= ' #' . $activity['id'];
                 }
                 $activityChoices[$label] = $activity['id'];
+            }
+        }
+
+        $scenarios = $this->catalog->getScenarioCatalog();
+        $speciesChoices = [];
+        $boardChoices = [];
+        $boardOptionChoices = [];
+        foreach ($scenarios['solidWoods'] as $key => $species) {
+            $speciesChoices[$species['label']] = $key;
+        }
+        foreach ($scenarios['boards'] as $family => $board) {
+            $boardChoices[$board['label']] = $family;
+            foreach ($board['options'] as $index => $boardOption) {
+                $boardOptionChoices[$board['label'] . ' — ' . $boardOption['thicknessMm'] . ' mm'] = $family . ':' . $index;
+            }
+            if ($board['unknown'] !== null) {
+                $boardOptionChoices[$board['label'] . ' — backend.emission.wood.board.other'] = $family . ':other';
             }
         }
 
@@ -58,6 +80,8 @@ final class WoodEmissionType extends AbstractType
                 'choices' => [
                     'backend.emission.wood.method.known_weight' => 'known_weight',
                     'backend.emission.wood.method.unknown_dimensions' => 'unknown_dimensions',
+                    'backend.emission.wood.method.solid_species' => 'solid_species',
+                    'backend.emission.wood.method.board' => 'board',
                 ],
                 'placeholder' => '—',
                 'data' => $inputs['method'] ?? null,
@@ -103,6 +127,37 @@ final class WoodEmissionType extends AbstractType
                     'backend.emission.wood.classification.non_solid' => 'non_solid',
                 ],
                 'data' => $inputs['woodClassification'] ?? 'unknown',
+            ])
+            ->add('speciesKey', ChoiceType::class, [
+                'mapped' => false,
+                'required' => false,
+                'label' => 'backend.emission.wood.species',
+                'choices' => $speciesChoices,
+                'placeholder' => 'backend.common.select',
+                'data' => $inputs['speciesKey'] ?? null,
+            ])
+            ->add('boardFamily', ChoiceType::class, [
+                'mapped' => false,
+                'required' => false,
+                'label' => 'backend.emission.wood.board.family',
+                'choices' => $boardChoices,
+                'placeholder' => 'backend.common.select',
+                'data' => $inputs['boardFamily'] ?? null,
+            ])
+            ->add('boardOption', ChoiceType::class, [
+                'mapped' => false,
+                'required' => false,
+                'label' => 'backend.emission.wood.board.thickness',
+                'choices' => $boardOptionChoices,
+                'placeholder' => 'backend.common.select',
+                'data' => $inputs['boardOption'] ?? null,
+            ])
+            ->add('manualBoardThicknessMm', NumberType::class, [
+                'mapped' => false,
+                'required' => false,
+                'label' => 'backend.emission.wood.board.manual_thickness_mm',
+                'data' => $inputs['manualBoardThicknessMm'] ?? null,
+                'attr' => ['min' => 0, 'step' => 'any'],
             ]);
 
         foreach (['thicknessM', 'lengthM', 'widthM'] as $field) {

@@ -1,0 +1,693 @@
+{
+  "version": 1,
+  "source": "CATEGORÍA_MATERIALES_Y_PRODUCTOS_MADERAS_CÁLCULO_TABLAS_FACTORES_DE_EMISIÓN.xlsx",
+  "notes": [
+    "Táblex usa 3,2 mm por confirmación funcional; se ignora el 0,032 m de MADERA_TABLAS.",
+    "DM/MDF comienza en 2,5 mm.",
+    "Para tableros, largo y ancho estándar son 2,44 m x 1,22 m."
+  ],
+  "solid_woods": [
+    {
+      "key": "pino_radiata_insignis",
+      "label_es": "Madera maciza de pino radiata o insignis",
+      "density_kg_m3": 500
+    },
+    {
+      "key": "pino_silvestre",
+      "label_es": "Madera maciza de pino silvestre",
+      "density_kg_m3": 510
+    },
+    {
+      "key": "pino_pinaster",
+      "label_es": "Madera maciza de pino pinaster",
+      "density_kg_m3": 520
+    },
+    {
+      "key": "pino_promedio",
+      "label_es": "Madera maciza de pino promedio",
+      "density_kg_m3": 510
+    },
+    {
+      "key": "roble_europeo",
+      "label_es": "Madera maciza de roble europeo",
+      "density_kg_m3": 770
+    },
+    {
+      "key": "roble_rojo_americano",
+      "label_es": "Madera maciza de roble rojo americano",
+      "density_kg_m3": 710
+    },
+    {
+      "key": "roble_blanco_americano",
+      "label_es": "Madera maciza de roble blanco americano",
+      "density_kg_m3": 740
+    },
+    {
+      "key": "roble_promedio",
+      "label_es": "Madera maciza de roble promedio",
+      "density_kg_m3": 740
+    },
+    {
+      "key": "ayous_samba_obeche",
+      "label_es": "Madera de Ayous/Samba/obeche",
+      "density_kg_m3": 380
+    },
+    {
+      "key": "nogal_europeo",
+      "label_es": "Madera maciza de nogal europeo",
+      "density_kg_m3": 650
+    },
+    {
+      "key": "nogal_negro_americano",
+      "label_es": "Madera maciza de nogal negro americano",
+      "density_kg_m3": 610
+    },
+    {
+      "key": "nogal_promedio",
+      "label_es": "Madera maciza de nogal promedio",
+      "density_kg_m3": 630
+    },
+    {
+      "key": "haya_europea",
+      "label_es": "Madera maciza de haya europea",
+      "density_kg_m3": 730
+    },
+    {
+      "key": "chopo_alamo",
+      "label_es": "Madera maciza de chopo/álamo",
+      "density_kg_m3": 459
+    },
+    {
+      "key": "cerezo_europeo",
+      "label_es": "Madera maciza de cerezo europeo",
+      "density_kg_m3": 620
+    },
+    {
+      "key": "cerezo_americano",
+      "label_es": "Madera maciza de cerezo americano",
+      "density_kg_m3": 560
+    },
+    {
+      "key": "cerezo_promedio",
+      "label_es": "Madera maciza de cerezo",
+      "density_kg_m3": 590
+    },
+    {
+      "key": "abeto",
+      "label_es": "Madera maciza de abeto",
+      "density_kg_m3": 450
+    },
+    {
+      "key": "cedro_rojo_pacifico",
+      "label_es": "Madera maciza de cedro rojo del Pacífico",
+      "density_kg_m3": 340
+    },
+    {
+      "key": "cedro_americano",
+      "label_es": "Madera maciza de cedro americano",
+      "density_kg_m3": 490
+    },
+    {
+      "key": "cedro_promedio",
+      "label_es": "Tablón macizo de cedro promedio",
+      "density_kg_m3": 415
+    },
+    {
+      "key": "fresno_americano",
+      "label_es": "Tablón macizo de fresno americano",
+      "density_kg_m3": 640
+    },
+    {
+      "key": "fresno_europeo",
+      "label_es": "Tablón macizo de fresno europeo",
+      "density_kg_m3": 690
+    },
+    {
+      "key": "fresno_promedio",
+      "label_es": "Tablón macizo de fresno promedio",
+      "density_kg_m3": 650
+    },
+    {
+      "key": "arce_europeo",
+      "label_es": "Tablón macizo de arce europeo",
+      "density_kg_m3": 630
+    },
+    {
+      "key": "abedul",
+      "label_es": "Madera maciza de abedul",
+      "density_kg_m3": 650
+    },
+    {
+      "key": "teca",
+      "label_es": "Madera maciza de teca",
+      "density_kg_m3": 690
+    },
+    {
+      "key": "aliso_rojo",
+      "label_es": "Madera maciza de aliso rojo",
+      "density_kg_m3": 450
+    },
+    {
+      "key": "caoba",
+      "label_es": "Madera maciza de caoba",
+      "density_kg_m3": 570
+    },
+    {
+      "key": "castano",
+      "label_es": "Madera maciza de castaño",
+      "density_kg_m3": 590
+    },
+    {
+      "key": "sapelli",
+      "label_es": "Madera maciza de sapelli",
+      "density_kg_m3": 680
+    },
+    {
+      "key": "eucalipto",
+      "label_es": "Madera maciza de eucalipto",
+      "density_kg_m3": 785
+    },
+    {
+      "key": "okume",
+      "label_es": "Madera maciza de madera de Okume",
+      "density_kg_m3": 460
+    },
+    {
+      "key": "unknown",
+      "label_es": "Madera maciza desconocida",
+      "density_kg_m3": 588.1515152
+    }
+  ],
+  "boards": {
+    "tablex": {
+      "label_es": "Táblex",
+      "fixed": true,
+      "options": [
+        {
+          "thickness_mm": 3.2,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 945
+        }
+      ]
+    },
+    "mdf": {
+      "label_es": "DM o MDF",
+      "fixed": false,
+      "options": [
+        {
+          "thickness_mm": 2.5,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 800
+        },
+        {
+          "thickness_mm": 3,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 783.8394696766103
+        },
+        {
+          "thickness_mm": 4,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 780
+        },
+        {
+          "thickness_mm": 5,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 806.2348830959419
+        },
+        {
+          "thickness_mm": 6,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 780
+        },
+        {
+          "thickness_mm": 7,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 767.842745805659
+        },
+        {
+          "thickness_mm": 8,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 770
+        },
+        {
+          "thickness_mm": 9,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 770
+        },
+        {
+          "thickness_mm": 10,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 772.6417629669443
+        },
+        {
+          "thickness_mm": 11,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 760
+        },
+        {
+          "thickness_mm": 12,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 760
+        },
+        {
+          "thickness_mm": 13,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 760
+        },
+        {
+          "thickness_mm": 14,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 760
+        },
+        {
+          "thickness_mm": 15,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 760
+        },
+        {
+          "thickness_mm": 16,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 755.8452029024456
+        },
+        {
+          "thickness_mm": 18,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 755
+        },
+        {
+          "thickness_mm": 19,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 760.2653502878401
+        },
+        {
+          "thickness_mm": 22,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 750
+        },
+        {
+          "thickness_mm": 23,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 750
+        },
+        {
+          "thickness_mm": 24,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 750
+        },
+        {
+          "thickness_mm": 25,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 750
+        },
+        {
+          "thickness_mm": 28,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 740
+        },
+        {
+          "thickness_mm": 29,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 740
+        },
+        {
+          "thickness_mm": 30,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 739.0486428379469
+        },
+        {
+          "thickness_mm": 31,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 740
+        },
+        {
+          "thickness_mm": 32,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 740
+        },
+        {
+          "thickness_mm": 35,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 730
+        },
+        {
+          "thickness_mm": 36,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 730
+        },
+        {
+          "thickness_mm": 37,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 730
+        },
+        {
+          "thickness_mm": 38,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 730
+        },
+        {
+          "thickness_mm": 39,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 720
+        },
+        {
+          "thickness_mm": 40,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 720
+        }
+      ],
+      "unknown": {
+        "thickness_mm": null,
+        "length_m": 2.44,
+        "width_m": 1.22,
+        "density_kg_m3": 755
+      }
+    },
+    "particleboard": {
+      "label_es": "Aglomerada",
+      "fixed": false,
+      "options": [
+        {
+          "thickness_mm": 8,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 690
+        },
+        {
+          "thickness_mm": 9,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 680
+        },
+        {
+          "thickness_mm": 10,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 671.8624025799515
+        },
+        {
+          "thickness_mm": 11,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 670
+        },
+        {
+          "thickness_mm": 12,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 660
+        },
+        {
+          "thickness_mm": 13,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 650
+        },
+        {
+          "thickness_mm": 15,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 645
+        },
+        {
+          "thickness_mm": 16,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 629.8710024187046
+        },
+        {
+          "thickness_mm": 17,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 635
+        },
+        {
+          "thickness_mm": 18,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 630
+        },
+        {
+          "thickness_mm": 19,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 618.8206339552187
+        },
+        {
+          "thickness_mm": 22,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 600
+        },
+        {
+          "thickness_mm": 23,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 590
+        },
+        {
+          "thickness_mm": 24,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 590
+        },
+        {
+          "thickness_mm": 25,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 580
+        },
+        {
+          "thickness_mm": 30,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 559.885335483293
+        },
+        {
+          "thickness_mm": 31,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 565
+        },
+        {
+          "thickness_mm": 32,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 565
+        },
+        {
+          "thickness_mm": 33,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 560
+        },
+        {
+          "thickness_mm": 34,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 560
+        },
+        {
+          "thickness_mm": 35,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 555
+        },
+        {
+          "thickness_mm": 36,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 550
+        },
+        {
+          "thickness_mm": 37,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 545
+        },
+        {
+          "thickness_mm": 38,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 545
+        },
+        {
+          "thickness_mm": 39,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 540
+        },
+        {
+          "thickness_mm": 40,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 535
+        },
+        {
+          "thickness_mm": 41,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 535
+        },
+        {
+          "thickness_mm": 42,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 530
+        },
+        {
+          "thickness_mm": 43,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 525
+        },
+        {
+          "thickness_mm": 44,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 525
+        },
+        {
+          "thickness_mm": 45,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 520
+        }
+      ],
+      "unknown": {
+        "thickness_mm": null,
+        "length_m": 2.44,
+        "width_m": 1.22,
+        "density_kg_m3": 588.8851411
+      }
+    },
+    "plywood": {
+      "label_es": "Laminada o Contrachapada (Plywood)",
+      "fixed": false,
+      "options": [
+        {
+          "thickness_mm": 3,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 447.9082683866344
+        },
+        {
+          "thickness_mm": 5,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 470.3036818059661
+        },
+        {
+          "thickness_mm": 7,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 479.90171612853686
+        },
+        {
+          "thickness_mm": 10,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 470.3036818059661
+        },
+        {
+          "thickness_mm": 15,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 403.117441547971
+        },
+        {
+          "thickness_mm": 18,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 466.5711129027443
+        },
+        {
+          "thickness_mm": 30,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 447.90826838663446
+        }
+      ],
+      "unknown": {
+        "thickness_mm": null,
+        "length_m": 2.44,
+        "width_m": 1.22,
+        "density_kg_m3": 455.14285714285717
+      }
+    },
+    "osb": {
+      "label_es": "OSB (virutas)",
+      "fixed": false,
+      "options": [
+        {
+          "thickness_mm": 9,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 640
+        },
+        {
+          "thickness_mm": 12,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 640
+        },
+        {
+          "thickness_mm": 15,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 640
+        },
+        {
+          "thickness_mm": 18,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 640
+        },
+        {
+          "thickness_mm": 22,
+          "length_m": 2.44,
+          "width_m": 1.22,
+          "density_kg_m3": 640
+        }
+      ],
+      "unknown": {
+        "thickness_mm": null,
+        "length_m": 2.44,
+        "width_m": 1.22,
+        "density_kg_m3": 640
+      }
+    }
+  }
+}

@@ -405,6 +405,7 @@ class EmissionController extends AbstractController
             'isMaterials' => $isMaterials,
             'materialActivities' => $materialActivities,
             'densities' => $isMaterials ? $woodCatalog->getDefaultDensities() : [],
+            'woodScenarios' => $isMaterials ? $woodCatalog->getScenarioCatalog() : [],
         ]);
     }
 
@@ -498,6 +499,7 @@ class EmissionController extends AbstractController
             'isMaterials' => $isMaterials,
             'materialActivities' => $materialActivities,
             'densities' => $isMaterials ? $woodCatalog->getDefaultDensities() : [],
+            'woodScenarios' => $isMaterials ? $woodCatalog->getScenarioCatalog() : [],
         ]);
     }
 
@@ -515,6 +517,10 @@ class EmissionController extends AbstractController
             'thicknessM' => $form->get('thicknessM')->getData(),
             'lengthM' => $form->get('lengthM')->getData(),
             'widthM' => $form->get('widthM')->getData(),
+            'speciesKey' => $form->get('speciesKey')->getData(),
+            'boardFamily' => $form->get('boardFamily')->getData(),
+            'boardOption' => $form->get('boardOption')->getData(),
+            'manualBoardThicknessMm' => $form->get('manualBoardThicknessMm')->getData(),
         ];
     }
 

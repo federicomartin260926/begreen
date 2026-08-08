@@ -1841,6 +1841,8 @@ backend:
         label: "Método de cálculo"
         known_weight: "Peso conocido"
         unknown_dimensions: "Medidas conocidas"
+        solid_species: "Madera maciza por especie"
+        board: "Tableros / madera no maciza"
       origin:
         label: "Origen de la madera"
         purchased: "Comprada"
@@ -1862,6 +1864,12 @@ backend:
       thickness_m: "Grosor (m)"
       length_m: "Largo (m)"
       width_m: "Ancho (m)"
+      species: "Especie de madera maciza"
+      board:
+        family: "Familia de tablero"
+        thickness: "Grosor"
+        other: "Otro grosor"
+        manual_thickness_mm: "Grosor (mm)"
       preview: "Peso total estimado"
       errors:
         invalid_method: "Selecciona un método de cálculo válido."
@@ -1874,6 +1882,10 @@ backend:
         invalid_activity: "No se encontró un factor de emisión válido para el origen seleccionado."
         invalid_factor: "El factor de emisión de la madera no es válido."
         invalid_generic_amount: "La cantidad debe ser un número igual o mayor que cero."
+        invalid_species: "Selecciona una especie de madera válida."
+        invalid_board: "Selecciona una familia de tablero válida."
+        invalid_board_option: "Selecciona un grosor de tablero válido."
+        invalid_board_thickness: "El grosor manual debe ser mayor que cero."
     energy:
       subcategory: "Subcategoría"
       electricity_method: "Método de electricidad"

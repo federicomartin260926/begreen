@@ -91,6 +91,48 @@ final readonly class WoodEmissionCalculator
                 'unitWeightKg' => $unitWeightKg,
                 'totalWeightKg' => $totalWeightKg,
             ];
+        } elseif ($method === 'solid_species') {
+            $speciesKey = (string) ($input['speciesKey'] ?? '');
+            $thicknessM = $this->positiveNumber($input['thicknessM'] ?? null, 'invalid_dimensions');
+            $lengthM = $this->positiveNumber($input['lengthM'] ?? null, 'invalid_dimensions');
+            $widthM = $this->positiveNumber($input['widthM'] ?? null, 'invalid_dimensions');
+            $species = $this->catalog->getSolidWood($speciesKey);
+            $volumeM3 = $thicknessM * $lengthM * $widthM;
+            $unitWeightKg = $volumeM3 * $species['densityKgM3'];
+            $totalWeightKg = $unitWeightKg * $quantity;
+
+            $inputs += compact('speciesKey', 'thicknessM', 'lengthM', 'widthM');
+            $resolved += ['densityKgM3' => $species['densityKgM3'], 'speciesLabel' => $species['label']];
+            $derived = compact('volumeM3', 'unitWeightKg', 'totalWeightKg');
+        } elseif ($method === 'board') {
+            $boardFamily = (string) ($input['boardFamily'] ?? '');
+            $boardOption = (string) ($input['boardOption'] ?? '');
+            $optionKey = str_starts_with($boardOption, $boardFamily . ':')
+                ? substr($boardOption, strlen($boardFamily) + 1)
+                : '';
+            $board = $this->catalog->getBoardOption($boardFamily, $optionKey === 'other' ? 'unknown' : $optionKey);
+            $manualBoardThicknessMm = null;
+            if ($optionKey === 'other') {
+                $manualBoardThicknessMm = $this->positiveNumber($input['manualBoardThicknessMm'] ?? null, 'invalid_board_thickness');
+            } elseif ($board['thicknessMm'] === null) {
+                throw new \InvalidArgumentException('invalid_board_option');
+            }
+            $thicknessM = ($manualBoardThicknessMm ?? $board['thicknessMm']) / 1000;
+            $volumeM3 = $thicknessM * $board['lengthM'] * $board['widthM'];
+            $unitWeightKg = $volumeM3 * $board['densityKgM3'];
+            $totalWeightKg = $unitWeightKg * $quantity;
+
+            $inputs += compact('boardFamily', 'boardOption');
+            if ($manualBoardThicknessMm !== null) {
+                $inputs['manualBoardThicknessMm'] = $manualBoardThicknessMm;
+            }
+            $resolved += [
+                'thicknessM' => $thicknessM,
+                'lengthM' => $board['lengthM'],
+                'widthM' => $board['widthM'],
+                'densityKgM3' => $board['densityKgM3'],
+            ];
+            $derived = compact('volumeM3', 'unitWeightKg', 'totalWeightKg');
         } else {
             throw new \InvalidArgumentException('invalid_method');
         }

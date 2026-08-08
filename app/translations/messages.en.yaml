@@ -1833,6 +1833,8 @@ backend:
         label: "Calculation method"
         known_weight: "Known weight"
         unknown_dimensions: "Known dimensions"
+        solid_species: "Solid wood by species"
+        board: "Boards / non-solid wood"
       origin:
         label: "Wood origin"
         purchased: "Purchased"
@@ -1854,6 +1856,12 @@ backend:
       thickness_m: "Thickness (m)"
       length_m: "Length (m)"
       width_m: "Width (m)"
+      species: "Solid wood species"
+      board:
+        family: "Board family"
+        thickness: "Thickness"
+        other: "Other thickness"
+        manual_thickness_mm: "Thickness (mm)"
       preview: "Estimated total weight"
       errors:
         invalid_method: "Select a valid calculation method."
@@ -1866,6 +1874,10 @@ backend:
         invalid_activity: "No valid emission factor was found for the selected origin."
         invalid_factor: "The wood emission factor is invalid."
         invalid_generic_amount: "Amount must be a number greater than or equal to zero."
+        invalid_species: "Select a valid wood species."
+        invalid_board: "Select a valid board family."
+        invalid_board_option: "Select a valid board thickness."
+        invalid_board_thickness: "The manual thickness must be greater than zero."
     energy:
       subcategory: "Subcategory"
       electricity_method: "Electricity method"
