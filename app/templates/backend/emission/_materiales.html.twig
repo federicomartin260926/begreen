@@ -1,4 +1,3 @@
-
 <div class="row">
     <div class="col-md-6 mb-3">
         {{ form_label(form.registeredAt) }}
@@ -8,18 +7,93 @@
 </div>
 <div class="row">
     <div class="col-md-6 mb-3">
-        {{ form_label(form.activity) }}
-        {{ form_widget(form.activity, {'attr': {'class': 'form-select'}}) }}
-        {{ form_errors(form.activity) }}
+        {{ form_row(form.subCategory, {'attr': {
+            'class': 'form-select',
+            'data-wood-form-target': 'subCategory',
+            'data-action': 'change->wood-form#subCategoryChanged'
+        }}) }}
     </div>
 </div>
-<div class="row">
+<div class="row" data-wood-form-target="activityWrapper" hidden>
     <div class="col-md-6 mb-3">
+        {{ form_row(form.activityId, {'attr': {
+            'class': 'form-select',
+            'data-wood-form-target': 'activity',
+            'data-action': 'change->wood-form#activityChanged'
+        }}) }}
+    </div>
+</div>
+<div class="p-4 bg_green_1 mb-3 shadow-sm" data-wood-form-target="woodFields" hidden>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            {{ form_row(form.method, {attr: {
+                'data-wood-form-target': 'method',
+                'data-action': 'change->wood-form#methodChanged'
+            }}) }}
+        </div>
+        <div class="col-md-6 mb-3">{{ form_row(form.certification) }}</div>
+    </div>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            {{ form_row(form.quantity, {attr: {
+                'data-wood-form-target': 'quantity',
+                'data-action': 'input->wood-form#preview'
+            }}) }}
+        </div>
+    </div>
+    <div data-wood-form-target="knownWeightFields">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form_row(form.inputWeightKg, {help: 'backend.emission.wood.input_weight_help', attr: {
+                    'data-wood-form-target': 'inputWeight',
+                    'data-action': 'input->wood-form#preview'
+                }}) }}
+            </div>
+        </div>
+    </div>
+    <div data-wood-form-target="dimensionsFields">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form_row(form.woodClassification, {attr: {
+                    'data-wood-form-target': 'classification',
+                    'data-action': 'change->wood-form#preview'
+                }}) }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form_row(form.thicknessM, {attr: {
+                    'data-wood-form-target': 'thickness',
+                    'data-action': 'input->wood-form#preview'
+                }}) }}
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form_row(form.lengthM, {attr: {
+                    'data-wood-form-target': 'length',
+                    'data-action': 'input->wood-form#preview'
+                }}) }}
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form_row(form.widthM, {attr: {
+                    'data-wood-form-target': 'width',
+                    'data-action': 'input->wood-form#preview'
+                }}) }}
+            </div>
+        </div>
+    </div>
+</div>
+<div data-wood-form-target="amountFields" hidden>
+    <div class="row">
+        <div class="col-md-6 mb-3">
         <label class="form-label" for="{{ form.amount.vars.id }}">
-            {{ form.amount.vars.label }}
-            <span data-emission-target="unit" class="text-muted"></span>
+            {{ form.amount.vars.label|trans }}
+            <span data-wood-form-target="unit" class="text-muted"></span>
         </label>
-        {{ form_widget(form.amount, {'attr': {'class': 'form-control'}}) }}
+        {{ form_widget(form.amount, {'attr': {
+            'class': 'form-control',
+            'data-wood-form-target': 'amount'
+        }}) }}
         {{ form_errors(form.amount) }}
+        </div>
     </div>
 </div>

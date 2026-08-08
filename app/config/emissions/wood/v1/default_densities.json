@@ -1,0 +1,8 @@
+{
+  "catalogVersion": "v1",
+  "densitiesKgM3": {
+    "unknown": 632.5,
+    "solid": 588.1515152,
+    "non_solid": 676.8
+  }
+}

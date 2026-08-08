@@ -1823,6 +1823,49 @@ backend:
       activity: "Activity"
       activity_placeholder: "Select an activity"
       amount: "Amount"
+    wood:
+      title_new: "New wood calculation"
+      title_edit: "Edit wood calculation"
+      heading_new: "Wood emissions calculation"
+      heading_edit: "Edit wood emissions"
+      other_materials: "Without subcategory"
+      method:
+        label: "Calculation method"
+        known_weight: "Known weight"
+        unknown_dimensions: "Known dimensions"
+      origin:
+        label: "Wood origin"
+        purchased: "Purchased"
+        recycled: "Recycled"
+        reused: "Reused"
+      certification:
+        label: "Certification"
+        fsc: "FSC"
+        pefc: "PEFC"
+        none: "No label"
+      classification:
+        label: "Wood classification"
+        unknown: "Completely unknown type"
+        solid: "Solid wood"
+        non_solid: "Non-solid wood"
+      quantity: "Number of units"
+      input_weight_kg: "Weight per unit (kg)"
+      input_weight_help: "Enter the weight of one unit. The system will multiply it by the specified number of units."
+      thickness_m: "Thickness (m)"
+      length_m: "Length (m)"
+      width_m: "Width (m)"
+      preview: "Estimated total weight"
+      errors:
+        invalid_method: "Select a valid calculation method."
+        invalid_origin: "Select a valid wood origin."
+        invalid_certification: "Select a valid certification."
+        invalid_quantity: "Quantity must be greater than zero."
+        invalid_weight: "Weight must be greater than zero."
+        invalid_dimensions: "All dimensions must be greater than zero."
+        invalid_classification: "Select a valid wood classification."
+        invalid_activity: "No valid emission factor was found for the selected origin."
+        invalid_factor: "The wood emission factor is invalid."
+        invalid_generic_amount: "Amount must be a number greater than or equal to zero."
     energy:
       subcategory: "Subcategory"
       electricity_method: "Electricity method"
@@ -2082,6 +2125,7 @@ backend:
       gas_caldera: Gas boiler
       gas_propano: Propane tank
       gas_bombona: Gas cylinder
+      madera: Wood
   communication:
     title: "Available documents"
     breadcrumb: "Communications"

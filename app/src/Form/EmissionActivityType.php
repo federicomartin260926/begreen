@@ -26,6 +26,7 @@ class EmissionActivityType extends AbstractType
             $this->repo->getSubcategories('Energía'),
             $this->repo->getSubcategories('Transporte'),
             $this->repo->getSubcategories('Viajes'),
+            $this->repo->getSubcategories('Materiales'),
         ];
         $codes = [];
         foreach ($maps as $m) {
@@ -84,7 +85,7 @@ class EmissionActivityType extends AbstractType
             ->add('emissionFactor', NumberType::class, [
                 'label' => 'backend.admin.emission.form.emission_factor',
                 'required' => true,
-                'scale' => 6,
+                'scale' => 15,
                 'attr' => ['class' => 'form-control', 'step' => 'any'],
             ])
             ->add('category', EntityType::class, [

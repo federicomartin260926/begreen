@@ -3,11 +3,12 @@
 namespace App\Controller\Backend;
 
 // App
-use App\Entity\{Category, EmissionRecord};
-use App\Form\{EmissionRecordType, EnergyEmissionType, TransportEmissionType};
+use App\Entity\{Category, EmissionActivity, EmissionRecord};
+use App\Form\{EmissionRecordType, EnergyEmissionType, TransportEmissionType, WoodEmissionType};
 use App\Repository\{CategoryRepository, EmissionActivityRepository, EmissionRecordRepository, ProjectRepository};
 use App\Security\{EmissionRecordVoter, ProjectVoter};
 use App\Service\{ActiveProjectService};
+use App\Service\Emission\{WoodCatalog, WoodEmissionCalculator};
 
 // Doctrine / Gedmo
 use Doctrine\ORM\EntityManagerInterface;
@@ -15,6 +16,7 @@ use Gedmo\Translatable\Entity\Translation;
 
 // Symfony
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request, Response};
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -320,6 +322,9 @@ class EmissionController extends AbstractController
         EntityManagerInterface $em,
         ProjectRepository $projectRepository,
         CategoryRepository $categoryRepository,
+        EmissionActivityRepository $activityRepository,
+        WoodCatalog $woodCatalog,
+        WoodEmissionCalculator $calculator,
         TranslatorInterface $t
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -338,14 +343,24 @@ class EmissionController extends AbstractController
         $record->setProject($project);
         $record->setRegisteredAt(new \DateTimeImmutable());
 
-        $form = $this->createForm(EmissionRecordType::class, $record, [
-            'category' => $categoryEntity,
-        ]);
+        $isMaterials = $categoryEntity->getId() === $this->findCategoryIdByNameEs($em, 'Materiales');
+        $materialActivities = $isMaterials
+            ? $this->buildMaterialActivities($activityRepository, $categoryEntity, $project)
+            : [];
+        $form = $isMaterials
+            ? $this->createForm(WoodEmissionType::class, $record, [
+                'material_activities' => $materialActivities,
+            ])
+            : $this->createForm(EmissionRecordType::class, $record, [
+                'category' => $categoryEntity,
+            ]);
         $form->handleRequest($request);
 
-        $calculationDetails = $request->request->get('calculationDetails');
-        if ($calculationDetails !== null) {
-            $record->setCalculationDetails($calculationDetails);
+        if (!$isMaterials) {
+            $calculationDetails = $request->request->get('calculationDetails');
+            if ($calculationDetails !== null) {
+                $record->setCalculationDetails($calculationDetails);
+            }
         }
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -356,18 +371,29 @@ class EmissionController extends AbstractController
                     '%date%' => $date->format('Y-m-d')
                 ]));
             } else {
-                $record->setPhase($phase);
-                $activity = $record->getActivity();
-                $amount   = $record->getAmount();
-                $record->setEmission($amount * $activity->getEmissionFactor());
+                try {
+                    if ($isMaterials) {
+                        $this->applyMaterialCalculation($record, $form, $categoryEntity, $activityRepository, $calculator);
+                    } else {
+                        $activity = $record->getActivity();
+                        $amount = $record->getAmount();
+                        $record->setEmission($amount * $activity->getEmissionFactor());
+                    }
 
-                $em->persist($record);
-                $em->flush();
+                    $record->setPhase($phase);
+                    $em->persist($record);
+                    $em->flush();
 
-                $this->addFlash('success', $t->trans('backend.emission.flash.created'));
-
-                $categoryId = $activity->getCategory()->getId();
-                return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
+                    $this->addFlash('success', $t->trans('backend.emission.flash.created'));
+                    return $this->redirectToRoute(
+                        'backend_emission_index',
+                        $this->buildEmissionIndexQuery($request, $categoryEntity->getId()),
+                    );
+                } catch (\InvalidArgumentException $exception) {
+                    $this->addFlash('danger', $t->trans(
+                        'backend.emission.wood.errors.' . $exception->getMessage(),
+                    ));
+                }
             }
         }
 
@@ -376,6 +402,9 @@ class EmissionController extends AbstractController
             'project'  => $project,
             'category' => $categoryEntity,
             'edit'     => false,
+            'isMaterials' => $isMaterials,
+            'materialActivities' => $materialActivities,
+            'densities' => $isMaterials ? $woodCatalog->getDefaultDensities() : [],
         ]);
     }
 
@@ -385,6 +414,9 @@ class EmissionController extends AbstractController
         Request $request,
         EntityManagerInterface $em,
         ProjectRepository $projectRepository,
+        EmissionActivityRepository $activityRepository,
+        WoodCatalog $woodCatalog,
+        WoodEmissionCalculator $calculator,
         TranslatorInterface $t,
     ): Response {
         $project  = $record->getProject();
@@ -399,14 +431,29 @@ class EmissionController extends AbstractController
 
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
 
-        $form = $this->createForm(EmissionRecordType::class, $record, [
-            'category' => $category,
-        ]);
+        $isMaterials = $category->getId() === $this->findCategoryIdByNameEs($em, 'Materiales');
+        $materialActivities = $isMaterials
+            ? $this->buildMaterialActivities($activityRepository, $category, $project, $record->getActivity())
+            : [];
+        $details = $isMaterials ? $this->decodeCalculationDetails($record) : [];
+        $form = $isMaterials
+            ? $this->createForm(WoodEmissionType::class, $record, [
+                'wood_details' => $details,
+                'material_activities' => $materialActivities,
+                'initial_subcategory' => $record->getActivity()->getSubcategory() === 'madera' ? 'madera' : 'generic',
+                'initial_activity_id' => $record->getActivity()->getId(),
+                'generic_amount' => $record->getAmount(),
+            ])
+            : $this->createForm(EmissionRecordType::class, $record, [
+                'category' => $category,
+            ]);
         $form->handleRequest($request);
 
-        $calculationDetails = $request->request->get('calculationDetails');
-        if ($calculationDetails !== null) {
-            $record->setCalculationDetails($calculationDetails);
+        if (!$isMaterials) {
+            $calculationDetails = $request->request->get('calculationDetails');
+            if ($calculationDetails !== null) {
+                $record->setCalculationDetails($calculationDetails);
+            }
         }
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -417,17 +464,28 @@ class EmissionController extends AbstractController
                     '%date%' => $date->format('Y-m-d')
                 ]));
             } else {
-                $record->setPhase($phase);
-                $activity = $record->getActivity();
-                $amount   = $record->getAmount();
-                $record->setEmission($amount * $activity->getEmissionFactor());
+                try {
+                    if ($isMaterials) {
+                        $this->applyMaterialCalculation($record, $form, $category, $activityRepository, $calculator);
+                    } else {
+                        $activity = $record->getActivity();
+                        $amount = $record->getAmount();
+                        $record->setEmission($amount * $activity->getEmissionFactor());
+                    }
 
-                $em->flush();
+                    $record->setPhase($phase);
+                    $em->flush();
 
-                $this->addFlash('success', $t->trans('backend.emission.flash.updated'));
-
-                $categoryId = $activity->getCategory()->getId();
-                return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
+                    $this->addFlash('success', $t->trans('backend.emission.flash.updated'));
+                    return $this->redirectToRoute(
+                        'backend_emission_index',
+                        $this->buildEmissionIndexQuery($request, $category->getId()),
+                    );
+                } catch (\InvalidArgumentException $exception) {
+                    $this->addFlash('danger', $t->trans(
+                        'backend.emission.wood.errors.' . $exception->getMessage(),
+                    ));
+                }
             }
         }
 
@@ -437,7 +495,150 @@ class EmissionController extends AbstractController
             'record'  => $record,
             'category'=> $category,
             'edit'    => true,
+            'isMaterials' => $isMaterials,
+            'materialActivities' => $materialActivities,
+            'densities' => $isMaterials ? $woodCatalog->getDefaultDensities() : [],
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getWoodFormInput(FormInterface $form): array
+    {
+        return [
+            'method' => $form->get('method')->getData(),
+            'certification' => $form->get('certification')->getData(),
+            'quantity' => $form->get('quantity')->getData(),
+            'inputWeightKg' => $form->get('inputWeightKg')->getData(),
+            'woodClassification' => $form->get('woodClassification')->getData(),
+            'thicknessM' => $form->get('thicknessM')->getData(),
+            'lengthM' => $form->get('lengthM')->getData(),
+            'widthM' => $form->get('widthM')->getData(),
+        ];
+    }
+
+    /**
+     * @return array<string, array<int, array{id:int,name:string,unit:string}>>
+     */
+    private function buildMaterialActivities(
+        EmissionActivityRepository $repository,
+        Category $category,
+        object $project,
+        ?EmissionActivity $currentActivity = null,
+    ): array {
+        $activities = ['generic' => [], 'madera' => []];
+        $sourceName = $project->getEmissionSourceName() ?: 'MITECO';
+
+        foreach ($repository->getActivitiesForLatestYearByCategoryId($sourceName, $category->getId()) as $activity) {
+            if ($activity->getSubcategory() === null) {
+                $activities['generic'][$activity->getId()] = [
+                    'id' => $activity->getId(),
+                    'name' => $activity->getName(),
+                    'unit' => $activity->getUnit(),
+                ];
+            }
+        }
+
+        foreach (['purchased', 'recycled', 'reused'] as $origin) {
+            $activity = $repository->findWoodFactorForOrigin($origin);
+            if ($activity && $activity->getCategory()?->getId() === $category->getId()) {
+                $activities['madera'][$activity->getId()] = [
+                    'id' => $activity->getId(),
+                    'name' => $activity->getName(),
+                    'unit' => $activity->getUnit(),
+                ];
+            }
+        }
+
+        if ($currentActivity && $currentActivity->getCategory()?->getId() === $category->getId()) {
+            $group = match ($currentActivity->getSubcategory()) {
+                'madera' => 'madera',
+                null => 'generic',
+                default => null,
+            };
+            if ($group !== null) {
+                $activities[$group][$currentActivity->getId()] = [
+                    'id' => $currentActivity->getId(),
+                    'name' => $currentActivity->getName(),
+                    'unit' => $currentActivity->getUnit(),
+                ];
+            }
+        }
+
+        return $activities;
+    }
+
+    private function applyMaterialCalculation(
+        EmissionRecord $record,
+        FormInterface $form,
+        Category $category,
+        EmissionActivityRepository $repository,
+        WoodEmissionCalculator $calculator,
+    ): void {
+        $activityId = $form->get('activityId')->getData();
+        $selectedActivity = $activityId ? $repository->find((int) $activityId) : null;
+        if (!$selectedActivity || $selectedActivity->getCategory()?->getId() !== $category->getId()) {
+            throw new \InvalidArgumentException('invalid_activity');
+        }
+        $selectedGroup = $form->get('subCategory')->getData();
+        if (
+            ($selectedGroup === 'madera' && $selectedActivity->getSubcategory() !== 'madera')
+            || ($selectedGroup === 'generic' && $selectedActivity->getSubcategory() !== null)
+        ) {
+            throw new \InvalidArgumentException('invalid_activity');
+        }
+
+        if ($selectedActivity->getSubcategory() === null) {
+            $amount = $form->get('amount')->getData();
+            if (!is_numeric($amount) || (float) $amount < 0) {
+                throw new \InvalidArgumentException('invalid_generic_amount');
+            }
+
+            $record
+                ->setActivity($selectedActivity)
+                ->setAmount((float) $amount)
+                ->setEmission((float) $amount * $selectedActivity->getEmissionFactor())
+                ->setCalculationDetails(null);
+            return;
+        }
+
+        $origin = match ($selectedActivity->getCalculationCode()) {
+            'wood_purchased' => 'purchased',
+            'wood_recycled' => 'recycled',
+            'wood_reused' => 'reused',
+            default => throw new \InvalidArgumentException('invalid_activity'),
+        };
+        $activity = $repository->findWoodFactorForOrigin($origin);
+        if (!$activity || $activity->getCategory()?->getId() !== $category->getId()) {
+            throw new \InvalidArgumentException('invalid_activity');
+        }
+
+        $result = $calculator->calculate($activity, ['origin' => $origin] + $this->getWoodFormInput($form));
+        $record
+            ->setActivity($activity)
+            ->setAmount($result->amount)
+            ->setEmission($result->emission)
+            ->setCalculationDetails(json_encode(
+                $result->details,
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION,
+            ));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodeCalculationDetails(EmissionRecord $record): array
+    {
+        if (!$record->getCalculationDetails()) {
+            return [];
+        }
+
+        try {
+            return json_decode($record->getCalculationDetails(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return [];
+        }
     }
 
     // =======================

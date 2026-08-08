@@ -1831,6 +1831,49 @@ backend:
       activity: "Actividad"
       activity_placeholder: "Selecciona una actividad"
       amount: "Cantidad"
+    wood:
+      title_new: "Nuevo cálculo de madera"
+      title_edit: "Editar cálculo de madera"
+      heading_new: "Cálculo de emisiones de madera"
+      heading_edit: "Editar emisiones de madera"
+      other_materials: "Sin subcategoría"
+      method:
+        label: "Método de cálculo"
+        known_weight: "Peso conocido"
+        unknown_dimensions: "Medidas conocidas"
+      origin:
+        label: "Origen de la madera"
+        purchased: "Comprada"
+        recycled: "Reciclada"
+        reused: "Reutilizada"
+      certification:
+        label: "Certificación"
+        fsc: "FSC"
+        pefc: "PEFC"
+        none: "Sin sello"
+      classification:
+        label: "Clasificación de la madera"
+        unknown: "Tipo completamente desconocido"
+        solid: "Madera maciza"
+        non_solid: "Madera no maciza"
+      quantity: "Cantidad de unidades"
+      input_weight_kg: "Peso por unidad (kg)"
+      input_weight_help: "Indica el peso de una unidad. El sistema multiplicará este valor por la cantidad de unidades indicada."
+      thickness_m: "Grosor (m)"
+      length_m: "Largo (m)"
+      width_m: "Ancho (m)"
+      preview: "Peso total estimado"
+      errors:
+        invalid_method: "Selecciona un método de cálculo válido."
+        invalid_origin: "Selecciona un origen de madera válido."
+        invalid_certification: "Selecciona una certificación válida."
+        invalid_quantity: "La cantidad debe ser mayor que cero."
+        invalid_weight: "El peso debe ser mayor que cero."
+        invalid_dimensions: "Todas las dimensiones deben ser mayores que cero."
+        invalid_classification: "Selecciona una clasificación de madera válida."
+        invalid_activity: "No se encontró un factor de emisión válido para el origen seleccionado."
+        invalid_factor: "El factor de emisión de la madera no es válido."
+        invalid_generic_amount: "La cantidad debe ser un número igual o mayor que cero."
     energy:
       subcategory: "Subcategoría"
       electricity_method: "Método de electricidad"
@@ -2090,6 +2133,7 @@ backend:
       gas_caldera: Caldera de gas
       gas_propano: Depósito de propano
       gas_bombona: Bombona de gas
+      madera: Madera
   communication:
     title: "Documentos disponibles"
     breadcrumb: "Comunicaciones"

@@ -46,15 +46,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             $manager->flush();
         }
 
-        if (!$sourceRepo->findOneBy(['name' => 'DEFRA'])) {
-            $defra = new EmissionSource();
-            $defra->setName('DEFRA');
-            $defra->setYear((int) date('Y'));
-            $defra->setDescription('Department for Environment, Food & Rural Affairs (UK)');
-            $manager->persist($defra);
-            $manager->flush();
-        }
-
         // --- Mapas de traducción ES -> EN ---
         $unitMap = [
             'noche' => 'night',
@@ -86,6 +77,7 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             'gas_caldera' => 'gas-boiler',
             'gas_propano' => 'propane-tank',
             'gas_bombona' => 'gas-cylinder',
+            'madera' => 'wood',
         ];
 
         $nameMap = [
@@ -157,8 +149,9 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             'Bebida No Alcohólica' => 'Non-alcoholic beverage',
 
             // Materiales
-            'Madera (nueva)' => 'Wood (new)',
-            'Madera (reciclada)' => 'Wood (recycled)',
+            'Madera comprada' => 'Purchased wood',
+            'Madera reciclada' => 'Recycled wood',
+            'Madera reutilizada' => 'Reused wood',
             'Papel (nuevo)' => 'Paper (new)',
             'Papel (reciclado)' => 'Paper (recycled)',
             'Cartón' => 'Cardboard',
@@ -286,8 +279,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             ['Catering', 'Bebida No Alcohólica', 'unidad', 0.5, null],
 
             // Materiales
-            ['Materiales', 'Madera (nueva)', 'kg', 0.9, null],
-            ['Materiales', 'Madera (reciclada)', 'kg', 0.5, null],
             ['Materiales', 'Papel (nuevo)', 'kg', 1.3, null],
             ['Materiales', 'Papel (reciclado)', 'kg', 0.9, null],
             ['Materiales', 'Cartón', 'kg', 0.6, null],
@@ -372,6 +363,39 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
 
             $translationRepo->translate($activity, 'name', 'en', $nameEn);
             $translationRepo->translate($activity, 'unit', 'en', $unitEn);
+        }
+
+        $materials = $categoryRepo->findOneBy(['name' => 'Materiales']);
+        if ($materials) {
+            $woodDefra = $sourceRepo->findOneBy(['name' => 'DEFRA', 'year' => 2025]);
+            if (!$woodDefra) {
+                $woodDefra = (new EmissionSource())
+                    ->setName('DEFRA')
+                    ->setYear(2025)
+                    ->setDescription('Department for Environment, Food & Rural Affairs (UK)');
+                $manager->persist($woodDefra);
+            }
+
+            $woodFactors = [
+                ['Madera comprada', 0.26950416, 'wood_purchased'],
+                ['Madera reciclada', 0.112969683723424, 'wood_recycled'],
+                ['Madera reutilizada', 0.03854288, 'wood_reused'],
+            ];
+
+            foreach ($woodFactors as [$nameEs, $factor, $calculationCode]) {
+                $activity = (new EmissionActivity())
+                    ->setCategory($materials)
+                    ->setName($nameEs)
+                    ->setUnit('kg')
+                    ->setEmissionFactor($factor)
+                    ->setEmissionSource($woodDefra)
+                    ->setSubcategory('madera')
+                    ->setCalculationCode($calculationCode);
+
+                $manager->persist($activity);
+                $translationRepo->translate($activity, 'name', 'en', $nameMap[$nameEs]);
+                $translationRepo->translate($activity, 'unit', 'en', 'kg');
+            }
         }
 
         $manager->flush();

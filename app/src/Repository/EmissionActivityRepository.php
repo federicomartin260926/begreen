@@ -53,6 +53,9 @@ class EmissionActivityRepository extends ServiceEntityRepository
                 'Marítimo'    => 'maritimo',
                 'Otros'       => 'otros',
             ],
+            'Materiales' => [
+                'Madera' => 'madera',
+            ],
         ];
 
         return $subcategories[$categoryName] ?? [];
@@ -102,9 +105,33 @@ class EmissionActivityRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
-    public function findOneBySubcatetoryForLatestYear(string $subcategory, int $year, string $sourceName = 'MITECO'): ?EmissionActivity
+    public function findWoodFactorForOrigin(string $origin): ?EmissionActivity
     {
-        return $this->createQueryBuilder('a')
+        $calculationCode = match ($origin) {
+            'purchased' => 'wood_purchased',
+            'recycled' => 'wood_recycled',
+            'reused' => 'wood_reused',
+            default => null,
+        };
+
+        return $calculationCode === null
+            ? null
+            : $this->findOneBySubcatetoryForLatestYear(
+                'madera',
+                (int) date('Y'),
+                'DEFRA',
+                $calculationCode,
+            );
+    }
+
+    public function findOneBySubcatetoryForLatestYear(
+        string $subcategory,
+        int $year,
+        string $sourceName = 'MITECO',
+        ?string $calculationCode = null,
+    ): ?EmissionActivity
+    {
+        $qb = $this->createQueryBuilder('a')
             ->join('a.emissionSource', 's')
             ->where('a.subcategory = :subcategory')
             ->andWhere('s.name = :sourceName')
@@ -113,9 +140,14 @@ class EmissionActivityRepository extends ServiceEntityRepository
             ->setParameter('sourceName', $sourceName)
             ->setParameter('year', $year)
             ->orderBy('s.year', 'DESC')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
+            ->setMaxResults(1);
+
+        if ($calculationCode !== null) {
+            $qb->andWhere('a.calculationCode = :calculationCode')
+                ->setParameter('calculationCode', $calculationCode);
+        }
+
+        return $qb->getQuery()->getOneOrNullResult();
     }
 
     public function getActivitiesForLatestYear(string $sourceName = 'MITECO', $category = 'Energía', ?string $subcategory = null): array

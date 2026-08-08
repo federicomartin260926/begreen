@@ -58,23 +58,28 @@
 
       {{ form_start(form, {
         attr: {
-          'data-controller': 'emission',
+          'data-controller': isMaterials ? 'wood-form' : 'emission',
           'data-emission-target': 'form',
-          'data-category': category.name|lower|replace({' ': '_'})
+          'data-category': category.name|lower|replace({' ': '_'}),
+          'data-wood-form-activities-value': materialActivities|json_encode,
+          'data-wood-form-densities-value': densities|json_encode
         }
       }) }}
 
-        {# Plantilla genérica mientras no haya subformularios específicos por categoría #}
-        {# {% include 'backend/emission/_' ~ category.name|lower|replace({' ': '_'}) ~ '.html.twig' %} #}
-        {% include 'backend/emission/_otros.html.twig' %}
+        {% if isMaterials %}
+          {% include 'backend/emission/_materiales.html.twig' %}
+        {% else %}
+          {% include 'backend/emission/_otros.html.twig' %}
+        {% endif %}
 
-        {# Campo oculto para guardar datos personalizados #}
-        <input
-          type="hidden"
-          name="calculationDetails"
-          data-emission-target="detailsField"
-          value="{{ form.vars.value.calculationDetails|e('html_attr') }}"
-        />
+        {% if not isMaterials %}
+          <input
+            type="hidden"
+            name="calculationDetails"
+            data-emission-target="detailsField"
+            value="{{ form.vars.value.calculationDetails|e('html_attr') }}"
+          />
+        {% endif %}
 
         <div class="d-flex justify-content-between mt-4">
           <a href="{{ path('backend_emission_index', { category: category.name }) }}" class="btn btn-outline-secondary">

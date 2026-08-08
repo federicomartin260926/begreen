@@ -89,9 +89,11 @@ class EmissionRecordType extends AbstractType
 
                     return $qb
                         ->where('a.category = :category')
+                        ->andWhere('(a.subcategory IS NULL OR a.subcategory != :woodSubcategory)')
                         ->andWhere('s.name = :sname')
                         ->andWhere('s.year = :year')
                         ->setParameter('category', $category)
+                        ->setParameter('woodSubcategory', 'madera')
                         ->setParameter('sname', $sourceName)
                         ->setParameter('year', $maxYear);
                 },

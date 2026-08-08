@@ -256,7 +256,7 @@ class EmissionActivityController extends AbstractController
             $validSubcats = [
                 'electricidad','remoto','animacion','montaje_edicion','almacenamiento',
                 'gas_generador','gas_caldera','gas_propano','gas_bombona',
-                'aereo','carretera','ferroviario','maritimo','otros',
+                'aereo','carretera','ferroviario','maritimo','otros','madera',
             ];
 
             /** @var \Gedmo\Translatable\Entity\Repository\TranslationRepository $tr */
@@ -413,6 +413,7 @@ class EmissionActivityController extends AbstractController
             'ferroviario',
             'maritimo',
             'otros',
+            'madera',
         ];
 
         // Encabezados en ES + columnas EN opcionales al final
@@ -627,6 +628,7 @@ class EmissionActivityController extends AbstractController
             'gas_caldera'     => 'backend.emission.subcat.gas_caldera',
             'gas_propano'     => 'backend.emission.subcat.gas_propano',
             'gas_bombona'     => 'backend.emission.subcat.gas_bombona',
+            'madera'          => 'backend.emission.subcat.madera',
         ];
 
         $out = [];

@@ -30,6 +30,9 @@ class EmissionActivity
     #[ORM\Column(type: 'float')]
     private float $emissionFactor; // kg CO₂e por unidad
 
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $calculationCode = null;
+
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
     private ?Category $category = null;
@@ -80,6 +83,17 @@ class EmissionActivity
     public function setEmissionFactor(float $emissionFactor): self
     {
         $this->emissionFactor = $emissionFactor;
+        return $this;
+    }
+
+    public function getCalculationCode(): ?string
+    {
+        return $this->calculationCode;
+    }
+
+    public function setCalculationCode(?string $calculationCode): self
+    {
+        $this->calculationCode = $calculationCode;
         return $this;
     }
 
