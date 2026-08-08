@@ -8,6 +8,7 @@ use App\Entity\Protocol;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -23,10 +24,12 @@ class AuxiliaryType extends AbstractType
         $defaultLocale        = $options['default_locale'] ?? 'es';
         $translatableFields   = $options['translatable_fields'] ?? [];   // p.ej. ['name','description']
         $existingTranslations = $options['translations'] ?? [];          // array devuelto por findTranslations()
+        $categoryReadOnlyFields = $type === 'category' && $options['category_read_only_fields'];
 
         // ===== Campos base comunes =====
         $builder->add('name', TextType::class, [
             'label' => 'backend.aux.form.name',
+            'disabled' => $categoryReadOnlyFields,
             'attr'  => ['class' => 'form-control'],
         ]);
 
@@ -35,7 +38,15 @@ class AuxiliaryType extends AbstractType
                 'label' => 'backend.aux.form.sort_order',
                 'required' => false,
                 'empty_data' => '0',
+                'disabled' => $categoryReadOnlyFields,
                 'attr' => ['class' => 'form-control', 'min' => 0],
+            ]);
+        }
+
+        if ($type === 'category') {
+            $builder->add('enabledInEmissionCalculator', CheckboxType::class, [
+                'label' => 'backend.aux.form.enabled_in_emission_calculator',
+                'required' => false,
             ]);
         }
 
@@ -177,6 +188,7 @@ class AuxiliaryType extends AbstractType
                     'required' => false,
                     'mapped'   => false,
                     'data'     => $initial,
+                    'disabled' => $categoryReadOnlyFields,
                     'attr'     => $field === 'description'
                         ? ['class' => 'form-control', 'rows' => 4]
                         : ['class' => 'form-control'],
@@ -199,6 +211,7 @@ class AuxiliaryType extends AbstractType
             'default_locale'      => 'es',
             'translatable_fields' => ['name'], // por defecto solo name
             'translations'        => [],       // array devuelto por findTranslations()
+            'category_read_only_fields' => false,
         ]);
     }
 

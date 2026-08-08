@@ -139,31 +139,33 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
         // Categories
         // -------------------------
         foreach ([
-            ['name' => 'Oficina', 'sortOrder' => 10],
-            ['name' => 'Energía', 'sortOrder' => 20],
-            ['name' => 'Alojamientos', 'sortOrder' => 30],
-            ['name' => 'Transporte', 'sortOrder' => 40],
-            ['name' => 'Consumo eficiente de recursos naturales', 'sortOrder' => 50],
-            ['name' => 'Consumo eficiente de recursos', 'sortOrder' => 50],
-            ['name' => 'Materiales', 'sortOrder' => 60],
-            ['name' => 'Residuos', 'sortOrder' => 70],
-            ['name' => 'Catering', 'sortOrder' => 80],
-            ['name' => 'Biodiversidad', 'sortOrder' => 90],
-            ['name' => 'Comunicación', 'sortOrder' => 100],
-            ['name' => 'Contenido', 'sortOrder' => 110],
-            ['name' => 'Contenidos', 'sortOrder' => 110],
-            ['name' => 'Social', 'sortOrder' => 120],
-            ['name' => 'Viajes', 'sortOrder' => 130],
-            ['name' => 'Agua', 'sortOrder' => 140],
+            ['name' => 'Oficina', 'sortOrder' => 10, 'enabledInEmissionCalculator' => false],
+            ['name' => 'Energía', 'sortOrder' => 20, 'enabledInEmissionCalculator' => true],
+            ['name' => 'Alojamientos', 'sortOrder' => 30, 'enabledInEmissionCalculator' => true],
+            ['name' => 'Transporte', 'sortOrder' => 40, 'enabledInEmissionCalculator' => true],
+            ['name' => 'Consumo eficiente de recursos naturales', 'sortOrder' => 50, 'enabledInEmissionCalculator' => false],
+            ['name' => 'Consumo eficiente de recursos', 'sortOrder' => 50, 'enabledInEmissionCalculator' => false],
+            ['name' => 'Materiales', 'sortOrder' => 60, 'enabledInEmissionCalculator' => true],
+            ['name' => 'Residuos', 'sortOrder' => 70, 'enabledInEmissionCalculator' => true],
+            ['name' => 'Catering', 'sortOrder' => 80, 'enabledInEmissionCalculator' => true],
+            ['name' => 'Biodiversidad', 'sortOrder' => 90, 'enabledInEmissionCalculator' => false],
+            ['name' => 'Comunicación', 'sortOrder' => 100, 'enabledInEmissionCalculator' => false],
+            ['name' => 'Contenido', 'sortOrder' => 110, 'enabledInEmissionCalculator' => false],
+            ['name' => 'Contenidos', 'sortOrder' => 110, 'enabledInEmissionCalculator' => false],
+            ['name' => 'Social', 'sortOrder' => 120, 'enabledInEmissionCalculator' => false],
+            ['name' => 'Viajes', 'sortOrder' => 130, 'enabledInEmissionCalculator' => true],
+            ['name' => 'Agua', 'sortOrder' => 140, 'enabledInEmissionCalculator' => true],
         ] as $data) {
             $c = $upsert($manager, Category::class, ['name' => $data['name']], function (?Category $entity = null) use ($data) {
                 $entity ??= new Category();
 
                 return $entity
                     ->setName($data['name'])
-                    ->setSortOrder($data['sortOrder']);
+                    ->setSortOrder($data['sortOrder'])
+                    ->setEnabledInEmissionCalculator($data['enabledInEmissionCalculator']);
             });
-            $c->setSortOrder($data['sortOrder']);
+            $c->setSortOrder($data['sortOrder'])
+                ->setEnabledInEmissionCalculator($data['enabledInEmissionCalculator']);
             $translateName($c, $data['name']);
         }
 

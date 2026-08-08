@@ -92,7 +92,7 @@ class EmissionController extends AbstractController
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
 
         $records = $recordRepository->findByProjectOrderByPhaseAndDate($project);
-        $allCategories = $categoryRepository->findAll();
+        $allCategories = $categoryRepository->findEnabledInEmissionCalculator();
         $categoryData = $this->buildEmissionCategoryData($records, $allCategories, $em);
         $categoriesVM = $categoryData['categoriesVM'];
         $allChart = $categoryData['allChart'];
@@ -338,6 +338,9 @@ class EmissionController extends AbstractController
         if (!$categoryEntity) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
+        if (!$categoryEntity->isEnabledInEmissionCalculator()) {
+            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
+        }
 
         $record = new EmissionRecord();
         $record->setProject($project);
@@ -429,7 +432,6 @@ class EmissionController extends AbstractController
         if (!$category) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
-
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
 
         $isMaterials = $category->getId() === $this->findCategoryIdByNameEs($em, 'Materiales');
@@ -670,6 +672,9 @@ class EmissionController extends AbstractController
         if (!$category) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
+        if (!$category->isEnabledInEmissionCalculator()) {
+            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
+        }
 
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
 
@@ -822,6 +827,9 @@ class EmissionController extends AbstractController
         if (!$categoryEntity) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
+        if (!$categoryEntity->isEnabledInEmissionCalculator()) {
+            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
+        }
 
         $record = new EmissionRecord();
         $record->setProject($project);
@@ -837,6 +845,10 @@ class EmissionController extends AbstractController
         // Campo NO mapeado: activityId
         $activityId = $request->request->get('activityId');
         $activity   = $activityId ? $activityRepository->find($activityId) : null;
+
+        if ($activity && $activity->getCategory()?->getId() !== $categoryEntity->getId()) {
+            $activity = null;
+        }
 
         if ($form->isSubmitted() && $form->isValid() && $activity) {
             $date  = $record->getRegisteredAt();

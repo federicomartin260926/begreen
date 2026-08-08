@@ -2269,6 +2269,7 @@ backend:
       protocol: "Protocol"
       code: "Code"
       sort_order: "Order"
+      enabled_in_emission_calculator: "Available in CO₂ calculator"
       active: "Active"
       has_screening_question: "Screening question"
     project_type:
@@ -2287,6 +2288,7 @@ backend:
       description: "Description"
       code: "Code"
       sort_order: "Order"
+      enabled_in_emission_calculator: "Available in CO₂ calculator"
       active: "Active"
       has_screening_question: "Has screening question"
       screening_question: "Screening question"
@@ -2299,7 +2301,7 @@ backend:
     errors:
       invalid_type: "Invalid auxiliary type."
       not_found: "Item not found."
-      category_locked: "Categories cannot be modified or deleted."
+      category_locked: "Categories cannot be deleted."
       measure_block_code_exists: "A block with that code already exists for this protocol."
       in_use: "This record cannot be deleted because it is in use."
       delete_failed: "An error occurred while deleting the record."

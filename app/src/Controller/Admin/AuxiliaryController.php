@@ -257,14 +257,6 @@ class AuxiliaryController extends AbstractController
         }
         $em->refresh($item); // aseguramos valores en ES
 
-        if ($type === 'category') {
-            $this->addFlash('danger', 'backend.aux.errors.category_locked');
-            // restaurar antes de salir
-            $translatableListener->setTranslatableLocale($originalLocale);
-            $translatableListener->setTranslationFallback(true);
-            return $this->redirectToRoute('admin_auxiliary_list', ['type' => $type]);
-        }
-
         /** @var \Gedmo\Translatable\Entity\Repository\TranslationRepository $tr */
         $tr = $em->getRepository(\Gedmo\Translatable\Entity\Translation::class);
         $existing = $tr->findTranslations($item);
@@ -276,6 +268,7 @@ class AuxiliaryController extends AbstractController
             'default_locale'      => 'es',
             'translatable_fields' => in_array($type, ['ods','esg','category_ghg'], true) ? ['name','description'] : ($type === 'measure_block' ? [] : ['name']),
             'translations'        => $existing,
+            'category_read_only_fields' => $type === 'category',
         ];
 
         $form = $this->createForm(AuxiliaryType::class, $item, $formOptions);

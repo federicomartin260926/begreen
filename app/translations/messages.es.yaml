@@ -2277,6 +2277,7 @@ backend:
       protocol: "Protocolo"
       code: "Código"
       sort_order: "Orden"
+      enabled_in_emission_calculator: "Disponible en calculadora de CO₂"
       active: "Activo"
       has_screening_question: "Pregunta previa"
     project_type:
@@ -2295,6 +2296,7 @@ backend:
       description: "Descripción"
       code: "Código"
       sort_order: "Orden"
+      enabled_in_emission_calculator: "Disponible en calculadora de CO₂"
       active: "Activo"
       has_screening_question: "Tiene pregunta previa"
       screening_question: "Pregunta previa"
@@ -2307,7 +2309,7 @@ backend:
     errors:
       invalid_type: "Tipo auxiliar no válido."
       not_found: "Elemento no encontrado."
-      category_locked: "Las Categorías no se pueden eliminar ni modificar."
+      category_locked: "Las categorías no se pueden eliminar."
       measure_block_code_exists: "Ya existe un bloque con ese código para este protocolo."
       in_use: "No se puede eliminar este registro porque está en uso."
       delete_failed: "Ocurrió un error al eliminar el registro."

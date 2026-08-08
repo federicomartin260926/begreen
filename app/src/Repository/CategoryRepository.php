@@ -13,5 +13,14 @@ class CategoryRepository extends ServiceEntityRepository
         parent::__construct($registry, Category::class);
     }
 
-    // Puedes añadir métodos personalizados aquí si lo necesitas
+    /** @return array<int, Category> */
+    public function findEnabledInEmissionCalculator(): array
+    {
+        return $this->createQueryBuilder('category')
+            ->andWhere('category.enabledInEmissionCalculator = :enabled')
+            ->setParameter('enabled', true)
+            ->orderBy('category.sortOrder', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

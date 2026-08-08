@@ -22,6 +22,9 @@ class Category
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     private int $sortOrder = 0;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private bool $enabledInEmissionCalculator = true;
+
     public function getId(): ?int { return $this->id; }
 
     public function getName(): ?string { return $this->name; }
@@ -35,6 +38,17 @@ class Category
     public function setSortOrder(int $sortOrder): static
     {
         $this->sortOrder = $sortOrder;
+        return $this;
+    }
+
+    public function isEnabledInEmissionCalculator(): bool
+    {
+        return $this->enabledInEmissionCalculator;
+    }
+
+    public function setEnabledInEmissionCalculator(bool $enabledInEmissionCalculator): static
+    {
+        $this->enabledInEmissionCalculator = $enabledInEmissionCalculator;
         return $this;
     }
 }
