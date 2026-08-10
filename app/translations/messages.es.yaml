@@ -1689,7 +1689,7 @@ backend:
     pdf_visual:
       document_title: "Plan de sostenibilidad - %project%"
       brand_alt: "Be green my friend"
-      header_label: "Informe de sostenibilidad"
+      header_label: "Plan de sostenibilidad"
       footer_label: "Be green my friend · Plan de sostenibilidad"
       basic_watermark: "Plan Basic · Be green my friend"
       cover:
@@ -1737,9 +1737,9 @@ backend:
           other: "Otros"
         quick_read:
           title: "Lectura rápida"
-          applicability: "Aplicabilidad"
-          selection: "Selección de medidas"
-          critical_coverage: "Cobertura de medidas críticas"
+          applicability: "Aplicables"
+          selection: "Seleccionadas"
+          critical_coverage: "Críticas"
   emission:
     phase:
       preproduccion: "Preproducción"

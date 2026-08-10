@@ -5,6 +5,7 @@ export default class extends Controller {
     loadingLabel: { type: String, default: 'Generando PDF…' },
     resetAfter: { type: Number, default: 180000 },
     requireCheckedName: String,
+    errorLabel: String,
   }
 
   connect() {
@@ -40,17 +41,30 @@ export default class extends Controller {
 
     event.preventDefault()
 
+    this.clearError()
+
     try {
       const response = await fetch(this.element.href, {
         method: 'GET',
         credentials: 'same-origin',
         headers: {
-          Accept: 'application/pdf,application/octet-stream',
+          Accept: 'application/pdf,application/octet-stream,application/json',
+          'X-Requested-With': 'XMLHttpRequest',
         },
       })
 
+      const contentType = (
+        response.headers.get('Content-Type') ?? ''
+      ).toLowerCase()
+
       if (!response.ok) {
-        throw new Error(`Download failed with status ${response.status}`)
+        throw new Error(
+          await this.errorMessageFromResponse(response, contentType),
+        )
+      }
+
+      if (!this.isDownloadContentType(contentType)) {
+        throw new Error(this.fallbackErrorMessage())
       }
 
       const blob = await response.blob()
@@ -62,8 +76,11 @@ export default class extends Controller {
     } catch (error) {
       console.error('Unable to download the generated file.', error)
 
-      // Fallback al comportamiento normal del navegador.
-      window.location.assign(this.element.href)
+      this.showError(
+        error instanceof Error && error.message
+          ? error.message
+          : this.fallbackErrorMessage(),
+      )
     } finally {
       this.reset()
     }
@@ -139,6 +156,65 @@ export default class extends Controller {
 
     window.clearTimeout(this.resetTimer)
     this.resetTimer = null
+  }
+
+  isDownloadContentType(contentType) {
+    return (
+      contentType.includes('application/pdf')
+      || contentType.includes('application/octet-stream')
+    )
+  }
+
+  async errorMessageFromResponse(response, contentType) {
+    if (contentType.includes('application/json')) {
+      try {
+        const payload = await response.json()
+
+        if (
+          typeof payload?.message === 'string'
+          && payload.message.trim() !== ''
+        ) {
+          return payload.message
+        }
+      } catch (error) {
+        console.error('Unable to parse download error response.', error)
+      }
+    }
+
+    return this.fallbackErrorMessage()
+  }
+
+  fallbackErrorMessage() {
+    if (
+      this.hasErrorLabelValue
+      && this.errorLabelValue.trim() !== ''
+    ) {
+      return this.errorLabelValue
+    }
+
+    return 'Unable to download the generated file.'
+  }
+
+  showError(message) {
+    this.clearError()
+
+    const alert = document.createElement('div')
+    alert.className = 'alert alert-danger py-2 px-3 mt-2 mb-0 small'
+    alert.setAttribute('role', 'alert')
+    alert.dataset.downloadStateError = 'true'
+    alert.textContent = message
+
+    this.element.insertAdjacentElement('afterend', alert)
+    this.errorElement = alert
+  }
+
+  clearError() {
+    if (!this.errorElement) {
+      return
+    }
+
+    this.errorElement.remove()
+    this.errorElement = null
   }
 
   extractFilename(contentDisposition) {

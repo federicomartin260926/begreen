@@ -1949,10 +1949,18 @@ class PlanController extends AbstractController
             $this->logger->warning('Unified PDF AI report generation failed.', [
                 'event' => 'unified_pdf_ai_report_failed',
                 'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
                 'project_id' => $project->getId(),
                 'plan_id' => $plan->getId(),
                 'locale' => $request->getLocale(),
             ]);
+
+            if ($asPdf && $request->isXmlHttpRequest()) {
+                return new JsonResponse([
+                    'message' => $translator->trans('backend.plan.pdf_visual.ai_report.error'),
+                ], Response::HTTP_SERVICE_UNAVAILABLE);
+            }
+
             $this->addFlash('danger', 'backend.plan.pdf_visual.ai_report.error');
 
             return $this->redirectToRoute('backend_plan_done');
@@ -1966,6 +1974,13 @@ class PlanController extends AbstractController
                 'locale' => $request->getLocale(),
                 'exception' => $exception,
             ]);
+
+            if ($asPdf && $request->isXmlHttpRequest()) {
+                return new JsonResponse([
+                    'message' => $translator->trans('backend.plan.pdf_visual.ai_report.error'),
+                ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
             $this->addFlash('danger', 'backend.plan.pdf_visual.ai_report.error');
 
             return $this->redirectToRoute('backend_plan_done');
@@ -2271,16 +2286,16 @@ class PlanController extends AbstractController
             [
                 'key' => 'selection',
                 'value' => $agreed,
-                'total' => $effective,
-                'percentage' => $this->percentageFromPoints($agreed, $effective),
+                'total' => $measuresTotal,
+                'percentage' => $this->percentageFromPoints($agreed, $measuresTotal),
             ],
             [
                 'key' => 'critical_coverage',
                 'value' => $criticalSelected,
-                'total' => $criticalApplicable,
+                'total' => $measuresTotal,
                 'percentage' => $this->percentageFromPoints(
                     $criticalSelected,
-                    $criticalApplicable
+                    $measuresTotal
                 ),
             ],
         ];
@@ -2566,16 +2581,200 @@ class PlanController extends AbstractController
                 'assets/images/logo-white.svg',
                 'image/svg+xml'
             ),
-            'vegetation' => $this->pdfAssetDataUri(
-                'public/images/commitment/commitment-selva-v4.png',
-                'image/png'
+            'commitmentChart' => $this->pdfCommitmentChartDataUri(
+                $context['commitmentSummary']['planned'] ?? []
             ),
+            'scoreRing' => $this->pdfScoreRingDataUri($context['scorePct'] ?? 0),
         ];
 
         return $this->renderView(
             'backend/plan/pdf_visual.html.twig',
             $context
         );
+    }
+
+    private function pdfCommitmentChartDataUri(mixed $plannedCommitment): string
+    {
+        if (!is_array($plannedCommitment)) {
+            return '';
+        }
+
+        $percentage = max(
+            0.0,
+            min(100.0, (float) ($plannedCommitment['percentageRounded'] ?? 0))
+        );
+        $points = (int) ($plannedCommitment['points'] ?? 0);
+        $levelKey = (string) ($plannedCommitment['levelKey'] ?? 'seed');
+
+        $stageIndexes = [
+            'seed' => 0,
+            'plant' => 1,
+            'tree' => 2,
+            'forest' => 3,
+            'jungle' => 4,
+        ];
+
+        $stageIndex = $stageIndexes[$levelKey] ?? 0;
+        $bandX = $stageIndex * 200;
+
+        /*
+         * Cada nivel ocupa una quinta parte del SVG.
+         * Los anchos crecen progresivamente y las alturas se calculan
+         * usando las proporciones reales de cada PNG.
+         *
+         * Todos terminan exactamente en baselineY.
+         */
+        $baselineY = 154.0;
+
+        $images = [
+            [
+                'src' => $this->pdfAssetDataUri(
+                    'public/images/commitment/commitment-brote.png',
+                    'image/png'
+                ),
+                'naturalWidth' => 13,
+                'naturalHeight' => 17,
+                'width' => 18.0,
+                'centerX' => 100.0,
+                'baselineLift' => 0.0,
+            ],
+            [
+                'src' => $this->pdfAssetDataUri(
+                    'public/images/commitment/commitment-planta.png',
+                    'image/png'
+                ),
+                'naturalWidth' => 58,
+                'naturalHeight' => 49,
+                'width' => 56.0,
+                'centerX' => 300.0,
+                'baselineLift' => 0.0,
+            ],
+            [
+                'src' => $this->pdfAssetDataUri(
+                    'public/images/commitment/commitment-arbol.png',
+                    'image/png'
+                ),
+                'naturalWidth' => 134,
+                'naturalHeight' => 82,
+                'width' => 102.0,
+                'centerX' => 500.0,
+                'baselineLift' => 0.0,
+            ],
+            [
+                'src' => $this->pdfAssetDataUri(
+                    'public/images/commitment/commitment-bosque-v4.png',
+                    'image/png'
+                ),
+                'naturalWidth' => 225,
+                'naturalHeight' => 79,
+                'width' => 154.0,
+                'centerX' => 700.0,
+                'baselineLift' => 0.0,
+                'heightScale' => 1.28,
+            ],
+            [
+                'src' => $this->pdfAssetDataUri(
+                    'public/images/commitment/commitment-selva-v4.png',
+                    'image/png'
+                ),
+                'naturalWidth' => 254,
+                'naturalHeight' => 67,
+                'width' => 196.0,
+                'centerX' => 900.0,
+                'baselineLift' => 0.0,
+                'heightScale' => 1.40,
+            ],
+        ];
+
+        $imageElements = '';
+
+        foreach ($images as $image) {
+            if ($image['src'] === '') {
+                continue;
+            }
+
+            $width = (float) $image['width'];
+            $height = $width
+                * ((float) $image['naturalHeight'] / (float) $image['naturalWidth'])
+                * (float) ($image['heightScale'] ?? 1.0);
+
+            $x = (float) $image['centerX'] - ($width / 2);
+            $y = $baselineY - $height - (float) ($image['baselineLift'] ?? 0);
+
+            $imageElements .= sprintf(
+                '<image href="%s" x="%.2f" y="%.2f" width="%.2f" height="%.2f"/>',
+                $image['src'],
+                $x,
+                $y,
+                $width,
+                $height
+            );
+        }
+
+        $markerX = $percentage * 10;
+        $badgeCenterX = max(48.0, min(952.0, $markerX));
+        $badgeX = $badgeCenterX - 44.0;
+        $progressWidth = $markerX;
+
+        $svg = sprintf(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 168">'
+            . '<rect x="%d" y="10" width="200" height="154" rx="20" fill="#e7f5e9"/>'
+            . '%s'
+            . '<rect x="0" y="154" width="1000" height="4" fill="#dfe9e4"/>'
+            . '<rect x="0" y="154" width="%.2f" height="4" fill="#087154"/>'
+            . '<line x1="%.2f" y1="78" x2="%.2f" y2="154" '
+            . 'stroke="#66a994" stroke-width="1.5" stroke-dasharray="4 3"/>'
+            . '<rect x="%.2f" y="48" width="88" height="25" rx="12.5" fill="#087154"/>'
+            . '<text x="%.2f" y="65" text-anchor="middle" '
+            . 'font-family="DejaVu Sans, sans-serif" font-size="13" '
+            . 'font-weight="700" fill="#ffffff">%d pts</text>'
+            . '<circle cx="%.2f" cy="156" r="8" fill="#e7f5e9" '
+            . 'stroke="#087154" stroke-width="3"/>'
+            . '</svg>',
+            $bandX,
+            $imageElements,
+            $progressWidth,
+            $badgeCenterX,
+            $markerX,
+            $badgeX,
+            $badgeCenterX,
+            $points,
+            $markerX
+        );
+
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+
+    private function pdfScoreRingDataUri(mixed $scorePct): string
+    {
+        $percentage = max(0.0, min(100.0, (float) $scorePct));
+        $radius = 43.0;
+        $circumference = 2 * M_PI * $radius;
+
+        $progressLength = number_format(
+            $circumference * ($percentage / 100),
+            3,
+            '.',
+            ''
+        );
+        $circumferenceLength = number_format(
+            $circumference,
+            3,
+            '.',
+            ''
+        );
+
+        $svg = sprintf(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+            . '<circle cx="50" cy="50" r="43" fill="#ffffff" stroke="#dbe9e2" stroke-width="9"/>'
+            . '<circle cx="50" cy="50" r="43" fill="none" stroke="#087154" stroke-width="9" '
+            . 'stroke-linecap="round" stroke-dasharray="%s %s" transform="rotate(-90 50 50)"/>'
+            . '</svg>',
+            $progressLength,
+            $circumferenceLength
+        );
+
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
     private function pdfAssetDataUri(string $relativePath, string $mimeType): string

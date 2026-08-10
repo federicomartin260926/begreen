@@ -160,7 +160,8 @@
                       class="btn btn-outline-primary btn-sm py-1 px-2 text-decoration-none"
                       data-controller="download-state"
                       data-action="click->download-state#start"
-                      data-download-state-loading-label-value="{{ 'backend.plan.actions.spinner_pdf'|trans }}">
+                      data-download-state-loading-label-value="{{ 'backend.plan.actions.spinner_pdf'|trans }}"
+                      data-download-state-error-label-value="{{ 'backend.plan.pdf_visual.ai_report.error'|trans }}">
                       <i class="bi bi-download me-1" aria-hidden="true"></i>{{ 'backend.plan.closure.download'|trans }}
                     </a>
                   {% else %}

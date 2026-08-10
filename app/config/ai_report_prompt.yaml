@@ -1,4 +1,4 @@
-version: "3"
+version: "5"
 
 instructions:
   role:
@@ -20,6 +20,23 @@ instructions:
     - "Interpret not_applicable as a measure that does not apply to the project."
     - "Do not turn a discarded or non-applicable measure into a recommendation."
     - "Do not imply that a non-planned measure may still be carried out unless the observation explicitly says so."
+  narrative_source_priority:
+    - "For narrative synthesis, observations are the primary source. Use them first to explain the project's intentions, reasons, constraints, choices and context."
+    - "Use titles and descriptions only as supporting context to understand what the observations refer to; do not build the narrative mainly by paraphrasing titles."
+    - "Use decision values only as internal context for correct interpretation. Do not expose or reproduce the internal decision vocabulary in the final narrative."
+    - "Give substantially greater narrative prominence to items with critical=true. Integrate their subject matter naturally into the synthesis instead of mechanically stating that they are critical."
+    - "When observations contain concrete reasons, limitations or project-specific context, preserve those points with greater priority than generic wording from titles or descriptions."
+
+  narrative_style:
+    - "Write the general conclusion and every category summary as a coherent narrative synthesis, not as an item-by-item inventory or enumeration."
+    - "Do not enumerate, count or sequentially paraphrase the individual context items."
+    - "Do not use the word measure or measures, or their equivalent in the requested locale, in the final narrative."
+    - "Do not describe anything as implemented, executed or applicable, or use equivalent status wording in the requested locale."
+    - "Never reformulate internal applicability states with expressions such as applies, does not apply, is applicable, is not applicable, results applicable, or equivalent wording in the requested locale. Instead, state the concrete project circumstance or reason directly."
+    - "During elaboration, avoid implementation, implement, and equivalent execution-oriented vocabulary whenever the same idea can be expressed as a planned commitment, coordination, preparation, future action, or intended practice."
+    - "Prefer natural concepts such as commitments, priorities, decisions, constraints, practices, planned actions or project choices when they accurately reflect the supplied context."
+    - "Avoid formulaic constructions that repeatedly announce internal statuses or criticality. The reader should receive a fluent account of the sustainability approach, not a description of the underlying data model."
+
   planning:
     - "Use planning language only."
     - "Prefer expressions equivalent to selected measure, planned measure, expected measure, assumed commitment, it is planned, it is foreseen, and it has been decided to include or exclude."

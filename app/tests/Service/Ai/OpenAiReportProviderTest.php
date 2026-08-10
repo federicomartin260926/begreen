@@ -98,6 +98,13 @@ final class OpenAiReportProviderTest extends TestCase
         self::assertStringContainsString('critical=false as', $instructions);
         self::assertStringContainsString('critical=null as', $instructions);
         self::assertStringContainsString('Do not invent a score scale', $instructions);
+        self::assertStringContainsString('observations are the primary source', $instructions);
+        self::assertStringContainsString('critical=true', $instructions);
+        self::assertStringContainsString('not as an item-by-item inventory or enumeration', $instructions);
+        self::assertStringContainsString('Do not use the word measure or measures', $instructions);
+        self::assertStringContainsString('Do not describe anything as implemented, executed or applicable', $instructions);
+        self::assertStringContainsString('Never reformulate internal applicability states', $instructions);
+        self::assertStringContainsString('During elaboration, avoid implementation, implement', $instructions);
         self::assertStringNotContainsString('implementation status', $instructions);
     }
 

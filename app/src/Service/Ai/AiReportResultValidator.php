@@ -17,7 +17,9 @@ final class AiReportResultValidator
             || trim($data['generalConclusion']) === ''
             || !is_array($data['categorySummaries'] ?? null)
         ) {
-            throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
+            throw new AiInvalidStructureException(
+                'The AI provider response must contain a non-empty generalConclusion and a categorySummaries array.'
+            );
         }
 
         $summaries = [];
@@ -27,10 +29,14 @@ final class AiReportResultValidator
             count($expectedCategoryKeys) !== count($expectedKeys)
             || count($data['categorySummaries']) !== count($expectedCategoryKeys)
         ) {
-            throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
+            throw new AiInvalidStructureException(sprintf(
+                'The AI provider returned %d category summaries; exactly %d were expected.',
+                count($data['categorySummaries']),
+                count($expectedCategoryKeys),
+            ));
         }
 
-        foreach ($data['categorySummaries'] as $summary) {
+        foreach ($data['categorySummaries'] as $index => $summary) {
             if (
                 !is_array($summary)
                 || !is_string($summary['categoryKey'] ?? null)
@@ -38,12 +44,25 @@ final class AiReportResultValidator
                 || !is_string($summary['summary'] ?? null)
                 || trim($summary['summary']) === ''
             ) {
-                throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
+                throw new AiInvalidStructureException(sprintf(
+                    'The AI provider returned an invalid category summary at index %d.',
+                    $index,
+                ));
             }
 
             $categoryKey = trim($summary['categoryKey']);
-            if (!isset($expectedKeys[$categoryKey]) || isset($seenKeys[$categoryKey])) {
-                throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
+            if (!isset($expectedKeys[$categoryKey])) {
+                throw new AiInvalidStructureException(sprintf(
+                    'The AI provider returned an unknown categoryKey: %s.',
+                    $categoryKey,
+                ));
+            }
+
+            if (isset($seenKeys[$categoryKey])) {
+                throw new AiInvalidStructureException(sprintf(
+                    'The AI provider returned a duplicate categoryKey: %s.',
+                    $categoryKey,
+                ));
             }
 
             $seenKeys[$categoryKey] = true;
@@ -51,7 +70,12 @@ final class AiReportResultValidator
         }
 
         if (count($seenKeys) !== count($expectedKeys)) {
-            throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
+            $missingKeys = array_keys(array_diff_key($expectedKeys, $seenKeys));
+
+            throw new AiInvalidStructureException(sprintf(
+                'The AI provider omitted category summaries for: %s.',
+                implode(', ', $missingKeys),
+            ));
         }
 
         return new AiReportResult(trim($data['generalConclusion']), $summaries);

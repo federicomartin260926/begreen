@@ -1,8 +1,5 @@
-{% set typeKey = project.type|default('')|lower %}
-{% set typeLabel = typeKey ? ('backend.project.type.' ~ typeKey)|trans : '—' %}
 {% set statusLabel = ('backend.plan.status.' ~ plan.status)|trans %}
 {% set displayedScorePct = scorePct is not null ? scorePct : 0 %}
-{% set protocolLabel = plan.protocol ? plan.protocol.name : '—' %}
 {% set plannedCommitment = commitmentSummary.planned %}
 {% set commitmentLevels = [
     {key: 'seed', labelKey: 'backend.plan.commitment.levels.seed.label'},
@@ -21,30 +18,20 @@
         <table class="pdf-cover-approved__hero" role="presentation">
             <tr>
                 <td class="pdf-cover-approved__main">
-                    <div class="pdf-cover__eyebrow">
-                        {{ 'backend.plan.pdf_visual.cover.eyebrow'|trans }}
-                    </div>
-
                     <h1 class="pdf-cover__title">
                         {{ 'backend.plan.pdf_visual.cover.title'|trans }}
                     </h1>
 
                     <h2 class="pdf-cover__project">{{ project.name }}</h2>
 
-                    <div class="pdf-cover-approved__tags">
-                        <span class="pdf-cover-approved__tag">Plan {{ statusLabel|lower }}</span>
-                        <span class="pdf-cover-approved__tag">{{ protocolLabel }}</span>
-                        <span class="pdf-cover-approved__tag">{{ typeLabel }}</span>
-                        <span class="pdf-cover-approved__tag pdf-cover-approved__tag--tier">
-                            {{ projectTierLabel
-                                |replace({'Elaboración ': '', 'Implementation ': '', 'Plan de ': '', 'Plan ': ''})
-                                |trim }}
-                        </span>
-                    </div>
                 </td>
 
                 <td class="pdf-cover-approved__score">
-                    <div class="pdf-score-circle pdf-score-circle--approved">
+                    <div class="pdf-score-ring">
+                        <img
+                            class="pdf-score-ring__image"
+                            src="{{ pdfVisualAssets.scoreRing }}"
+                            alt="">
                         <div class="pdf-score-circle__inner">
                             <div class="pdf-score-circle__value">{{ displayedScorePct }}%</div>
                             <div class="pdf-score-circle__label">
@@ -137,30 +124,20 @@
             </tr>
         </table>
 
-        <table class="pdf-cover-commitment__levels" role="presentation">
+        <div class="pdf-cover-commitment__chart">
+            <img
+                class="pdf-cover-commitment__chart-image"
+                src="{{ pdfVisualAssets.commitmentChart }}"
+                alt="">
+        </div>
+
+        <table class="pdf-cover-commitment__labels" role="presentation">
             <tr>
                 {% for level in commitmentLevels %}
                     <td class="{% if level.key == plannedCommitment.levelKey %}is-current{% endif %}">
                         {{ level.labelKey|trans }}
                     </td>
                 {% endfor %}
-            </tr>
-        </table>
-
-        <table class="pdf-progress-track" role="presentation">
-            <tr>
-                {% if plannedCommitment.percentageRounded > 0 %}
-                    <td
-                        class="pdf-progress-track__fill"
-                        style="width: {{ plannedCommitment.percentageRounded }}%">
-                    </td>
-                {% endif %}
-                {% if plannedCommitment.percentageRounded < 100 %}
-                    <td
-                        class="pdf-progress-track__rest"
-                        style="width: {{ 100 - plannedCommitment.percentageRounded }}%">
-                    </td>
-                {% endif %}
             </tr>
         </table>
 
@@ -187,9 +164,6 @@
             </tr>
         </table>
 
-        <p class="pdf-cover-commitment__message">
-            {{ plannedCommitment.messageKey|trans }}
-        </p>
     </section>
 
     {% include 'backend/plan/pdf/_footer.html.twig' with { footerVariant: 'cover' } %}
