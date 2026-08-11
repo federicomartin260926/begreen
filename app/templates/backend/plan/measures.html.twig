@@ -214,11 +214,6 @@
                 {# Tarjeta de la medida actual #}
                 {% if measure %}
                     {% set measureNavigation = {
-                        hasPrev: index > 0,
-                        hasNext: total > 0 and (index + 1) < total,
-                        nextEnabled: total > 0 and (index + 1) < total and canGoNext,
-                        prevHref: path('backend_plan_measures', navigationQuery|merge({ i: index - 1 })),
-                        nextHref: path('backend_plan_measures', navigationQuery|merge({ i: index + 1 })),
                         current: progressIndex|default(index),
                         total: total
                     } %}

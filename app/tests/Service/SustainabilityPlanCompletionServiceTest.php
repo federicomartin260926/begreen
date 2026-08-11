@@ -26,6 +26,79 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
 {
     use CommercialPlanTestHelpers;
 
+    public function testCompletedBasicUpgradeToStandardStartsAtGlobalIndexFifty(): void
+    {
+        $basicMeasures = $this->createTierMeasures(1000, 50, 5, 'Z Basic');
+        $standardMeasures = $this->createTierMeasures(2000, 50, 3, 'A Standard');
+        $service = $this->createService([...$standardMeasures, ...$basicMeasures]);
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $plan = $this->createPlan($project);
+
+        foreach ($basicMeasures as $measure) {
+            $plan->addPlanMeasure($this->createPlanMeasure($measure, true, false, true));
+        }
+
+        $pending = $service->findFirstPendingVisibleMeasure($plan, $project);
+
+        self::assertCount(100, $service->getVisibleMeasures($plan, $project));
+        self::assertNotNull($pending);
+        self::assertSame(50, $pending['index']);
+        self::assertSame($standardMeasures[0]->getId(), $pending['measure']->getId());
+    }
+
+    public function testPartialBasicUpgradeToStandardKeepsFirstPendingAtGlobalIndexNine(): void
+    {
+        $basicMeasures = $this->createTierMeasures(3000, 50, 4, 'Z Basic');
+        $standardMeasures = $this->createTierMeasures(4000, 50, 3, 'A Standard');
+        $service = $this->createService([...$standardMeasures, ...$basicMeasures]);
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $plan = $this->createPlan($project);
+
+        foreach (array_slice($basicMeasures, 0, 9) as $measure) {
+            $plan->addPlanMeasure($this->createPlanMeasure($measure, true, false, true));
+        }
+
+        $pending = $service->findFirstPendingVisibleMeasure($plan, $project);
+
+        self::assertNotNull($pending);
+        self::assertSame(9, $pending['index']);
+        self::assertSame($basicMeasures[9]->getId(), $pending['measure']->getId());
+    }
+
+    public function testActiveBlockSkipDoesNotCompressGlobalIndexOfFirstStandardMeasure(): void
+    {
+        $block = $this->createMeasureBlock(950);
+        $basicMeasures = $this->createTierMeasures(5000, 50, 5, 'Z Basic');
+        $basicMeasures[0]->setMeasureBlock($block);
+        $standardMeasures = $this->createTierMeasures(6000, 50, 3, 'A Standard');
+        $service = $this->createService([...$standardMeasures, ...$basicMeasures]);
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_STANDARD);
+        $plan = $this->createPlan($project);
+
+        $blockAnswer = (new SustainabilityPlanBlockAnswer())
+            ->setSustainabilityPlan($plan)
+            ->setMeasureBlock($block)
+            ->setApplies(false)
+            ->setAnsweredAt(new \DateTimeImmutable());
+        $this->setEntityId($blockAnswer, 850);
+        $plan->addBlockAnswer($blockAnswer);
+
+        foreach ($basicMeasures as $index => $measure) {
+            $planMeasure = $this->createPlanMeasure($measure, true, false, true);
+            if ($index === 0) {
+                $planMeasure->markAsBlockSkipped($blockAnswer);
+            }
+            $plan->addPlanMeasure($planMeasure);
+        }
+
+        $pending = $service->findFirstPendingVisibleMeasure($plan, $project);
+
+        self::assertCount(100, $service->getVisibleMeasures($plan, $project));
+        self::assertNotNull($pending);
+        self::assertSame(50, $pending['index']);
+        self::assertSame($standardMeasures[0]->getId(), $pending['measure']->getId());
+    }
+
     public function testBasicProjectCompletePlanStaysCompleteUntilNewMeasuresBecomeVisible(): void
     {
         $service = $this->createService([
@@ -298,6 +371,23 @@ final class SustainabilityPlanCompletionServiceTest extends TestCase
         $this->setEntityId($measure, $id);
 
         return $measure;
+    }
+
+    /**
+     * @return Measure[]
+     */
+    private function createTierMeasures(int $firstId, int $count, int $score, string $namePrefix): array
+    {
+        $measures = [];
+        for ($offset = 0; $offset < $count; $offset++) {
+            $measures[] = $this->createMeasure(
+                $firstId + $offset,
+                $score,
+                sprintf('%s %02d', $namePrefix, $offset + 1)
+            );
+        }
+
+        return $measures;
     }
 
     private function createMeasureBlock(int $id): MeasureBlock

@@ -64,10 +64,14 @@ final class SustainabilityPlanCompletionService
             $measures = $this->buildVisibleMeasuresFromPlan($plan, $protocol);
         } else {
             $qb = $this->createVisibleMeasuresQueryBuilder((int) $protocol->getId(), $project, $measureRepository);
-            $measures = $this->filterMeasuresBySkippedBlocks($qb->getQuery()->getResult(), $plan);
+            $measures = $qb->getQuery()->getResult();
         }
 
-        return $this->measureOrderer->sortVisibleMeasures($measures, $protocol->getGroupingBy());
+        return $this->measureOrderer->sortVisibleMeasures(
+            $measures,
+            $protocol->getGroupingBy(),
+            $this->catalogResolver->isCanonicalProtocol($protocol)
+        );
     }
 
     /**
@@ -241,39 +245,6 @@ final class SustainabilityPlanCompletionService
         return null;
     }
 
-    /**
-     * @return array<int, int>
-     */
-    private function getSkippedMeasureBlockIds(Plan $plan): array
-    {
-        $ids = [];
-
-        foreach ($plan->getBlockAnswers() as $answer) {
-            if ($answer->applies() === false && $answer->getMeasureBlock()?->getId() !== null) {
-                $ids[(int) $answer->getMeasureBlock()->getId()] = (int) $answer->getMeasureBlock()->getId();
-            }
-        }
-
-        return $ids;
-    }
-
-    /**
-     * @param array<int, Measure> $measures
-     * @return array<int, Measure>
-     */
-    private function filterMeasuresBySkippedBlocks(array $measures, Plan $plan): array
-    {
-        $skippedBlockIds = $this->getSkippedMeasureBlockIds($plan);
-        if ($skippedBlockIds === []) {
-            return $measures;
-        }
-
-        return array_values(array_filter($measures, static function (Measure $measure) use ($skippedBlockIds): bool {
-            $blockId = $measure->getMeasureBlock()?->getId();
-            return $blockId === null || !isset($skippedBlockIds[(int) $blockId]);
-        }));
-    }
-
     private function createVisibleMeasuresQueryBuilder(int $protocolId, Project $project, ?MeasureRepository $measureRepository = null): QueryBuilder
     {
         $repository = $measureRepository ?? $this->measureRepository;
@@ -319,6 +290,6 @@ final class SustainabilityPlanCompletionService
             $measures[] = $measure;
         }
 
-        return $this->filterMeasuresBySkippedBlocks($measures, $plan);
+        return $measures;
     }
 }

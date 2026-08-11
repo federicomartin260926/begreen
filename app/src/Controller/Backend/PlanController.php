@@ -10,7 +10,6 @@ use App\Service\PlanMeasureCatalogResolver;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanBlockQuestionService;
 use App\Service\SustainabilityPlanCompletionService;
-use App\Service\PlanMeasureResumeService;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Service\SustainabilityPlanImplementationViewService;
 use App\Service\SustainabilityPlanCollaborationService;
@@ -67,7 +66,6 @@ class PlanController extends AbstractController
         private PlanMeasureCatalogResolver $catalogResolver,
         private ProjectFeatureGate $featureGate,
         private MeasureTaxonomyPresenter $taxonomyPresenter,
-        private PlanMeasureResumeService $resumeService,
         private PlanBlockQuestionService $blockQuestionService,
         private SustainabilityPlanCompletionService $planCompletionService,
         private SustainabilityPlanMeasureOrderer $measureOrderer,
@@ -224,7 +222,6 @@ class PlanController extends AbstractController
         $groupingBy   = $protocol->getGroupingBy(); // 'category' | 'department'
         $navigationQuery = $request->query->all();
         unset($navigationQuery['i']);
-        unset($navigationQuery['only_pending']);
         $canUseCustomMeasures = $this->featureGate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures');
 
         // POST: custom measures interstitial
@@ -284,22 +281,23 @@ class PlanController extends AbstractController
             return $this->redirectToRoute('backend_plan_done');
         }
 
-        // ===== Medidas del protocolo seleccionado (ORDER BY dinámico: categoría o departamento) =====
-        $qb = $this->createVisibleMeasuresQueryBuilder($measureRepository, $protocol, $project);
+        // ===== Catálogo completo contratado, con numeración estable =====
+        $measures = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepository);
 
-        $allMeasures = $qb->getQuery()->getResult();
-        $allVisibleMeasures = $this->measureOrderer->sortVisibleMeasures(
-            $this->filterMeasuresBySkippedBlocks($allMeasures, $plan),
-            $groupingBy
-        );
-        $measures = $allVisibleMeasures;
-
+        // Elaboración trabaja siempre sobre la primera medida pendiente,
+        // pero conserva la posición y el total del catálogo completo contratado.
         $total = count($measures);
-        $index = $request->query->has('i')
-            ? max(0, min(max($total - 1, 0), $request->query->getInt('i', 0)))
-            : $this->resumeService->resolveIndex($measures, $plan->getPlanMeasures());
-        $currentMeasure = $measures[$index] ?? null;
-        $progressIndex = $currentMeasure ? $this->findVisibleMeasureIndex($measures, $currentMeasure) : null;
+        $pendingMeasure = !$planComplete
+            ? $this->planCompletionService->findFirstPendingVisibleMeasure($plan, $project, $measureRepository)
+            : null;
+        $index = is_array($pendingMeasure) && isset($pendingMeasure['index'])
+            ? (int) $pendingMeasure['index']
+            : 0;
+        $currentMeasure = is_array($pendingMeasure)
+            && ($pendingMeasure['measure'] ?? null) instanceof Measure
+            ? $pendingMeasure['measure']
+            : null;
+        $progressIndex = $currentMeasure ? $index : null;
 
         // ===== PM actual (si existe) y lógica de navegación =====
         $currentPm = $currentMeasure
@@ -329,6 +327,7 @@ class PlanController extends AbstractController
 
         // ===== Gráficos =====
         $visiblePlanMeasures = $this->filterPlanMeasuresBySkippedBlocks($plan->getPlanMeasures(), $plan);
+        $scoringMeasures = $this->filterMeasuresBySkippedBlocks($measures, $plan);
 
         // ===== Puntuación (no persistente) =====
         $pmIndex = [];
@@ -340,7 +339,7 @@ class PlanController extends AbstractController
 
         $scoreMax = 0;
         $scoreGained = 0;
-        foreach ($measures as $m) {
+        foreach ($scoringMeasures as $m) {
             $score = (int) ($m->getScore() ?? 0);
             $scoreMax += $score;
 
@@ -425,7 +424,10 @@ class PlanController extends AbstractController
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
         $this->denyAccessUnlessGranted(PlanVoter::VIEW, $plan);
 
-        if ($plan instanceof Plan && $this->shouldShowCustomMeasuresStep($plan)) {
+        $this->planCompletionService->syncStatus($plan, $project, $measureRepository);
+        $em->flush();
+
+        if ($this->shouldShowCustomMeasuresStep($plan)) {
             return $this->redirectToRoute('backend_plan_measures');
         }
 
@@ -867,69 +869,22 @@ class PlanController extends AbstractController
                     return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
                 }
 
-                $currentMeasureId = $measure->getId();
-                if ($currentMeasureId === null) {
-                    return new JsonResponse([
-                        'success' => false,
-                        'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
-                    ], 409);
-                }
-
-                $visibleMeasuresBefore = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
-                $visibleIndexByMeasureId = [];
-                foreach ($visibleMeasuresBefore as $visibleIndex => $visibleMeasure) {
-                    $visibleMeasureId = $visibleMeasure->getId();
-                    if ($visibleMeasureId !== null) {
-                        $visibleIndexByMeasureId[(int) $visibleMeasureId] = (int) $visibleIndex;
-                    }
-                }
-
-                if (!isset($visibleIndexByMeasureId[(int) $currentMeasureId])) {
-                    return new JsonResponse([
-                        'success' => false,
-                        'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
-                    ], 409);
-                }
-
-                $currentIndex = $visibleIndexByMeasureId[(int) $currentMeasureId];
+                $visibleMeasures = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
                 $blockMeasures = array_values(array_filter(
-                    $visibleMeasuresBefore,
+                    $visibleMeasures,
                     static fn (Measure $candidate) => $candidate->getMeasureBlock()?->getId() === $block->getId()
                 ));
-                $this->blockQuestionService->applyAnswer($plan, $block, $applies, $user instanceof User ? $user : null, $blockMeasures);
+                $this->blockQuestionService->applyAnswer(
+                    $plan,
+                    $block,
+                    $applies,
+                    $user instanceof User ? $user : null,
+                    $blockMeasures
+                );
 
-                if ($applies) {
-                    $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $currentIndex]);
-                } else {
-                    $visibleMeasuresAfter = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
-                    $nextVisibleMeasureIndex = null;
-
-                    foreach ($visibleMeasuresAfter as $visibleIndex => $visibleMeasure) {
-                        $visibleMeasureId = $visibleMeasure->getId();
-                        if ($visibleMeasureId === null) {
-                            continue;
-                        }
-
-                        $originalIndex = $visibleIndexByMeasureId[(int) $visibleMeasureId] ?? null;
-                        if (!is_int($originalIndex) || $originalIndex <= $currentIndex) {
-                            continue;
-                        }
-
-                        $nextVisibleMeasureIndex = (int) $visibleIndex;
-                        break;
-                    }
-
-                    if ($nextVisibleMeasureIndex !== null) {
-                        $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $nextVisibleMeasureIndex]);
-                    } elseif ($this->planCompletionService->isComplete($plan, $project, $measureRepo)) {
-                        $nextUrl = $this->resolveTerminalSelectionNextUrl($plan, true, $currentVisibleMeasureIndex ?? 0);
-                    } else {
-                        return new JsonResponse([
-                            'success' => false,
-                            'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
-                        ], 409);
-                    }
-                }
+                // La propia entrada a Elaboración resuelve la primera medida
+                // que siga pendiente después de aplicar la respuesta del bloque.
+                $nextUrl = $this->generateUrl('backend_plan_measures');
                 break;
 
             case 'isApplicable':
@@ -1143,44 +1098,9 @@ class PlanController extends AbstractController
         $em->flush();
 
         if ($this->isTerminalSelectionAction($field, $value)) {
-            $visibleMeasures = $this->planCompletionService->getVisibleMeasures($plan, $project, $measureRepo);
-            $currentVisibleIndex = $this->planCompletionService->findVisibleMeasureIndex($visibleMeasures, $measure);
-            if ($currentVisibleIndex === null) {
-                return new JsonResponse([
-                    'success' => false,
-                    'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
-                ], 409);
-            }
-
-            $isLastVisibleMeasure = $currentVisibleIndex >= (count($visibleMeasures) - 1);
-            if (!$isLastVisibleMeasure) {
-                $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $currentVisibleIndex + 1]);
-            } elseif ($complete) {
-                $nextUrl = $this->resolveTerminalSelectionNextUrl($plan, true, $currentVisibleIndex + 1);
-            } else {
-                $pendingMeasure = $this->planCompletionService->findFirstPendingVisibleMeasure($plan, $project, $measureRepo);
-                if ($pendingMeasure !== null) {
-                    $pendingIndex = $pendingMeasure['index'] ?? null;
-                    if (!is_int($pendingIndex) || $pendingIndex < 0) {
-                        return new JsonResponse([
-                            'success' => false,
-                            'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
-                        ], 409);
-                    }
-
-                    $this->addFlash(
-                        'warning',
-                        $this->pendingMeasureFlashMessage((string) ($pendingMeasure['reason'] ?? ''))
-                    );
-
-                    $nextUrl = $this->generateUrl('backend_plan_measures', ['i' => $pendingIndex]);
-                } else {
-                    return new JsonResponse([
-                        'success' => false,
-                        'error'   => $this->t->trans('backend.plan.flash.validation_unexpected_error'),
-                    ], 409);
-                }
-            }
+            $nextUrl = $complete
+                ? $this->resolveTerminalSelectionNextUrl($plan, true, 0)
+                : $this->generateUrl('backend_plan_measures');
         }
 
         return new JsonResponse([

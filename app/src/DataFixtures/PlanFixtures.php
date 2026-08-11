@@ -106,25 +106,14 @@ final class PlanFixtures extends Fixture implements DependentFixtureInterface, F
         $catalogMeasures = $this->measureRepository->getCatalogMeasuresForProtocol($project, $protocol);
         $measureIndex = $this->indexMeasures($catalogMeasures);
 
-        // Some production plans contain measures that are valid for the protocol but are
-        // not returned by the current project-specific catalog resolver. Keep the current
-        // catalog as the primary source and complete the index from the full protocol
-        // catalog so the imported fixture data can still be reconstructed faithfully.
-        $protocolMeasures = $manager->getRepository(Measure::class)->findBy(['protocol' => $protocol]);
-        foreach ($this->indexMeasures($protocolMeasures) as $sortOrder => $measure) {
-            $measureIndex[$sortOrder] ??= $measure;
-        }
-
         foreach ($measureDefinitions as $definition) {
             $measure = $measureIndex[$definition['sortOrder']] ?? null;
 
+            // Las fixtures deben respetar el catálogo contratado del proyecto.
+            // Una definición de FrancProjectPlanData fuera del tier actual no debe
+            // materializarse como PlanMeasure.
             if (!$measure instanceof Measure) {
-                throw new \RuntimeException(sprintf(
-                    'Unable to match measure for project "%s": sortOrder=%d, name="%s".',
-                    $projectName,
-                    $definition['sortOrder'],
-                    $definition['name'],
-                ));
+                continue;
             }
 
             $planMeasure = (new PlanMeasure())

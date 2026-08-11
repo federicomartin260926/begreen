@@ -3480,7 +3480,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame($currentPlanMeasure, $persistedEntities[0]);
     }
 
-    public function testMeasuresProgressUsesNavigableMeasuresAfterSkippingBlock(): void
+    public function testMeasuresProgressKeepsContractedCatalogPositionsAfterSkippingBlock(): void
     {
         $controller = $this->getController();
         $this->setAdminToken();
@@ -3543,7 +3543,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable(true)
             ->setIsCritical(false)
             ->setWillImplement(true)
-            ->setObservations('Observación completa')
+            ->setObservations(str_repeat('a', 50))
             ->markAsManual();
         $plan->addPlanMeasure($planMeasure1);
 
@@ -3616,6 +3616,11 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
 
+        $blockAnswer = $plan->getBlockAnswers()->first();
+        self::assertInstanceOf(SustainabilityPlanBlockAnswer::class, $blockAnswer);
+        $this->setEntityId($blockAnswer, 851);
+        $planMeasure2->markAsBlockSkipped($blockAnswer);
+
         $visibleMeasuresAfter = $planCompletionService->getVisibleMeasures($plan, $project, $measureRepository);
         $currentIndexAfter = $planCompletionService->findVisibleMeasureIndex($visibleMeasuresAfter, $measure3);
         $lastIndexAfter = $planCompletionService->findVisibleMeasureIndex($visibleMeasuresAfter, $measure4);
@@ -3639,7 +3644,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         )->getContent();
 
         self::assertIsString($nextHtml);
-        self::assertStringContainsString('Medida 2 de 3', $nextHtml);
+        self::assertStringContainsString('Medida 3 de 4', $nextHtml);
 
         $progressRequest = $this->createRequest([
             'measureId' => (string) $measure3->getId(),
@@ -3684,37 +3689,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         )->getContent();
 
         self::assertIsString($lastHtml);
-        self::assertStringContainsString('Medida 3 de 3', $lastHtml);
-
-        $planMeasure4
-            ->setIsApplicable(true)
-            ->setWillImplement(false)
-            ->setIsCritical(null);
-        $finalRequest = $this->createRequest([
-            'measureId' => (string) $measure4->getId(),
-            'field' => 'completeDecision',
-            'value' => 'No se incluirá en el plan',
-        ]);
-        $finalMeasureRepository = $this->createMeasureRepositoryMock([$measure1, $measure2, $measure3, $measure4], $measure4);
-        $finalPlanMeasureRepository = $this->createPlanMeasureRepositoryMock($measure4, $planMeasure4);
-        $finalEntityManager = $this->createEntityManagerMock($planMeasure4);
-
-        $finalResponse = $this->invokeUpdateSelection(
-            $controller,
-            $finalRequest,
-            $finalMeasureRepository,
-            $finalPlanMeasureRepository,
-            $planRepository,
-            $blockAnswerRepository,
-            $activeProjectService,
-            $finalEntityManager
-        );
-
-        self::assertInstanceOf(JsonResponse::class, $finalResponse);
-        $finalData = json_decode((string) $finalResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertTrue($finalData['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $finalData['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $finalData['nextUrl']);
+        self::assertStringContainsString('Medida 3 de 4', $lastHtml);
     }
 
     public function testEventMeasuresStartAtOneAfterEntriesExcludedFromNavigation(): void

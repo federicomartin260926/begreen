@@ -12,6 +12,35 @@ use PHPUnit\Framework\TestCase;
 
 final class SustainabilityPlanMeasureOrdererTest extends TestCase
 {
+    public function testCanonicalCatalogOrdersCommercialTierBandsBeforeFunctionalOrder(): void
+    {
+        $office = (new Category())->setName('Oficina')->setSortOrder(10);
+        $energy = (new Category())->setName('Energía')->setSortOrder(20);
+        $department = (new Department())->setName('Producción')->setSortOrder(10);
+        $block = (new MeasureBlock())->setName('Bloque')->setSortOrder(10);
+        $measures = [
+            $this->createMeasure('Pro score 2', $energy, $department, $block, 5, 0, 2),
+            $this->createMeasure('Standard', $office, $department, $block, 3, 0, 3),
+            $this->createMeasure('Basic score 5', $energy, $department, $block, 2, 0, 5),
+            $this->createMeasure('Pro score 1', $office, $department, $block, 4, 0, 1),
+            $this->createMeasure('Basic score 4', $office, $department, $block, 1, 0, 4),
+        ];
+
+        $sorted = (new SustainabilityPlanMeasureOrderer())->sortVisibleMeasures(
+            $measures,
+            Protocol::GROUP_BY_CATEGORY,
+            true
+        );
+
+        self::assertSame([
+            'Basic score 4',
+            'Basic score 5',
+            'Standard',
+            'Pro score 1',
+            'Pro score 2',
+        ], array_map(static fn (Measure $measure): string => (string) $measure->getName(), $sorted));
+    }
+
     public function testCategoryGroupingOrdersOfficeBeforeEnergyThenBlockThenMeasure(): void
     {
         $office = (new Category())->setName('Oficina')->setSortOrder(10);
@@ -89,7 +118,15 @@ final class SustainabilityPlanMeasureOrdererTest extends TestCase
         return [$energy, $accommodation, $production, $postproduction, $blockIntro, $blockActions, $measures];
     }
 
-    private function createMeasure(string $name, Category $category, Department $department, MeasureBlock $block, int $sourceRow, int $sortOrder): Measure
+    private function createMeasure(
+        string $name,
+        Category $category,
+        Department $department,
+        MeasureBlock $block,
+        int $sourceRow,
+        int $sortOrder,
+        ?int $score = null
+    ): Measure
     {
         return (new Measure())
             ->setName($name)
@@ -97,6 +134,7 @@ final class SustainabilityPlanMeasureOrdererTest extends TestCase
             ->setDepartment($department)
             ->setMeasureBlock($block)
             ->setSourceRow($sourceRow)
-            ->setSortOrder($sortOrder);
+            ->setSortOrder($sortOrder)
+            ->setScore($score);
     }
 }

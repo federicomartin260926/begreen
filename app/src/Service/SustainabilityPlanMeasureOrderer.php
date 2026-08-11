@@ -12,7 +12,7 @@ final class SustainabilityPlanMeasureOrderer
      *
      * @return Measure[]
      */
-    public function sortVisibleMeasures(array $measures, string $groupingBy): array
+    public function sortVisibleMeasures(array $measures, string $groupingBy, bool $orderByCommercialTier = false): array
     {
         $groupingBy = $groupingBy === Protocol::GROUP_BY_DEPARTMENT
             ? Protocol::GROUP_BY_DEPARTMENT
@@ -20,7 +20,14 @@ final class SustainabilityPlanMeasureOrderer
 
         $blockRanks = $this->buildBlockRanks($measures, $groupingBy);
 
-        usort($measures, function (Measure $left, Measure $right) use ($groupingBy, $blockRanks): int {
+        usort($measures, function (Measure $left, Measure $right) use ($groupingBy, $blockRanks, $orderByCommercialTier): int {
+            if ($orderByCommercialTier) {
+                $comparison = $this->commercialTierRank($left) <=> $this->commercialTierRank($right);
+                if ($comparison !== 0) {
+                    return $comparison;
+                }
+            }
+
             $leftGroup = $this->groupSortKey($left, $groupingBy);
             $rightGroup = $this->groupSortKey($right, $groupingBy);
             $comparison = $this->compareSortKeys($leftGroup, $rightGroup);
@@ -46,6 +53,16 @@ final class SustainabilityPlanMeasureOrderer
         });
 
         return array_values($measures);
+    }
+
+    private function commercialTierRank(Measure $measure): int
+    {
+        return match ((int) ($measure->getScore() ?? 0)) {
+            4, 5 => 0,
+            3 => 1,
+            1, 2 => 2,
+            default => 3,
+        };
     }
 
     /**
