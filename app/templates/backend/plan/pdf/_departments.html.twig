@@ -1,0 +1,64 @@
+<section class="pdf-analytics-page">
+    {% include 'backend/plan/pdf/_watermark.html.twig' %}
+
+    {% include 'backend/plan/pdf/_header.html.twig' with {
+        headerVariant: 'cover'
+    } %}
+
+    <main class="pdf-analytics-page__content">
+        <h1 class="pdf-analytics-page__title">
+            {{ 'backend.plan.pdf_visual.analytics.departments.distribution_title'|trans }}
+        </h1>
+
+        <p class="pdf-department-allocation__intro">
+            {{ 'backend.plan.pdf_visual.analytics.departments.distribution_intro'|trans }}
+        </p>
+
+        <div class="pdf-department-allocation">
+            {% for department in pdfDepartmentSummary %}
+                {% set percentage = department.total > 0
+                    ? ((department.selected / department.total) * 100)|round
+                    : 0
+                %}
+
+                <table class="pdf-department-allocation__row" role="presentation">
+                    <tr>
+                        <td class="pdf-department-allocation__name">
+                            {{ department.name }}
+                        </td>
+
+                        <td class="pdf-department-allocation__bar">
+                            <table class="pdf-department-allocation__track" role="presentation">
+                                <tr>
+                                    {% if percentage > 0 %}
+                                        <td
+                                            class="pdf-department-allocation__fill"
+                                            style="width: {{ percentage }}%">
+                                            &nbsp;
+                                        </td>
+                                    {% endif %}
+
+                                    {% if percentage < 100 %}
+                                        <td
+                                            class="pdf-department-allocation__rest"
+                                            style="width: {{ 100 - percentage }}%">
+                                            &nbsp;
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            </table>
+                        </td>
+
+                        <td class="pdf-department-allocation__value">
+                            {{ department.selected }} / {{ department.total }}
+                        </td>
+                    </tr>
+                </table>
+            {% endfor %}
+        </div>
+
+        <p class="pdf-department-allocation__note">
+            {{ 'backend.plan.pdf_visual.analytics.departments.distribution_note'|trans }}
+        </p>
+    </main>
+</section>

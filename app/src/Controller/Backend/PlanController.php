@@ -2089,6 +2089,7 @@ class PlanController extends AbstractController
 
         $aiReport = $this->planAiReportService->getOrGenerate($plan, $locale);
         $aiGeneralConclusion = $aiReport->generalConclusion;
+        $aiFinalConclusion = $aiReport->finalConclusion;
         $aiCategorySummaries = $this->buildAiCategorySummaries(
             $plan,
             $project,
@@ -2298,6 +2299,7 @@ class PlanController extends AbstractController
             ],
             'aiGeneralConclusion' => $aiGeneralConclusion,
             'aiCategorySummaries' => $aiCategorySummaries,
+            'aiFinalConclusion' => $aiFinalConclusion,
             'pdfDepartmentSummary' => $pdfDepartmentSummary,
             'pdfQuickRead' => $pdfQuickRead,
             'pdfPhase'       => $phase,
@@ -2466,6 +2468,8 @@ class PlanController extends AbstractController
                     'key' => $key,
                     'name' => (string) $category->getName(),
                     'summary' => $summariesByKey[$key],
+                    'committedMeasures' => [],
+                    'futureMeasures' => [],
                     'metrics' => [
                         'total' => 0,
                         'applicable' => 0,
@@ -2485,6 +2489,15 @@ class PlanController extends AbstractController
             }
             if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true) {
                 ++$categories[$key]['metrics']['toImplement'];
+                $categories[$key]['committedMeasures'][] = [
+                    'name' => (string) $measure->getName(),
+                    'critical' => $planMeasure->isCritical() === true,
+                ];
+            }
+            if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === false) {
+                $categories[$key]['futureMeasures'][] = [
+                    'name' => (string) $measure->getName(),
+                ];
             }
             if ($planMeasure->isCritical() === true) {
                 ++$categories[$key]['metrics']['critical'];

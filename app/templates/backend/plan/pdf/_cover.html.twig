@@ -24,6 +24,66 @@
 
                     <h2 class="pdf-cover__project">{{ project.name }}</h2>
 
+                    {% set projectMeta = [] %}
+
+                    {% if project.type == 'rodaje' %}
+                        {% if project.filmingType %}
+                            {% set projectMeta = projectMeta|merge([
+                                ('backend.projects.form.filming_type.options.' ~ project.filmingType)|trans
+                            ]) %}
+                        {% endif %}
+
+                        {% if project.filmingGenre %}
+                            {% set projectMeta = projectMeta|merge([
+                                ('backend.projects.form.filming_genre.options.' ~ project.filmingGenre)|trans
+                            ]) %}
+                        {% endif %}
+                    {% elseif project.type == 'evento' %}
+                        {% if project.eventTypePrimary %}
+                            {% set projectMeta = projectMeta|merge([
+                                ('backend.projects.form.event_type_primary.options.' ~ project.eventTypePrimary)|trans
+                            ]) %}
+                        {% endif %}
+
+                        {% if project.eventModality %}
+                            {% set projectMeta = projectMeta|merge([
+                                ('backend.projects.form.event_modality.options.' ~ project.eventModality)|trans
+                            ]) %}
+                        {% endif %}
+
+                        {% if project.eventAttendeesCount %}
+                            {% set projectMeta = projectMeta|merge([
+                                project.eventAttendeesCount ~ ' ' ~
+                                ('backend.plan.pdf_visual.cover.attendees'|trans)
+                            ]) %}
+                        {% endif %}
+                    {% endif %}
+
+                    {% set projectStartDate = null %}
+                    {% set projectEndDate = null %}
+
+                    {% for phaseDate in project.phaseDates %}
+                        {% if phaseDate.startDate and (projectStartDate is null or phaseDate.startDate < projectStartDate) %}
+                            {% set projectStartDate = phaseDate.startDate %}
+                        {% endif %}
+
+                        {% if phaseDate.endDate and (projectEndDate is null or phaseDate.endDate > projectEndDate) %}
+                            {% set projectEndDate = phaseDate.endDate %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if projectStartDate and projectEndDate %}
+                        {% set projectMeta = projectMeta|merge([
+                            projectStartDate|date('d/m/Y') ~ ' – ' ~ projectEndDate|date('d/m/Y')
+                        ]) %}
+                    {% endif %}
+
+                    {% if projectMeta is not empty %}
+                        <div class="pdf-cover__project-meta">
+                            {{ projectMeta|join(' · ') }}
+                        </div>
+                    {% endif %}
+
                 </td>
 
                 <td class="pdf-cover-approved__score">

@@ -10,34 +10,35 @@
                     {{ category.summary }}
                 </p>
 
-                <table class="pdf-ai-page__metrics" role="presentation">
-                    <tr>
-                        <td>
-                            <span class="pdf-ai-page__metric-value">
-                                {{ category.metrics.applicable }}
-                            </span>
-                            {{ 'backend.plan.pdf_visual.ai_report.metrics.applicable'|trans }}
-                        </td>
-                        <td>
-                            <span class="pdf-ai-page__metric-value">
-                                {{ category.metrics.toImplement }}
-                            </span>
-                            {{ 'backend.plan.pdf_visual.ai_report.metrics.to_implement'|trans }}
-                        </td>
-                        <td>
-                            <span class="pdf-ai-page__metric-value">
-                                {{ category.metrics.notApplicable }}
-                            </span>
-                            {{ 'backend.plan.pdf_visual.ai_report.metrics.not_applicable'|trans }}
-                        </td>
-                        <td>
-                            <span class="pdf-ai-page__metric-value">
-                                {{ category.metrics.critical }}
-                            </span>
-                            {{ 'backend.plan.pdf_visual.ai_report.metrics.critical'|trans }}
-                        </td>
-                    </tr>
-                </table>
+                {% if category.committedMeasures is not empty %}
+                    <div class="pdf-ai-page__commitments">
+                        {% for measure in category.committedMeasures %}
+                            <div class="pdf-ai-page__commitment{% if measure.critical %} pdf-ai-page__commitment--critical{% endif %}">
+                                <span class="pdf-ai-page__commitment-check">✓</span>
+                                <span class="pdf-ai-page__commitment-name">{{ measure.name }}</span>
+                                {% if measure.critical %}
+                                    <span class="pdf-ai-page__commitment-critical">
+                                        {{ 'backend.plan.pdf_visual.ai_report.critical'|trans }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if category.futureMeasures is not empty %}
+                    <div class="pdf-ai-page__future">
+                        <div class="pdf-ai-page__future-title">
+                            {{ 'backend.plan.pdf_visual.ai_report.future'|trans }}
+                        </div>
+                        {% for measure in category.futureMeasures %}
+                            <div class="pdf-ai-page__future-measure">
+                                {{ measure.name }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
             </td>
         </tr>
     </table>
@@ -45,7 +46,30 @@
 
 {% import _self as report %}
 
-{% set categoryPages = aiCategorySummaries|batch(4, null) %}
+{% set categoryPages = [] %}
+{% set currentPage = [] %}
+
+{% for category in aiCategorySummaries %}
+    {% if category.name == 'Transporte' or category.name == 'Transport' %}
+        {% if currentPage is not empty %}
+            {% set categoryPages = categoryPages|merge([currentPage]) %}
+            {% set currentPage = [] %}
+        {% endif %}
+
+        {% set categoryPages = categoryPages|merge([[category]]) %}
+    {% else %}
+        {% set currentPage = currentPage|merge([category]) %}
+
+        {% if currentPage|length == 4 %}
+            {% set categoryPages = categoryPages|merge([currentPage]) %}
+            {% set currentPage = [] %}
+        {% endif %}
+    {% endif %}
+{% endfor %}
+
+{% if currentPage is not empty %}
+    {% set categoryPages = categoryPages|merge([currentPage]) %}
+{% endif %}
 
 {% for categoryPage in categoryPages %}
     <section class="pdf-ai-page{% if loop.last %} pdf-ai-page--last{% endif %}">

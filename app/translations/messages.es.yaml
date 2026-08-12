@@ -1721,15 +1721,16 @@ backend:
         eyebrow: "Plan elaborado"
         title: "Plan de sostenibilidad"
         generated_on: "Generado el %date%"
-        score_title: "Puntuación del plan"
+        score_title: "Compromiso del plan"
         score_value: "%gained% de %max% puntos"
-        score_label: "Puntuación"
+        score_label: "Compromiso"
+        attendees: "asistentes"
         summary:
           title: "Resumen del documento"
           status: "Estado"
           date: "Fecha"
           user: "Usuario"
-          score: "Puntuación"
+          score: "Compromiso"
           catalog: "Medidas del catálogo"
       indicators:
         total: "Medidas del plan"
@@ -1739,6 +1740,8 @@ backend:
       ai_report:
         executive_summary: "Resumen ejecutivo"
         category_summaries: "Resumen por categorías"
+        critical: "Crítica"
+        future: "Próxima edición"
         metrics:
           total: "Total"
           applicable: "Aplicables"
@@ -1746,6 +1749,8 @@ backend:
           not_applicable: "No aplicables"
           critical: "Críticas"
         error: "No se pudo generar el informe del plan. Inténtalo de nuevo."
+      final_conclusion:
+        title: "Lo que nos llevamos de esta edición"
       analytics:
         commitment:
           title: "Nivel de compromiso previsto"
@@ -1753,6 +1758,9 @@ backend:
           next: "Faltan %points% puntos para subir de nivel"
           maximum: "Nivel máximo alcanzado"
         departments:
+          distribution_title: "Reparto por departamento"
+          distribution_intro: "Así se reparten entre los departamentos los compromisos que asumimos en este plan."
+          distribution_note: "Lectura: compromisos seleccionados sobre las medidas del catálogo vinculadas a cada departamento."
           title: "Resumen por departamento"
           department: "Departamento"
           total: "Total"

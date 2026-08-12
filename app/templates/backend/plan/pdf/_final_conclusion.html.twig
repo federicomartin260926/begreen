@@ -1,0 +1,38 @@
+<section class="pdf-final-page">
+    {% include 'backend/plan/pdf/_watermark.html.twig' %}
+
+    {% include 'backend/plan/pdf/_header.html.twig' with {
+        headerVariant: 'cover'
+    } %}
+
+    <main class="pdf-final-page__content">
+        <h2 class="pdf-final-page__title">
+            {{ 'backend.plan.pdf_visual.final_conclusion.title'|trans }}
+        </h2>
+
+        <div class="pdf-final-page__conclusion">
+            {{ aiFinalConclusion }}
+        </div>
+
+        <div class="pdf-final-page__commitment">
+            <div class="pdf-final-page__commitment-label">
+                {{ 'backend.plan.pdf_visual.analytics.commitment.title'|trans }}
+            </div>
+
+            <div class="pdf-final-page__commitment-level">
+                {{ commitmentSummary.planned.labelKey|trans }}
+            </div>
+
+            <div class="pdf-final-page__commitment-score">
+                {{ scoreGained }} / {{ scoreMax }} {{ 'backend.plan.pdf_visual.analytics.commitment.points'|trans }}
+                · {{ scorePct }}%
+            </div>
+
+            <div class="pdf-final-page__commitment-chart">
+                <img
+                    src="{{ pdfVisualAssets.commitmentChart }}"
+                    alt="">
+            </div>
+        </div>
+    </main>
+</section>

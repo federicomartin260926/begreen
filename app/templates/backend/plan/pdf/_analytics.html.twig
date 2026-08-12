@@ -14,65 +14,6 @@
             {{ aiGeneralConclusion }}
         </div>
 
-        <h2 class="pdf-analytics-page__section-title">
-            {{ 'backend.plan.pdf_visual.analytics.departments.title'|trans }}
-        </h2>
-
-        <table class="pdf-department-summary">
-            <thead>
-                <tr>
-                    <th>
-                        {{ 'backend.plan.pdf_visual.analytics.departments.department'|trans }}
-                    </th>
-                    <th>
-                        {{ 'backend.plan.pdf_visual.analytics.departments.total'|trans }}
-                    </th>
-                    <th>
-                        {{ 'backend.plan.pdf_visual.analytics.departments.applicable'|trans }}
-                    </th>
-                    <th>
-                        {{ 'backend.plan.pdf_visual.analytics.departments.selected'|trans }}
-                    </th>
-                    <th>
-                        {{ 'backend.plan.pdf_visual.analytics.departments.critical'|trans }}
-                    </th>
-                </tr>
-            </thead>
-            {% set departmentTotals = {
-                total: 0,
-                applicable: 0,
-                selected: 0,
-                critical: 0
-            } %}
-
-            <tbody>
-                {% for department in pdfDepartmentSummary %}
-                    {% set departmentTotals = {
-                        total: departmentTotals.total + department.total,
-                        applicable: departmentTotals.applicable + department.applicable,
-                        selected: departmentTotals.selected + department.selected,
-                        critical: departmentTotals.critical + department.critical
-                    } %}
-                    <tr>
-                        <td>{{ department.name }}</td>
-                        <td style="text-align: right;">{{ department.total }}</td>
-                        <td style="text-align: right;">{{ department.applicable }}</td>
-                        <td style="text-align: right;">{{ department.selected }}</td>
-                        <td style="text-align: right;">{{ department.critical }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td>{{ 'backend.plan.pdf_visual.analytics.departments.total'|trans }}</td>
-                    <td style="text-align: right;">{{ departmentTotals.total }}</td>
-                    <td style="text-align: right;">{{ departmentTotals.applicable }}</td>
-                    <td style="text-align: right;">{{ departmentTotals.selected }}</td>
-                    <td style="text-align: right;">{{ departmentTotals.critical }}</td>
-                </tr>
-            </tfoot>
-        </table>
-
         <h2 class="pdf-analytics-page__section-title pdf-analytics-page__section-title--quick">
             {{ 'backend.plan.pdf_visual.analytics.quick_read.title'|trans }}
         </h2>
@@ -82,13 +23,9 @@
                 <table class="pdf-quick-read__row" role="presentation">
                     <tr>
                         <td class="pdf-quick-read__label">
-                            {{
-                                (
-                                    'backend.plan.pdf_visual.analytics.quick_read.'
-                                    ~ item.key
-                                )|trans
-                            }}
+                            {{ ('backend.plan.pdf_visual.analytics.quick_read.' ~ item.key)|trans }}
                         </td>
+
                         <td class="pdf-quick-read__bar">
                             <table class="pdf-quick-read__track" role="presentation">
                                 <tr>
@@ -98,6 +35,7 @@
                                             style="width: {{ item.percentage }}%">
                                         </td>
                                     {% endif %}
+
                                     {% if item.percentage < 100 %}
                                         <td
                                             class="pdf-quick-read__rest"
@@ -107,6 +45,7 @@
                                 </tr>
                             </table>
                         </td>
+
                         <td class="pdf-quick-read__value">
                             {{ item.value }} / {{ item.total }}
                         </td>
