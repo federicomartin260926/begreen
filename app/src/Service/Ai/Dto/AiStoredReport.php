@@ -4,7 +4,7 @@ namespace App\Service\Ai\Dto;
 
 final readonly class AiStoredReport
 {
-    public const VERSION = 1;
+    public const VERSION = 2;
 
     /** @param list<array{categoryKey:string, summary:string}> $categorySummaries */
     public function __construct(
@@ -18,6 +18,7 @@ final readonly class AiStoredReport
         public string $generatedAt,
         public string $generalConclusion,
         public array $categorySummaries,
+        public string $finalConclusion,
     ) {
     }
 
@@ -35,15 +36,17 @@ final readonly class AiStoredReport
             'generatedAt' => $this->generatedAt,
             'generalConclusion' => $this->generalConclusion,
             'categorySummaries' => $this->categorySummaries,
+            'finalConclusion' => $this->finalConclusion,
         ];
     }
 
-    /** @return array{generalConclusion:string, categorySummaries:list<array{categoryKey:string, summary:string}>} */
+    /** @return array{generalConclusion:string, categorySummaries:list<array{categoryKey:string, summary:string}>, finalConclusion:string} */
     public function resultData(): array
     {
         return [
             'generalConclusion' => $this->generalConclusion,
             'categorySummaries' => $this->categorySummaries,
+            'finalConclusion' => $this->finalConclusion,
         ];
     }
 
@@ -61,6 +64,7 @@ final readonly class AiStoredReport
             'generatedAt',
             'generalConclusion',
             'categorySummaries',
+            'finalConclusion',
         ];
         if (!self::hasExactKeys($data, $expectedKeys)) {
             return null;
@@ -80,6 +84,7 @@ final readonly class AiStoredReport
             || !self::isValidDate($data['generatedAt'])
             || !self::isNonEmptyString($data['generalConclusion'])
             || !is_array($data['categorySummaries'])
+            || !self::isNonEmptyString($data['finalConclusion'])
         ) {
             return null;
         }
@@ -112,6 +117,7 @@ final readonly class AiStoredReport
             $data['generatedAt'],
             trim($data['generalConclusion']),
             $summaries,
+            trim($data['finalConclusion']),
         );
     }
 

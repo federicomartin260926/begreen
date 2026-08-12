@@ -25,6 +25,7 @@ final readonly class PlanAiReportService
         private AiReportLockInterface $lock,
         private ClockInterface $clock,
         private LoggerInterface $logger,
+        private ?AiReportSettingResolver $settingResolver = null,
     ) {
     }
 
@@ -75,6 +76,7 @@ final readonly class PlanAiReportService
                         ],
                         $result->categorySummaries,
                     ),
+                    $result->finalConclusion,
                 ));
 
                 $this->logLifecycle('regenerated', $planId, $request->locale);
@@ -130,6 +132,7 @@ final readonly class PlanAiReportService
                 ],
                 $result->categorySummaries,
             ),
+            'finalConclusion' => $result->finalConclusion,
         ], $this->categoryKeys($request));
     }
 
@@ -141,12 +144,14 @@ final readonly class PlanAiReportService
 
     private function providerName(): string
     {
-        return strtolower(trim($this->configuration->provider));
+        return $this->settingResolver?->resolve()->provider
+            ?? strtolower(trim($this->configuration->provider));
     }
 
     private function modelName(): string
     {
-        return trim($this->configuration->model());
+        return $this->settingResolver?->resolve()->model()
+            ?? trim($this->configuration->model());
     }
 
     private function logLifecycle(string $event, int $planId, string $locale): void

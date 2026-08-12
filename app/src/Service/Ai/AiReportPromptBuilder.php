@@ -10,17 +10,44 @@ final class AiReportPromptBuilder
 {
     public function __construct(
         private readonly AiReportPromptConfiguration $promptConfiguration,
+        private readonly ?AiReportSettingResolver $settingResolver = null,
     ) {
     }
 
     public function buildInstructions(): string
     {
-        return $this->promptConfiguration->instructions();
+        $editorialInstructions = $this->settingResolver?->resolve()->editorialInstructions()
+            ?? implode("\n\n", $this->promptConfiguration->editorialDefaults());
+
+        return $this->promptConfiguration->technicalInstructions()
+            ."\n\nEDITORIAL INSTRUCTIONS\n"
+            .$editorialInstructions;
     }
 
     public function promptVersion(): string
     {
         return $this->promptConfiguration->version();
+    }
+
+    public function promptIdentity(): string
+    {
+        if (!$this->settingResolver instanceof AiReportSettingResolver) {
+            return sprintf(
+                'technical=%s;editorial=%s',
+                $this->promptVersion(),
+                hash('sha256', implode("\n\n", $this->promptConfiguration->editorialDefaults())),
+            );
+        }
+
+        $settings = $this->settingResolver->resolve();
+
+        return sprintf(
+            'technical=%s;provider=%s;model=%s;editorial=%s',
+            $this->promptVersion(),
+            $settings->provider,
+            $settings->model(),
+            $settings->editorialFingerprint(),
+        );
     }
 
     public function buildContext(AiReportRequest $request): string

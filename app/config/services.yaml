@@ -4,6 +4,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    ai.empty_api_key: ''
     contact_email: '%env(CONTACT_EMAIL)%'
     app.mail_from: '%env(APP_MAIL_FROM)%'
     ai.provider: '%env(string:AI_PROVIDER)%'
@@ -13,10 +14,10 @@ parameters:
     ai.report_storage_dir: '%kernel.project_dir%/var/storage/ai'
     ai.report_prompt_file: '%kernel.project_dir%/config/ai_report_prompt.yaml'
     ai.report_lock_wait_seconds: 120
-    openai.api_key: '%env(string:AI_API_KEY)%'
+    openai.api_key: '%env(default:ai.empty_api_key:AI_API_KEY)%'
     openai.model: '%env(string:AI_MODEL)%'
     openai.base_url: '%env(string:AI_BASE_URL)%'
-    anthropic.api_key: '%env(string:ANTHROPIC_API_KEY)%'
+    anthropic.api_key: '%env(default:ai.empty_api_key:ANTHROPIC_API_KEY)%'
     anthropic.model: '%env(string:ANTHROPIC_MODEL)%'
     anthropic.base_url: '%env(string:ANTHROPIC_BASE_URL)%'
     anthropic.api_version: '%env(string:ANTHROPIC_API_VERSION)%'

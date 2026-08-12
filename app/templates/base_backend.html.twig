@@ -85,6 +85,7 @@
                 app.request.attributes.get('_route') starts with 'admin_auxiliary' or
                 app.request.attributes.get('_route') starts with 'admin_communication' or
                 app.request.attributes.get('_route') starts with 'admin_cms' or
+                app.request.attributes.get('_route') starts with 'admin_ai' or
                 app.request.attributes.get('_route') starts with 'admin_commercial_plans' or
                 app.request.attributes.get('_route') starts with 'admin_logo'
             %}
@@ -128,6 +129,11 @@
                             {% if app.request.attributes.get('_route') starts with 'admin_cms' or app.request.attributes.get('_route') starts with 'admin_logo' %}active fw-bold{% endif %}" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.cms'|trans }}">
                                 <i class="bi bi-layout-text-window-reverse flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.cms'|trans }}</span>
+                            </a>
+
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_ai' %}active fw-bold{% endif %}" href="{{ path('admin_ai_edit', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.ai'|trans }}">
+                                <i class="bi bi-stars flex-shrink-0"></i>
+                                <span class="ms-2">{{ 'backend.menu.ai'|trans }}</span>
                             </a>
 
                             <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_commercial_plans' %}active fw-bold{% endif %}" href="{{ path('admin_commercial_plans_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.commercial_plans'|trans }}">
@@ -182,6 +188,11 @@
                             <li>
                                 <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.cms'|trans }}">
                                     {{ 'backend.menu.cms'|trans }}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_ai_edit', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.ai'|trans }}">
+                                    {{ 'backend.menu.ai'|trans }}
                                 </a>
                             </li>
                             <li>

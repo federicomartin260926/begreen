@@ -32,6 +32,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
         private readonly AiReportOutputSchema $outputSchema,
         private readonly AiReportResultValidator $resultValidator,
         private readonly AiQuotaAlertNotifier $quotaAlertNotifier,
+        private readonly ?AiReportSettingResolver $settingResolver = null,
     ) {
     }
 
@@ -55,7 +56,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
                     'content-type' => 'application/json',
                 ],
                 'json' => [
-                    'model' => $this->anthropicConfiguration->model,
+                    'model' => $this->model(),
                     'max_tokens' => $this->anthropicConfiguration->maxTokens,
                     'system' => $this->promptBuilder->buildInstructions(),
                     'messages' => [[
@@ -65,7 +66,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
                     'output_config' => [
                         'format' => [
                             'type' => 'json_schema',
-                            'schema' => $this->outputSchema->get(),
+                            'schema' => $this->outputSchema->get($this->categoryKeys($request)),
                         ],
                     ],
                 ],
@@ -137,7 +138,10 @@ final class AnthropicReportProvider implements AiReportProviderInterface
         }
 
         try {
-            return $this->resultValidator->validate($data, $this->categoryKeys($request));
+            return $this->resultValidator->validate(
+                $this->outputSchema->toValidatorData($data),
+                $this->categoryKeys($request),
+            );
         } catch (AiInvalidStructureException $exception) {
             $this->logFailure('invalid_structure', $statusCode, '', $requestId);
 
@@ -149,7 +153,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
     {
         if (
             trim($this->anthropicConfiguration->apiKey) === ''
-            || trim($this->anthropicConfiguration->model) === ''
+            || $this->model() === ''
             || trim($this->anthropicConfiguration->baseUrl) === ''
             || trim($this->anthropicConfiguration->apiVersion) === ''
             || $this->anthropicConfiguration->maxTokens <= 0
@@ -207,7 +211,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
         if ($statusCode === 402) {
             $normalizedCode = $errorCode !== '' ? $errorCode : 'billing_error';
             $this->logFailure('quota', $statusCode, $normalizedCode, $requestId);
-            $this->quotaAlertNotifier->notify(self::PROVIDER, $this->anthropicConfiguration->model, $normalizedCode);
+            $this->quotaAlertNotifier->notify(self::PROVIDER, $this->model(), $normalizedCode);
 
             throw new AiQuotaExceededException('The AI provider has no available credit or quota.');
         }
@@ -261,11 +265,17 @@ final class AnthropicReportProvider implements AiReportProviderInterface
     ): void {
         $this->logger->error('AI report provider failure.', [
             'provider' => self::PROVIDER,
-            'model' => $this->anthropicConfiguration->model,
+            'model' => $this->model(),
             'error_type' => $type,
             'error_code' => $errorCode !== '' ? $errorCode : null,
             'status_code' => $statusCode,
             'request_id' => $requestId,
         ]);
+    }
+
+    private function model(): string
+    {
+        return $this->settingResolver?->resolve()->anthropicModel
+            ?? trim($this->anthropicConfiguration->model);
     }
 }

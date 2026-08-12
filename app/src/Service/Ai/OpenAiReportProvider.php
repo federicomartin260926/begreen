@@ -41,6 +41,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         private readonly AiReportOutputSchema $outputSchema,
         private readonly AiReportResultValidator $resultValidator,
         private readonly AiQuotaAlertNotifier $quotaAlertNotifier,
+        private readonly ?AiReportSettingResolver $settingResolver = null,
     ) {
     }
 
@@ -62,7 +63,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
                     'Authorization' => 'Bearer '.$this->openAiConfiguration->apiKey,
                     'Content-Type' => 'application/json',
                 ],
-                'json' => $this->buildPayload($context),
+                'json' => $this->buildPayload($context, $this->categoryKeys($request)),
                 'timeout' => $this->configuration->timeoutSeconds,
             ]);
 
@@ -130,7 +131,10 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         }
 
         try {
-            return $this->resultValidator->validate($data, $this->categoryKeys($request));
+            return $this->resultValidator->validate(
+                $this->outputSchema->toValidatorData($data),
+                $this->categoryKeys($request),
+            );
         } catch (AiInvalidStructureException $exception) {
             $this->logFailure('invalid_structure', $statusCode);
 
@@ -142,7 +146,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
     {
         if (
             trim($this->openAiConfiguration->apiKey) === ''
-            || trim($this->openAiConfiguration->model) === ''
+            || $this->model() === ''
             || trim($this->openAiConfiguration->baseUrl) === ''
             || $this->configuration->timeoutSeconds <= 0
         ) {
@@ -153,10 +157,11 @@ final class OpenAiReportProvider implements AiReportProviderInterface
     }
 
     /** @return array<string, mixed> */
-    private function buildPayload(string $context): array
+    /** @param list<string> $expectedCategoryKeys */
+    private function buildPayload(string $context, array $expectedCategoryKeys): array
     {
         return [
-            'model' => $this->openAiConfiguration->model,
+            'model' => $this->model(),
             'store' => false,
             'instructions' => $this->promptBuilder->buildInstructions(),
             'input' => [[
@@ -171,7 +176,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
                     'type' => 'json_schema',
                     'name' => 'sustainability_plan_report',
                     'strict' => true,
-                    'schema' => $this->outputSchema->get(),
+                    'schema' => $this->outputSchema->get($expectedCategoryKeys),
                 ],
             ],
         ];
@@ -270,7 +275,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         if (in_array($errorCode, self::QUOTA_ERROR_CODES, true)) {
             $normalizedCode = $errorCode !== '' ? $errorCode : 'quota_exceeded';
             $this->logFailure('quota', $statusCode, $normalizedCode);
-            $this->quotaAlertNotifier->notify(self::PROVIDER, $this->openAiConfiguration->model, $normalizedCode);
+            $this->quotaAlertNotifier->notify(self::PROVIDER, $this->model(), $normalizedCode);
 
             throw new AiQuotaExceededException('The AI provider has no available credit or quota.');
         }
@@ -308,10 +313,16 @@ final class OpenAiReportProvider implements AiReportProviderInterface
     {
         return [
             'provider' => self::PROVIDER,
-            'model' => $this->openAiConfiguration->model,
+            'model' => $this->model(),
             'error_type' => $type,
             'error_code' => $errorCode !== '' ? $errorCode : null,
             'status_code' => $statusCode,
         ];
+    }
+
+    private function model(): string
+    {
+        return $this->settingResolver?->resolve()->openAiModel
+            ?? trim($this->openAiConfiguration->model);
     }
 }

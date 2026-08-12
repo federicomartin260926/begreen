@@ -16,6 +16,7 @@ final class AiReportResultValidatorTest extends TestCase
         ]), ['category:1', 'category:2']);
 
         self::assertSame(['category:1', 'category:2'], array_column($result->categorySummaries, 'categoryKey'));
+        self::assertSame('Cierre final.', $result->finalConclusion);
     }
 
     public function testRejectsAnUnknownCategory(): void
@@ -36,6 +37,13 @@ final class AiReportResultValidatorTest extends TestCase
         ]), ['category:1', 'category:2']);
     }
 
+    public function testRejectsEmptySummariesWhenCategoriesAreExpected(): void
+    {
+        $this->expectException(AiInvalidStructureException::class);
+
+        (new AiReportResultValidator())->validate($this->data([]), ['category:1']);
+    }
+
     public function testRejectsADuplicateCategory(): void
     {
         $this->expectException(AiInvalidStructureException::class);
@@ -46,12 +54,23 @@ final class AiReportResultValidatorTest extends TestCase
         ]), ['category:1']);
     }
 
+    public function testRejectsMissingFinalConclusion(): void
+    {
+        $data = $this->data([]);
+        unset($data['finalConclusion']);
+
+        $this->expectException(AiInvalidStructureException::class);
+
+        (new AiReportResultValidator())->validate($data, []);
+    }
+
     /** @param list<array{categoryKey:string, summary:string}> $categorySummaries */
     private function data(array $categorySummaries): array
     {
         return [
             'generalConclusion' => 'Conclusión general.',
             'categorySummaries' => $categorySummaries,
+            'finalConclusion' => 'Cierre final.',
         ];
     }
 }

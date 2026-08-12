@@ -125,6 +125,7 @@ final class PlanAiReportServiceTest extends TestCase
                 '2026-08-06T10:00:00+02:00',
                 'Generado por otro proceso.',
                 [['categoryKey' => 'category:10', 'summary' => 'Resumen concurrente.']],
+                'Cierre concurrente.',
             ));
         });
 
@@ -236,6 +237,7 @@ final class CountingAiReportProvider implements AiReportProviderInterface
                 ),
                 $request->categories,
             ),
+            'Cierre inspiracional.',
         );
     }
 }

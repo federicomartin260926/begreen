@@ -3,9 +3,9 @@
 namespace App\Command;
 
 use App\Exception\Ai\AiReportException;
-use App\Service\Ai\AiReportConfiguration;
 use App\Service\Ai\AiReportMeasureDecision;
 use App\Service\Ai\AiReportProviderInterface;
+use App\Service\Ai\AiReportSettingResolver;
 use App\Service\Ai\Dto\AiReportCategory;
 use App\Service\Ai\Dto\AiReportMeasure;
 use App\Service\Ai\Dto\AiReportRequest;
@@ -22,7 +22,7 @@ final class TestAiReportCommand extends Command
 {
     public function __construct(
         private readonly AiReportProviderInterface $provider,
-        private readonly AiReportConfiguration $configuration,
+        private readonly AiReportSettingResolver $settingResolver,
     ) {
         parent::__construct();
     }
@@ -67,10 +67,11 @@ final class TestAiReportCommand extends Command
             return Command::FAILURE;
         }
 
+        $settings = $this->settingResolver->resolve();
         $output->writeln(sprintf(
             'Proveedor/modelo: %s / %s',
-            $this->configuration->provider,
-            $this->configuration->model(),
+            $settings->provider,
+            $settings->model(),
         ));
         $output->writeln('Conclusión general: '.$result->generalConclusion);
 
@@ -78,6 +79,7 @@ final class TestAiReportCommand extends Command
             $output->writeln('Categoría: '.$summary->categoryKey);
             $output->writeln('Resumen: '.$summary->summary);
         }
+        $output->writeln('Cierre final: '.$result->finalConclusion);
 
         return Command::SUCCESS;
     }

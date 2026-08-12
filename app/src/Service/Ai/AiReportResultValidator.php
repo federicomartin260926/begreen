@@ -13,12 +13,15 @@ final class AiReportResultValidator
     {
         if (
             !is_array($data)
+            || !$this->hasExactKeys($data, ['generalConclusion', 'categorySummaries', 'finalConclusion'])
             || !is_string($data['generalConclusion'] ?? null)
             || trim($data['generalConclusion']) === ''
             || !is_array($data['categorySummaries'] ?? null)
+            || !is_string($data['finalConclusion'] ?? null)
+            || trim($data['finalConclusion']) === ''
         ) {
             throw new AiInvalidStructureException(
-                'The AI provider response must contain a non-empty generalConclusion and a categorySummaries array.'
+                'The AI provider response must contain non-empty generalConclusion and finalConclusion strings and a categorySummaries array.'
             );
         }
 
@@ -39,6 +42,7 @@ final class AiReportResultValidator
         foreach ($data['categorySummaries'] as $index => $summary) {
             if (
                 !is_array($summary)
+                || !$this->hasExactKeys($summary, ['categoryKey', 'summary'])
                 || !is_string($summary['categoryKey'] ?? null)
                 || trim($summary['categoryKey']) === ''
                 || !is_string($summary['summary'] ?? null)
@@ -78,6 +82,20 @@ final class AiReportResultValidator
             ));
         }
 
-        return new AiReportResult(trim($data['generalConclusion']), $summaries);
+        return new AiReportResult(
+            trim($data['generalConclusion']),
+            $summaries,
+            trim($data['finalConclusion']),
+        );
+    }
+
+    /** @param list<string> $expectedKeys */
+    private function hasExactKeys(array $data, array $expectedKeys): bool
+    {
+        $keys = array_keys($data);
+        sort($keys);
+        sort($expectedKeys);
+
+        return $keys === $expectedKeys;
     }
 }

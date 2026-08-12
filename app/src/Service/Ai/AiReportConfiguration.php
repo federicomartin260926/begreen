@@ -22,4 +22,14 @@ final readonly class AiReportConfiguration
             default => '',
         };
     }
+
+    public function openAiModel(): string
+    {
+        return trim($this->openAi->model);
+    }
+
+    public function anthropicModel(): string
+    {
+        return trim($this->anthropic->model);
+    }
 }

@@ -24,7 +24,7 @@ final readonly class AiReportContextHasher
         $canonical = sprintf(
             "contract=%d\nprompt=%s\ncontext=%s",
             AiStoredReport::VERSION,
-            $this->promptBuilder->promptVersion(),
+            $this->promptBuilder->promptIdentity(),
             $context,
         );
 

@@ -200,12 +200,37 @@ backend:
     factors: "Factores emisión"
     aux_tables: "Tablas auxiliares"
     cms: "CMS"
+    ai: "IA"
     communication: "Comunicaciones"
     commercial_plans: "Planes comerciales"
     projects: "Proyectos"
     sustainability_plan: "Plan sostenibilidad"
     emissions: "Emisiones CO₂"
     frontend: "Frontend"
+  ai:
+    title: "Configuración de IA"
+    breadcrumb: "IA"
+    heading: "Generación de informes con IA"
+    description: "Configura el proveedor, los modelos y las reglas editoriales globales. Las credenciales y los límites técnicos permanecen en la configuración del entorno."
+    provider_section: "Proveedor y modelos"
+    editorial_section: "Reglas editoriales"
+    technical_help: "Las API keys, URLs, timeouts, límites y el contrato JSON no se editan desde esta pantalla."
+    providers:
+      openai: "OpenAI"
+      openai_unavailable: "OpenAI — no disponible"
+      anthropic: "Anthropic"
+      anthropic_unavailable: "Anthropic — no disponible"
+    form:
+      provider: "Proveedor activo"
+      openai_model: "Modelo de OpenAI"
+      anthropic_model: "Modelo de Anthropic"
+      general: "Reglas generales"
+      executive_summary: "Reglas del resumen ejecutivo"
+      category: "Reglas de narrativa por categorías"
+      avoid: "Términos y enfoques a evitar"
+      final_conclusion: "Reglas del cierre final"
+    flash:
+      saved: "La configuración de IA se ha guardado."
   commercial_plans:
     list:
       title: "Planes comerciales"

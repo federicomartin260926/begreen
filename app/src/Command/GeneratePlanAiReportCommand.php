@@ -6,7 +6,7 @@ use App\Exception\Ai\AiReportException;
 use App\Entity\Plan;
 use App\Repository\PlanRepository;
 use App\Repository\ProjectRepository;
-use App\Service\Ai\AiReportConfiguration;
+use App\Service\Ai\AiReportSettingResolver;
 use App\Service\Ai\AiReportStorage;
 use App\Service\Ai\PlanAiReportService;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -26,7 +26,7 @@ final class GeneratePlanAiReportCommand extends Command
         private readonly ProjectRepository $projectRepository,
         private readonly PlanRepository $planRepository,
         private readonly PlanAiReportService $planAiReportService,
-        private readonly AiReportConfiguration $configuration,
+        private readonly AiReportSettingResolver $settingResolver,
         private readonly AiReportStorage $aiReportStorage,
     ) {
         parent::__construct();
@@ -93,13 +93,15 @@ final class GeneratePlanAiReportCommand extends Command
         $output->writeln(sprintf('Proyecto ID: %d', $projectId));
         $output->writeln(sprintf('Plan ID: %d', $planId));
         $output->writeln(sprintf('Locale: %s', $locale));
-        $output->writeln(sprintf('Proveedor: %s', trim($this->configuration->provider)));
-        $output->writeln(sprintf('Modelo: %s', $this->configuration->model()));
+        $settings = $this->settingResolver->resolve();
+        $output->writeln(sprintf('Proveedor: %s', $settings->provider));
+        $output->writeln(sprintf('Modelo: %s', $settings->model()));
         $output->writeln('Conclusión general: '.$result->generalConclusion);
 
         foreach ($result->categorySummaries as $summary) {
             $output->writeln(sprintf('Categoría %s: %s', $summary->categoryKey, $summary->summary));
         }
+        $output->writeln('Cierre final: '.$result->finalConclusion);
 
         $output->writeln(sprintf('Ruta JSON: %s', $this->aiReportStorage->pathFor($planId, $locale)));
 

@@ -40,3 +40,5 @@ backend:
       overlap: "Phases must be in chronological order and must not overlap."
 backend.project_company.logo.max_size: "The logo cannot exceed 2 MB."
 backend.project_company.logo.invalid_format: "The logo must be a valid PNG, JPG or WebP file."
+backend.ai.validation.active_model_required: "Enter the model for the active provider."
+backend.ai.validation.provider_unavailable: "The selected provider is unavailable because no API key is configured in the environment."

@@ -198,12 +198,37 @@ backend:
     factors: "Emission factors"
     aux_tables: "Auxiliary tables"
     cms: "CMS"
+    ai: "AI"
     communication: "Communications"
     commercial_plans: "Commercial plans"
     projects: "Projects"
     sustainability_plan: "Sustainability plan"
     emissions: "CO₂ emissions"
     frontend: "Frontend"
+  ai:
+    title: "AI configuration"
+    breadcrumb: "AI"
+    heading: "AI report generation"
+    description: "Configure the global provider, models and editorial rules. Credentials and technical limits remain in environment configuration."
+    provider_section: "Provider and models"
+    editorial_section: "Editorial rules"
+    technical_help: "API keys, URLs, timeouts, limits and the JSON contract cannot be edited here."
+    providers:
+      openai: "OpenAI"
+      openai_unavailable: "OpenAI — unavailable"
+      anthropic: "Anthropic"
+      anthropic_unavailable: "Anthropic — unavailable"
+    form:
+      provider: "Active provider"
+      openai_model: "OpenAI model"
+      anthropic_model: "Anthropic model"
+      general: "General rules"
+      executive_summary: "Executive summary rules"
+      category: "Category narrative rules"
+      avoid: "Terms and approaches to avoid"
+      final_conclusion: "Final closing rules"
+    flash:
+      saved: "The AI configuration has been saved."
   commercial_plans:
     list:
       title: "Commercial plans"

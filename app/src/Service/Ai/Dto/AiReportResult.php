@@ -8,6 +8,7 @@ final readonly class AiReportResult
     public function __construct(
         public string $generalConclusion,
         public array $categorySummaries,
+        public string $finalConclusion,
     ) {
     }
 }
