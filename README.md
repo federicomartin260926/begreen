@@ -93,4 +93,5 @@ La documentación funcional y técnica específica de Symfony está en:
 - [app/README.md](app/README.md)
 - [docs/measure-template-import.md](docs/measure-template-import.md)
 - [docs/emails.md](docs/emails.md)
+- [docs/ai-reporting.md](docs/ai-reporting.md)
 - La depuración con Xdebug para VS Code está documentada en [app/README.md](app/README.md#xdebug)
