@@ -13,21 +13,21 @@
             font-family: "Poppins";
             font-style: normal;
             font-weight: 400;
-            src: url("{{ absolute_url(asset('fonts/poppins/Poppins-Regular.ttf')) }}") format("truetype");
+            src: url("{{ pdfVisualAssets.poppinsRegular }}") format("truetype");
         }
 
         @font-face {
             font-family: "Poppins";
             font-style: normal;
             font-weight: 600;
-            src: url("{{ absolute_url(asset('fonts/poppins/Poppins-SemiBold.ttf')) }}") format("truetype");
+            src: url("{{ pdfVisualAssets.poppinsSemiBold }}") format("truetype");
         }
 
         @font-face {
             font-family: "Poppins";
             font-style: normal;
             font-weight: 700;
-            src: url("{{ absolute_url(asset('fonts/poppins/Poppins-Bold.ttf')) }}") format("truetype");
+            src: url("{{ pdfVisualAssets.poppinsBold }}") format("truetype");
         }
 
         * {
@@ -38,7 +38,7 @@
         body {
             margin: 0;
             padding: 0;
-            font-family: "Poppins", Helvetica, Arial, sans-serif;
+            font-family: "Poppins", sans-serif;
             color: #143d32;
             background: #f3faf5;
         }
@@ -441,11 +441,11 @@
         .pdf-page--cover > .pdf-cover-approved__summary {
             position: absolute;
             z-index: 3;
-            top: 105mm;
+            top: 100mm;
             right: 15mm;
             bottom: auto;
             left: 15mm;
-            padding: 4mm 5mm;
+            padding: 3mm 4mm;
             border: 1px solid #d3e8da;
             border-radius: 4mm;
             background: #ffffff;
@@ -453,14 +453,14 @@
         }
 
         .pdf-page--cover > .pdf-cover-approved__summary .pdf-cover-approved__summary-title {
-            margin: 0 0 2.5mm;
+            margin: 0 0 1.5mm;
             color: #1f3038;
             font-size: 14px;
         }
 
         .pdf-page--cover > .pdf-cover-approved__summary .pdf-cover-approved__summary-table {
             width: 100%;
-            margin-bottom: 3mm;
+            margin-bottom: 1.5mm;
             border-collapse: collapse;
             color: #37564d;
             font-size: 8.8px;
@@ -475,8 +475,71 @@
 
         .pdf-page--cover > .pdf-cover-approved__summary .pdf-cover-approved__summary-line {
             color: #37564d;
-            font-size: 8.8px;
-            line-height: 1.4;
+            font-size: 9.5px;
+            line-height: 1.2;
+        }
+
+        .pdf-cover-project-data {
+            margin-top: 1.5mm;
+            padding-top: 1.5mm;
+            border-top: 1px solid #e3f0e7;
+        }
+
+        .pdf-cover-project-data__row {
+            width: 100%;
+            margin: 0 0 .8mm;
+            border-collapse: collapse;
+        }
+
+        .pdf-cover-project-data__row td {
+            width: 33.333%;
+            padding: 0 4mm 0 0;
+            border: 0;
+            color: #58736a;
+            font-size: 9.5px;
+            line-height: 1.2;
+            vertical-align: top;
+        }
+
+        .pdf-cover-project-data__row strong {
+            display: block;
+            margin-bottom: .2mm;
+            color: #2e5549;
+            font-size: 9px;
+        }
+
+        .pdf-cover-project-dates {
+            margin-top: 1.2mm;
+            padding-top: 1.2mm;
+            border-top: 1px solid #e3f0e7;
+        }
+
+        .pdf-cover-project-dates__title {
+            display: block;
+            margin-bottom: .8mm;
+            color: #2e5549;
+            font-size: 10px;
+        }
+
+        .pdf-cover-project-dates__table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .pdf-cover-project-dates__table td {
+            padding: 0 5mm 0 0;
+            border: 0;
+            color: #58736a;
+            font-size: 9.5px;
+            line-height: 1.2;
+            vertical-align: top;
+        }
+
+        .pdf-cover-project-dates__table strong {
+            display: block;
+            margin-bottom: .2mm;
+            color: #2e5549;
+            font-size: 9px;
         }
 
         .pdf-page--cover .pdf-watermark {
@@ -507,7 +570,7 @@
         .pdf-cover-commitment {
             position: absolute;
             z-index: 3;
-            top: 142mm;
+            top: 176mm;
             right: 15mm;
             bottom: auto;
             left: 15mm;
@@ -632,7 +695,7 @@
         }
 
         .pdf-ai-page .pdf-brand-header__meta-cell {
-            font-size: 7px;
+            font-size: 9px;
         }
 
         .pdf-ai-page__content {
@@ -654,8 +717,8 @@
             border-left: 2mm solid #49ae78;
             background: #ffffff;
             color: #2e5549;
-            font-size: 10.5px;
-            line-height: 1.4;
+            font-size: 12px;
+            line-height: 1.5;
             white-space: pre-line;
         }
 
@@ -670,6 +733,7 @@
             width: 100%;
             margin: 0 0 3mm;
             border-collapse: collapse;
+            page-break-inside: avoid;
         }
 
         .pdf-ai-page__category-cell {
@@ -680,77 +744,102 @@
             vertical-align: top;
         }
 
+        .pdf-ai-page__category-heading {
+            width: 100%;
+            margin: 0 0 3mm;
+        }
+
+        .pdf-ai-page__category-icon {
+            display: inline-block;
+            width: 9mm;
+            height: 9mm;
+            margin-right: 2.5mm;
+            border-radius: 50%;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .pdf-ai-page__category-icon img {
+            width: 5.5mm;
+            height: 5.5mm;
+            margin-top: 1.7mm;
+        }
+
         .pdf-ai-page__category-title {
-            margin: 0 0 2mm;
-            color: #075c48;
-            font-size: 13px;
+            display: inline-block;
+            margin: 0;
+            font-size: 15px;
             line-height: 1.25;
+            vertical-align: middle;
+        }
+
+        .pdf-ai-page__category-continuation {
+            color: #71867f;
+            font-size: 10px;
+            font-weight: 400;
         }
 
         .pdf-ai-page__category-summary {
-            margin: 0 0 2.2mm;
+            margin: 0 0 4mm;
             color: #2e5549;
-            font-size: 9.5px;
-            line-height: 1.4;
+            font-size: 11.5px;
+            line-height: 1.5;
             white-space: pre-line;
         }
 
-        .pdf-ai-page__commitments {
-            margin-top: 1.5mm;
-            color: #2e5549;
-            font-size: 9px;
+        .pdf-ai-page__measures {
+            margin-top: 2mm;
+        }
+
+        .pdf-ai-page__measure-block {
+            margin: 0 0 4mm;
+            page-break-inside: avoid;
+        }
+
+        .pdf-ai-page__measure-pill {
+            display: inline-block;
+            max-width: 100%;
+            padding: 2mm 3mm;
+            border: 1px solid;
+            border-radius: 4mm;
+            font-size: 10.5px;
+            font-weight: 600;
             line-height: 1.35;
         }
 
-        .pdf-ai-page__commitment {
-            margin: 0 0 0.8mm;
+        .pdf-ai-page__measure-pill--critical {
+            border-width: 1.5px;
         }
 
-        .pdf-ai-page__commitment-check {
+        .pdf-ai-page__measure-critical {
             display: inline-block;
-            margin-right: 1.2mm;
-            color: #087154;
-            font-family: "DejaVu Sans", sans-serif;
-            font-weight: 700;
-        }
-
-        .pdf-ai-page__commitment-critical {
-            display: inline-block;
-            margin-left: 1.5mm;
-            padding: 0.3mm 1.2mm;
-            border: 1px solid #b9d8c5;
-            border-radius: 2mm;
-            color: #075c48;
-            font-size: 7px;
+            margin-left: 2mm;
+            padding: .5mm 1.5mm;
+            border: 1px solid;
+            border-radius: 3mm;
+            background: #ffffff;
+            font-size: 8.5px;
             font-weight: 700;
             white-space: nowrap;
         }
 
-        .pdf-ai-page__future {
-            margin-top: 2mm;
-            padding-top: 1.5mm;
-            border-top: 1px solid #e3f0e7;
-            color: #6b7f78;
-            font-size: 8px;
-            line-height: 1.3;
+        .pdf-ai-page__measure-observation {
+            margin: 1.5mm 2mm 0;
+            color: #49665d;
+            font-size: 10.5px;
+            line-height: 1.45;
         }
 
-        .pdf-ai-page__future-title {
-            margin-bottom: 0.8mm;
-            color: #58736a;
-            font-size: 8px;
+        .pdf-ai-page__measure-observation strong {
+            color: #2e5549;
             font-weight: 700;
-        }
-
-        .pdf-ai-page__future-measure {
-            margin: 0 0 0.5mm;
         }
 
         .pdf-ai-page__metrics {
             width: 100%;
             border-collapse: collapse;
             color: #58736a;
-            font-size: 8.5px;
+            font-size: 10px;
         }
 
         .pdf-ai-page__metrics td {
@@ -796,8 +885,8 @@
             border-radius: 3mm;
             background: #ffffff;
             color: #2e5549;
-            font-size: 11px;
-            line-height: 1.55;
+            font-size: 12px;
+            line-height: 1.6;
             white-space: pre-line;
         }
 
@@ -811,7 +900,7 @@
 
         .pdf-final-page__commitment-label {
             color: #58736a;
-            font-size: 9px;
+            font-size: 10.5px;
         }
 
         .pdf-final-page__commitment-level {
@@ -824,7 +913,7 @@
         .pdf-final-page__commitment-score {
             margin-top: 1mm;
             color: #58736a;
-            font-size: 9px;
+            font-size: 10.5px;
         }
 
         .pdf-final-page__commitment-chart {
@@ -841,7 +930,7 @@
         .pdf-department-allocation__intro {
             margin: 0 0 6mm;
             color: #58736a;
-            font-size: 10px;
+            font-size: 11.5px;
             line-height: 1.45;
         }
 
@@ -861,7 +950,7 @@
             width: 34%;
             padding-right: 4mm !important;
             color: #2e5549;
-            font-size: 9px;
+            font-size: 10.5px;
             font-weight: 600;
         }
 
@@ -871,8 +960,17 @@
 
         .pdf-department-allocation__track {
             width: 100%;
-            height: 2.5mm;
+            height: 3.2mm;
             border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .pdf-department-allocation__track td {
+            height: 3.2mm;
+            padding: 0;
+            border: 0;
+            font-size: 0;
+            line-height: 0;
         }
 
         .pdf-department-allocation__fill {
@@ -887,7 +985,7 @@
             width: 12%;
             padding-left: 3mm !important;
             color: #58736a;
-            font-size: 8px;
+            font-size: 9.5px;
             text-align: right;
             white-space: nowrap;
         }
@@ -895,7 +993,7 @@
         .pdf-department-allocation__note {
             margin: 6mm 0 0;
             color: #71867f;
-            font-size: 8px;
+            font-size: 9.5px;
             line-height: 1.4;
         }
 
@@ -924,7 +1022,7 @@
         }
 
         .pdf-analytics-page .pdf-brand-header__meta-cell {
-            font-size: 7px;
+            font-size: 9px;
         }
 
         .pdf-analytics-page__content {
@@ -946,8 +1044,8 @@
             border-left: 2mm solid #49ae78;
             background: #ffffff;
             color: #2e5549;
-            font-size: 10.5px;
-            line-height: 1.4;
+            font-size: 12px;
+            line-height: 1.5;
             white-space: pre-line;
         }
 
@@ -966,7 +1064,7 @@
             border-collapse: collapse;
             background: #ffffff;
             color: #37564d;
-            font-size: 9px;
+            font-size: 10.5px;
         }
 
         .pdf-department-summary th,
@@ -1029,7 +1127,7 @@
         .pdf-quick-read__label {
             width: 28%;
             color: #1f3038;
-            font-size: 9px;
+            font-size: 10.5px;
             font-weight: 700;
         }
 
@@ -1041,21 +1139,23 @@
         .pdf-quick-read__value {
             width: 15%;
             color: #58736a;
-            font-size: 8px;
+            font-size: 9.5px;
             text-align: right;
         }
 
         .pdf-quick-read__track {
             width: 100%;
-            height: 2.4mm;
+            height: 3.2mm;
             border-collapse: collapse;
             table-layout: fixed;
         }
 
         .pdf-quick-read__track td {
-            height: 2.4mm;
+            height: 3.2mm;
             padding: 0;
             border: 0;
+            font-size: 0;
+            line-height: 0;
         }
 
         .pdf-quick-read__fill {

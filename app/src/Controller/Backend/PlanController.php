@@ -2464,12 +2464,14 @@ class PlanController extends AbstractController
             }
 
             if (!isset($categories[$key])) {
+                $categoryName = (string) $category->getName();
+
                 $categories[$key] = [
                     'key' => $key,
-                    'name' => (string) $category->getName(),
+                    'name' => $categoryName,
                     'summary' => $summariesByKey[$key],
+                    'visual' => $this->pdfCategoryVisual($categoryName),
                     'committedMeasures' => [],
-                    'futureMeasures' => [],
                     'metrics' => [
                         'total' => 0,
                         'applicable' => 0,
@@ -2489,14 +2491,16 @@ class PlanController extends AbstractController
             }
             if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true) {
                 ++$categories[$key]['metrics']['toImplement'];
+
+                $futureText = trim((string) $measure->getQuestionText());
+                $observations = trim((string) ($planMeasure->getObservations() ?? ''));
+
                 $categories[$key]['committedMeasures'][] = [
-                    'name' => (string) $measure->getName(),
+                    'name' => $futureText !== ''
+                        ? $futureText
+                        : (string) $measure->getName(),
+                    'observations' => $observations,
                     'critical' => $planMeasure->isCritical() === true,
-                ];
-            }
-            if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === false) {
-                $categories[$key]['futureMeasures'][] = [
-                    'name' => (string) $measure->getName(),
                 ];
             }
             if ($planMeasure->isCritical() === true) {
@@ -2507,12 +2511,119 @@ class PlanController extends AbstractController
         return array_values($categories);
     }
 
+    /**
+     * @return array{color:string, background:string, icon:string}
+     */
+    private function pdfCategoryVisual(string $categoryName): array
+    {
+        $normalized = mb_strtolower(trim($categoryName));
+
+        $visuals = [
+            'oficina' => ['#356859', '#edf5f1', 'office'],
+            'office' => ['#356859', '#edf5f1', 'office'],
+
+            'energía' => ['#d39a19', '#fff7df', 'energy'],
+            'energia' => ['#d39a19', '#fff7df', 'energy'],
+            'energy' => ['#d39a19', '#fff7df', 'energy'],
+
+            'alojamientos' => ['#7656a5', '#f3eef9', 'accommodation'],
+            'accommodation' => ['#7656a5', '#f3eef9', 'accommodation'],
+            'accommodations' => ['#7656a5', '#f3eef9', 'accommodation'],
+
+            'transporte' => ['#2878a8', '#eaf4fa', 'transport'],
+            'transport' => ['#2878a8', '#eaf4fa', 'transport'],
+
+            'consumo eficiente de recursos naturales' => ['#4f8b4c', '#edf6e9', 'resources'],
+            'consumo eficiente de recursos' => ['#4f8b4c', '#edf6e9', 'resources'],
+            'efficient use of natural resources' => ['#4f8b4c', '#edf6e9', 'resources'],
+
+            'materiales' => ['#a26f3d', '#f8f0e8', 'materials'],
+            'materials' => ['#a26f3d', '#f8f0e8', 'materials'],
+
+            'residuos' => ['#27877d', '#e8f5f2', 'waste'],
+            'waste' => ['#27877d', '#e8f5f2', 'waste'],
+
+            'catering' => ['#c86c32', '#fbefe7', 'catering'],
+
+            'biodiversidad' => ['#4f8a3d', '#edf6e9', 'biodiversity'],
+            'biodiversity' => ['#4f8a3d', '#edf6e9', 'biodiversity'],
+
+            'comunicación' => ['#367ca1', '#ebf4f8', 'communication'],
+            'comunicacion' => ['#367ca1', '#ebf4f8', 'communication'],
+            'communication' => ['#367ca1', '#ebf4f8', 'communication'],
+
+            'contenido' => ['#5969a7', '#eef0f8', 'content'],
+            'contenidos' => ['#5969a7', '#eef0f8', 'content'],
+            'content' => ['#5969a7', '#eef0f8', 'content'],
+
+            'social' => ['#b75f72', '#faedf0', 'social'],
+
+            'viajes' => ['#408ca8', '#eaf5f8', 'travel'],
+            'travel' => ['#408ca8', '#eaf5f8', 'travel'],
+
+            'agua' => ['#3688b8', '#e9f5fb', 'water'],
+            'water' => ['#3688b8', '#e9f5fb', 'water'],
+        ];
+
+        [$color, $background, $icon] = $visuals[$normalized]
+            ?? ['#087154', '#edf6f1', 'default'];
+
+        return [
+            'color' => $color,
+            'background' => $background,
+            'icon' => $this->pdfCategoryIconDataUri($icon, $color),
+        ];
+    }
+
+    private function pdfCategoryIconDataUri(string $icon, string $color): string
+    {
+        $shapes = [
+            'office' => '<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M15 7h2M9 11h2M15 11h2M9 15h2M15 15h2M11 21v-3h2v3"/>',
+            'energy' => '<path d="M13 2 5 13h6l-1 9 8-12h-6z"/>',
+            'accommodation' => '<path d="M3 18V8M3 15h18v3M6 11h5a3 3 0 0 1 3 3v1M6 11V8h5a3 3 0 0 1 3 3"/>',
+            'transport' => '<path d="M5 16h14l-1.5-6h-11z"/><circle cx="8" cy="18" r="2"/><circle cx="16" cy="18" r="2"/><path d="M8 10l2-3h4l2 3"/>',
+            'resources' => '<path d="M19 4C11 4 6 8 6 14c0 3 2 5 5 5 6 0 8-7 8-15Z"/><path d="M5 20c3-5 7-8 12-11"/>',
+            'materials' => '<path d="m4 7 8-4 8 4-8 4zM4 7v10l8 4 8-4V7M12 11v10"/>',
+            'waste' => '<path d="M7 7h10l-1 14H8zM5 7h14M9 7V4h6v3M10 10v7M14 10v7"/>',
+            'catering' => '<path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 5 4 8h-4"/>',
+            'biodiversity' => '<path d="M19 4C11 4 6 8 6 14c0 3 2 5 5 5 6 0 8-7 8-15Z"/><path d="M5 20c3-5 7-8 12-11"/>',
+            'communication' => '<path d="M4 10v4h4l8 5V5l-8 5zM16 9c2 1 3 2 3 3s-1 2-3 3"/>',
+            'content' => '<path d="M6 3h9l4 4v14H6zM15 3v5h4M9 12h7M9 16h7"/>',
+            'social' => '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2"/><path d="M3 20c0-4 2-7 6-7s6 3 6 7M14 14c4 0 7 2 7 6"/>',
+            'travel' => '<path d="m3 13 8-3 4-7 2 1-2 7 5 3-1 2-6-1-3 5-2-1 1-5-5 1z"/>',
+            'water' => '<path d="M12 2C9 7 6 10 6 14a6 6 0 0 0 12 0c0-4-3-7-6-12Z"/>',
+            'default' => '<circle cx="12" cy="12" r="8"/><path d="M8 12h8M12 8v8"/>',
+        ];
+
+        $shape = $shapes[$icon] ?? $shapes['default'];
+
+        $svg = sprintf(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%s" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">%s</svg>',
+            htmlspecialchars($color, ENT_QUOTES),
+            $shape
+        );
+
+        return 'data:image/svg+xml;base64,'.base64_encode($svg);
+    }
+
     private function renderPdfHtml(array $context): string
     {
         $context['pdfVisualAssets'] = [
             'logo' => $this->pdfAssetDataUri(
                 'assets/images/logo-white.svg',
                 'image/svg+xml'
+            ),
+            'poppinsRegular' => $this->pdfAssetDataUri(
+                'public/fonts/poppins/Poppins-Regular.ttf',
+                'font/ttf'
+            ),
+            'poppinsSemiBold' => $this->pdfAssetDataUri(
+                'public/fonts/poppins/Poppins-SemiBold.ttf',
+                'font/ttf'
+            ),
+            'poppinsBold' => $this->pdfAssetDataUri(
+                'public/fonts/poppins/Poppins-Bold.ttf',
+                'font/ttf'
             ),
             'commitmentChart' => $this->pdfCommitmentChartDataUri(
                 $context['commitmentSummary']['planned'] ?? []
@@ -2735,8 +2846,15 @@ class PlanController extends AbstractController
 
     private function pdfBytesFromHtml(string $html, string $orientation = 'landscape'): string
     {
+        $fontCacheDir = $this->getParameter('kernel.project_dir') . '/var/cache/dompdf-fonts';
+        if (!is_dir($fontCacheDir)) {
+            mkdir($fontCacheDir, 0775, true);
+        }
+
         $options = new Options();
-        $options->set('defaultFont', 'Arial');
+        $options->set('defaultFont', 'Poppins');
+        $options->set('fontDir', $fontCacheDir);
+        $options->set('fontCache', $fontCacheDir);
         $options->set('isRemoteEnabled', true);
 
         $dompdf = new Dompdf($options);
@@ -2747,7 +2865,7 @@ class PlanController extends AbstractController
         if ($orientation === 'portrait') {
             $canvas = $dompdf->getCanvas();
             $font = $dompdf->getFontMetrics()->getFont(
-                'Helvetica',
+                'Poppins',
                 'normal'
             );
 

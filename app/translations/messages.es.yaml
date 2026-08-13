@@ -1742,6 +1742,8 @@ backend:
         category_summaries: "Resumen por categorías"
         critical: "Crítica"
         future: "Próxima edición"
+        observations: "Observaciones"
+        continuation: "continuación"
         metrics:
           total: "Total"
           applicable: "Aplicables"

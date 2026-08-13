@@ -1734,6 +1734,8 @@ backend:
         category_summaries: "Category summaries"
         critical: "Critical"
         future: "Next edition"
+        observations: "Observations"
+        continuation: "continued"
         metrics:
           total: "Total"
           applicable: "Applicable"

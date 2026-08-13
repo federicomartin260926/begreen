@@ -169,6 +169,183 @@
             <strong>{{ 'backend.plan.pdf_visual.cover.summary.catalog'|trans }}:</strong>
             {{ coverIndicators.total }}
         </div>
+
+        {% set projectDetails = [] %}
+
+        {% if project.country %}
+            {% set projectDetails = projectDetails|merge([{
+                label: 'backend.projects.form.country'|trans,
+                value: project.country
+            }]) %}
+        {% endif %}
+
+        {% if project.mainLocation %}
+            {% set projectDetails = projectDetails|merge([{
+                label: 'backend.projects.form.main_location'|trans,
+                value: project.mainLocation
+            }]) %}
+        {% endif %}
+
+        {% if project.ecoManagerStatus %}
+            {% set projectDetails = projectDetails|merge([{
+                label: 'backend.projects.form.eco_manager_status.label'|trans,
+                value: ('backend.projects.form.eco_manager_status.options.' ~ project.ecoManagerStatus)|trans
+            }]) %}
+        {% endif %}
+
+        {% if project.presupuesto %}
+            {% set projectDetails = projectDetails|merge([{
+                label: 'backend.projects.form.budget_eur'|trans,
+                value: project.presupuesto ~ ' €'
+            }]) %}
+        {% endif %}
+
+        {% if project.type == 'rodaje' %}
+            {% if project.filmingType %}
+                {% set projectDetails = projectDetails|merge([{
+                    label: 'backend.projects.form.filming_type.label'|trans,
+                    value: ('backend.projects.form.filming_type.options.' ~ project.filmingType)|trans
+                }]) %}
+            {% endif %}
+
+            {% if project.filmingGenre %}
+                {% set projectDetails = projectDetails|merge([{
+                    label: 'backend.projects.form.filming_genre.label'|trans,
+                    value: ('backend.projects.form.filming_genre.options.' ~ project.filmingGenre)|trans
+                }]) %}
+            {% endif %}
+
+            {% if project.episodios %}
+                {% set projectDetails = projectDetails|merge([{
+                    label: 'backend.projects.form.common.episodios'|trans,
+                    value: project.episodios
+                }]) %}
+            {% endif %}
+
+            {% if project.duracionEpisodio %}
+                {% set projectDetails = projectDetails|merge([{
+                    label: 'backend.projects.form.common.duracion_episodio'|trans,
+                    value: project.duracionEpisodio
+                }]) %}
+            {% endif %}
+        {% elseif project.type == 'evento' %}
+            {% if project.eventTypePrimary %}
+                {% set projectDetails = projectDetails|merge([{
+                    label: 'backend.projects.form.event_type_primary.label'|trans,
+                    value: ('backend.projects.form.event_type_primary.options.' ~ project.eventTypePrimary)|trans
+                }]) %}
+            {% endif %}
+
+            {% if project.eventModality %}
+                {% set projectDetails = projectDetails|merge([{
+                    label: 'backend.projects.form.event_modality.label'|trans,
+                    value: ('backend.projects.form.event_modality.options.' ~ project.eventModality)|trans
+                }]) %}
+            {% endif %}
+
+            {% if project.eventAttendeesCount %}
+                {% set projectDetails = projectDetails|merge([{
+                    label: 'backend.projects.form.event_attendees_count.label'|trans,
+                    value: project.eventAttendeesCount
+                }]) %}
+            {% endif %}
+
+            {% if project.eventOnlineConnections %}
+                {% set projectDetails = projectDetails|merge([{
+                    label: 'backend.projects.form.event_online_connections.label'|trans,
+                    value: project.eventOnlineConnections
+                }]) %}
+            {% endif %}
+        {% endif %}
+
+        {% if project.distributionMedia is not empty %}
+            {% set distributionLabels = [] %}
+            {% for medium in project.distributionMedia %}
+                {% set distributionLabels = distributionLabels|merge([
+                    ('backend.projects.form.distribution_media.options.' ~ medium)|trans
+                ]) %}
+            {% endfor %}
+
+            {% set projectDetails = projectDetails|merge([{
+                label: 'backend.projects.form.distribution_media.label'|trans,
+                value: distributionLabels|join(', ')
+            }]) %}
+        {% endif %}
+
+        {% if projectDetails is not empty %}
+            <div class="pdf-cover-project-data">
+                {% for row in projectDetails|batch(3, null) %}
+                    <table class="pdf-cover-project-data__row" role="presentation">
+                        <tr>
+                            {% for item in row %}
+                                <td>
+                                    {% if item %}
+                                        <strong>{{ item.label }}:</strong>
+                                        <span>{{ item.value }}</span>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </table>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if project.phaseDates is not empty %}
+            <div class="pdf-cover-project-dates">
+                <strong class="pdf-cover-project-dates__title">
+                    {{ 'backend.projects.form.fs_phases'|trans }}
+                </strong>
+
+                <table class="pdf-cover-project-dates__table" role="presentation">
+                    <tr>
+                        {% for phaseDate in project.phaseDates %}
+                            {% set phaseKey = phaseDate.phase|default('') %}
+
+                            <td>
+                                <strong>
+                                    {% if phaseKey == 'preproduccion' %}
+                                        {{ 'backend.projects.phases.pre_filming'|trans }}
+                                    {% elseif phaseKey == 'postproduccion' %}
+                                        {{ 'backend.projects.phases.post_filming'|trans }}
+                                    {% elseif phaseKey == 'actividad' %}
+                                        {{ 'backend.projects.phases.activity'|trans }}
+                                    {% elseif phaseKey == 'setup' %}
+                                        {{ 'backend.project.phase.setup'|trans }}
+                                    {% elseif phaseKey == 'event' %}
+                                        {{ 'backend.project.phase.event'|trans }}
+                                    {% elseif phaseKey == 'teardown' %}
+                                        {{ 'backend.project.phase.teardown'|trans }}
+                                    {% elseif phaseKey == 'preproduction' %}
+                                        {{ 'backend.project.phase.preproduction'|trans }}
+                                    {% elseif phaseKey == 'shoot' %}
+                                        {{ 'backend.project.phase.shoot'|trans }}
+                                    {% elseif phaseKey == 'postproduction' %}
+                                        {{ 'backend.project.phase.postproduction'|trans }}
+                                    {% else %}
+                                        {{ phaseKey }}
+                                    {% endif %}
+                                </strong>
+
+                                <span>
+                                    {% if phaseDate.startDate %}
+                                        {{ phaseDate.startDate|date('d/m/Y') }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                    –
+                                    {% if phaseDate.endDate %}
+                                        {{ phaseDate.endDate|date('d/m/Y') }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </td>
+                        {% endfor %}
+                    </tr>
+                </table>
+            </div>
+        {% endif %}
     </section>
 
 
