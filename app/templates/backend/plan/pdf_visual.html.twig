@@ -737,7 +737,7 @@
         }
 
         .pdf-ai-page__category-cell {
-            padding: 4mm 5mm;
+            padding: 3.2mm 4mm;
             border: 1px solid #d3e8da;
             border-radius: 3mm;
             background: #ffffff;
@@ -746,7 +746,7 @@
 
         .pdf-ai-page__category-heading {
             width: 100%;
-            margin: 0 0 3mm;
+            margin: 0 0 2mm;
         }
 
         .pdf-ai-page__category-icon {
@@ -780,7 +780,7 @@
         }
 
         .pdf-ai-page__category-summary {
-            margin: 0 0 4mm;
+            margin: 0 0 3mm;
             color: #2e5549;
             font-size: 11.5px;
             line-height: 1.5;
@@ -788,18 +788,36 @@
         }
 
         .pdf-ai-page__measures {
-            margin-top: 2mm;
+            margin-top: 1mm;
         }
 
         .pdf-ai-page__measure-block {
-            margin: 0 0 4mm;
+            margin: 0 0 2.5mm;
             page-break-inside: avoid;
+        }
+
+        .pdf-ai-page__measure-check {
+            position: relative;
+            top: .35mm;
+            display: inline-block;
+            margin-right: 1.5mm;
+            color: inherit;
+            font-family: "DejaVu Sans", sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            vertical-align: middle;
+        }
+
+        .pdf-ai-page__measure-name {
+            display: inline;
+            vertical-align: middle;
         }
 
         .pdf-ai-page__measure-pill {
             display: inline-block;
             max-width: 100%;
-            padding: 2mm 3mm;
+            padding: 1.5mm 2.5mm;
             border: 1px solid;
             border-radius: 4mm;
             font-size: 10.5px;
@@ -812,6 +830,8 @@
         }
 
         .pdf-ai-page__measure-critical {
+            position: relative;
+            top: .25mm;
             display: inline-block;
             margin-left: 2mm;
             padding: .5mm 1.5mm;
@@ -820,11 +840,13 @@
             background: #ffffff;
             font-size: 8.5px;
             font-weight: 700;
+            line-height: 1;
+            vertical-align: middle;
             white-space: nowrap;
         }
 
         .pdf-ai-page__measure-observation {
-            margin: 1.5mm 2mm 0;
+            margin: 1mm 1.5mm 0;
             color: #49665d;
             font-size: 10.5px;
             line-height: 1.45;

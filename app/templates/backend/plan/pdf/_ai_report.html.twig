@@ -8,7 +8,8 @@
                 background: {{ category.visual.background }};
             "
         >
-            {{ measure.name }}
+            <span class="pdf-ai-page__measure-check">✓</span>
+            <span class="pdf-ai-page__measure-name">{{ measure.name }}</span>
 
             {% if measure.critical %}
                 <span
