@@ -38,8 +38,22 @@ final readonly class AiReportSettingResolver
             ->setGeneralInstructions($defaults->generalInstructions)
             ->setExecutiveSummaryInstructions($defaults->executiveSummaryInstructions)
             ->setCategoryInstructions($defaults->categoryInstructions)
+            ->setFutureCategoryInstructions($defaults->futureCategoryInstructions)
             ->setAvoidInstructions($defaults->avoidInstructions)
             ->setFinalConclusionInstructions($defaults->finalConclusionInstructions);
+    }
+
+    public function restoreEditorialDefaults(AiReportSetting $setting): void
+    {
+        $defaults = $this->promptConfiguration->editorialDefaults();
+
+        $setting
+            ->setGeneralInstructions($defaults['general'])
+            ->setExecutiveSummaryInstructions($defaults['executive_summary'])
+            ->setCategoryInstructions($defaults['category'])
+            ->setFutureCategoryInstructions($defaults['future_category'])
+            ->setAvoidInstructions($defaults['avoid'])
+            ->setFinalConclusionInstructions($defaults['final_conclusion']);
     }
 
     private function defaults(): AiReportSettings
@@ -53,6 +67,7 @@ final readonly class AiReportSettingResolver
             $defaults['general'],
             $defaults['executive_summary'],
             $defaults['category'],
+            $defaults['future_category'],
             $defaults['avoid'],
             $defaults['final_conclusion'],
         );
@@ -67,6 +82,7 @@ final readonly class AiReportSettingResolver
             $setting->getGeneralInstructions(),
             $setting->getExecutiveSummaryInstructions(),
             $setting->getCategoryInstructions(),
+            $setting->getFutureCategoryInstructions(),
             $setting->getAvoidInstructions(),
             $setting->getFinalConclusionInstructions(),
         );

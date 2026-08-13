@@ -2,6 +2,7 @@
 
 namespace App\Controller\Admin;
 
+use App\Entity\AiReportSetting;
 use App\Form\AiReportSettingType;
 use App\Service\Ai\AiProviderAvailability;
 use App\Service\Ai\AiReportSettingResolver;
@@ -53,6 +54,43 @@ final class AiReportSettingController extends AbstractController
 
         return $this->render('admin/ai/edit.html.twig', [
             'form' => $form,
+            'hasPersistedSetting' => $entityManager
+                ->find(AiReportSetting::class, AiReportSetting::SINGLETON_ID) instanceof AiReportSetting,
         ]);
+    }
+
+    #[Route('/restore-defaults', name: 'restore_defaults', methods: ['POST'])]
+    public function restoreDefaults(
+        Request $request,
+        AiReportSettingResolver $resolver,
+        EntityManagerInterface $entityManager,
+    ): Response {
+        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+
+        if (!$this->isCsrfTokenValid(
+            'ai_report_restore_defaults',
+            (string) $request->request->get('_token'),
+        )) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $setting = $entityManager->find(
+            AiReportSetting::class,
+            AiReportSetting::SINGLETON_ID,
+        );
+
+        if (!$setting instanceof AiReportSetting) {
+            $this->addFlash('warning', 'backend.ai.flash.restore_unavailable');
+
+            return $this->redirectToRoute('admin_ai_edit');
+        }
+
+        $resolver->restoreEditorialDefaults($setting);
+        $setting->touch();
+        $entityManager->flush();
+
+        $this->addFlash('success', 'backend.ai.flash.defaults_restored');
+
+        return $this->redirectToRoute('admin_ai_edit');
     }
 }

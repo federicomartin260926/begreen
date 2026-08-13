@@ -33,7 +33,7 @@
     </div>
 {% endmacro %}
 
-{% macro categoryContent(category, measures, showSummary, continuation) %}
+{% macro categoryContent(category, measures, showSummary, showFutureSummary, continuation) %}
     {% import _self as report %}
 
     <h2 class="pdf-ai-page__section-title">
@@ -83,6 +83,21 @@
                         {% endfor %}
                     </div>
                 {% endif %}
+
+                {% if showFutureSummary and category.futureSummary is not empty %}
+                    <div class="pdf-ai-page__future">
+                        <h4
+                            class="pdf-ai-page__future-title"
+                            style="color: {{ category.visual.color }};"
+                        >
+                            {{ 'backend.plan.pdf_visual.ai_report.future_horizon'|trans }}
+                        </h4>
+
+                        <p class="pdf-ai-page__future-summary">
+                            {{ category.futureSummary }}
+                        </p>
+                    </div>
+                {% endif %}
             </td>
         </tr>
     </table>
@@ -95,13 +110,16 @@
 {% for category in aiCategorySummaries %}
     {% if category is not null %}
         {% set measures = category.committedMeasures %}
-        {% set measureChunks = measures|batch(4) %}
+        {% set hasFutureSummary = category.futureSummary is not empty %}
+        {% set measureChunkSize = hasFutureSummary ? 3 : 4 %}
+        {% set measureChunks = measures|batch(measureChunkSize) %}
 
         {% if measures is empty %}
             {% set categoryPages = categoryPages|merge([{
                 category: category,
                 measures: [],
                 showSummary: true,
+                showFutureSummary: hasFutureSummary,
                 continuation: false
             }]) %}
         {% else %}
@@ -110,6 +128,7 @@
                     category: category,
                     measures: chunk,
                     showSummary: loop.first,
+                    showFutureSummary: hasFutureSummary and loop.last,
                     continuation: not loop.first
                 }]) %}
             {% endfor %}
@@ -130,6 +149,7 @@
                 categoryPage.category,
                 categoryPage.measures,
                 categoryPage.showSummary,
+                categoryPage.showFutureSummary,
                 categoryPage.continuation
             ) }}
         </main>

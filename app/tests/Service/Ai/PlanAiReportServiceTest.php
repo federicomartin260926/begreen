@@ -59,7 +59,15 @@ final class PlanAiReportServiceTest extends TestCase
         self::assertEquals($first, $second);
         self::assertFileExists($storage->pathFor(123, 'es'));
         $json = (string) file_get_contents($storage->pathFor(123, 'es'));
+        $storedData = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(3, $storedData['version']);
+        self::assertSame([
+            ['categoryKey' => 'category:10', 'summary' => 'Horizonte de category:10.'],
+        ], $storedData['categoryFutureSummaries']);
+        self::assertStringContainsString('categoryFutureSummaries', $json);
+        self::assertStringContainsString('Horizonte de category:10.', $json);
         self::assertStringNotContainsString('Observación sensible.', $json);
+        self::assertStringNotContainsString('Observación futura.', $json);
         self::assertStringNotContainsString('Descripción funcional.', $json);
     }
 
@@ -125,6 +133,7 @@ final class PlanAiReportServiceTest extends TestCase
                 '2026-08-06T10:00:00+02:00',
                 'Generado por otro proceso.',
                 [['categoryKey' => 'category:10', 'summary' => 'Resumen concurrente.']],
+                [['categoryKey' => 'category:10', 'summary' => 'Horizonte concurrente.']],
                 'Cierre concurrente.',
             ));
         });
@@ -199,17 +208,32 @@ final class PlanAiReportServiceTest extends TestCase
             ->setScore(5)
             ->setSortOrder(10)
             ->setCategory($category);
+        $futureMeasure = (new Measure())
+            ->setName('Título futuro')
+            ->setDescription('Descripción futura.')
+            ->setScore(5)
+            ->setSortOrder(20)
+            ->setCategory($category);
         $planMeasure = (new PlanMeasure())
             ->setMeasure($measure)
             ->setIsApplicable(true)
             ->setWillImplement(true)
             ->setIsCritical(true)
             ->setObservations('Observación sensible.');
-        $plan = (new Plan())->addPlanMeasure($planMeasure);
+        $futurePlanMeasure = (new PlanMeasure())
+            ->setMeasure($futureMeasure)
+            ->setIsApplicable(true)
+            ->setWillImplement(false)
+            ->setIsCritical(false)
+            ->setObservations('Observación futura.');
+        $plan = (new Plan())
+            ->addPlanMeasure($planMeasure)
+            ->addPlanMeasure($futurePlanMeasure);
 
         $this->setId($plan, 123);
         $this->setId($category, 10);
         $this->setId($measure, 100);
+        $this->setId($futureMeasure, 101);
 
         return [$plan, $planMeasure];
     }
@@ -236,6 +260,13 @@ final class CountingAiReportProvider implements AiReportProviderInterface
                     'Resumen de '.$category->key.'.',
                 ),
                 $request->categories,
+            ),
+            array_map(
+                static fn (string $categoryKey): AiReportCategorySummary => new AiReportCategorySummary(
+                    $categoryKey,
+                    'Horizonte de '.$categoryKey.'.',
+                ),
+                $request->futureCategoryKeys(),
             ),
             'Cierre inspiracional.',
         );

@@ -58,6 +58,9 @@ final class AnthropicReportProviderTest extends TestCase
             self::assertSame('object', $categorySchema['type']);
             self::assertSame(['energy'], $categorySchema['required']);
             self::assertSame(['energy'], array_keys($categorySchema['properties']));
+            $futureSchema = $payload['output_config']['format']['schema']['properties']['categoryFutureSummaries'];
+            self::assertSame(['energy'], $futureSchema['required']);
+            self::assertSame(['energy'], array_keys($futureSchema['properties']));
             self::assertCount(1, $payload['messages']);
             self::assertSame('user', $payload['messages'][0]['role']);
             self::assertStringNotContainsString('Generate the narrative report', $payload['messages'][0]['content']);
@@ -75,6 +78,9 @@ final class AnthropicReportProviderTest extends TestCase
                 'categorySummaries' => [
                     'energy' => ['summary' => 'Resumen energético.'],
                 ],
+                'categoryFutureSummaries' => [
+                    'energy' => ['summary' => 'Horizonte energético.'],
+                ],
                 'finalConclusion' => 'Cierre generado.',
             ]);
         });
@@ -84,6 +90,7 @@ final class AnthropicReportProviderTest extends TestCase
         self::assertSame('Conclusión generada.', $result->generalConclusion);
         self::assertSame('energy', $result->categorySummaries[0]->categoryKey);
         self::assertSame('Resumen energético.', $result->categorySummaries[0]->summary);
+        self::assertSame('Horizonte energético.', $result->categoryFutureSummaries[0]->summary);
         self::assertSame('Cierre generado.', $result->finalConclusion);
     }
 
@@ -277,15 +284,26 @@ final class AnthropicReportProviderTest extends TestCase
             [new AiReportCategory(
                 'energy',
                 'Energía',
-                [new AiReportMeasure(
-                    'measure:1',
-                    'Reducir consumo',
-                    'Optimizar la iluminación.',
-                    AiReportMeasureDecision::PLANNED,
-                    true,
-                    'Medida prioritaria prevista en el plan.',
-                    5,
-                )],
+                [
+                    new AiReportMeasure(
+                        'measure:1',
+                        'Reducir consumo',
+                        'Optimizar la iluminación.',
+                        AiReportMeasureDecision::PLANNED,
+                        true,
+                        'Medida prioritaria prevista en el plan.',
+                        5,
+                    ),
+                    new AiReportMeasure(
+                        'measure:2',
+                        'Seguimiento energético',
+                        'Revisar consumos periódicamente.',
+                        AiReportMeasureDecision::NOT_PLANNED,
+                        false,
+                        'Se valorará en una futura edición.',
+                        4,
+                    ),
+                ],
             )],
         );
     }

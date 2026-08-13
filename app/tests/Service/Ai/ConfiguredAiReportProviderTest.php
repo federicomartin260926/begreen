@@ -17,7 +17,7 @@ final class ConfiguredAiReportProviderTest extends TestCase
     public function testDelegatesToOpenAi(): void
     {
         $request = $this->request();
-        $expected = new AiReportResult('OpenAI', [], 'Final OpenAI');
+        $expected = new AiReportResult('OpenAI', [], [], 'Final OpenAI');
         $openAi = $this->createMock(AiReportProviderInterface::class);
         $openAi->expects(self::once())->method('generate')->with($request)->willReturn($expected);
         $anthropic = $this->createMock(AiReportProviderInterface::class);
@@ -33,7 +33,7 @@ final class ConfiguredAiReportProviderTest extends TestCase
     public function testDelegatesToAnthropic(): void
     {
         $request = $this->request();
-        $expected = new AiReportResult('Anthropic', [], 'Final Anthropic');
+        $expected = new AiReportResult('Anthropic', [], [], 'Final Anthropic');
         $openAi = $this->createMock(AiReportProviderInterface::class);
         $openAi->expects(self::never())->method('generate');
         $anthropic = $this->createMock(AiReportProviderInterface::class);

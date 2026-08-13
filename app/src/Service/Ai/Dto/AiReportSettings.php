@@ -11,6 +11,7 @@ final readonly class AiReportSettings
         public string $generalInstructions,
         public string $executiveSummaryInstructions,
         public string $categoryInstructions,
+        public string $futureCategoryInstructions,
         public string $avoidInstructions,
         public string $finalConclusionInstructions,
     ) {
@@ -31,6 +32,7 @@ final readonly class AiReportSettings
             "GENERAL EDITORIAL RULES\n".$this->generalInstructions,
             "EXECUTIVE SUMMARY (generalConclusion)\n".$this->executiveSummaryInstructions,
             "CATEGORY NARRATIVES (categorySummaries)\n".$this->categoryInstructions,
+            "NEXT EDITION HORIZON (categoryFutureSummaries)\n".$this->futureCategoryInstructions,
             "TERMS AND APPROACHES TO AVOID\n".$this->avoidInstructions,
             "FINAL CLOSING (finalConclusion)\n".$this->finalConclusionInstructions,
         ]);
@@ -42,6 +44,7 @@ final readonly class AiReportSettings
             $this->generalInstructions,
             $this->executiveSummaryInstructions,
             $this->categoryInstructions,
+            $this->futureCategoryInstructions,
             $this->avoidInstructions,
             $this->finalConclusionInstructions,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

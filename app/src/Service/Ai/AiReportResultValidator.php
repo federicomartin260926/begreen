@@ -8,38 +8,66 @@ use App\Service\Ai\Dto\AiReportResult;
 
 final class AiReportResultValidator
 {
-    /** @param list<string> $expectedCategoryKeys */
-    public function validate(mixed $data, array $expectedCategoryKeys): AiReportResult
+    /**
+     * @param list<string> $expectedCategoryKeys
+     * @param list<string> $expectedFutureCategoryKeys
+     */
+    public function validate(mixed $data, array $expectedCategoryKeys, array $expectedFutureCategoryKeys): AiReportResult
     {
         if (
             !is_array($data)
-            || !$this->hasExactKeys($data, ['generalConclusion', 'categorySummaries', 'finalConclusion'])
+            || !$this->hasExactKeys($data, ['generalConclusion', 'categorySummaries', 'categoryFutureSummaries', 'finalConclusion'])
             || !is_string($data['generalConclusion'] ?? null)
             || trim($data['generalConclusion']) === ''
             || !is_array($data['categorySummaries'] ?? null)
+            || !is_array($data['categoryFutureSummaries'] ?? null)
             || !is_string($data['finalConclusion'] ?? null)
             || trim($data['finalConclusion']) === ''
         ) {
             throw new AiInvalidStructureException(
-                'The AI provider response must contain non-empty generalConclusion and finalConclusion strings and a categorySummaries array.'
+                'The AI provider response must contain non-empty conclusions and both category summary arrays.'
             );
         }
 
+        $summaries = $this->validateSummaries($data['categorySummaries'], $expectedCategoryKeys, 'category');
+        $futureSummaries = $this->validateSummaries(
+            $data['categoryFutureSummaries'],
+            $expectedFutureCategoryKeys,
+            'future category',
+        );
+
+        return new AiReportResult(
+            trim($data['generalConclusion']),
+            $summaries,
+            $futureSummaries,
+            trim($data['finalConclusion']),
+        );
+    }
+
+    /**
+     * @param array<mixed> $data
+     * @param list<string> $expectedCategoryKeys
+     *
+     * @return list<AiReportCategorySummary>
+     */
+    private function validateSummaries(array $data, array $expectedCategoryKeys, string $label): array
+    {
         $summaries = [];
         $seenKeys = [];
         $expectedKeys = array_fill_keys($expectedCategoryKeys, true);
         if (
             count($expectedCategoryKeys) !== count($expectedKeys)
-            || count($data['categorySummaries']) !== count($expectedCategoryKeys)
+            || count($data) !== count($expectedCategoryKeys)
         ) {
             throw new AiInvalidStructureException(sprintf(
-                'The AI provider returned %d category summaries; exactly %d were expected.',
-                count($data['categorySummaries']),
+                'The AI provider returned %d %s summaries; exactly %d were expected.',
+                count($data),
+                $label,
                 count($expectedCategoryKeys),
             ));
         }
 
-        foreach ($data['categorySummaries'] as $index => $summary) {
+        foreach ($data as $index => $summary) {
             if (
                 !is_array($summary)
                 || !$this->hasExactKeys($summary, ['categoryKey', 'summary'])
@@ -49,7 +77,8 @@ final class AiReportResultValidator
                 || trim($summary['summary']) === ''
             ) {
                 throw new AiInvalidStructureException(sprintf(
-                    'The AI provider returned an invalid category summary at index %d.',
+                    'The AI provider returned an invalid %s summary at index %d.',
+                    $label,
                     $index,
                 ));
             }
@@ -57,14 +86,16 @@ final class AiReportResultValidator
             $categoryKey = trim($summary['categoryKey']);
             if (!isset($expectedKeys[$categoryKey])) {
                 throw new AiInvalidStructureException(sprintf(
-                    'The AI provider returned an unknown categoryKey: %s.',
+                    'The AI provider returned an unknown %s key: %s.',
+                    $label,
                     $categoryKey,
                 ));
             }
 
             if (isset($seenKeys[$categoryKey])) {
                 throw new AiInvalidStructureException(sprintf(
-                    'The AI provider returned a duplicate categoryKey: %s.',
+                    'The AI provider returned a duplicate %s key: %s.',
+                    $label,
                     $categoryKey,
                 ));
             }
@@ -77,16 +108,13 @@ final class AiReportResultValidator
             $missingKeys = array_keys(array_diff_key($expectedKeys, $seenKeys));
 
             throw new AiInvalidStructureException(sprintf(
-                'The AI provider omitted category summaries for: %s.',
+                'The AI provider omitted %s summaries for: %s.',
+                $label,
                 implode(', ', $missingKeys),
             ));
         }
 
-        return new AiReportResult(
-            trim($data['generalConclusion']),
-            $summaries,
-            trim($data['finalConclusion']),
-        );
+        return $summaries;
     }
 
     /** @param list<string> $expectedKeys */

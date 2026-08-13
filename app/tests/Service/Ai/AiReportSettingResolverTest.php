@@ -25,6 +25,7 @@ final class AiReportSettingResolverTest extends TestCase
         self::assertSame('openai', $settings->provider);
         self::assertSame('gpt-env', $settings->model());
         self::assertStringContainsString('primera persona del plural', $settings->generalInstructions);
+        self::assertStringContainsString('próxima edición', $settings->futureCategoryInstructions);
         self::assertStringContainsString('cierre final inspiracional', $settings->finalConclusionInstructions);
     }
 
@@ -37,6 +38,7 @@ final class AiReportSettingResolverTest extends TestCase
             ->setGeneralInstructions('Reglas generales iniciales.')
             ->setExecutiveSummaryInstructions('Reglas del resumen.')
             ->setCategoryInstructions('Reglas por categoría.')
+            ->setFutureCategoryInstructions('Reglas iniciales de próxima edición.')
             ->setAvoidInstructions('Reglas a evitar.')
             ->setFinalConclusionInstructions('Reglas del cierre.');
         $resolver = $this->resolver($setting);
@@ -44,7 +46,7 @@ final class AiReportSettingResolverTest extends TestCase
         $request = new AiReportRequest('es', []);
 
         $before = $hasher->hash($request);
-        $setting->setGeneralInstructions('Reglas generales modificadas.');
+        $setting->setFutureCategoryInstructions('Reglas modificadas de próxima edición.');
 
         self::assertNotSame($before, $hasher->hash($request));
         self::assertSame('claude-admin', $resolver->resolve()->model());
@@ -75,4 +77,35 @@ final class AiReportSettingResolverTest extends TestCase
     {
         return new AiReportPromptConfiguration(dirname(__DIR__, 3).'/config/ai_report_prompt.yaml');
     }
+    public function testRestoreEditorialDefaultsKeepsProviderAndModels(): void
+    {
+        $setting = (new AiReportSetting())
+            ->setProvider('anthropic')
+            ->setOpenAiModel('custom-openai')
+            ->setAnthropicModel('custom-anthropic')
+            ->setGeneralInstructions('custom general')
+            ->setExecutiveSummaryInstructions('custom executive')
+            ->setCategoryInstructions('custom category')
+            ->setFutureCategoryInstructions('custom future')
+            ->setAvoidInstructions('custom avoid')
+            ->setFinalConclusionInstructions('custom final');
+
+        $resolver = $this->resolver($setting);
+        $defaults = $this->promptConfiguration()->editorialDefaults();
+
+        $resolver->restoreEditorialDefaults($setting);
+
+        self::assertSame('anthropic', $setting->getProvider());
+        self::assertSame('custom-openai', $setting->getOpenAiModel());
+        self::assertSame('custom-anthropic', $setting->getAnthropicModel());
+
+        self::assertSame($defaults['general'], $setting->getGeneralInstructions());
+        self::assertSame($defaults['executive_summary'], $setting->getExecutiveSummaryInstructions());
+        self::assertSame($defaults['category'], $setting->getCategoryInstructions());
+        self::assertSame($defaults['future_category'], $setting->getFutureCategoryInstructions());
+        self::assertSame($defaults['avoid'], $setting->getAvoidInstructions());
+        self::assertSame($defaults['final_conclusion'], $setting->getFinalConclusionInstructions());
+    }
+
+
 }

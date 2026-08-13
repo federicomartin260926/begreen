@@ -46,6 +46,11 @@ class AiReportSetting
     #[ORM\Column(type: 'text')]
     #[Assert\NotBlank]
     #[Assert\Length(max: 20000)]
+    private string $futureCategoryInstructions = '';
+
+    #[ORM\Column(type: 'text')]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 20000)]
     private string $avoidInstructions = '';
 
     #[ORM\Column(type: 'text')]
@@ -134,6 +139,18 @@ class AiReportSetting
     public function setCategoryInstructions(string $instructions): self
     {
         $this->categoryInstructions = trim($instructions);
+
+        return $this;
+    }
+
+    public function getFutureCategoryInstructions(): string
+    {
+        return $this->futureCategoryInstructions;
+    }
+
+    public function setFutureCategoryInstructions(string $instructions): self
+    {
+        $this->futureCategoryInstructions = trim($instructions);
 
         return $this;
     }

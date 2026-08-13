@@ -63,7 +63,11 @@ final class OpenAiReportProvider implements AiReportProviderInterface
                     'Authorization' => 'Bearer '.$this->openAiConfiguration->apiKey,
                     'Content-Type' => 'application/json',
                 ],
-                'json' => $this->buildPayload($context, $this->categoryKeys($request)),
+                'json' => $this->buildPayload(
+                    $context,
+                    $request->categoryKeys(),
+                    $request->futureCategoryKeys(),
+                ),
                 'timeout' => $this->configuration->timeoutSeconds,
             ]);
 
@@ -133,7 +137,8 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         try {
             return $this->resultValidator->validate(
                 $this->outputSchema->toValidatorData($data),
-                $this->categoryKeys($request),
+                $request->categoryKeys(),
+                $request->futureCategoryKeys(),
             );
         } catch (AiInvalidStructureException $exception) {
             $this->logFailure('invalid_structure', $statusCode);
@@ -157,8 +162,15 @@ final class OpenAiReportProvider implements AiReportProviderInterface
     }
 
     /** @return array<string, mixed> */
-    /** @param list<string> $expectedCategoryKeys */
-    private function buildPayload(string $context, array $expectedCategoryKeys): array
+    /**
+     * @param list<string> $expectedCategoryKeys
+     * @param list<string> $expectedFutureCategoryKeys
+     */
+    private function buildPayload(
+        string $context,
+        array $expectedCategoryKeys,
+        array $expectedFutureCategoryKeys,
+    ): array
     {
         return [
             'model' => $this->model(),
@@ -176,7 +188,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
                     'type' => 'json_schema',
                     'name' => 'sustainability_plan_report',
                     'strict' => true,
-                    'schema' => $this->outputSchema->get($expectedCategoryKeys),
+                    'schema' => $this->outputSchema->get($expectedCategoryKeys, $expectedFutureCategoryKeys),
                 ],
             ],
         ];
@@ -185,12 +197,6 @@ final class OpenAiReportProvider implements AiReportProviderInterface
     private function endpoint(): string
     {
         return rtrim($this->openAiConfiguration->baseUrl, '/').'/responses';
-    }
-
-    /** @return list<string> */
-    private function categoryKeys(AiReportRequest $request): array
-    {
-        return array_map(static fn ($category): string => $category->key, $request->categories);
     }
 
     /** @param array<string, mixed> $envelope */

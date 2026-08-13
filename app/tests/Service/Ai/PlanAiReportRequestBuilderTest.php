@@ -77,6 +77,8 @@ final class PlanAiReportRequestBuilderTest extends TestCase
 
         self::assertSame('es', $request->locale);
         self::assertSame(['category:10', 'category:20'], array_column($request->categories, 'key'));
+        self::assertSame(['category:10', 'category:20'], $request->categoryKeys());
+        self::assertSame(['category:20'], $request->futureCategoryKeys());
         self::assertSame(['Título A', 'Título corto B'], array_column($request->categories[0]->measures, 'title'));
         self::assertSame(
             [AiReportMeasureDecision::NOT_APPLICABLE, AiReportMeasureDecision::PLANNED],

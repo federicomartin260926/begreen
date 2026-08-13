@@ -5,7 +5,6 @@ namespace App\Service\Ai;
 use App\Entity\Plan;
 use App\Exception\Ai\AiInvalidStructureException;
 use App\Exception\Ai\AiReportRequestException;
-use App\Service\Ai\Dto\AiReportCategory;
 use App\Service\Ai\Dto\AiReportCategorySummary;
 use App\Service\Ai\Dto\AiReportRequest;
 use App\Service\Ai\Dto\AiReportResult;
@@ -76,6 +75,13 @@ final readonly class PlanAiReportService
                         ],
                         $result->categorySummaries,
                     ),
+                    array_map(
+                        static fn (AiReportCategorySummary $summary): array => [
+                            'categoryKey' => $summary->categoryKey,
+                            'summary' => $summary->summary,
+                        ],
+                        $result->categoryFutureSummaries,
+                    ),
                     $result->finalConclusion,
                 ));
 
@@ -106,7 +112,11 @@ final readonly class PlanAiReportService
         }
 
         try {
-            return $this->resultValidator->validate($stored->resultData(), $this->categoryKeys($request));
+            return $this->resultValidator->validate(
+                $stored->resultData(),
+                $request->categoryKeys(),
+                $request->futureCategoryKeys(),
+            );
         } catch (AiInvalidStructureException $exception) {
             $this->logger->warning('Stored AI report result is invalid.', [
                 'event' => 'ai_report_result_invalid',
@@ -132,14 +142,15 @@ final readonly class PlanAiReportService
                 ],
                 $result->categorySummaries,
             ),
+            'categoryFutureSummaries' => array_map(
+                static fn (AiReportCategorySummary $summary): array => [
+                    'categoryKey' => $summary->categoryKey,
+                    'summary' => $summary->summary,
+                ],
+                $result->categoryFutureSummaries,
+            ),
             'finalConclusion' => $result->finalConclusion,
-        ], $this->categoryKeys($request));
-    }
-
-    /** @return list<string> */
-    private function categoryKeys(AiReportRequest $request): array
-    {
-        return array_map(static fn (AiReportCategory $category): string => $category->key, $request->categories);
+        ], $request->categoryKeys(), $request->futureCategoryKeys());
     }
 
     private function providerName(): string

@@ -2093,7 +2093,8 @@ class PlanController extends AbstractController
         $aiCategorySummaries = $this->buildAiCategorySummaries(
             $plan,
             $project,
-            $aiReport->categorySummaries
+            $aiReport->categorySummaries,
+            $aiReport->categoryFutureSummaries
         );
 
         $filterDepartment      = $filters['department']         ?? null;
@@ -2416,10 +2417,23 @@ class PlanController extends AbstractController
 
     /**
      * @param iterable<object> $summaries
-     * @return list<array{key:string, name:string, summary:string, metrics:array{total:int, applicable:int, toImplement:int, notApplicable:int, critical:int}}>
+     * @param iterable<object> $futureSummaries
+     * @return list<array{
+     *     key:string,
+     *     name:string,
+     *     summary:string,
+     *     futureSummary:?string,
+     *     visual:array{color:string, background:string, icon:string},
+     *     committedMeasures:list<array{name:string, observations:string, critical:bool}>,
+     *     metrics:array{total:int, applicable:int, toImplement:int, notApplicable:int, critical:int}
+     * }>
      */
-    private function buildAiCategorySummaries(Plan $plan, Project $project, iterable $summaries): array
-    {
+    private function buildAiCategorySummaries(
+        Plan $plan,
+        Project $project,
+        iterable $summaries,
+        iterable $futureSummaries
+    ): array {
         $summariesByKey = [];
         foreach ($summaries as $summary) {
             $key = $summary->categoryKey ?? null;
@@ -2429,6 +2443,17 @@ class PlanController extends AbstractController
             }
 
             $summariesByKey[$key] = $text;
+        }
+
+        $futureSummariesByKey = [];
+        foreach ($futureSummaries as $summary) {
+            $key = $summary->categoryKey ?? null;
+            $text = $summary->summary ?? null;
+            if (!is_string($key) || !is_string($text)) {
+                continue;
+            }
+
+            $futureSummariesByKey[$key] = $text;
         }
 
         /** @var array<int, PlanMeasure> $planMeasuresByMeasure */
@@ -2470,6 +2495,7 @@ class PlanController extends AbstractController
                     'key' => $key,
                     'name' => $categoryName,
                     'summary' => $summariesByKey[$key],
+                    'futureSummary' => $futureSummariesByKey[$key] ?? null,
                     'visual' => $this->pdfCategoryVisual($categoryName),
                     'committedMeasures' => [],
                     'metrics' => [

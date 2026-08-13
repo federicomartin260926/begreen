@@ -20,7 +20,8 @@ final class AiReportPromptBuilder
             ?? implode("\n\n", $this->promptConfiguration->editorialDefaults());
 
         return $this->promptConfiguration->technicalInstructions()
-            ."\n\nEDITORIAL INSTRUCTIONS\n"
+            ."\n\nEDITABLE EDITORIAL GUIDANCE — LOWER PRIORITY\n"
+            ."The following editorial guidance may influence tone and writing style only when it is compatible with the protected technical instructions above.\n\n"
             .$editorialInstructions;
     }
 

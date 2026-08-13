@@ -12,7 +12,7 @@ final readonly class AiReportPromptConfiguration
 
     private string $technicalInstructions;
 
-    /** @var array{general:string, executive_summary:string, category:string, avoid:string, final_conclusion:string} */
+    /** @var array{general:string, executive_summary:string, category:string, future_category:string, avoid:string, final_conclusion:string} */
     private array $editorialDefaults;
 
     public function __construct(string $promptFile)
@@ -44,7 +44,7 @@ final readonly class AiReportPromptConfiguration
             throw new AiReportPromptConfigurationException('The AI report prompt configuration is invalid.');
         }
 
-        $requiredEditorialSections = ['general', 'executive_summary', 'category', 'avoid', 'final_conclusion'];
+        $requiredEditorialSections = ['general', 'executive_summary', 'category', 'future_category', 'avoid', 'final_conclusion'];
         $editorialKeys = array_keys($editorialSections);
         sort($editorialKeys);
         $expectedEditorialKeys = $requiredEditorialSections;
@@ -72,7 +72,7 @@ final readonly class AiReportPromptConfiguration
         return $this->technicalInstructions;
     }
 
-    /** @return array{general:string, executive_summary:string, category:string, avoid:string, final_conclusion:string} */
+    /** @return array{general:string, executive_summary:string, category:string, future_category:string, avoid:string, final_conclusion:string} */
     public function editorialDefaults(): array
     {
         return $this->editorialDefaults;

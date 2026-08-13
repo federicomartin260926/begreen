@@ -45,6 +45,7 @@ final class AiReportSettingType extends AbstractType
             ->add('generalInstructions', TextareaType::class, $this->textarea('backend.ai.form.general'))
             ->add('executiveSummaryInstructions', TextareaType::class, $this->textarea('backend.ai.form.executive_summary'))
             ->add('categoryInstructions', TextareaType::class, $this->textarea('backend.ai.form.category'))
+            ->add('futureCategoryInstructions', TextareaType::class, $this->textarea('backend.ai.form.future_category'))
             ->add('avoidInstructions', TextareaType::class, $this->textarea('backend.ai.form.avoid'))
             ->add('finalConclusionInstructions', TextareaType::class, $this->textarea('backend.ai.form.final_conclusion'));
     }

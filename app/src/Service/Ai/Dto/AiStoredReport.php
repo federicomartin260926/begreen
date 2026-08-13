@@ -4,9 +4,12 @@ namespace App\Service\Ai\Dto;
 
 final readonly class AiStoredReport
 {
-    public const VERSION = 2;
+    public const VERSION = 3;
 
-    /** @param list<array{categoryKey:string, summary:string}> $categorySummaries */
+    /**
+     * @param list<array{categoryKey:string, summary:string}> $categorySummaries
+     * @param list<array{categoryKey:string, summary:string}> $categoryFutureSummaries
+     */
     public function __construct(
         public int $version,
         public int $planId,
@@ -18,6 +21,7 @@ final readonly class AiStoredReport
         public string $generatedAt,
         public string $generalConclusion,
         public array $categorySummaries,
+        public array $categoryFutureSummaries,
         public string $finalConclusion,
     ) {
     }
@@ -36,16 +40,18 @@ final readonly class AiStoredReport
             'generatedAt' => $this->generatedAt,
             'generalConclusion' => $this->generalConclusion,
             'categorySummaries' => $this->categorySummaries,
+            'categoryFutureSummaries' => $this->categoryFutureSummaries,
             'finalConclusion' => $this->finalConclusion,
         ];
     }
 
-    /** @return array{generalConclusion:string, categorySummaries:list<array{categoryKey:string, summary:string}>, finalConclusion:string} */
+    /** @return array{generalConclusion:string, categorySummaries:list<array{categoryKey:string, summary:string}>, categoryFutureSummaries:list<array{categoryKey:string, summary:string}>, finalConclusion:string} */
     public function resultData(): array
     {
         return [
             'generalConclusion' => $this->generalConclusion,
             'categorySummaries' => $this->categorySummaries,
+            'categoryFutureSummaries' => $this->categoryFutureSummaries,
             'finalConclusion' => $this->finalConclusion,
         ];
     }
@@ -64,6 +70,7 @@ final readonly class AiStoredReport
             'generatedAt',
             'generalConclusion',
             'categorySummaries',
+            'categoryFutureSummaries',
             'finalConclusion',
         ];
         if (!self::hasExactKeys($data, $expectedKeys)) {
@@ -84,26 +91,16 @@ final readonly class AiStoredReport
             || !self::isValidDate($data['generatedAt'])
             || !self::isNonEmptyString($data['generalConclusion'])
             || !is_array($data['categorySummaries'])
+            || !is_array($data['categoryFutureSummaries'])
             || !self::isNonEmptyString($data['finalConclusion'])
         ) {
             return null;
         }
 
-        $summaries = [];
-        foreach ($data['categorySummaries'] as $summary) {
-            if (
-                !is_array($summary)
-                || !self::hasExactKeys($summary, ['categoryKey', 'summary'])
-                || !self::isNonEmptyString($summary['categoryKey'] ?? null)
-                || !self::isNonEmptyString($summary['summary'] ?? null)
-            ) {
-                return null;
-            }
-
-            $summaries[] = [
-                'categoryKey' => trim($summary['categoryKey']),
-                'summary' => trim($summary['summary']),
-            ];
+        $summaries = self::normalizeSummaries($data['categorySummaries']);
+        $futureSummaries = self::normalizeSummaries($data['categoryFutureSummaries']);
+        if ($summaries === null || $futureSummaries === null) {
+            return null;
         }
 
         return new self(
@@ -117,8 +114,36 @@ final readonly class AiStoredReport
             $data['generatedAt'],
             trim($data['generalConclusion']),
             $summaries,
+            $futureSummaries,
             trim($data['finalConclusion']),
         );
+    }
+
+    /**
+     * @param array<mixed> $summaries
+     *
+     * @return list<array{categoryKey:string, summary:string}>|null
+     */
+    private static function normalizeSummaries(array $summaries): ?array
+    {
+        $normalized = [];
+        foreach ($summaries as $summary) {
+            if (
+                !is_array($summary)
+                || !self::hasExactKeys($summary, ['categoryKey', 'summary'])
+                || !self::isNonEmptyString($summary['categoryKey'] ?? null)
+                || !self::isNonEmptyString($summary['summary'] ?? null)
+            ) {
+                return null;
+            }
+
+            $normalized[] = [
+                'categoryKey' => trim($summary['categoryKey']),
+                'summary' => trim($summary['summary']),
+            ];
+        }
+
+        return $normalized;
     }
 
     private static function isNonEmptyString(mixed $value): bool

@@ -212,6 +212,9 @@ backend:
     description: "Configure the global provider, models and editorial rules. Credentials and technical limits remain in environment configuration."
     provider_section: "Provider and models"
     editorial_section: "Editorial rules"
+    future_category_tab: "Next edition"
+    restore_defaults: "Restore default rules"
+    restore_defaults_confirm: "All customized editorial rules will be replaced with the application defaults. The provider and models will not be changed. Continue?"
     technical_help: "API keys, URLs, timeouts, limits and the JSON contract cannot be edited here."
     providers:
       openai: "OpenAI"
@@ -225,10 +228,13 @@ backend:
       general: "General rules"
       executive_summary: "Executive summary rules"
       category: "Category narrative rules"
+      future_category: "Future measures / next edition rules"
       avoid: "Terms and approaches to avoid"
       final_conclusion: "Final closing rules"
     flash:
       saved: "The AI configuration has been saved."
+      defaults_restored: "The default editorial rules have been restored."
+      restore_unavailable: "There is no persisted AI configuration to restore."
   commercial_plans:
     list:
       title: "Commercial plans"
@@ -1734,6 +1740,7 @@ backend:
         category_summaries: "Category summaries"
         critical: "Critical"
         future: "Next edition"
+        future_horizon: "On the horizon, for the next edition"
         observations: "Observations"
         continuation: "continued"
         metrics:

@@ -214,6 +214,9 @@ backend:
     description: "Configura el proveedor, los modelos y las reglas editoriales globales. Las credenciales y los límites técnicos permanecen en la configuración del entorno."
     provider_section: "Proveedor y modelos"
     editorial_section: "Reglas editoriales"
+    future_category_tab: "Próxima edición"
+    restore_defaults: "Restaurar reglas por defecto"
+    restore_defaults_confirm: "Se sustituirán todas las reglas editoriales personalizadas por las reglas por defecto definidas por la aplicación. El proveedor y los modelos no se modificarán. ¿Continuar?"
     technical_help: "Las API keys, URLs, timeouts, límites y el contrato JSON no se editan desde esta pantalla."
     providers:
       openai: "OpenAI"
@@ -227,10 +230,13 @@ backend:
       general: "Reglas generales"
       executive_summary: "Reglas del resumen ejecutivo"
       category: "Reglas de narrativa por categorías"
+      future_category: "Reglas para medidas futuras / próxima edición"
       avoid: "Términos y enfoques a evitar"
       final_conclusion: "Reglas del cierre final"
     flash:
       saved: "La configuración de IA se ha guardado."
+      defaults_restored: "Las reglas editoriales por defecto se han restaurado."
+      restore_unavailable: "No existe una configuración de IA persistida que restaurar."
   commercial_plans:
     list:
       title: "Planes comerciales"
@@ -1742,6 +1748,7 @@ backend:
         category_summaries: "Resumen por categorías"
         critical: "Crítica"
         future: "Próxima edición"
+        future_horizon: "En el horizonte, para la próxima edición"
         observations: "Observaciones"
         continuation: "continuación"
         metrics:

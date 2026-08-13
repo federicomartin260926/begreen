@@ -73,6 +73,19 @@
 
         <li class="nav-item" role="presentation">
           <button class="nav-link"
+                  id="ai-future-category-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#ai-future-category"
+                  type="button"
+                  role="tab"
+                  aria-controls="ai-future-category"
+                  aria-selected="false">
+            {{ 'backend.ai.future_category_tab'|trans }}
+          </button>
+        </li>
+
+        <li class="nav-item" role="presentation">
+          <button class="nav-link"
                   id="ai-avoid-tab"
                   data-bs-toggle="tab"
                   data-bs-target="#ai-avoid"
@@ -124,6 +137,14 @@
         </div>
 
         <div class="tab-pane fade"
+             id="ai-future-category"
+             role="tabpanel"
+             aria-labelledby="ai-future-category-tab"
+             tabindex="0">
+          {{ form_row(form.futureCategoryInstructions) }}
+        </div>
+
+        <div class="tab-pane fade"
              id="ai-avoid"
              role="tabpanel"
              aria-labelledby="ai-avoid-tab"
@@ -142,9 +163,32 @@
     </div>
   </div>
 
-  <div class="d-flex justify-content-end mt-4">
-    <button class="btn btn-success"><i class="bi bi-check-lg me-1"></i>{{ 'backend.common.update'|trans }}</button>
+  <div class="d-flex justify-content-end align-items-center gap-2 mt-4">
+    {% if hasPersistedSetting %}
+      <button type="submit"
+              form="ai-restore-defaults-form"
+              class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>
+        {{ 'backend.ai.restore_defaults'|trans }}
+      </button>
+    {% endif %}
+
+    <button class="btn btn-success">
+      <i class="bi bi-check-lg me-1"></i>{{ 'backend.common.update'|trans }}
+    </button>
   </div>
   {{ form_end(form) }}
+
+  {% if hasPersistedSetting %}
+    <form id="ai-restore-defaults-form"
+          method="post"
+          action="{{ path('admin_ai_restore_defaults') }}"
+          class="d-none"
+          onsubmit="return confirm('{{ 'backend.ai.restore_defaults_confirm'|trans|e('js') }}');">
+      <input type="hidden"
+             name="_token"
+             value="{{ csrf_token('ai_report_restore_defaults') }}">
+    </form>
+  {% endif %}
 </div>
 {% endblock %}
