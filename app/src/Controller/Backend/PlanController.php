@@ -1938,6 +1938,11 @@ class PlanController extends AbstractController
 
             $previewStyles = <<<'HTML'
 <style id="pdf-browser-preview-styles">
+    /*
+     * Solo preview HTML del navegador.
+     * Este bloque se inyecta únicamente en /closure/preview
+     * y nunca forma parte del HTML entregado a Dompdf.
+     */
     html {
         background: #dde3e0;
     }
@@ -1948,26 +1953,37 @@ class PlanController extends AbstractController
         background: #dde3e0;
     }
 
+    /*
+     * Página visual en navegador:
+     * - centrada;
+     * - separación inferior uniforme;
+     * - sin depender de que las páginas sean hermanos adyacentes.
+     */
     .pdf-page,
-    .pdf-ai-page {
+    .pdf-ai-page,
+    body > section {
         display: block !important;
         position: relative !important;
+        float: none !important;
+        clear: both !important;
+        left: auto !important;
+        right: auto !important;
+        margin-top: 0 !important;
         margin-right: auto !important;
+        margin-bottom: 24px !important;
         margin-left: auto !important;
+    }
+
+    .pdf-page,
+    .pdf-ai-page {
         box-shadow: 0 3px 18px rgba(26, 54, 45, .20);
         overflow: hidden;
     }
 
-    .pdf-page + .pdf-page,
-    .pdf-page + .pdf-ai-page,
-    .pdf-ai-page + .pdf-page,
-    .pdf-ai-page + .pdf-ai-page {
-        margin-top: 24px !important;
-    }
-
-    /* Solo en navegador: evita saltos visuales heredados de impresión */
-    .pdf-page,
-    .pdf-ai-page,
+    /*
+     * En navegador eliminamos desplazamientos internos diseñados
+     * exclusivamente para la composición impresa.
+     */
     .pdf-page__content,
     .pdf-page__body,
     .pdf-page__inner,
@@ -1990,7 +2006,10 @@ class PlanController extends AbstractController
         margin-top: 0 !important;
     }
 
-    /* Desactiva efectos de page-break que en preview generan huecos raros */
+    /*
+     * Los page-break son necesarios para Dompdf, pero no para
+     * representar páginas independientes en el navegador.
+     */
     .pdf-page,
     .pdf-ai-page {
         break-before: auto !important;
