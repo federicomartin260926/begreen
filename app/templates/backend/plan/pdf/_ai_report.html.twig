@@ -1,4 +1,4 @@
-{% macro measureCard(measure, category) %}
+{% macro measureCard(measure, category, showObservations) %}
     <div class="pdf-ai-page__measure-block">
         <div
             class="pdf-ai-page__measure-pill{% if measure.critical %} pdf-ai-page__measure-pill--critical{% endif %}"
@@ -8,23 +8,32 @@
                 background: {{ category.visual.background }};
             "
         >
-            <span class="pdf-ai-page__measure-check">✓</span>
-            <span class="pdf-ai-page__measure-name">{{ measure.name }}</span>
-
-            {% if measure.critical %}
-                <span
-                    class="pdf-ai-page__measure-critical"
-                    style="
-                        border-color: {{ category.visual.color }};
-                        color: {{ category.visual.color }};
-                    "
-                >
-                    {{ 'backend.plan.pdf_visual.ai_report.critical'|trans }}
-                </span>
-            {% endif %}
+            <table class="pdf-ai-page__measure-layout" role="presentation">
+                <tr>
+                    <td class="pdf-ai-page__measure-check-cell">
+                        <span class="pdf-ai-page__measure-check">✓</span>
+                    </td>
+                    <td class="pdf-ai-page__measure-name">
+                        {{ measure.name }}
+                    </td>
+                    {% if measure.critical %}
+                        <td class="pdf-ai-page__measure-critical-cell">
+                            <span
+                                class="pdf-ai-page__measure-critical"
+                                style="
+                                    border-color: {{ category.visual.color }};
+                                    color: {{ category.visual.color }};
+                                "
+                            >
+                                {{ 'backend.plan.pdf_visual.ai_report.critical'|trans }}
+                            </span>
+                        </td>
+                    {% endif %}
+                </tr>
+            </table>
         </div>
 
-        {% if measure.observations is not empty %}
+        {% if showObservations and measure.observations is not empty %}
             <div class="pdf-ai-page__measure-observation">
                 <strong>{{ 'backend.plan.pdf_visual.ai_report.observations'|trans }}:</strong>
                 {{ measure.observations }}
@@ -33,7 +42,7 @@
     </div>
 {% endmacro %}
 
-{% macro categoryContent(category, measures, showSummary, showFutureSummary, continuation) %}
+{% macro categoryContent(category, measures, showSummary, showFutureSummary, continuation, showObservations) %}
     {% import _self as report %}
 
     <h2 class="pdf-ai-page__section-title">
@@ -42,10 +51,11 @@
 
     <table class="pdf-ai-page__category" role="presentation">
         <tr>
-            <td
-                class="pdf-ai-page__category-cell"
-                style="border-color: {{ category.visual.color }};"
-            >
+            <td class="pdf-ai-page__category-cell">
+                <div
+                    class="pdf-ai-page__category-card"
+                    style="border-color: {{ category.visual.color }};"
+                >
                 <div class="pdf-ai-page__category-heading">
                     <span
                         class="pdf-ai-page__category-icon"
@@ -79,7 +89,7 @@
                 {% if measures is not empty %}
                     <div class="pdf-ai-page__measures">
                         {% for measure in measures %}
-                            {{ report.measureCard(measure, category) }}
+                            {{ report.measureCard(measure, category, showObservations) }}
                         {% endfor %}
                     </div>
                 {% endif %}
@@ -98,6 +108,7 @@
                         </p>
                     </div>
                 {% endif %}
+                </div>
             </td>
         </tr>
     </table>
@@ -150,7 +161,8 @@
                 categoryPage.measures,
                 categoryPage.showSummary,
                 categoryPage.showFutureSummary,
-                categoryPage.continuation
+                categoryPage.continuation,
+                projectTier|default('basic') == 'basic'
             ) }}
         </main>
     </section>

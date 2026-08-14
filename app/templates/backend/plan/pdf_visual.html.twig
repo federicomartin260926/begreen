@@ -438,13 +438,16 @@
             font-size: 9px;
         }
 
-        .pdf-page--cover > .pdf-cover-approved__summary {
+        .pdf-cover-approved__details {
             position: absolute;
             z-index: 3;
             top: 100mm;
             right: 15mm;
-            bottom: auto;
             left: 15mm;
+            page-break-inside: avoid;
+        }
+
+        .pdf-cover-approved__summary {
             padding: 3mm 4mm;
             border: 1px solid #d3e8da;
             border-radius: 4mm;
@@ -452,13 +455,13 @@
             page-break-inside: avoid;
         }
 
-        .pdf-page--cover > .pdf-cover-approved__summary .pdf-cover-approved__summary-title {
+        .pdf-cover-approved__summary .pdf-cover-approved__summary-title {
             margin: 0 0 1.5mm;
             color: #1f3038;
             font-size: 14px;
         }
 
-        .pdf-page--cover > .pdf-cover-approved__summary .pdf-cover-approved__summary-table {
+        .pdf-cover-approved__summary .pdf-cover-approved__summary-table {
             width: 100%;
             margin-bottom: 1.5mm;
             border-collapse: collapse;
@@ -466,14 +469,14 @@
             font-size: 8.8px;
         }
 
-        .pdf-page--cover > .pdf-cover-approved__summary .pdf-cover-approved__summary-table td {
+        .pdf-cover-approved__summary .pdf-cover-approved__summary-table td {
             width: 33.333%;
             padding: 0 4mm 0 0;
             border: 0;
             vertical-align: top;
         }
 
-        .pdf-page--cover > .pdf-cover-approved__summary .pdf-cover-approved__summary-line {
+        .pdf-cover-approved__summary .pdf-cover-approved__summary-line {
             color: #37564d;
             font-size: 9.5px;
             line-height: 1.2;
@@ -568,12 +571,7 @@
 
 
         .pdf-cover-commitment {
-            position: absolute;
-            z-index: 3;
-            top: 176mm;
-            right: 15mm;
-            bottom: auto;
-            left: 15mm;
+            margin-top: 4mm;
             padding: 5.5mm 6.5mm 5mm;
             border: 1px solid #d3e8da;
             border-radius: 4mm;
@@ -712,13 +710,13 @@
         }
 
         .pdf-ai-page__conclusion {
-            margin: 0 0 5mm;
-            padding: 3.5mm 5mm;
+            margin: 0 0 4mm;
+            padding: 3mm 5mm;
             border-left: 2mm solid #49ae78;
             background: #ffffff;
             color: #2e5549;
             font-size: 12px;
-            line-height: 1.5;
+            line-height: 13.5px;
             white-space: pre-line;
         }
 
@@ -737,11 +735,16 @@
         }
 
         .pdf-ai-page__category-cell {
-            padding: 3.2mm 4mm;
+            padding: 0;
+            border: 0;
+            vertical-align: top;
+        }
+
+        .pdf-ai-page__category-card {
+            padding: 3mm 4mm;
             border: 1px solid #d3e8da;
             border-radius: 3mm;
             background: #ffffff;
-            vertical-align: top;
         }
 
         .pdf-ai-page__category-heading {
@@ -780,16 +783,16 @@
         }
 
         .pdf-ai-page__category-summary {
-            margin: 0 0 1.5mm;
+            margin: 0 0 1.2mm;
             color: #2e5549;
             font-size: 11.5px;
-            line-height: 1.45;
+            line-height: 13px;
             white-space: normal;
         }
 
         .pdf-ai-page__future {
-            margin-top: 2mm;
-            padding-top: 1.5mm;
+            margin-top: 1.5mm;
+            padding-top: 1.2mm;
             border-top: 1px solid #e1eee6;
         }
 
@@ -804,7 +807,7 @@
             margin: 0;
             color: #49665d;
             font-size: 10.8px;
-            line-height: 1.45;
+            line-height: 1.35;
             white-space: normal;
         }
 
@@ -813,64 +816,91 @@
         }
 
         .pdf-ai-page__measure-block {
-            margin: 0 0 2.5mm;
+            margin: 0 0 2mm;
+            line-height: 0;
             page-break-inside: avoid;
         }
 
-        .pdf-ai-page__measure-check {
-            position: relative;
-            top: .35mm;
-            display: inline-block;
-            margin-right: 1.5mm;
+        .pdf-ai-page__measure-layout {
+            width: auto;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            border-collapse: collapse;
             color: inherit;
-            font-family: "DejaVu Sans", sans-serif;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 1;
+            font: inherit;
+            line-height: inherit;
+        }
+
+        .pdf-ai-page__measure-layout td {
+            padding: 0;
+            border: 0;
+            color: inherit;
             vertical-align: middle;
         }
 
-        .pdf-ai-page__measure-name {
+        .pdf-ai-page__measure-check-cell {
+            width: 4mm;
+            padding-right: 1.2mm !important;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .pdf-ai-page__measure-check {
             display: inline;
+            color: inherit;
+            font-family: "DejaVu Sans", sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .pdf-ai-page__measure-name {
+            line-height: 1;
             vertical-align: middle;
         }
 
         .pdf-ai-page__measure-pill {
             display: inline-block;
             max-width: 100%;
-            padding: 1.5mm 2.5mm;
+            vertical-align: top;
+            padding: .35mm 2.3mm;
             border: 1px solid;
             border-radius: 4mm;
             font-size: 10.5px;
             font-weight: 600;
-            line-height: 1.35;
+            line-height: 1;
         }
 
         .pdf-ai-page__measure-pill--critical {
             border-width: 1.5px;
         }
 
+        .pdf-ai-page__measure-critical-cell {
+            padding-left: 1.8mm !important;
+            text-align: right;
+            white-space: nowrap;
+        }
+
         .pdf-ai-page__measure-critical {
-            position: relative;
-            top: .25mm;
             display: inline-block;
-            margin-left: 2mm;
-            padding: .5mm 1.5mm;
+            margin: 0;
+            padding: .3mm 1.3mm .4mm;
             border: 1px solid;
             border-radius: 3mm;
             background: #ffffff;
             font-size: 8.5px;
             font-weight: 700;
             line-height: 1;
-            vertical-align: middle;
             white-space: nowrap;
         }
 
         .pdf-ai-page__measure-observation {
-            margin: 1mm 1.5mm 0;
+            margin: 0 1.5mm;
             color: #49665d;
             font-size: 10.5px;
-            line-height: 1.45;
+            line-height: 1.35;
         }
 
         .pdf-ai-page__measure-observation strong {
@@ -929,7 +959,7 @@
             background: #ffffff;
             color: #2e5549;
             font-size: 12px;
-            line-height: 1.45;
+            line-height: 13.5px;
             white-space: normal;
         }
 
@@ -1088,7 +1118,7 @@
             background: #ffffff;
             color: #2e5549;
             font-size: 12px;
-            line-height: 1.45;
+            line-height: 13.5px;
             white-space: normal;
         }
 

@@ -1740,7 +1740,7 @@ backend:
         category_summaries: "Category summaries"
         critical: "Critical"
         future: "Next edition"
-        future_horizon: "On the horizon, for the next edition"
+        future_horizon: 'On the horizon, for the next project'
         observations: "Observations"
         continuation: "continued"
         metrics:

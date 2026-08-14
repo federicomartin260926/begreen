@@ -2266,8 +2266,9 @@ class PlanController extends AbstractController
         }
 
         $activeFilters = array_merge($activeMain, $activeFlags);
-        // El PDF general resume siempre Elaboración, incluso si se descarga desde Implementación.
-        $pdfCommercialPhase = CommercialPhase::ELABORATION;
+        // El contenido del PDF general es unificado, pero el tier comercial
+        // corresponde a la fase desde la que se descarga.
+        $pdfCommercialPhase = $phase;
         $projectTierLabel = $this->featureGate->getPlanLabel($project, $pdfCommercialPhase);
         $projectTierSummary = $this->featureGate->getPlanDescription($project, $pdfCommercialPhase) ?? $this->t->trans('backend.plan.tier.basic_summary');
 
@@ -2518,13 +2519,11 @@ class PlanController extends AbstractController
             if ($planMeasure->isApplicable() === true && $planMeasure->willImplement() === true) {
                 ++$categories[$key]['metrics']['toImplement'];
 
-                $futureText = trim((string) $measure->getQuestionText());
+                $measureText = trim((string) $measure->getName());
                 $observations = trim((string) ($planMeasure->getObservations() ?? ''));
 
                 $categories[$key]['committedMeasures'][] = [
-                    'name' => $futureText !== ''
-                        ? $futureText
-                        : (string) $measure->getName(),
+                    'name' => $measureText,
                     'observations' => $observations,
                     'critical' => $planMeasure->isCritical() === true,
                 ];

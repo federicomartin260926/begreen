@@ -1748,7 +1748,7 @@ backend:
         category_summaries: "Resumen por categorías"
         critical: "Crítica"
         future: "Próxima edición"
-        future_horizon: "En el horizonte, para la próxima edición"
+        future_horizon: 'En el horizonte, para el próximo proyecto'
         observations: "Observaciones"
         continuation: "continuación"
         metrics:

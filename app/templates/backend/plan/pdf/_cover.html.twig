@@ -134,7 +134,8 @@
 
     </main>
 
-    <section class="pdf-cover-approved__summary">
+    <div class="pdf-cover-approved__details">
+        <section class="pdf-cover-approved__summary">
         <h3 class="pdf-cover-approved__summary-title">
             {{ 'backend.plan.pdf_visual.cover.summary.title'|trans }}
         </h3>
@@ -346,10 +347,10 @@
                 </table>
             </div>
         {% endif %}
-    </section>
+        </section>
 
 
-    <section class="pdf-cover-commitment">
+        <section class="pdf-cover-commitment">
         <table class="pdf-cover-commitment__heading" role="presentation">
             <tr>
                 <td>
@@ -401,7 +402,8 @@
             </tr>
         </table>
 
-    </section>
+        </section>
+    </div>
 
     {% include 'backend/plan/pdf/_footer.html.twig' with { footerVariant: 'cover' } %}
 </section>
