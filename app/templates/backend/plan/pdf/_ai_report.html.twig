@@ -116,39 +116,175 @@
 
 {% import _self as report %}
 
-{% set categoryPages = [] %}
+{% set categoryFragments = [] %}
+{% set showObservations = projectTier|default('basic') == 'basic' %}
 
+{#
+    Fragmentación física segura.
+
+    Se mantiene la fragmentación ya validada:
+    - 3 medidas cuando existe resumen futuro;
+    - 4 medidas en el resto.
+
+    Cada fragmento recibe además un peso aproximado basado en el
+    contenido que realmente ocupa altura: resumen, medidas,
+    observaciones y próxima edición.
+#}
 {% for category in aiCategorySummaries %}
     {% if category is not null %}
         {% set measures = category.committedMeasures %}
         {% set hasFutureSummary = category.futureSummary is not empty %}
         {% set measureChunkSize = hasFutureSummary ? 3 : 4 %}
         {% set measureChunks = measures|batch(measureChunkSize) %}
+        {% set categoryKey = category.key|default(category.name|default('')) %}
 
         {% if measures is empty %}
-            {% set categoryPages = categoryPages|merge([{
+            {% set summaryLength = category.summary|default('')|length %}
+            {% set futureLength = hasFutureSummary
+                ? category.futureSummary|default('')|length
+                : 0
+            %}
+
+            {% set fragmentWeight =
+                220
+                + summaryLength
+                + (futureLength * 0.8)
+            %}
+
+            {% set categoryFragments = categoryFragments|merge([{
                 category: category,
+                categoryKey: categoryKey,
                 measures: [],
                 showSummary: true,
                 showFutureSummary: hasFutureSummary,
-                continuation: false
+                continuation: false,
+                weight: fragmentWeight
             }]) %}
         {% else %}
             {% for chunk in measureChunks %}
-                {% set categoryPages = categoryPages|merge([{
+                {% set showSummary = loop.first %}
+                {% set showFutureSummary = hasFutureSummary and loop.last %}
+
+                {% set summaryLength = showSummary
+                    ? category.summary|default('')|length
+                    : 0
+                %}
+
+                {% set futureLength = showFutureSummary
+                    ? category.futureSummary|default('')|length
+                    : 0
+                %}
+
+                {% set observationsLength = 0 %}
+                {% set titlesLength = 0 %}
+
+                {% for measure in chunk %}
+                    {% set titlesLength =
+                        titlesLength
+                        + measure.title|default('')|length
+                    %}
+
+                    {% if showObservations %}
+                        {% set observationsLength =
+                            observationsLength
+                            + measure.observations|default('')|length
+                        %}
+                    {% endif %}
+                {% endfor %}
+
+                {#
+                    Peso empírico conservador.
+
+                    No representa píxeles/mm: únicamente permite comparar
+                    tamaños relativos de los fragmentos antes de entregarlos
+                    a Dompdf.
+                #}
+                {% set fragmentWeight =
+                    220
+                    + summaryLength
+                    + (futureLength * 0.8)
+                    + (titlesLength * 0.7)
+                    + (observationsLength * 0.9)
+                    + (chunk|length * 180)
+                %}
+
+                {% set categoryFragments = categoryFragments|merge([{
                     category: category,
+                    categoryKey: categoryKey,
                     measures: chunk,
-                    showSummary: loop.first,
-                    showFutureSummary: hasFutureSummary and loop.last,
-                    continuation: not loop.first
+                    showSummary: showSummary,
+                    showFutureSummary: showFutureSummary,
+                    continuation: not loop.first,
+                    weight: fragmentWeight
                 }]) %}
             {% endfor %}
         {% endif %}
     {% endif %}
 {% endfor %}
 
-{% for categoryPage in categoryPages %}
-    <section class="pdf-ai-page{% if loop.last %} pdf-ai-page--last{% endif %}">
+{#
+    Empaquetado secuencial conservador.
+
+    - máximo 2 fragmentos por página;
+    - nunca juntamos dos fragmentos de la misma categoría;
+    - presupuesto máximo aproximado: 2600;
+    - si no hay seguridad suficiente, se conserva página exclusiva.
+#}
+{% set pageWeightLimit = 2600 %}
+{% set reportPages = [] %}
+{% set currentPageFragments = [] %}
+{% set currentPageWeight = 0 %}
+{% set currentPageCategoryKey = null %}
+
+{% for fragment in categoryFragments %}
+    {% set canJoinCurrentPage =
+        currentPageFragments|length == 1
+        and currentPageCategoryKey != fragment.categoryKey
+        and (currentPageWeight + fragment.weight) <= pageWeightLimit
+    %}
+
+    {% if currentPageFragments is empty %}
+        {% set currentPageFragments = [fragment] %}
+        {% set currentPageWeight = fragment.weight %}
+        {% set currentPageCategoryKey = fragment.categoryKey %}
+    {% elseif canJoinCurrentPage %}
+        {% set currentPageFragments = currentPageFragments|merge([fragment]) %}
+        {% set currentPageWeight = currentPageWeight + fragment.weight %}
+
+        {# Máximo dos: cerramos inmediatamente la página. #}
+        {% set reportPages = reportPages|merge([{
+            fragments: currentPageFragments,
+            weight: currentPageWeight
+        }]) %}
+
+        {% set currentPageFragments = [] %}
+        {% set currentPageWeight = 0 %}
+        {% set currentPageCategoryKey = null %}
+    {% else %}
+        {% set reportPages = reportPages|merge([{
+            fragments: currentPageFragments,
+            weight: currentPageWeight
+        }]) %}
+
+        {% set currentPageFragments = [fragment] %}
+        {% set currentPageWeight = fragment.weight %}
+        {% set currentPageCategoryKey = fragment.categoryKey %}
+    {% endif %}
+{% endfor %}
+
+{% if currentPageFragments is not empty %}
+    {% set reportPages = reportPages|merge([{
+        fragments: currentPageFragments,
+        weight: currentPageWeight
+    }]) %}
+{% endif %}
+
+{% for reportPage in reportPages %}
+    <section
+        class="pdf-ai-page{% if loop.last %} pdf-ai-page--last{% endif %}"
+        data-pdf-page-weight="{{ reportPage.weight|round }}"
+        data-pdf-fragment-count="{{ reportPage.fragments|length }}">
+
         {% include 'backend/plan/pdf/_watermark.html.twig' %}
 
         {% include 'backend/plan/pdf/_header.html.twig' with {
@@ -156,14 +292,16 @@
         } %}
 
         <main class="pdf-ai-page__content">
-            {{ report.categoryContent(
-                categoryPage.category,
-                categoryPage.measures,
-                categoryPage.showSummary,
-                categoryPage.showFutureSummary,
-                categoryPage.continuation,
-                projectTier|default('basic') == 'basic'
-            ) }}
+            {% for categoryPage in reportPage.fragments %}
+                {{ report.categoryContent(
+                    categoryPage.category,
+                    categoryPage.measures,
+                    categoryPage.showSummary,
+                    categoryPage.showFutureSummary,
+                    categoryPage.continuation,
+                    showObservations
+                ) }}
+            {% endfor %}
         </main>
     </section>
 {% endfor %}
