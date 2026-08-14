@@ -2,7 +2,7 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User, VerificationSource};
+use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, ProjectCompany, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User, VerificationSource};
 use App\Enum\CommercialPhase;
 use App\Exception\Ai\AiReportException;
 use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
@@ -1625,6 +1625,31 @@ class PlanController extends AbstractController
         );
     }
 
+    #[Route('/closure/preview', name: 'closure_preview', methods: ['GET'])]
+    public function previewClosure(
+        ActiveProjectService $activeProjectService,
+        PlanRepository $planRepository,
+        MeasureRepository $measureRepository,
+        ProtocolRepository $protocolRepository,
+        EntityManagerInterface $em,
+        Request $request,
+        TranslatorInterface $translator
+    ): Response {
+        return $this->handlePreviewOrDownload(
+            activeProjectService: $activeProjectService,
+            planRepository: $planRepository,
+            measureRepository: $measureRepository,
+            protocolRepository: $protocolRepository,
+            em: $em,
+            request: $request,
+            asPdf: false,
+            translator: $translator,
+            phase: CommercialPhase::ELABORATION,
+            requireClosure: true,
+            forcedFilters: ['state' => PlanMeasureOperationalStateResolver::ALL]
+        );
+    }
+
     #[Route('/done/email', name: 'closure_send_email', methods: ['POST'])]
     public function sendClosureEmail(
         Request $request,
@@ -1904,6 +1929,85 @@ class PlanController extends AbstractController
             $this->addFlash('danger', 'backend.plan.pdf_visual.ai_report.error');
 
             return $this->redirectToRoute('backend_plan_done');
+        }
+
+        if (!$asPdf && $requireClosure) {
+            // Preview visual de cierre: mismo HTML que recibe Dompdf,
+            // añadiendo únicamente presentación específica del navegador.
+            $html = $this->renderPdfHtml($ctx);
+
+            $previewStyles = <<<'HTML'
+<style id="pdf-browser-preview-styles">
+    html {
+        background: #dde3e0;
+    }
+
+    body {
+        margin: 0;
+        padding: 24px 0 60px;
+        background: #dde3e0;
+    }
+
+    .pdf-page,
+    .pdf-ai-page {
+        display: block !important;
+        position: relative !important;
+        margin-right: auto !important;
+        margin-left: auto !important;
+        box-shadow: 0 3px 18px rgba(26, 54, 45, .20);
+        overflow: hidden;
+    }
+
+    .pdf-page + .pdf-page,
+    .pdf-page + .pdf-ai-page,
+    .pdf-ai-page + .pdf-page,
+    .pdf-ai-page + .pdf-ai-page {
+        margin-top: 24px !important;
+    }
+
+    /* Solo en navegador: evita saltos visuales heredados de impresión */
+    .pdf-page,
+    .pdf-ai-page,
+    .pdf-page__content,
+    .pdf-page__body,
+    .pdf-page__inner,
+    .pdf-ai-page__content,
+    .pdf-ai-page__body,
+    .pdf-ai-page__inner {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        transform: none !important;
+    }
+
+    .pdf-page > :first-child,
+    .pdf-ai-page > :first-child,
+    .pdf-page__content > :first-child,
+    .pdf-page__body > :first-child,
+    .pdf-page__inner > :first-child,
+    .pdf-ai-page__content > :first-child,
+    .pdf-ai-page__body > :first-child,
+    .pdf-ai-page__inner > :first-child {
+        margin-top: 0 !important;
+    }
+
+    /* Desactiva efectos de page-break que en preview generan huecos raros */
+    .pdf-page,
+    .pdf-ai-page {
+        break-before: auto !important;
+        break-after: auto !important;
+        page-break-before: auto !important;
+        page-break-after: auto !important;
+    }
+</style>
+HTML;
+
+            $html = str_replace('</head>', $previewStyles . '</head>', $html);
+
+            return new Response(
+                $html,
+                Response::HTTP_OK,
+                ['Content-Type' => 'text/html; charset=UTF-8']
+            );
         }
 
         if ($asPdf) {
@@ -2638,6 +2742,7 @@ class PlanController extends AbstractController
                 'assets/images/logo-white.svg',
                 'image/svg+xml'
             ),
+            'companyLogos' => $this->buildPdfCompanyLogos($context['project'] ?? null),
             'poppinsRegular' => $this->pdfAssetDataUri(
                 'public/fonts/poppins/Poppins-Regular.ttf',
                 'font/ttf'
@@ -2844,6 +2949,64 @@ class PlanController extends AbstractController
         );
 
         return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+
+    /**
+     * @return list<array{name:string, src:string}>
+     */
+    private function buildPdfCompanyLogos(mixed $project): array
+    {
+        if (!$project instanceof Project || $project->getId() === null) {
+            return [];
+        }
+
+        $logos = [];
+
+        foreach ($project->getProjectCompanies() as $company) {
+            if (!$company instanceof ProjectCompany || $company->getId() === null) {
+                continue;
+            }
+
+            $logoPath = trim((string) $company->getLogoPath());
+            if ($logoPath === '') {
+                continue;
+            }
+
+            $expectedPrefix = sprintf(
+                '/uploads/projects/%d/companies/%d/logo-',
+                $project->getId(),
+                $company->getId(),
+            );
+
+            if (
+                !str_starts_with($logoPath, $expectedPrefix)
+                || !preg_match(
+                    '#^'.preg_quote($expectedPrefix, '#').'[a-f0-9]{32}\.(png|jpg|webp)$#D',
+                    $logoPath,
+                    $matches,
+                )
+            ) {
+                continue;
+            }
+
+            $mimeType = match ($matches[1]) {
+                'png' => 'image/png',
+                'jpg' => 'image/jpeg',
+                'webp' => 'image/webp',
+            };
+
+            $src = $this->pdfAssetDataUri('public'.$logoPath, $mimeType);
+            if ($src === '') {
+                continue;
+            }
+
+            $logos[] = [
+                'name' => $company->getName(),
+                'src' => $src,
+            ];
+        }
+
+        return $logos;
     }
 
     private function pdfAssetDataUri(string $relativePath, string $mimeType): string

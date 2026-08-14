@@ -18,6 +18,7 @@
         <table class="pdf-cover-approved__hero" role="presentation">
             <tr>
                 <td class="pdf-cover-approved__main">
+                    <div class="pdf-cover-approved__main-content">
                     <h1 class="pdf-cover__title">
                         {{ 'backend.plan.pdf_visual.cover.title'|trans }}
                     </h1>
@@ -84,6 +85,25 @@
                         </div>
                     {% endif %}
 
+                    {% set companyLogos = pdfVisualAssets.companyLogos|default([]) %}
+                    {% if companyLogos is not empty %}
+                        <table class="pdf-cover-company-logos" role="presentation">
+                            <tr>
+                                {% for companyLogo in companyLogos %}
+                                    <td class="pdf-cover-company-logos__cell">
+                                        <div class="pdf-cover-company-logos__box">
+                                            <img
+                                                class="pdf-cover-company-logos__image"
+                                                src="{{ companyLogo.src }}"
+                                                alt="{{ companyLogo.name }}">
+                                        </div>
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        </table>
+                    {% endif %}
+
+                    </div>
                 </td>
 
                 <td class="pdf-cover-approved__score">

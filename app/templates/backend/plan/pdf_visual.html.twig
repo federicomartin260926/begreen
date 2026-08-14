@@ -121,7 +121,7 @@
 
         .pdf-cover__title {
             width: 155mm;
-            margin: 0 0 5mm;
+            margin: 0 0 1.8mm;
             color: #075c48;
             font-size: 31px;
             font-weight: 700;
@@ -129,7 +129,7 @@
         }
 
         .pdf-cover__project {
-            margin: 0 0 7mm;
+            margin: 0 0 1mm;
             color: #193f35;
             font-size: 20px;
             font-weight: 400;
@@ -332,6 +332,11 @@
             padding-right: 6mm;
         }
 
+        .pdf-cover-approved__main-content {
+            position: relative;
+            top: -4mm;
+        }
+
         .pdf-cover-approved__score {
             width: 26%;
             padding-top: 1mm;
@@ -344,22 +349,24 @@
 
         .pdf-cover--approved .pdf-cover__title {
             width: auto;
-            margin-bottom: 2.5mm;
+            margin-bottom: -1mm;
             font-size: 29px;
+            line-height: 1;
         }
 
         .pdf-cover--approved .pdf-cover__project {
-            margin-bottom: 1.2mm;
+            margin-bottom: .7mm;
             color: #1f3038;
             font-size: 20px;
             font-weight: 700;
+            line-height: 1.05;
         }
 
         .pdf-cover__project-meta {
-            margin: 0 0 3mm;
+            margin: 0 0 .3mm;
             color: #58736a;
             font-size: 9px;
-            line-height: 1.25;
+            line-height: 1.15;
         }
 
         .pdf-cover-approved__description {
@@ -409,6 +416,37 @@
             line-height: 1;
             text-align: center;
             text-transform: uppercase;
+        }
+
+        .pdf-cover-company-logos {
+            width: auto;
+            margin: 2.4mm 0 2.2mm;
+            border-collapse: collapse;
+        }
+
+        .pdf-cover-company-logos__cell {
+            width: 13mm;
+            height: 7mm;
+            padding: 0 .8mm 0 0;
+            border: 0;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .pdf-cover-company-logos__box {
+            width: 12mm;
+            height: 7mm;
+            text-align: left;
+            line-height: 7mm;
+        }
+
+        .pdf-cover-company-logos__image {
+            display: inline-block;
+            width: auto;
+            height: auto;
+            max-width: 12mm;
+            max-height: 7mm;
+            vertical-align: middle;
         }
 
         .pdf-indicators--approved {
