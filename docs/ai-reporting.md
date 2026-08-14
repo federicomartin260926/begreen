@@ -101,6 +101,8 @@ Para cada medida elegible, la aplicación envía datos como:
 - clave técnica de la medida;
 - título visible para revisión (`nameReview`, con fallback a `name`);
 - descripción;
+- ODS canónicos (`code` y nombre localizado);
+- nombre ESG canónico localizado;
 - decisión;
 - criticidad;
 - observaciones;

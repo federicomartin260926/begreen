@@ -64,6 +64,8 @@ final class AiReportPromptBuilder
                             'key' => $measure->key,
                             'title' => $measure->title,
                             'description' => $measure->description,
+                            'ods' => $measure->ods,
+                            'esg' => $measure->esg,
                             'decision' => $measure->decision->value,
                             'critical' => $measure->critical,
                             'observations' => $measure->observations,

@@ -6,6 +6,7 @@ use App\Service\Ai\AiReportMeasureDecision;
 
 final readonly class AiReportMeasure
 {
+    /** @param list<array{code:string, name:string}> $ods */
     public function __construct(
         public string $key,
         public string $title,
@@ -14,6 +15,8 @@ final readonly class AiReportMeasure
         public ?bool $critical,
         public string $observations,
         public int $score,
+        public array $ods = [],
+        public ?string $esg = null,
     ) {
     }
 }

@@ -3,7 +3,9 @@
 namespace App\Tests\Service\Ai;
 
 use App\Entity\Category;
+use App\Entity\EsG;
 use App\Entity\Measure;
+use App\Entity\Ods;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Exception\Ai\AiReportRequestException;
@@ -40,6 +42,12 @@ final class PlanAiReportRequestBuilderTest extends TestCase
             ->setExecutionIncident('INCIDENCIA_IMPLANTACION_PRIVADA')
             ->setInternalNotes('NOTA_INTERNA_SECRETA')
             ->setEvidence('EVIDENCIA_PRIVADA');
+        $later->getMeasure()
+            ->addOdsItem($this->ods('12', 'Producción y consumo responsables'))
+            ->addOdsItem($this->ods('7', 'Energía asequible y no contaminante'))
+            ->addOdsItem($this->ods('12', 'Producción y consumo responsables'))
+            ->setEsg((new EsG())->setName('Ambiental'));
+        $later->setEsg((new EsG())->setName('Legacy social'));
 
         $plan
             ->addPlanMeasure($this->planMeasure(
@@ -87,6 +95,11 @@ final class PlanAiReportRequestBuilderTest extends TestCase
         self::assertSame(['measure:101', 'measure:102'], array_column($request->categories[0]->measures, 'key'));
         self::assertSame([false, true], array_column($request->categories[0]->measures, 'critical'));
         self::assertSame('Descripción B', $request->categories[0]->measures[1]->description);
+        self::assertSame([
+            ['code' => '7', 'name' => 'Energía asequible y no contaminante'],
+            ['code' => '12', 'name' => 'Producción y consumo responsables'],
+        ], $request->categories[0]->measures[1]->ods);
+        self::assertSame('Ambiental', $request->categories[0]->measures[1]->esg);
         self::assertSame('Observación B', $request->categories[0]->measures[1]->observations);
         self::assertSame(AiReportMeasureDecision::NOT_PLANNED, $request->categories[1]->measures[0]->decision);
 
@@ -102,6 +115,9 @@ final class PlanAiReportRequestBuilderTest extends TestCase
     {
         $category = $this->category(10, 'Energía', 10);
         $translated = $this->measure(101, 'Nombre ES', 'Título corto ES', 'Descripción ES', 5, $category, 10);
+        $ods = $this->ods('7', 'Energía asequible y no contaminante');
+        $esg = (new EsG())->setName('Ambiental');
+        $translated->addOdsItem($ods)->setEsg($esg);
         $withoutTitle = $this->measure(102, 'Solo español', null, 'Descripción ES', 5, $category, 20);
         $plan = (new Plan())
             ->addPlanMeasure($this->planMeasure($translated, true, true))
@@ -114,6 +130,8 @@ final class PlanAiReportRequestBuilderTest extends TestCase
                 'nameReview' => 'Short title EN',
                 'description' => 'Description EN',
             ]],
+            spl_object_id($ods) => ['en' => ['name' => 'Affordable and clean energy']],
+            spl_object_id($esg) => ['en' => ['name' => 'Environmental']],
             spl_object_id($withoutTitle) => ['en' => ['description' => 'Description EN']],
         ];
 
@@ -124,6 +142,10 @@ final class PlanAiReportRequestBuilderTest extends TestCase
         self::assertCount(1, $request->categories[0]->measures);
         self::assertSame('Short title EN', $request->categories[0]->measures[0]->title);
         self::assertSame('Description EN', $request->categories[0]->measures[0]->description);
+        self::assertSame([
+            ['code' => '7', 'name' => 'Affordable and clean energy'],
+        ], $request->categories[0]->measures[0]->ods);
+        self::assertSame('Environmental', $request->categories[0]->measures[0]->esg);
     }
 
     public function testRejectsUnsupportedLocale(): void
@@ -218,6 +240,11 @@ final class PlanAiReportRequestBuilderTest extends TestCase
             ->setWillImplement($willImplement)
             ->setObservations($observations)
             ->setIsCritical($critical);
+    }
+
+    private function ods(string $code, string $name): Ods
+    {
+        return (new Ods())->setCode($code)->setName($name);
     }
 
     private function setId(object $entity, int $id): void

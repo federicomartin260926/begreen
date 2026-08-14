@@ -3,7 +3,9 @@
 namespace App\Service\Ai;
 
 use App\Entity\Category;
+use App\Entity\EsG;
 use App\Entity\Measure;
+use App\Entity\Ods;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Protocol;
@@ -83,6 +85,8 @@ final readonly class PlanAiReportRequestBuilder
                 $planMeasure->isCritical(),
                 trim((string) $planMeasure->getObservations()),
                 (int) $measure->getScore(),
+                $this->odsContext($measure, $locale, $translationRepository),
+                $this->esgContext($measure, $locale, $translationRepository),
             );
         }
 
@@ -146,7 +150,7 @@ final readonly class PlanAiReportRequestBuilder
     }
 
     private function translatedValue(
-        Measure|Category $entity,
+        Measure|Category|Ods|EsG $entity,
         string $field,
         string $locale,
         TranslationRepository $translationRepository,
@@ -165,6 +169,55 @@ final readonly class PlanAiReportRequestBuilder
         $translations = $translationRepository->findTranslations($entity);
 
         return trim((string) ($translations[$locale][$field] ?? ''));
+    }
+
+    /** @return list<array{code:string, name:string}> */
+    private function odsContext(
+        Measure $measure,
+        string $locale,
+        TranslationRepository $translationRepository,
+    ): array {
+        $items = [];
+        foreach ($measure->getOdsItems() as $ods) {
+            $code = trim((string) $ods->getCode());
+            $name = $this->translatedValue($ods, 'name', $locale, $translationRepository);
+            if ($code === '' || $name === '') {
+                continue;
+            }
+
+            $items[] = [
+                'code' => $code,
+                'name' => $name,
+            ];
+        }
+
+        usort($items, static function (array $left, array $right): int {
+            $byCode = strnatcasecmp($left['code'], $right['code']);
+
+            return $byCode !== 0 ? $byCode : strnatcasecmp($left['name'], $right['name']);
+        });
+
+        $uniqueItems = [];
+        foreach ($items as $item) {
+            $uniqueItems[mb_strtolower($item['code'])] ??= $item;
+        }
+
+        return array_values($uniqueItems);
+    }
+
+    private function esgContext(
+        Measure $measure,
+        string $locale,
+        TranslationRepository $translationRepository,
+    ): ?string {
+        $esg = $measure->getEsg();
+        if (!$esg instanceof EsG) {
+            return null;
+        }
+
+        $name = $this->translatedValue($esg, 'name', $locale, $translationRepository);
+
+        return $name !== '' ? $name : null;
     }
 
     private function translationRepository(): TranslationRepository
