@@ -22,9 +22,9 @@ Por tanto, los cambios de precio, moneda, orden, estado activo, límites, puntua
 | Ambas | Plan actual y CTA | Suscripción por fase + targets de `StripeProjectCheckoutService` | Sí | Los planes inferiores permanecen visibles, pero solo los targets permitidos tienen checkout. |
 | Elaboración | Nº de medidas | `allowed_scores` + catálogo del protocolo | Sí | Dato derivado: cuenta las medidas del protocolo cuyas puntuaciones están permitidas. |
 | Elaboración | Marcar medida como crítica | Contenido comercial estático | No | La criticidad existe en Elaboración, pero no hay una feature o límite comercial que la controle por plan. |
-| Elaboración | Observaciones por medida | Disponibilidad general | No | Está disponible para Basic, Standard y Pro; no depende de una feature comercial. |
+| Elaboración | Observaciones por medida | Disponibilidad general | No | Está disponible para Basic, Standard y Pro; no depende de una feature comercial. En el PDF unificado se muestran literalmente solo en Basic; Standard y Pro las ocultan visualmente, aunque siguen disponibles para el contexto IA. |
 | Elaboración | Descarga en PDF | Features `sustainability_plan.department_pdf` y `sustainability_plan.advanced_exports` | Sí | Dato derivado. El texto resume niveles de exportación configurados; no se asigna por tier. |
-| Elaboración | Branding del PDF | `CommercialPlan.watermarkEnabled` + feature `sustainability_plan.branding` | Sí | Dato derivado. La redacción comercial simplifica dos capacidades distintas. |
+| Elaboración | Branding del PDF | `CommercialPlan.watermarkEnabled` + feature `sustainability_plan.branding` | Sí | Dato derivado. La redacción comercial simplifica dos capacidades distintas. Los logos de empresas participantes mostrados en la portada son independientes de la feature comercial de branding. |
 | Elaboración | Niveles de compromiso | Contenido comercial estático | No | No existe feature comercial específica. |
 | Elaboración | Proyectos simultáneos | Sin relación técnica actual | No | `CommercialPlan` no tiene un límite de proyectos simultáneos. |
 | Elaboración | Añadir medida propia | Feature `sustainability_plan.custom_measures` | Sí | Cambia automáticamente desde administración. |
@@ -39,7 +39,7 @@ Por tanto, los cambios de precio, moneda, orden, estado activo, límites, puntua
 | Implementación | Vista de progreso | Contenido comercial estático | No | El progreso global existe, pero no hay variantes comerciales configurables. |
 | Implementación | Niveles de compromiso | Contenido comercial estático | No | No existe feature comercial específica. |
 | Implementación | Proyectos simultáneos | Sin relación técnica actual | No | `CommercialPlan` no tiene ese límite. |
-| Implementación | Poner observaciones | Disponibilidad general | No | Está disponible para Basic, Standard y Pro; no depende de una feature comercial. |
+| Implementación | Poner observaciones | Disponibilidad general | No | Está disponible para Basic, Standard y Pro; no depende de una feature comercial. La visibilidad literal en el PDF unificado sigue la regla por tier: Basic sí; Standard y Pro no. |
 | Implementación | Notas internas | Feature `sustainability_plan.internal_notes` | Sí | Cambia automáticamente desde administración. |
 | Implementación | Responsables | Feature `sustainability_plan.responsibles` | Sí | Cambia automáticamente desde administración. |
 | Implementación | Checklist | Feature `sustainability_plan.checklist` | Sí | Cambia automáticamente desde administración. |

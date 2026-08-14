@@ -19,6 +19,9 @@ This project uses an internal tier model per `Project` for the sustainability pl
 - `basic`: scores `5` and `4`, maximum `10` evidences per project, PDF watermark enabled.
 - `standard`: scores `5`, `4`, `3`, unlimited evidences, watermark disabled, grouped PDF by departments.
 - `pro`: all scores `5` to `1`, unlimited evidences, watermark disabled, grouped PDF/Excel by categories, departments, impact areas, triple balance and ODS.
+- The effective tier and watermark of the unified PDF are resolved against the commercial phase being downloaded; they are not hardcoded to the elaboration phase.
+- Observations are available in all three tiers. In the unified PDF, `basic` renders them literally; `standard` and `pro` hide them from the visual document while keeping them available to the AI context when that report is generated.
+- Project-company logos shown on the unified PDF cover are independent from the commercial `sustainability_plan.branding` feature.
 
 ## Which measures belong to each plan
 

@@ -108,6 +108,8 @@ Para cada medida elegible, la aplicación envía datos como:
 - observaciones;
 - puntuación.
 
+Las observaciones se envían al proveedor tal como están almacenadas. El flujo actual no aplica autocorrección automática. En el PDF unificado, `Basic` las muestra literalmente; `Standard` y `Pro` las ocultan visualmente, aunque siguen formando parte del contexto IA.
+
 Las categorías se identifican mediante claves estables del tipo:
 
 `category:<id>`
@@ -164,7 +166,7 @@ Una medida futura es exclusivamente:
 
 El PDF no muestra estas medidas una a una. La IA genera un único texto narrativo por categoría bajo el concepto:
 
-`En el horizonte, para la próxima edición`
+`En el horizonte, para el próximo proyecto`
 
 El texto debe:
 
@@ -212,7 +214,7 @@ El hash efectivo incorpora el contexto del plan y la identidad del prompt. La id
 - proveedor/modelo efectivo;
 - fingerprint de las reglas editoriales.
 
-Por tanto, el informe se regenera cuando cambia información relevante del plan o cambia la configuración efectiva de IA.
+Por tanto, el informe se regenera cuando cambia información relevante del plan o cambia la configuración efectiva de IA. Como ODS, ESG y observaciones forman parte del contexto por medida, los cambios en esos datos también alteran el hash efectivo.
 
 La subida de versión del prompt técnico también invalida automáticamente informes anteriores.
 
@@ -237,16 +239,40 @@ Durante la validación real se comprobó este comportamiento con una respuesta t
 
 El PDF general consume el resultado IA desde `PlanController`.
 
-Por categoría se muestran:
+### Presentación y contenido
 
-1. nombre e identidad visual de la categoría;
-2. resumen narrativo principal;
-3. compromisos seleccionados actuales;
-4. si corresponde, bloque final `En el horizonte, para la próxima edición`.
+- La portada puede mostrar los logos de las empresas participantes del proyecto. Se incrustan como assets locales en data URI, se mantienen dentro de una caja común y conservan su proporción sin recorte ni deformación.
+- El tier efectivo y la marca de agua se resuelven contra la fase comercial que se está descargando; no se fuerzan a Elaboración.
+- Las medidas se presentan con el nombre canónico de `Measure` en forma de acción/imperativo. El texto de pregunta o revisión no se usa como etiqueta de la medida en el PDF.
+- `Basic` muestra las observaciones originales debajo de cada medida. `Standard` y `Pro` no las imprimen literalmente, aunque las observaciones siguen llegando al contexto IA.
+- Los encabezados de categoría usan la identidad visual correspondiente y un contenedor de bordes redondeados. La composición de medida mantiene alineados check, texto y distintivo `Crítica`, con interlineado compacto.
+- En portadas con más datos, incluido Evento, el resumen y el bloque de compromiso fluyen dentro del mismo contenedor para evitar solapamientos.
+- Si existen medidas futuras, el bloque narrativo final se muestra bajo `En el horizonte, para el próximo proyecto`.
 
 Las categorías sin medidas futuras no muestran dicho bloque.
 
-Cuando una categoría ocupa varias páginas, el bloque futuro se reserva para la parte final de la categoría.
+### Paginación de categorías
+
+La paginación del informe IA sigue siendo explícita y conservadora:
+
+- una categoría se fragmenta con un máximo base de 3 medidas cuando incluye resumen futuro y 4 en el resto de casos;
+- cada fragmento recibe un peso aproximado basado en resumen, títulos, observaciones visibles y bloque futuro;
+- se pueden colocar como máximo dos fragmentos de categorías distintas en una misma página cuando la suma queda dentro del presupuesto seguro;
+- dos fragmentos de la misma categoría no se empaquetan juntos;
+- si el contenido es grande o dudoso, el fragmento conserva página propia;
+- cuando una categoría ocupa varias páginas, el bloque futuro se reserva para su último fragmento.
+
+La composición no delega en Dompdf la decisión de partir una categoría de forma automática.
+
+### Preview HTML
+
+Para QA visual existe:
+
+`GET /backend/plan/closure/preview`
+
+La preview usa el mismo HTML visual y los mismos assets que el PDF general, pero responde como `text/html`. `PlanController` inyecta en esa respuesta un bloque CSS exclusivo del navegador para centrar las páginas, separarlas visualmente y neutralizar los `page-break` de impresión.
+
+Ese CSS solo se añade en el flujo HTML de preview (`!$asPdf && $requireClosure`); no se entrega a Dompdf y, por tanto, los ajustes de la preview no alteran el PDF descargado.
 
 ## Archivos principales
 
@@ -283,9 +309,10 @@ Providers y servicio:
 - `app/src/Service/Ai/AnthropicReportProvider.php`
 - `app/src/Service/Ai/PlanAiReportService.php`
 
-PDF:
+PDF y preview:
 
 - `app/src/Controller/Backend/PlanController.php`
+- `app/templates/backend/plan/pdf/_cover.html.twig`
 - `app/templates/backend/plan/pdf/_ai_report.html.twig`
 - `app/templates/backend/plan/pdf_visual.html.twig`
 
@@ -318,10 +345,11 @@ Antes de desplegar cambios relacionados con IA:
 4. limpiar/calentar caché cuando corresponda al flujo normal de deploy;
 5. abrir Administración → IA y revisar las reglas persistidas;
 6. decidir si se mantienen reglas personalizadas o se usa `Restaurar reglas por defecto`;
-7. generar un PDF general real;
-8. verificar que el informe se persiste con la versión de prompt y storage esperadas;
-9. comprobar logs si el proveedor devuelve error;
-10. no borrar manualmente un informe anterior solo para forzar regeneración: la invalidación debe hacerlo automáticamente.
+7. revisar `/backend/plan/closure/preview` como comprobación visual rápida;
+8. generar un PDF general real y revisar portada, categorías, paginación y cierre;
+9. verificar que el informe se persiste con la versión de prompt y storage esperadas;
+10. comprobar logs si el proveedor devuelve error;
+11. no borrar manualmente un informe anterior solo para forzar regeneración: la invalidación debe hacerlo automáticamente.
 
 ## Validación recomendada
 
@@ -340,7 +368,7 @@ Comprobaciones adicionales:
 
 ```bash
 php bin/console lint:yaml config/ai_report_prompt.yaml
-php bin/console lint:twig templates/admin/ai/edit.html.twig templates/backend/plan/pdf/_ai_report.html.twig templates/backend/plan/pdf_visual.html.twig
+php bin/console lint:twig templates/admin/ai/edit.html.twig templates/backend/plan/pdf/_cover.html.twig templates/backend/plan/pdf/_ai_report.html.twig templates/backend/plan/pdf_visual.html.twig
 php bin/console doctrine:schema:update --dump-sql
 ```
 

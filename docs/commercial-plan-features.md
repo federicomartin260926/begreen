@@ -137,7 +137,8 @@ Clave:
 Efecto actual:
 
 - está disponible en la configuración comercial;
-- no he encontrado todavía una aplicación funcional real en el flujo actual.
+- no he encontrado todavía una aplicación funcional real en el flujo actual;
+- los logos de `ProjectCompany` que aparecen en la portada del PDF unificado son una presentación de las empresas participantes y no activan ni sustituyen esta feature de branding configurable.
 
 Estado:
 

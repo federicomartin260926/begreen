@@ -84,6 +84,34 @@ Esta fase deja operativos estos bloques:
 - Tiene comentarios visibles, notas internas, responsables y medidas personalizadas MVP.
 - El nivel de compromiso se calcula sobre el catálogo oficial de medidas, sin mezclar las medidas custom en el total oficial.
 
+## PDF unificado y QA visual
+
+El PDF general comparte una única composición visual, pero respeta el tier efectivo de la fase comercial que se está descargando.
+
+Reglas actuales:
+
+- `Basic` mantiene la marca de agua y muestra literalmente las observaciones de las medidas.
+- `Standard` y `Pro` no muestran literalmente las observaciones en el PDF general; las observaciones siguen disponibles en el plan y, cuando corresponde, forman parte del contexto enviado a la IA.
+- Las medidas del PDF se muestran con el nombre canónico de `Measure` en forma de acción/imperativo, no como preguntas de revisión.
+- La portada puede incorporar logos de las empresas participantes del proyecto. Los logos conservan proporción y se normalizan dentro de una caja común, sin recorte ni deformación.
+- La portada mantiene resumen y compromiso en flujo conjunto para evitar solapamientos en proyectos con más metadatos, incluido Evento.
+- Los encabezados de categoría usan bordes redondeados; check, texto y distintivo `Crítica` se mantienen alineados y el interlineado se ha compactado.
+- El bloque futuro se presenta como `En el horizonte, para el próximo proyecto`.
+- La paginación de categorías es explícita: los fragmentos grandes conservan página propia y se pueden agrupar como máximo dos fragmentos de categorías distintas cuando un presupuesto conservador de contenido indica que caben con seguridad.
+- El PDF no depende de la preview del navegador para su maquetación.
+
+### Preview HTML
+
+La ruta:
+
+`GET /backend/plan/closure/preview`
+
+reutiliza el mismo render visual y los mismos assets del PDF general para poder revisar el cierre en navegador antes de generar el PDF real.
+
+La preview añade CSS exclusivo de navegador para centrar y separar las páginas y neutralizar `page-break` de impresión. Ese CSS no se envía a Dompdf y no afecta al PDF descargado.
+
+La preview es una ayuda de QA, no sustituye la validación final con un PDF real.
+
 ## Stripe
 
 ### Variables requeridas
@@ -127,6 +155,7 @@ Esta fase deja operativos estos bloques:
 - `GET /backend/project/{id}/subscription/{phase}/success/{targetTier}`
 - `GET /backend/project/{id}/subscription/{phase}/cancel/{targetTier}`
 - `POST /webhooks/stripe`
+- `GET /backend/plan/closure/preview`
 - `GET /backend/plan/{id}/export/{grouping}/pdf`
 - `GET /backend/plan/{id}/export/{grouping}/excel`
 
@@ -140,6 +169,7 @@ Esta fase deja operativos estos bloques:
 - `npm run build`
 - `php bin/console about`
 - `php bin/console debug:router`
+- `php bin/console debug:router backend_plan_closure_preview`
 - `php bin/console doctrine:schema:update --dump-sql`
 - `./vendor/bin/phpunit`
 - `php bin/console lint:twig templates`
@@ -169,8 +199,10 @@ Antes de subir a producción:
 11. Aplicar cambios de esquema solo si están revisados y son esperados.
 12. Comprobar permisos de subida para evidencias.
 13. Verificar login y acceso a un proyecto `Basic`.
-14. Probar una subida de checkout Stripe en entorno de staging.
-15. Revisar logs tras el despliegue.
+14. Revisar la preview HTML de cierre.
+15. Generar y revisar un PDF real, incluyendo portada, logos, categorías compartidas, observaciones según tier y cierre.
+16. Probar una subida de checkout Stripe en entorno de staging.
+17. Revisar logs tras el despliegue.
 
 ## Pendientes conocidos
 
@@ -182,6 +214,8 @@ Antes de subir a producción:
 - No hay facturación propia en Begreen.
 - No hay ZIP de exportaciones.
 - No hay maquetación avanzada para los PDFs agrupados.
+- La autocorrección IA de observaciones no forma parte del flujo actual; su posible implementación queda para una tarea posterior.
+- La revisión/edición final asistida del plan antes del cierre queda para una tarea posterior.
 - Hay deuda previa en `doctrine:schema:update --dump-sql` que no pertenece a esta fase.
 
 ## Fuera de alcance
@@ -190,6 +224,6 @@ Antes de subir a producción:
 - Informe final.
 - Stripe Billing recurrente.
 - Cupones e impuestos complejos.
-- Branding por proyecto.
+- Branding configurable por proyecto/tier. Los logos de empresas participantes ya soportados en la portada del PDF son una capacidad distinta y no implican que la feature comercial de branding esté implementada.
 - Gaming adicional.
 - Refactors grandes de controladores.

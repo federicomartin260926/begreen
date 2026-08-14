@@ -86,6 +86,14 @@ make fixtures
 make test
 ```
 
+## Preview HTML del PDF general
+
+Para QA visual del cierre del plan existe una preview HTML que reutiliza el mismo render visual y los mismos assets que el PDF general:
+
+`GET /backend/plan/closure/preview`
+
+La ruta respeta las comprobaciones del flujo de cierre. Los estilos adicionales de centrado y separación entre páginas se inyectan únicamente en esta respuesta HTML de preview; no forman parte del HTML enviado a Dompdf y no modifican el PDF descargado.
+
 ## Documentación de la app
 
 La documentación funcional y técnica específica de Symfony está en:
@@ -94,4 +102,7 @@ La documentación funcional y técnica específica de Symfony está en:
 - [docs/measure-template-import.md](docs/measure-template-import.md)
 - [docs/emails.md](docs/emails.md)
 - [docs/ai-reporting.md](docs/ai-reporting.md)
+- [docs/sustainability-plan-qa-and-deploy.md](docs/sustainability-plan-qa-and-deploy.md)
+- [docs/commercial-tiers.md](docs/commercial-tiers.md)
+- [docs/commercial-plan-features.md](docs/commercial-plan-features.md)
 - La depuración con Xdebug para VS Code está documentada en [app/README.md](app/README.md#xdebug)
