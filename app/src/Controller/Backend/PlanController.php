@@ -2971,7 +2971,7 @@ HTML;
     }
 
     /**
-     * @return list<array{name:string, src:string}>
+     * @return list<array{name:string, src:string, widthMm:float, heightMm:float}>
      */
     private function buildPdfCompanyLogos(mixed $project): array
     {
@@ -3014,18 +3014,245 @@ HTML;
                 'webp' => 'image/webp',
             };
 
-            $src = $this->pdfAssetDataUri('public'.$logoPath, $mimeType);
-            if ($src === '') {
+            $asset = $this->buildPdfCompanyLogoAsset('public'.$logoPath, $mimeType);
+            if ($asset === null) {
                 continue;
             }
 
             $logos[] = [
                 'name' => $company->getName(),
-                'src' => $src,
+                'src' => $asset['src'],
+                'ratio' => $asset['ratio'],
             ];
         }
 
-        return $logos;
+        if ($logos === []) {
+            return [];
+        }
+
+        // Keep every logo at the same height. Only reduce the whole row when
+        // an unusually wide set of logos would exceed the safe cover width.
+        $targetHeightMm = 7.0;
+        $gapMm = 2.5;
+        $maxRowWidthMm = 165.0;
+        $ratioSum = array_sum(array_column($logos, 'ratio'));
+        $gapWidthMm = $gapMm * max(0, count($logos) - 1);
+        $availableLogoWidthMm = max(1.0, $maxRowWidthMm - $gapWidthMm);
+        $heightMm = min($targetHeightMm, $availableLogoWidthMm / $ratioSum);
+
+        return array_map(
+            static fn (array $logo): array => [
+                'name' => $logo['name'],
+                'src' => $logo['src'],
+                'widthMm' => round($logo['ratio'] * $heightMm, 2),
+                'heightMm' => round($heightMm, 2),
+            ],
+            $logos,
+        );
+    }
+
+    /**
+     * @return array{src:string, ratio:float}|null
+     */
+    private function buildPdfCompanyLogoAsset(string $relativePath, string $mimeType): ?array
+    {
+        $path = $this->getParameter('kernel.project_dir').'/'.ltrim($relativePath, '/');
+        $contents = is_file($path) ? file_get_contents($path) : false;
+        if ($contents === false) {
+            return null;
+        }
+
+        $size = @getimagesizefromstring($contents);
+        if ($size === false || $size[0] <= 0 || $size[1] <= 0) {
+            return null;
+        }
+
+        $original = [
+            'src' => sprintf('data:%s;base64,%s', $mimeType, base64_encode($contents)),
+            'ratio' => $size[0] / $size[1],
+        ];
+
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagecrop')) {
+            return $original;
+        }
+
+        $image = @imagecreatefromstring($contents);
+        if (!$image instanceof \GdImage) {
+            return $original;
+        }
+
+        $cropped = $this->cropPdfCompanyLogoWhitespace($image);
+        if (!$cropped instanceof \GdImage) {
+            imagedestroy($image);
+
+            return $original;
+        }
+
+        $width = imagesx($cropped);
+        $height = imagesy($cropped);
+
+        ob_start();
+        imagesavealpha($cropped, true);
+        $written = imagepng($cropped, null, 6);
+        $normalizedContents = ob_get_clean();
+
+        imagedestroy($cropped);
+        imagedestroy($image);
+
+        if (!$written || !is_string($normalizedContents) || $normalizedContents === '') {
+            return $original;
+        }
+
+        return [
+            'src' => 'data:image/png;base64,'.base64_encode($normalizedContents),
+            'ratio' => $width / $height,
+        ];
+    }
+
+    private function cropPdfCompanyLogoWhitespace(\GdImage $image): ?\GdImage
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        if ($width < 3 || $height < 3) {
+            return null;
+        }
+
+        $transparentBackground = imagecolortransparent($image) >= 0;
+        if (!$transparentBackground) {
+            foreach ([[0, 0], [$width - 1, 0], [0, $height - 1], [$width - 1, $height - 1]] as [$x, $y]) {
+                $color = imagecolorsforindex($image, imagecolorat($image, $x, $y));
+                if (($color['alpha'] ?? 0) >= 120) {
+                    $transparentBackground = true;
+                    break;
+                }
+            }
+        }
+
+        $isBlank = function (int $x, int $y) use ($image, $transparentBackground): bool {
+            $color = imagecolorsforindex($image, imagecolorat($image, $x, $y));
+            $alpha = $color['alpha'] ?? 0;
+
+            if ($alpha >= 120) {
+                return true;
+            }
+
+            if ($transparentBackground) {
+                return false;
+            }
+
+            return ($color['red'] ?? 0) >= 245
+                && ($color['green'] ?? 0) >= 245
+                && ($color['blue'] ?? 0) >= 245;
+        };
+
+        $top = 0;
+        while ($top < $height) {
+            $blank = true;
+            for ($x = 0; $x < $width; ++$x) {
+                if (!$isBlank($x, $top)) {
+                    $blank = false;
+                    break;
+                }
+            }
+
+            if (!$blank) {
+                break;
+            }
+
+            ++$top;
+        }
+
+        if ($top >= $height) {
+            return null;
+        }
+
+        $bottom = $height - 1;
+        while ($bottom > $top) {
+            $blank = true;
+            for ($x = 0; $x < $width; ++$x) {
+                if (!$isBlank($x, $bottom)) {
+                    $blank = false;
+                    break;
+                }
+            }
+
+            if (!$blank) {
+                break;
+            }
+
+            --$bottom;
+        }
+
+        $left = 0;
+        while ($left < $width) {
+            $blank = true;
+            for ($y = $top; $y <= $bottom; ++$y) {
+                if (!$isBlank($left, $y)) {
+                    $blank = false;
+                    break;
+                }
+            }
+
+            if (!$blank) {
+                break;
+            }
+
+            ++$left;
+        }
+
+        $right = $width - 1;
+        while ($right > $left) {
+            $blank = true;
+            for ($y = $top; $y <= $bottom; ++$y) {
+                if (!$isBlank($right, $y)) {
+                    $blank = false;
+                    break;
+                }
+            }
+
+            if (!$blank) {
+                break;
+            }
+
+            --$right;
+        }
+
+        $leftMargin = $left;
+        $rightMargin = $width - 1 - $right;
+        $topMargin = $top;
+        $bottomMargin = $height - 1 - $bottom;
+
+        // Be conservative: trim only when the content is surrounded by an
+        // unequivocal outer margin on all four sides.
+        $minimumHorizontalMargin = max(1, (int) floor($width * 0.01));
+        $minimumVerticalMargin = max(1, (int) floor($height * 0.01));
+
+        if (
+            $leftMargin < $minimumHorizontalMargin
+            || $rightMargin < $minimumHorizontalMargin
+            || $topMargin < $minimumVerticalMargin
+            || $bottomMargin < $minimumVerticalMargin
+        ) {
+            return null;
+        }
+
+        // Preserve a tiny safety border for antialiasing.
+        $paddingX = max(1, (int) round($width * 0.003));
+        $paddingY = max(1, (int) round($height * 0.003));
+
+        $cropX = max(0, $left - $paddingX);
+        $cropY = max(0, $top - $paddingY);
+        $cropRight = min($width - 1, $right + $paddingX);
+        $cropBottom = min($height - 1, $bottom + $paddingY);
+
+        $crop = imagecrop($image, [
+            'x' => $cropX,
+            'y' => $cropY,
+            'width' => $cropRight - $cropX + 1,
+            'height' => $cropBottom - $cropY + 1,
+        ]);
+
+        return $crop instanceof \GdImage ? $crop : null;
     }
 
     private function pdfAssetDataUri(string $relativePath, string $mimeType): string

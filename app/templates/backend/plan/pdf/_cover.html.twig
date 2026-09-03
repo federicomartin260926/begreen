@@ -90,10 +90,11 @@
                         <table class="pdf-cover-company-logos" role="presentation">
                             <tr>
                                 {% for companyLogo in companyLogos %}
-                                    <td class="pdf-cover-company-logos__cell">
+                                    <td class="pdf-cover-company-logos__cell{% if loop.last %} pdf-cover-company-logos__cell--last{% endif %}">
                                         <div class="pdf-cover-company-logos__box">
                                             <img
                                                 class="pdf-cover-company-logos__image"
+                                                style="width: {{ companyLogo.widthMm }}mm; height: {{ companyLogo.heightMm }}mm;"
                                                 src="{{ companyLogo.src }}"
                                                 alt="{{ companyLogo.name }}">
                                         </div>

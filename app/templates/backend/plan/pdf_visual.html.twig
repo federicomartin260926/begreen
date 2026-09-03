@@ -425,27 +425,27 @@
         }
 
         .pdf-cover-company-logos__cell {
-            width: 13mm;
-            height: 7mm;
-            padding: 0 .8mm 0 0;
+            width: auto;
+            height: auto;
+            padding: 0 2.5mm 0 0;
             border: 0;
             text-align: left;
             vertical-align: middle;
         }
 
+        .pdf-cover-company-logos__cell--last {
+            padding-right: 0;
+        }
+
         .pdf-cover-company-logos__box {
-            width: 12mm;
-            height: 7mm;
+            width: auto;
+            height: auto;
             text-align: left;
-            line-height: 7mm;
+            line-height: 0;
         }
 
         .pdf-cover-company-logos__image {
-            display: inline-block;
-            width: auto;
-            height: auto;
-            max-width: 12mm;
-            max-height: 7mm;
+            display: block;
             vertical-align: middle;
         }
 
@@ -851,6 +851,12 @@
 
         .pdf-ai-page__measures {
             margin-top: 1mm;
+        }
+
+        .pdf-ai-page__measures--separated {
+            margin-top: 1.5mm;
+            padding-top: 1.2mm;
+            border-top: 1px solid #e1eee6;
         }
 
         .pdf-ai-page__measure-block {
