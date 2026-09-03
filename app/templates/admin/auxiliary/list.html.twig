@@ -37,10 +37,6 @@
                   <th class="text-center">{{ 'backend.aux.table.project_type'|trans }}</th>
                 {% endif %}
 
-                {% if type == 'position' %}
-                  <th class="text-center">{{ 'backend.aux.table.department'|trans }}</th>
-                {% endif %}
-
                 {% if type == 'measure_block' %}
                   <th class="text-center">{{ 'backend.aux.table.protocol'|trans }}</th>
                   <th class="text-center">{{ 'backend.aux.table.sort_order'|trans }}</th>
@@ -68,20 +64,6 @@
                       {{ pt == 'rodaje' ? 'backend.aux.project_type.filming'|trans
                         : (pt == 'evento' ? 'backend.aux.project_type.event'|trans
                         : 'backend.aux.project_type.generic'|trans) }}
-                    </td>
-                  {% endif %}
-
-                  {% if type == 'position' %}
-                    <td class="text-center">
-                      {% if item.department %}
-                        {% set pt = item.department.projectType ?? null %}
-                        {{ item.department.name }}
-                        ({{ pt == 'rodaje' ? 'backend.aux.project_type.filming'|trans
-                          : (pt == 'evento' ? 'backend.aux.project_type.event'|trans
-                          : 'backend.aux.project_type.generic'|trans) }})
-                      {% else %}
-                        —
-                      {% endif %}
                     </td>
                   {% endif %}
 

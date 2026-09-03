@@ -617,12 +617,13 @@
                     {% endif %}
                     </td>
                     <td>
-                    {% if c.role is defined and c.role %}
-                        {{ c.role }}
-                    {% elseif c.department is defined and c.department %}
-                        {{ c.department }}
-                    {% elseif c.position is defined and c.position %}
-                        {{ c.position }}
+                    {% if c.assignments is not empty %}
+                        {% for assignment in c.assignments %}
+                            <div>
+                                {{ assignment.crewDepartment.name }}
+                                {% if assignment.crewPosition %} — {{ assignment.crewPosition.name }}{% endif %}
+                            </div>
+                        {% endfor %}
                     {% else %}
                         <span class="text-muted">—</span>
                     {% endif %}

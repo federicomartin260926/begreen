@@ -2,12 +2,13 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{Department, EmissionActivity, EmissionRecord, Plan, Position, Project, ProjectCompany, ProjectFundingSource, CrewMember, ProjectMembership, ProjectPhaseDate, User};
-use App\Form\{ CrewMemberImportType, ProjectType, CrewMemberType, CrewMemberCollectionType };
-use App\Repository\{ ProjectBillingDocumentRepository, ProjectRepository, CrewMemberRepository, PositionRepository, DepartmentRepository, EmissionRecordRepository, PlanRepository };
+use App\Entity\{CrewDepartment, CrewMemberAssignment, CrewPosition, EmissionActivity, EmissionRecord, Plan, Project, ProjectCompany, ProjectFundingSource, CrewMember, ProjectMembership, ProjectPhaseDate, User};
+use App\Form\{ProjectType, CrewMemberCollectionType};
+use App\Repository\{CrewDepartmentRepository, CrewPositionRepository, ProjectBillingDocumentRepository, ProjectRepository, EmissionRecordRepository, PlanRepository};
 use App\Security\ProjectVoter;
 use App\Enum\CommercialPhase;
 use App\Service\ActiveProjectService;
+use App\Service\CrewCatalogScopeResolver;
 use App\Entity\ProjectSubscription;
 use App\Service\ProjectFeatureGate;
 use App\Service\ProjectCompanyLogoStorage;
@@ -956,8 +957,9 @@ class ProjectController extends AbstractController
 
     #[Route('/crew/template/download', name: 'template_download', methods: ['GET'])]
     public function downloadCrewTemplate(
-        PositionRepository $positionRepository,
-        DepartmentRepository $departmentRepository,
+        CrewPositionRepository $positionRepository,
+        CrewDepartmentRepository $departmentRepository,
+        CrewCatalogScopeResolver $scopeResolver,
         ActiveProjectService $activeProjectService,
     ): StreamedResponse {
         $spreadsheet = new Spreadsheet();
@@ -978,33 +980,19 @@ class ProjectController extends AbstractController
         $sheet->fromArray($headers, null, 'A1');
         $sheet->getStyle('A1:F1')->getFont()->setBold(true);
 
-        // === 1) Filtrado por tipo de proyecto ===
-        $projectType = $activeProjectService->getActiveProject()?->getType(); // 'rodaje' | 'evento' | null
-        // Criterio: permitir departamentos genéricos (null) y los del tipo
-        $allDepartments = $departmentRepository->findAll();
-        $allowedDepartments = array_values(array_filter($allDepartments, function (\App\Entity\Department $d) use ($projectType) {
-            $pt = $d->getProjectType(); // null | 'rodaje' | 'evento'
-            return $pt === null || ($projectType !== null && $pt === $projectType);
-        }));
+        // === 1) Catálogo profesional del scope efectivo del proyecto ===
+        $project = $activeProjectService->getActiveProject();
+        if (!$project instanceof Project) {
+            throw $this->createNotFoundException('No active project available for the crew template.');
+        }
 
-        // Indice rápido por ID para validar posiciones
-        $allowedDeptIds = array_fill_keys(array_map(fn($d) => $d->getId(), $allowedDepartments), true);
-
-        // Cargos sólo de departamentos permitidos
-        $allPositions = $positionRepository->findAll();
-        $positions = array_values(array_filter($allPositions, function (\App\Entity\Position $p) use ($allowedDeptIds) {
-            $dept = $p->getDepartment();
-            return $dept && isset($allowedDeptIds[$dept->getId()]);
-        }));
-
-        // Si por algún motivo no hay nada permitido, caemos a todos (evita plantilla vacía)
-        if (empty($allowedDepartments)) {
-            $allowedDepartments = $allDepartments;
-            $allowedDeptIds = array_fill_keys(array_map(fn($d) => $d->getId(), $allowedDepartments), true);
-            $positions = array_values(array_filter($allPositions, function (\App\Entity\Position $p) use ($allowedDeptIds) {
-                $dept = $p->getDepartment();
-                return $dept && isset($allowedDeptIds[$dept->getId()]);
-            }));
+        $scope = $scopeResolver->resolve($project);
+        $allowedDepartments = $departmentRepository->findByScope($scope);
+        $positions = [];
+        foreach ($allowedDepartments as $department) {
+            foreach ($positionRepository->findByCrewDepartment($department) as $position) {
+                $positions[] = $position;
+            }
         }
 
         // === 2) Hoja oculta "Listas" con el mapeo Departamento→Cargo y lista única de Deptos ===
@@ -1015,7 +1003,7 @@ class ProjectController extends AbstractController
         // A: Departamento (por fila), B: Cargo (por fila)
         $rowAB = 1;
         foreach ($positions as $pos) {
-            $dept = $pos->getDepartment();
+            $dept = $pos->getCrewDepartment();
             if (!$dept) { continue; }
             $listSheet->setCellValue("A{$rowAB}", $dept->getName());
             $listSheet->setCellValue("B{$rowAB}", $pos->getName());
@@ -1024,12 +1012,10 @@ class ProjectController extends AbstractController
         $mapCount = $rowAB - 1;
 
         // Lista única de departamentos permitidos (columna D)
-        $uniqueDeptNames = [];
-        foreach ($allowedDepartments as $d) {
-            $uniqueDeptNames[$d->getName()] = true;
-        }
-        $uniqueDeptNames = array_keys($uniqueDeptNames);
-        sort($uniqueDeptNames, SORT_NATURAL | SORT_FLAG_CASE);
+        $uniqueDeptNames = array_map(
+            static fn (CrewDepartment $department): string => (string) $department->getName(),
+            $allowedDepartments
+        );
 
         $rowD = 1;
         foreach ($uniqueDeptNames as $dn) {
@@ -1170,7 +1156,8 @@ class ProjectController extends AbstractController
     public function importCrew(
         Project $project,
         Request $request,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        CrewCatalogScopeResolver $scopeResolver,
     ): RedirectResponse {
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
 
@@ -1180,7 +1167,7 @@ class ProjectController extends AbstractController
             return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
         }
 
-        [$ok, $messages] = $this->processCrewFile($file, $project, $em);
+        [$ok, $messages] = $this->processCrewFile($file, $project, $em, $scopeResolver);
 
         if (!$ok) {
             foreach ($messages as $msg) {
@@ -1198,7 +1185,12 @@ class ProjectController extends AbstractController
         return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
     }
 
-    private function processCrewFile($file, Project $project, EntityManagerInterface $em): array
+    private function processCrewFile(
+        $file,
+        Project $project,
+        EntityManagerInterface $em,
+        CrewCatalogScopeResolver $scopeResolver
+    ): array
     {
         if (!$file) {
             return [false, [$this->t->trans('backend.projects.crew.import.errors.no_file')]];
@@ -1266,9 +1258,10 @@ class ProjectController extends AbstractController
             return [false, [$this->t->trans('backend.projects.crew.import.errors.bad_format')]];
         }
 
-        $errors   = [];
-        $warnings = [];
-        $projectType = $project->getType(); // 'rodaje' | 'evento'
+        $errors = [];
+        $scope = $scopeResolver->resolve($project);
+        /** @var array<string, CrewMember> $membersByEmail */
+        $membersByEmail = [];
 
         // Itera filas con datos
         $maxRow = $sheet->getHighestRow();
@@ -1292,144 +1285,188 @@ class ProjectController extends AbstractController
             }
 
             if ($name === '') {
-                $errors[] = $this->t->trans('backend.projects.crew.import.errors.name_required', ['%row%' => $i]);
+                $errors[] = $this->t->trans('backend.projects.crew.import.errors.name_required', ['%line%' => $i]);
                 continue;
             }
 
-            // Buscar/crear por email+proyecto
+            // Buscar/crear por email+proyecto, incluyendo miembros nuevos del mismo lote.
             $member = null;
+            $normalizedEmail = mb_strtolower(trim($email));
             if ($email !== '') {
-                $member = $em->getRepository(CrewMember::class)->findOneBy([
-                    'email'   => $email,
-                    'project' => $project,
-                ]);
+                $member = $membersByEmail[$normalizedEmail]
+                    ?? $this->findCrewMemberByNormalizedEmail($em, $project, $normalizedEmail);
             }
             if (!$member) {
                 $member = new CrewMember();
             }
 
-            $member->setProject($project);
+            if ($normalizedEmail !== '') {
+                $membersByEmail[$normalizedEmail] = $member;
+            }
+
+            $project->addCrewMember($member);
             $member->setName($name);
             $member->setLastName($lastName !== '' ? $lastName : null);
             $member->setEmail($email !== '' ? $email : null);
             $member->setPhone($phone !== '' ? $phone : null);
 
-            $projectType = $project->getType(); // 'rodaje' | 'evento'
-
-            /// Department por nombre y tipo del proyecto (o genérico)
+            // CrewDepartment por nombre y scope efectivo exacto.
             $department = null;
             if ($departmentName !== '') {
-                $department = $this->resolveDepartmentByAnyLocale($em, $departmentName, $projectType);
+                $department = $this->resolveCrewDepartmentByAnyLocale($em, $departmentName, $scope);
                 if (!$department) {
                     $errors[] = $this->t->trans('backend.projects.crew.import.errors.department_not_found', [
-                        '%line%'       => $i,
-                        '%dept%'      => $departmentName,
-                        '%type%' => $projectType,
+                        '%line%' => $i,
+                        '%dept%' => $departmentName,
+                        '%type%' => $scope,
                     ]);
                     continue;
                 }
             }
 
-            // Position (acotada por departamento si existe)
+            // CrewPosition acotada por departamento o inferida solo si es única en el scope.
             $position = null;
             if ($positionName !== '') {
-                $position = $this->resolvePositionByAnyLocale($em, $positionName, $department);
-                if (!$position) {
+                $positions = $this->resolveCrewPositionsByAnyLocale($em, $positionName, $scope, $department);
+
+                if ($department !== null && $positions === []) {
+                    $scopePositions = $this->resolveCrewPositionsByAnyLocale($em, $positionName, $scope);
+                    $errorKey = $scopePositions === []
+                        ? 'backend.projects.crew.import.errors.position_not_found'
+                        : 'backend.projects.crew.import.errors.position_department_mismatch';
+                    $errors[] = $this->t->trans($errorKey, [
+                        '%line%' => $i,
+                        '%pos%' => $positionName,
+                        '%dept%' => $department->getName(),
+                    ]);
+                    continue;
+                }
+
+                if ($department === null && count($positions) > 1) {
+                    $errors[] = $this->t->trans('backend.projects.crew.import.errors.position_ambiguous', [
+                        '%line%' => $i,
+                        '%pos%' => $positionName,
+                    ]);
+                    continue;
+                }
+
+                $position = $positions[0] ?? null;
+                if (!$position instanceof CrewPosition) {
                     $errors[] = $this->t->trans('backend.projects.crew.import.errors.position_not_found', [
-                        '%row%'  => $i,
-                        '%pos%'  => $positionName,
+                        '%line%' => $i,
+                        '%pos%' => $positionName,
                         '%dept%' => $department?->getName() ?? '',
                     ]);
                     continue;
                 }
+
+                $department ??= $position->getCrewDepartment();
             }
 
-            // Coherencia Department/Position
-            if ($position && $position->getDepartment()) {
-                $posDept = $position->getDepartment();
-                if ($department && $department->getId() !== $posDept->getId()) {
-                    $warnings[] = $this->t->trans('backend.projects.crew.import.warnings.position_overrides_department', [
-                        '%row%'  => $i,
-                        '%pos%'  => $positionName,
-                        '%dept%' => $posDept->getName(),
-                    ]);
-                }
-                $member->setDepartment($posDept);
-            } else {
-                $member->setDepartment($department);
+            if ($department instanceof CrewDepartment && !$member->hasAssignment($department, $position)) {
+                $member->addAssignment(
+                    (new CrewMemberAssignment())
+                        ->setCrewDepartment($department)
+                        ->setCrewPosition($position)
+                );
             }
 
-            $member->setPosition($position ?: null);
             $em->persist($member);
         }
 
-        return [count($errors) === 0, array_merge($warnings, $errors)];
+        return [$errors === [], $errors];
     }
 
-    private function resolveDepartmentByAnyLocale(
+    private function findCrewMemberByNormalizedEmail(
+        EntityManagerInterface $em,
+        Project $project,
+        string $normalizedEmail
+    ): ?CrewMember {
+        return $em->getRepository(CrewMember::class)->createQueryBuilder('cm')
+            ->andWhere('cm.project = :project')
+            ->andWhere('LOWER(cm.email) = :email')
+            ->setParameter('project', $project)
+            ->setParameter('email', $normalizedEmail)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    private function resolveCrewDepartmentByAnyLocale(
         EntityManagerInterface $em,
         string $name,
-        ?string $projectType // 'rodaje' | 'evento' | null
-    ): ?Department {
+        string $scope
+    ): ?CrewDepartment {
         $nameLower = mb_strtolower(trim($name));
 
-        // 1) Match por nombre base (p.ej. español)
-        $qb = $em->getRepository(Department::class)->createQueryBuilder('d')
-            ->andWhere('LOWER(d.name) = :n')->setParameter('n', $nameLower);
-        if ($projectType !== null) {
-            $qb->andWhere('(d.projectType IS NULL OR d.projectType = :t)')->setParameter('t', $projectType);
-        }
+        $qb = $em->getRepository(CrewDepartment::class)->createQueryBuilder('d')
+            ->andWhere('d.scope = :scope')
+            ->andWhere('LOWER(d.name) = :name')
+            ->setParameter('scope', $scope)
+            ->setParameter('name', $nameLower);
         $dep = $qb->setMaxResults(1)->getQuery()->getOneOrNullResult();
         if ($dep) return $dep;
 
-        // 2) Match por traducción (en, …)
         $qbT = $em->createQueryBuilder()
             ->select('d')
-            ->from(Department::class, 'd')
+            ->from(CrewDepartment::class, 'd')
             ->join(Translation::class, 't', 'WITH',
                 't.objectClass = :cls AND t.field = :field AND t.foreignKey = d.id'
             )
-            ->andWhere('LOWER(t.content) = :n')
-            ->setParameter('cls', Department::class)
+            ->andWhere('d.scope = :scope')
+            ->andWhere('LOWER(t.content) = :name')
+            ->setParameter('cls', CrewDepartment::class)
             ->setParameter('field', 'name')
-            ->setParameter('n', $nameLower);
-        if ($projectType !== null) {
-            $qbT->andWhere('(d.projectType IS NULL OR d.projectType = :t)')->setParameter('t', $projectType);
-        }
+            ->setParameter('scope', $scope)
+            ->setParameter('name', $nameLower);
+
         return $qbT->setMaxResults(1)->getQuery()->getOneOrNullResult();
     }
 
-    private function resolvePositionByAnyLocale(
+    /** @return CrewPosition[] */
+    private function resolveCrewPositionsByAnyLocale(
         EntityManagerInterface $em,
         string $name,
-        ?Department $department
-    ): ?Position {
+        string $scope,
+        ?CrewDepartment $department = null
+    ): array {
         $nameLower = mb_strtolower(trim($name));
 
-        // 1) Match por nombre base
-        $qb = $em->getRepository(Position::class)->createQueryBuilder('p')
-            ->andWhere('LOWER(p.name) = :n')->setParameter('n', $nameLower);
+        $qb = $em->getRepository(CrewPosition::class)->createQueryBuilder('p')
+            ->join('p.crewDepartment', 'd')
+            ->andWhere('d.scope = :scope')
+            ->andWhere('LOWER(p.name) = :name')
+            ->setParameter('scope', $scope)
+            ->setParameter('name', $nameLower);
         if ($department) {
-            $qb->andWhere('p.department = :d')->setParameter('d', $department);
+            $qb->andWhere('p.crewDepartment = :department')->setParameter('department', $department);
         }
-        $pos = $qb->setMaxResults(1)->getQuery()->getOneOrNullResult();
-        if ($pos) return $pos;
+        $positions = $qb->getQuery()->getResult();
 
-        // 2) Match por traducción
         $qbT = $em->createQueryBuilder()
             ->select('p')
-            ->from(Position::class, 'p')
+            ->from(CrewPosition::class, 'p')
+            ->join('p.crewDepartment', 'd')
             ->join(Translation::class, 't', 'WITH',
                 't.objectClass = :cls AND t.field = :field AND t.foreignKey = p.id'
             )
-            ->andWhere('LOWER(t.content) = :n')
-            ->setParameter('cls', Position::class)
+            ->andWhere('d.scope = :scope')
+            ->andWhere('LOWER(t.content) = :name')
+            ->setParameter('cls', CrewPosition::class)
             ->setParameter('field', 'name')
-            ->setParameter('n', $nameLower);
+            ->setParameter('scope', $scope)
+            ->setParameter('name', $nameLower);
         if ($department) {
-            $qbT->andWhere('p.department = :d')->setParameter('d', $department);
+            $qbT->andWhere('p.crewDepartment = :department')->setParameter('department', $department);
         }
-        return $qbT->setMaxResults(1)->getQuery()->getOneOrNullResult();
+
+        foreach ($qbT->getQuery()->getResult() as $translatedPosition) {
+            if (!in_array($translatedPosition, $positions, true)) {
+                $positions[] = $translatedPosition;
+            }
+        }
+
+        return $positions;
     }
 
     #[Route('/{id}/delete', name: 'delete', methods: ['POST'])]

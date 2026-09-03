@@ -153,10 +153,12 @@ final class SustainabilityPlanCollaborationService
      */
     public function sortCrewMembersForMeasure(Measure $measure, Collection|array $crewMembers): array
     {
-        $measureDepartmentIds = array_map(
-            static fn ($department): string => (string) $department->getId(),
-            $measure->getResolvedDepartments()
-        );
+        $measureDepartmentIds = [];
+        foreach ($measure->getResolvedDepartments() as $department) {
+            if ($department->getId() !== null) {
+                $measureDepartmentIds[(string) $department->getId()] = true;
+            }
+        }
 
         $compatible = [];
         $others = [];
@@ -166,8 +168,23 @@ final class SustainabilityPlanCollaborationService
                 continue;
             }
 
-            if ($crewMember->getDepartment()?->getId() !== null
-                && in_array((string) $crewMember->getDepartment()->getId(), $measureDepartmentIds, true)) {
+            $isCompatible = false;
+            foreach ($crewMember->getAssignments() as $assignment) {
+                $crewDepartment = $assignment->getCrewDepartment();
+                if ($crewDepartment === null) {
+                    continue;
+                }
+
+                foreach ($crewDepartment->getCompatibleMeasureDepartments() as $department) {
+                    if ($department->getId() !== null
+                        && isset($measureDepartmentIds[(string) $department->getId()])) {
+                        $isCompatible = true;
+                        break 2;
+                    }
+                }
+            }
+
+            if ($isCompatible) {
                 $compatible[] = $crewMember;
                 continue;
             }

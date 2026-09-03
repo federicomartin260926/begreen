@@ -11,7 +11,6 @@ use App\Entity\EsG;
 use App\Entity\Scope;
 use App\Entity\CategoryGhg;
 use App\Entity\VerificationSource;
-use App\Entity\Position;
 use App\Entity\MeasureBlock;
 use App\Form\AuxiliaryType;
 use App\Repository\MeasureBlockRepository;
@@ -42,7 +41,6 @@ class AuxiliaryController extends AbstractController
         'category_ghg' => CategoryGhg::class,
         'impact_area'  => ImpactArea::class,
         'verification_source' => VerificationSource::class,
-        'position'     => Position::class,
         'measure_block' => MeasureBlock::class,
     ];
 
@@ -57,7 +55,6 @@ class AuxiliaryController extends AbstractController
         'category_ghg' => 'backend.aux.entity.category_ghg',
         'impact_area'  => 'backend.aux.entity.impact_area',
         'verification_source' => 'backend.aux.entity.verification_source',
-        'position'     => 'backend.aux.entity.position',
         'measure_block' => 'backend.aux.entity.measure_block',
     ];
 
@@ -69,7 +66,6 @@ class AuxiliaryController extends AbstractController
         'impact_area'  => ['name'],
         'verification_source' => ['name'],
         'department'   => ['name'],
-        'position'     => ['name'],
         'scope'        => ['name'],
         'protocol'     => ['name'],
         'category'     => ['name'], // si la dejas bloqueada en edit, no aplicará
@@ -95,14 +91,7 @@ class AuxiliaryController extends AbstractController
         $repoClass = self::ENTITY_MAP[$type];
         $repo = $em->getRepository($repoClass);
 
-        if ($type === 'position') {
-            $items = $repo->createQueryBuilder('p')
-                ->leftJoin('p.department', 'd')
-                ->addSelect('d')
-                ->orderBy('p.name', 'ASC')
-                ->getQuery()
-                ->getResult();
-        } elseif ($type === 'measure_block') {
+        if ($type === 'measure_block') {
             $items = $repo->createQueryBuilder('b')
                 ->leftJoin('b.protocol', 'p')
                 ->addSelect('p')

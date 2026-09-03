@@ -3,6 +3,9 @@
 namespace App\Tests\Service;
 
 use App\Entity\CrewMember;
+use App\Entity\CrewDepartment;
+use App\Entity\CrewMemberAssignment;
+use App\Entity\CrewPosition;
 use App\Entity\Department;
 use App\Entity\Measure;
 use App\Entity\MeasureBlock;
@@ -31,10 +34,9 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         [$plan, $project, $protocol] = $this->createPlanContext();
 
         $dept = $this->createDepartment(10, 'prod', 'Producción');
-        $otherDept = $this->createDepartment(11, 'post', 'Postproducción');
 
-        $crew1 = $this->createCrewMember(101, 'Ana', 'García', $dept, $project);
-        $crew2 = $this->createCrewMember(102, 'Luis', 'Pérez', $otherDept, $project);
+        $crew1 = $this->createCrewMember(101, 'Ana', 'García', $project);
+        $crew2 = $this->createCrewMember(102, 'Luis', 'Pérez', $project);
 
         $measure = $this->createMeasure(201, $protocol);
         $measure->addDepartment($dept);
@@ -188,7 +190,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         self::assertTrue($service->hasImplementationActivity($plan));
         $planMeasure->setEvidence(null);
 
-        $responsible = $this->createCrewMember(805, 'Ana', 'García', null, $project);
+        $responsible = $this->createCrewMember(805, 'Ana', 'García', $project);
         $planMeasure->addResponsibleCrewMember($responsible);
         self::assertTrue($service->hasImplementationActivity($plan));
         $planMeasure->removeResponsibleCrewMember($responsible);
@@ -225,16 +227,72 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         $measure = $this->createMeasure(301, $protocol);
 
         $dept = $this->createDepartment(20, 'prod', 'Producción');
-        $otherDept = $this->createDepartment(21, 'post', 'Postproducción');
         $measure->addDepartment($dept);
 
-        $crew1 = $this->createCrewMember(401, 'Zoe', 'Álvarez', $otherDept, $project);
-        $crew2 = $this->createCrewMember(402, 'Ana', 'García', $dept, $project);
-        $crew3 = $this->createCrewMember(403, 'Luis', 'Pérez', null, $project);
+        $compatibleCrewDepartment = (new CrewDepartment())
+            ->setName('Producción crew')
+            ->setScope(CrewDepartment::SCOPE_FILMING)
+            ->addCompatibleMeasureDepartment($dept);
+        $unmappedCrewDepartment = (new CrewDepartment())
+            ->setName('Sin mapping')
+            ->setScope(CrewDepartment::SCOPE_FILMING);
+
+        $crew1 = $this->createCrewMember(401, 'Zoe', 'Álvarez', $project);
+        $crew1->addAssignment((new CrewMemberAssignment())->setCrewDepartment($compatibleCrewDepartment));
+
+        $crew2 = $this->createCrewMember(402, 'Ana', 'García', $project);
+        $crew2
+            ->addAssignment((new CrewMemberAssignment())->setCrewDepartment($unmappedCrewDepartment))
+            ->addAssignment((new CrewMemberAssignment())->setCrewDepartment($compatibleCrewDepartment));
+
+        $crew3 = $this->createCrewMember(403, 'Luis', 'Pérez', $project);
 
         $sorted = $service->sortCrewMembersForMeasure($measure, [$crew1, $crew2, $crew3]);
 
-        self::assertSame([402, 403, 401], array_map(static fn (CrewMember $crewMember): int => $crewMember->getId(), $sorted));
+        self::assertSame([402, 401, 403], array_map(static fn (CrewMember $crewMember): int => $crewMember->getId(), $sorted));
+    }
+
+    public function testSortCrewMembersForMeasureDoesNotDuplicateMembersWithTwoPositionsInSameDepartment(): void
+    {
+        $service = $this->createService();
+        [, $project, $protocol] = $this->createPlanContext();
+        $measure = $this->createMeasure(302, $protocol);
+        $measureDepartment = $this->createDepartment(22, 'prod', 'Producción');
+        $measure->addDepartment($measureDepartment);
+
+        $crewDepartment = (new CrewDepartment())
+            ->setName('Producción')
+            ->setScope(CrewDepartment::SCOPE_FILMING)
+            ->addCompatibleMeasureDepartment($measureDepartment);
+        $coordinator = (new CrewPosition())->setName('Coordinador/a');
+        $assistant = (new CrewPosition())->setName('Ayudante');
+        $crewDepartment->addPosition($coordinator)->addPosition($assistant);
+
+        $compatible = $this->createCrewMember(404, 'Zoe', 'Álvarez', $project);
+        $compatible
+            ->addAssignment(
+                (new CrewMemberAssignment())
+                    ->setCrewDepartment($crewDepartment)
+                    ->setCrewPosition($coordinator)
+            )
+            ->addAssignment(
+                (new CrewMemberAssignment())
+                    ->setCrewDepartment($crewDepartment)
+                    ->setCrewPosition($assistant)
+            );
+        $unmapped = $this->createCrewMember(405, 'Ana', 'García', $project);
+        $unmapped->addAssignment(
+            (new CrewMemberAssignment())->setCrewDepartment(
+                (new CrewDepartment())
+                    ->setName('Sin mapping')
+                    ->setScope(CrewDepartment::SCOPE_FILMING)
+            )
+        );
+
+        $sorted = $service->sortCrewMembersForMeasure($measure, [$unmapped, $compatible]);
+
+        self::assertSame([404, 405], array_map(static fn (CrewMember $crewMember): int => $crewMember->getId(), $sorted));
+        self::assertCount(2, array_unique(array_map(static fn (CrewMember $crewMember): int => $crewMember->getId(), $sorted)));
     }
 
     public function testSyncResponsibleCrewMembersDeduplicatesSelections(): void
@@ -244,7 +302,7 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         $measure = $this->createMeasure(501, $protocol);
         $planMeasure = (new PlanMeasure())->setMeasure($measure);
 
-        $crew = $this->createCrewMember(601, 'Ana', 'García', null, $project);
+        $crew = $this->createCrewMember(601, 'Ana', 'García', $project);
 
         $service->syncResponsibleCrewMembers($planMeasure, [$crew, $crew]);
 
@@ -307,12 +365,11 @@ final class SustainabilityPlanCollaborationServiceTest extends TestCase
         return $department;
     }
 
-    private function createCrewMember(int $id, string $name, string $lastName, ?Department $department, Project $project): CrewMember
+    private function createCrewMember(int $id, string $name, string $lastName, Project $project): CrewMember
     {
         $crewMember = (new CrewMember())
             ->setName($name)
             ->setLastName($lastName)
-            ->setDepartment($department)
             ->setProject($project);
         $this->setEntityId($crewMember, $id);
 

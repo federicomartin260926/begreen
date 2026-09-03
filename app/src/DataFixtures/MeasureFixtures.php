@@ -47,7 +47,7 @@ class MeasureFixtures extends Fixture implements DependentFixtureInterface, Fixt
     {
         return [
             AuxiliaryFixtures::class,
-            DepartmentPositionFixtures::class,
+            MeasureDepartmentFixtures::class,
         ];
     }
 

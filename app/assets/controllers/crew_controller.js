@@ -1,129 +1,162 @@
-// assets/controllers/crew_controller.js
 import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
     static targets = ['container', 'prototype'];
-    static values  = {
+
+    static values = {
         allowAdd: Boolean,
         allowDelete: Boolean,
         prototypeName: String,
+        positionsUrlTemplate: String,
         i18nPlaceholderPosition: String,
         i18nNetworkError: String
     }
 
     connect() {
-        // índice según elementos ya renderizados
-        this.index = this.containerTarget.children.length;
+        this.crewIndex = this.containerTarget.querySelectorAll('[data-crew-card]').length;
 
-        // Inicializar posiciones en todos los cards al cargar
-        this.initPositionsOnLoad();
-
-        // Delegación: al cambiar departamento, refrescar cargos de ese card
-        this.element.addEventListener('change', (e) => {
-            const sel = e.target;
-            if (!(sel instanceof HTMLSelectElement)) return;
-            if (!/\[department\]$/.test(sel.name)) return;
-
-            const card = sel.closest('.card');
-            if (!card) return;
-
-            const deptId = sel.value;
-            const posSelect = card.querySelector('select[name$="[position]"]');
-            if (!posSelect) return;
-
-            if (!deptId) {
-                this.fillPositions(posSelect, []);
-                return;
-            }
-
-            this.fetchPositions(deptId)
-                .then(options => this.fillPositions(posSelect, options))
-                .catch(() => this.fillPositions(posSelect, []));
-        });
+        this.containerTarget
+            .querySelectorAll('[data-crew-card]')
+            .forEach(card => this.initCrewCard(card));
     }
 
-    // -------- Añadir/eliminar --------
-    add(event) {
+    addCrewMember(event) {
         event.preventDefault();
         if (!this.allowAddValue) return;
 
-        const template = this.prototypeTarget.innerHTML;
-        const newFormHtml = template.replaceAll(this.prototypeNameValue, this.index);
-        this.index++;
+        const html = this.prototypeTarget.innerHTML.replaceAll(this.prototypeNameValue, this.crewIndex);
+        this.crewIndex++;
 
         const wrapper = document.createElement('div');
-        wrapper.innerHTML = newFormHtml.trim();
+        wrapper.innerHTML = html.trim();
         const card = wrapper.firstElementChild;
-        this.containerTarget.appendChild(card);
+        if (!card) return;
 
-        // Inicializar cargos del nuevo card según su departamento (si viene preseleccionado)
-        this.initCardPositions(card);
+        this.containerTarget.appendChild(card);
+        this.initCrewCard(card);
     }
 
-    remove(event) {
+    removeCrewMember(event) {
         event.preventDefault();
         if (!this.allowDeleteValue) return;
 
-        const card = event.target.closest('.card');
-        if (card) card.remove();
+        event.currentTarget.closest('[data-crew-card]')?.remove();
     }
 
-    // -------- Inicialización al cargar --------
-    initPositionsOnLoad() {
-        Array.from(this.containerTarget.children).forEach(card => this.initCardPositions(card));
+    addAssignment(event) {
+        event.preventDefault();
+        if (!this.allowAddValue) return;
+
+        const card = event.currentTarget.closest('[data-crew-card]');
+        const container = card?.querySelector('[data-crew-assignment-container]');
+        const prototype = card?.querySelector('[data-crew-assignment-prototype]');
+        if (!card || !container || !prototype) return;
+
+        const index = Number.parseInt(card.dataset.assignmentIndex || '0', 10);
+        const html = prototype.innerHTML.replaceAll('__assignment__', String(index));
+        card.dataset.assignmentIndex = String(index + 1);
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html.trim();
+        const row = wrapper.firstElementChild;
+        if (!row) return;
+
+        container.appendChild(row);
+        this.initAssignmentRow(row);
     }
 
-    initCardPositions(card) {
-        const deptSel = card.querySelector('select[name$="[department]"]');
-        const posSel  = card.querySelector('select[name$="[position]"]');
-        if (!deptSel || !posSel) return;
+    removeAssignment(event) {
+        event.preventDefault();
+        if (!this.allowDeleteValue) return;
 
-        // Prioriza data-current-value; si no, lo que haya en el select
-        const desired = posSel.dataset.currentValue || posSel.value || '';
+        event.currentTarget.closest('[data-crew-assignment-row]')?.remove();
+    }
 
-        if (!deptSel.value) {
-            this.fillPositions(posSel, [], desired);
-            return;
+    departmentChanged(event) {
+        const departmentSelect = event.currentTarget;
+        if (!(departmentSelect instanceof HTMLSelectElement)) return;
+
+        const row = departmentSelect.closest('[data-crew-assignment-row]');
+        if (!row) return;
+
+        this.loadPositions(row);
+    }
+
+    initCrewCard(card) {
+        card.querySelectorAll('[data-crew-assignment-row]')
+            .forEach(row => this.initAssignmentRow(row));
+    }
+
+    initAssignmentRow(row) {
+        const positionSelect = row.querySelector('[data-crew-assignment-position]');
+        const desiredPosition = positionSelect instanceof HTMLSelectElement ? positionSelect.value : '';
+
+        this.loadPositions(row, desiredPosition);
+    }
+
+    async loadPositions(row, desiredPosition = '') {
+        const departmentSelect = row.querySelector('[data-crew-assignment-department]');
+        const positionSelect = row.querySelector('[data-crew-assignment-position]');
+        if (!(departmentSelect instanceof HTMLSelectElement) || !(positionSelect instanceof HTMLSelectElement)) return;
+
+        const departmentId = departmentSelect.value;
+        this.fillPositions(positionSelect, []);
+        positionSelect.disabled = true;
+
+        if (!departmentId) return;
+
+        positionSelect.dataset.loadingDepartment = departmentId;
+
+        try {
+            const positions = await this.fetchPositions(departmentId);
+            if (departmentSelect.value !== departmentId) return;
+
+            this.fillPositions(positionSelect, positions, desiredPosition);
+            positionSelect.disabled = false;
+        } catch (error) {
+            if (departmentSelect.value !== departmentId) return;
+
+            this.fillPositions(positionSelect, []);
+            positionSelect.disabled = false;
+            positionSelect.title = this.i18nNetworkErrorValue;
+        } finally {
+            if (positionSelect.dataset.loadingDepartment === departmentId) {
+                delete positionSelect.dataset.loadingDepartment;
+            }
         }
-
-        this.fetchPositions(deptSel.value)
-            .then(options => this.fillPositions(posSel, options, desired))
-            .catch(()    => this.fillPositions(posSel, [], desired));
     }
 
-    // -------- Utilidades AJAX/DOM --------
-    async fetchPositions(deptId) {
-        const url = `/backend/ajax/positions-by-department/${encodeURIComponent(deptId)}`;
-        const r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        if (!r.ok) throw new Error(this.i18nNetworkErrorValue || 'Network error');
-        return await r.json(); // [{id, name}, ...]
-    }
-
-    fillPositions(selectEl, options, desired = '') {
-        // limpiar
-        while (selectEl.firstChild) selectEl.removeChild(selectEl.firstChild);
-
-        // placeholder
-        const ph = document.createElement('option');
-        ph.value = '';
-        ph.textContent = this.i18nPlaceholderPositionValue || 'Selecciona un cargo';
-        selectEl.appendChild(ph);
-
-        // opciones
-        options.forEach(opt => {
-            const o = document.createElement('option');
-            o.value = String(opt.id);
-            o.textContent = opt.name;
-            selectEl.appendChild(o);
+    async fetchPositions(departmentId) {
+        const url = this.positionsUrlTemplateValue.replace('__department__', encodeURIComponent(departmentId));
+        const response = await fetch(url, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
         });
 
-        // seleccionar si procede
-        if (desired) {
-            const desiredStr = String(desired);
-            const exists = Array.from(selectEl.options).some(o => o.value === desiredStr);
-            selectEl.value = exists ? desiredStr : '';
-        } else {
-            selectEl.value = ''; // sin preselección
+        if (!response.ok) {
+            throw new Error(this.i18nNetworkErrorValue);
         }
+
+        return await response.json();
+    }
+
+    fillPositions(select, positions, desiredPosition = '') {
+        select.replaceChildren();
+        select.removeAttribute('title');
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = this.i18nPlaceholderPositionValue;
+        select.appendChild(placeholder);
+
+        positions.forEach(position => {
+            const option = document.createElement('option');
+            option.value = String(position.id);
+            option.textContent = position.name;
+            select.appendChild(option);
+        });
+
+        const desired = String(desiredPosition || '');
+        const exists = desired !== '' && Array.from(select.options).some(option => option.value === desired);
+        select.value = exists ? desired : '';
     }
 }

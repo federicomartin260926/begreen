@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Entity\Project;
+use App\Service\CrewCatalogScopeResolver;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CollectionType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -10,17 +11,22 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class CrewMemberCollectionType extends AbstractType
 {
+    public function __construct(
+        private readonly CrewCatalogScopeResolver $scopeResolver,
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         /** @var Project $project */
         $project = $builder->getData();
-        $projectType = $project?->getType(); // 'rodaje' | 'evento'
+        $crewScope = $this->scopeResolver->resolve($project);
 
         $builder->add('crewMembers', CollectionType::class, [
             'entry_type'    => CrewMemberType::class,
             'entry_options' => [
-                'label'       => false,
-                'projectType' => $projectType,
+                'label' => false,
+                'crew_scope' => $crewScope,
             ],
             'allow_add'      => true,
             'allow_delete'   => true,
@@ -34,7 +40,7 @@ class CrewMemberCollectionType extends AbstractType
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            // data será Project
+            'data_class' => Project::class,
         ]);
     }
 }

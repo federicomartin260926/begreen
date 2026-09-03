@@ -83,6 +83,7 @@
                 app.request.attributes.get('_route') starts with 'admin_measures' or
                 app.request.attributes.get('_route') starts with 'admin_emission' or
                 app.request.attributes.get('_route') starts with 'admin_auxiliary' or
+                app.request.attributes.get('_route') starts with 'admin_crew_catalog' or
                 app.request.attributes.get('_route') starts with 'admin_communication' or
                 app.request.attributes.get('_route') starts with 'admin_cms' or
                 app.request.attributes.get('_route') starts with 'admin_ai' or
@@ -124,6 +125,10 @@
                             <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_auxiliary' %}active fw-bold{% endif %}" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.aux_tables'|trans }}">
                                 <i class="bi bi-table flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.aux_tables'|trans }}</span>
+                            </a>
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_crew_catalog' %}active fw-bold{% endif %}" href="{{ path('admin_crew_catalog_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.crew_catalog'|trans }}">
+                                <i class="bi bi-people-fill flex-shrink-0"></i>
+                                <span class="ms-2">{{ 'backend.menu.crew_catalog'|trans }}</span>
                             </a>
                             <a class="nav-link my-1 text-decoration-none
                             {% if app.request.attributes.get('_route') starts with 'admin_cms' or app.request.attributes.get('_route') starts with 'admin_logo' %}active fw-bold{% endif %}" href="{{ path('admin_cms_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.cms'|trans }}">
@@ -183,6 +188,11 @@
                             <li>
                                 <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.aux_tables'|trans }}">
                                     {{ 'backend.menu.aux_tables'|trans }}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_crew_catalog_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.crew_catalog'|trans }}">
+                                    {{ 'backend.menu.crew_catalog'|trans }}
                                 </a>
                             </li>
                             <li>

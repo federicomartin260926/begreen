@@ -4,6 +4,8 @@ namespace App\Enum;
 
 final class ProjectCatalog
 {
+    public const FILMING_GENRE_ANIMATION = 'animacion';
+
     public const FILMING_TYPES = [
         'feature',
         'short',

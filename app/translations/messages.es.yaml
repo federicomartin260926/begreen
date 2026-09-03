@@ -199,6 +199,7 @@ backend:
     measures: "Medidas"
     factors: "Factores emisión"
     aux_tables: "Tablas auxiliares"
+    crew_catalog: "Catálogo de equipo técnico"
     cms: "CMS"
     ai: "IA"
     communication: "Comunicaciones"
@@ -582,6 +583,9 @@ backend:
         phone_ph: "Teléfono de contacto"
         department: "Departamento"
         position: "Cargo"
+        assignments: "Funciones"
+        add_assignment: "Añadir función"
+        remove_assignment: "Eliminar"
         add_member: "Añadir miembro"
         remove_member: "Eliminar miembro"
       import_modal:
@@ -616,10 +620,10 @@ backend:
           read_failed: "No se pudo leer el Excel."
           bad_format: "El archivo Excel no tiene el formato correcto. Asegúrate de incluir las columnas: Nombre, Apellido, Cargo, Departamento, Email, Teléfono."
           name_required: "Línea %line%: El nombre es obligatorio."
-          department_not_found: "Línea %line%: Departamento «%dept%» no encontrado para tipo «%type%» (o genérico)."
+          department_not_found: "Línea %line%: Departamento «%dept%» no encontrado para el catálogo «%type%»."
           position_not_found: "Línea %line%: Cargo «%pos%» en «%dept%» no encontrado."
-        warnings:
-          position_dept_mismatch: "Línea %line%: El cargo «%pos%» pertenece a «%dept%». Se usará ese departamento."
+          position_ambiguous: "Línea %line%: El cargo «%pos%» existe en varios departamentos. Especifica el departamento."
+          position_department_mismatch: "Línea %line%: El cargo «%pos%» no pertenece al departamento «%dept%»."
       placeholder:
         position: "Selecciona un cargo"
     list:
@@ -714,7 +718,7 @@ backend:
       crew_btn: "Agregar equipo técnico"
       crew:
         name: "Nombre"
-        role: "Rol / Departamento"
+        role: "Departamento / Cargo"
         contact: "Contacto"
         no_crew: "No se ha añadido ningún miembro al equipo técnico."
 
@@ -2295,6 +2299,46 @@ backend:
         category: "Categoría"
         department: "Departamento"
       grouping_help: "Para que el flujo del plan funcione correctamente, organiza las medidas por categoría o departamento y, dentro de cada grupo, por bloques. Mantén juntas las medidas de un mismo bloque para que las preguntas previas y los saltos de bloque funcionen correctamente."
+  crew_catalog:
+    title: "Catálogo de equipo técnico"
+    intro: "Gestiona los departamentos y cargos profesionales por ámbito de proyecto."
+    scope:
+      rodaje: "Rodaje"
+      evento: "Evento"
+      animacion: "Animación"
+    table:
+      order: "Orden"
+      department: "Departamento"
+      positions: "Cargos"
+      position: "Cargo"
+      description: "Descripción"
+    form:
+      name_es: "Nombre (ES)"
+      name_en: "Nombre (EN)"
+      description_es: "Descripción (ES)"
+      description_en: "Descripción (EN)"
+      scope: "Ámbito"
+      department: "Departamento"
+      select_department: "Selecciona un departamento"
+      sort_order: "Orden"
+    department:
+      new: "Nuevo departamento"
+      edit: "Editar departamento"
+      empty: "No hay departamentos en este ámbito."
+      delete_confirm: "Eliminar este departamento también eliminará sus cargos y puede afectar a las funciones asignadas a miembros. ¿Continuar?"
+    position:
+      list: "Cargos"
+      new: "Nuevo cargo"
+      edit: "Editar cargo"
+      empty: "No hay cargos en este departamento."
+      delete_confirm: "Al eliminar este cargo, las funciones existentes conservarán el departamento pero quedarán sin cargo. ¿Continuar?"
+    flash:
+      department_created: "Departamento de equipo creado correctamente."
+      department_updated: "Departamento de equipo actualizado correctamente."
+      department_deleted: "Departamento de equipo eliminado correctamente."
+      position_created: "Cargo creado correctamente."
+      position_updated: "Cargo actualizado correctamente."
+      position_deleted: "Cargo eliminado correctamente."
   aux:
     index:
       title: "Tablas auxiliares"
@@ -2310,12 +2354,10 @@ backend:
       category_ghg: "Categoría GHG"
       impact_area: "Áreas de impacto"
       verification_source: "Fuentes de verificación"
-      position: "Cargos / Puestos"
       measure_block: "Bloques de medidas"
     table:
       name: "Nombre"
       project_type: "Tipo de proyecto"
-      department: "Departamento"
       protocol: "Protocolo"
       code: "Código"
       sort_order: "Orden"
@@ -2333,8 +2375,6 @@ backend:
       name: "Nombre"
       protocol: "Protocolo"
       project_type: "Tipo de proyecto"
-      department: "Departamento"
-      no_department: "— Sin departamento —"
       description: "Descripción"
       code: "Código"
       sort_order: "Orden"

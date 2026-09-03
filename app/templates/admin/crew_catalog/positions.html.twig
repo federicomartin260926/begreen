@@ -1,0 +1,63 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.crew_catalog.position.list'|trans }} — {{ department.name }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item"><a class="text-decoration-none" href="{{ path('admin_crew_catalog_index', {scope: department.scope}) }}">{{ 'backend.crew_catalog.title'|trans }}</a></li>
+    <li class="breadcrumb-item active">{{ department.name }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0 backend-admin-shell">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">{{ department.name }}</h2>
+            <span class="badge bg-secondary">{{ ('backend.crew_catalog.scope.' ~ department.scope)|trans }}</span>
+        </div>
+        <a href="{{ path('admin_crew_catalog_position_new', {id: department.id}) }}" class="btn btn-success text-decoration-none">
+            <i class="bi bi-plus-lg"></i> {{ 'backend.crew_catalog.position.new'|trans }}
+        </a>
+    </div>
+
+    {% if positions is empty %}
+        <div class="alert alert-info">{{ 'backend.crew_catalog.position.empty'|trans }}</div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle green_table_1">
+                <thead>
+                    <tr>
+                        <th class="text-center">{{ 'backend.crew_catalog.table.order'|trans }}</th>
+                        <th>{{ 'backend.crew_catalog.table.position'|trans }}</th>
+                        <th>{{ 'backend.crew_catalog.table.description'|trans }}</th>
+                        <th class="text-center">{{ 'backend.common.actions'|trans }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for position in positions %}
+                    <tr>
+                        <td class="text-center">{{ position.sortOrder }}</td>
+                        <td>{{ position.name }}</td>
+                        <td>{{ position.description ?: '—' }}</td>
+                        <td class="text-center text-nowrap">
+                            <a href="{{ path('admin_crew_catalog_position_edit', {id: position.id}) }}" class="btn" title="{{ 'backend.common.edit'|trans }}">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <form method="post" action="{{ path('admin_crew_catalog_position_delete', {id: position.id}) }}" class="d-inline"
+                                  onsubmit="return confirm('{{ 'backend.crew_catalog.position.delete_confirm'|trans|e('js') }}');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete_crew_position_' ~ position.id) }}">
+                                <button class="btn" title="{{ 'backend.common.delete'|trans }}"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <a href="{{ path('admin_crew_catalog_index', {scope: department.scope}) }}" class="btn btn-outline-secondary text-decoration-none mt-3">
+        <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+    </a>
+</div>
+{% endblock %}

@@ -2,8 +2,8 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\Department;
-use App\Repository\PositionRepository;
+use App\Entity\CrewDepartment;
+use App\Repository\CrewPositionRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
@@ -11,10 +11,10 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/backend/ajax', name: 'backend_ajax_')]
 class CrewAjaxController extends AbstractController
 {
-    #[Route('/positions-by-department/{id}', name: 'positions_by_department', methods: ['GET'])]
-    public function positionsByDepartment(Department $department, PositionRepository $repo): JsonResponse
+    #[Route('/crew-positions-by-department/{id}', name: 'crew_positions_by_department', methods: ['GET'])]
+    public function positionsByDepartment(CrewDepartment $department, CrewPositionRepository $repository): JsonResponse
     {
-        $positions = $repo->findByDepartment($department);
+        $positions = $repository->findByCrewDepartment($department);
 
         $data = [];
         foreach ($positions as $p) {

@@ -165,8 +165,15 @@
                             <select id="responsibles-{{ measure.id }}" class="form-select" multiple size="3" {% if executionDecisionLocked %}disabled data-locked="1"{% endif %}>
                                 {% for crewMember in measureCrewMembers %}
                                     {% set fullName = (crewMember.name ?? '') ~ ' ' ~ (crewMember.lastName ?? '') %}
+                                    {% set crewDepartmentNames = [] %}
+                                    {% for assignment in crewMember.assignments %}
+                                        {% set crewDepartmentName = assignment.crewDepartment ? assignment.crewDepartment.name : null %}
+                                        {% if crewDepartmentName and crewDepartmentName not in crewDepartmentNames %}
+                                            {% set crewDepartmentNames = crewDepartmentNames|merge([crewDepartmentName]) %}
+                                        {% endif %}
+                                    {% endfor %}
                                     <option value="{{ crewMember.id }}" {% if crewMember.id in responsibleIds %}selected{% endif %}>
-                                        {{ fullName|trim }}{% if crewMember.department %} · {{ crewMember.department.displayName }}{% endif %}
+                                        {{ fullName|trim }}{% if crewDepartmentNames is not empty %} · {{ crewDepartmentNames|join(' · ') }}{% endif %}
                                     </option>
                                 {% endfor %}
                             </select>

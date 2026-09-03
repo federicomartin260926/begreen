@@ -197,6 +197,7 @@ backend:
     measures: "Measures"
     factors: "Emission factors"
     aux_tables: "Auxiliary tables"
+    crew_catalog: "Technical crew catalogue"
     cms: "CMS"
     ai: "AI"
     communication: "Communications"
@@ -580,6 +581,9 @@ backend:
         phone_ph: "Contact phone"
         department: "Department"
         position: "Role / Position"
+        assignments: "Roles"
+        add_assignment: "Add role"
+        remove_assignment: "Remove"
         add_member: "Add member"
         remove_member: "Remove member"
       import_modal:
@@ -614,10 +618,10 @@ backend:
           read_failed: "The Excel file could not be read."
           bad_format: "The Excel file has an invalid format. Make sure it includes the columns: Name, Last Name, Position, Department, Email, Phone."
           name_required: "Line %line%: First name is required."
-          department_not_found: "Line %line%: Department “%dept%” not found for type “%type%” (or generic)."
+          department_not_found: "Line %line%: Department “%dept%” was not found in the “%type%” catalog."
           position_not_found: "Line %line%: Position “%pos%” in “%dept%” not found."
-        warnings:
-          position_dept_mismatch: "Line %line%: Position “%pos%” belongs to “%dept%”. That department will be used."
+          position_ambiguous: "Line %line%: Position “%pos%” exists in several departments. Specify the department."
+          position_department_mismatch: "Line %line%: Position “%pos%” does not belong to department “%dept%”."
       placeholder:
         position: "Select a role"
     list:
@@ -712,7 +716,7 @@ backend:
       crew_btn: "Add crew"
       crew:
         name: "Name"
-        role: "Role / Department"
+        role: "Department / Position"
         contact: "Contact"
         no_crew: "No crew members have been added."
 
@@ -2287,6 +2291,46 @@ backend:
         category: "Category"
         department: "Department"
       grouping_help: "For the plan flow to work correctly, organize measures by category or department and, within each group, by blocks. Keep the measures of the same block together so that follow-up questions and block skips work correctly."
+  crew_catalog:
+    title: "Technical crew catalogue"
+    intro: "Manage professional departments and positions by project scope."
+    scope:
+      rodaje: "Filming"
+      evento: "Event"
+      animacion: "Animation"
+    table:
+      order: "Order"
+      department: "Department"
+      positions: "Positions"
+      position: "Position"
+      description: "Description"
+    form:
+      name_es: "Name (ES)"
+      name_en: "Name (EN)"
+      description_es: "Description (ES)"
+      description_en: "Description (EN)"
+      scope: "Scope"
+      department: "Department"
+      select_department: "Select a department"
+      sort_order: "Order"
+    department:
+      new: "New department"
+      edit: "Edit department"
+      empty: "There are no departments in this scope."
+      delete_confirm: "Deleting this department will also delete its positions and may affect member assignments. Continue?"
+    position:
+      list: "Positions"
+      new: "New position"
+      edit: "Edit position"
+      empty: "There are no positions in this department."
+      delete_confirm: "Deleting this position will keep existing assignment departments but leave their position empty. Continue?"
+    flash:
+      department_created: "Crew department created successfully."
+      department_updated: "Crew department updated successfully."
+      department_deleted: "Crew department deleted successfully."
+      position_created: "Position created successfully."
+      position_updated: "Position updated successfully."
+      position_deleted: "Position deleted successfully."
   aux:
     index:
       title: "Auxiliary tables"
@@ -2302,12 +2346,10 @@ backend:
       category_ghg: "GHG Category"
       impact_area: "Impact areas"
       verification_source: "Verification sources"
-      position: "Roles / Positions"
       measure_block: "Measure blocks"
     table:
       name: "Name"
       project_type: "Project type"
-      department: "Department"
       protocol: "Protocol"
       code: "Code"
       sort_order: "Order"
@@ -2325,8 +2367,6 @@ backend:
       name: "Name"
       protocol: "Protocol"
       project_type: "Project type"
-      department: "Department"
-      no_department: "— No department —"
       description: "Description"
       code: "Code"
       sort_order: "Order"

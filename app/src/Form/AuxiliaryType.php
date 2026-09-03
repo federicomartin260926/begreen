@@ -2,7 +2,6 @@
 // src/Form/AuxiliaryType.php
 namespace App\Form;
 
-use App\Entity\Department;
 use App\Entity\MeasureBlock;
 use App\Entity\Protocol;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
@@ -138,17 +137,6 @@ class AuxiliaryType extends AbstractType
                 'placeholder'               => 'backend.aux.project_type.generic',
                 'choice_translation_domain' => 'messages',
                 'attr' => ['class' => 'form-select'],
-            ]);
-        }
-
-        if ($type === 'position') {
-            $builder->add('department', EntityType::class, [
-                'label'        => 'backend.aux.form.department',
-                'class'        => Department::class,
-                'choice_label' => 'name',
-                'required'     => false,
-                'placeholder'  => 'backend.aux.form.no_department',
-                'attr'         => ['class' => 'form-select'],
             ]);
         }
 
