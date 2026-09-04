@@ -51,7 +51,8 @@ class EmissionRecordFixtures extends Fixture implements DependentFixtureInterfac
                         $rec = new EmissionRecord();
                         $rec->setProject($project)
                             ->setPhase($phase)
-                            ->setActivity($act);
+                            ->setActivity($act)
+                            ->setCategory($act->getCategory());
 
                         if ($catName === 'Energía'){
                             if (stripos($act->getName(), 'Electricidad') !== false) {

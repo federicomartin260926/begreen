@@ -122,26 +122,29 @@
                                     </thead>
                                     <tbody>
                                     {% for record in selectedCategoryRecords %}
+                                        {% set activity = record.activity %}
+                                        {% set effectiveCategory = record.effectiveCategory %}
                                         <tr class="emissions-record-row">
                                             <td>
-                                                {{ record.activity.name }}
-                                                {% if record.activity.subcategory %}
+                                                {{ activity ? activity.name : '—' }}
+                                                {% if activity and activity.subcategory %}
                                                     <span class="text-muted">
-                                                        ({{ ('backend.emission.subcat.' ~ record.activity.subcategory)|trans }})
+                                                        ({{ ('backend.emission.subcat.' ~ activity.subcategory)|trans }})
                                                     </span>
                                                 {% endif %}
                                             </td>
                                             <td>{{ project.getPhaseLabel(record.phase.phase)|trans }}</td>
-                                            <td>{{ record.activity.unit }}</td>
+                                            <td>{{ activity ? activity.unit : '—' }}</td>
                                             <td>{{ record.amount }}</td>
                                             <td>{{ record.emission|number_format(2, ',', '.') }}</td>
                                             <td>{{ record.registeredAt|date('d/m/Y') }}</td>
                                             <td class="text-nowrap">
+                                                {% if activity %}
                                                 <a
                                                     href="{{
-                                                        record.activity.category.id == energyId
+                                                        effectiveCategory.id == energyId
                                                             ? path('backend_emission_edit_energy', { id: record.id }|merge(currentQuery))
-                                                            : (record.activity.category.id in [transportId, tripsId]
+                                                            : (effectiveCategory.id in [transportId, tripsId]
                                                                 ? path('backend_emission_edit_transport', { id: record.id }|merge(currentQuery))
                                                                 : path('backend_emission_edit', { id: record.id }|merge(currentQuery)))
                                                     }}"
@@ -153,6 +156,7 @@
                                                 >
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
+                                                {% endif %}
 
                                                 <form
                                                     action="{{ path('backend_emission_delete', { id: record.id }|merge(currentQuery)) }}"
@@ -164,7 +168,7 @@
                                                     class="d-inline"
                                                     onsubmit="return confirm('{{ 'backend.common.confirm_delete'|trans|e('js') }}');"
                                                 >
-                                                    <input type="hidden" name="categoryId" value="{{ record.activity.category.id }}">
+                                                    <input type="hidden" name="categoryId" value="{{ effectiveCategory ? effectiveCategory.id : '' }}">
                                                     <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
                                                     <button class="btn btn-sm btn-outline-danger" type="submit">
                                                         <i class="bi bi-trash"></i>

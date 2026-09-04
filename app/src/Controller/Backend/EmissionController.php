@@ -229,13 +229,13 @@ class EmissionController extends AbstractController
 
         foreach ($records as $record) {
             $activity = $record->getActivity();
-            if (!$activity || !$activity->getCategory()) {
+            $cat = $record->getEffectiveCategory();
+            if (!$cat) {
                 continue;
             }
 
-            $cat      = $activity->getCategory();
             $catId    = $cat->getId();
-            $actName  = $activity->getName();
+            $actName  = $activity?->getName() ?? '—';
 
             if (!isset($categoriesVM[$catId])) {
                 continue;
@@ -345,6 +345,7 @@ class EmissionController extends AbstractController
 
         $record = new EmissionRecord();
         $record->setProject($project);
+        $record->setCategory($categoryEntity);
         $record->setRegisteredAt(new \DateTimeImmutable());
 
         $isMaterials = $categoryEntity->getId() === $this->findCategoryIdByNameEs($em, 'Materiales');
@@ -381,6 +382,7 @@ class EmissionController extends AbstractController
                     } else {
                         $activity = $record->getActivity();
                         $amount = $record->getAmount();
+                        $record->setCategory($activity->getCategory());
                         $record->setEmission($amount * $activity->getEmissionFactor());
                     }
 
@@ -425,12 +427,12 @@ class EmissionController extends AbstractController
         TranslatorInterface $t,
     ): Response {
         $project  = $record->getProject();
-        $category = $record->getActivity()->getCategory();
+        $category = $record->getEffectiveCategory();
 
         if (!$project || $record->getProject() !== $project) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
         }
-        if (!$category) {
+        if (!$category || !$record->getActivity()) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
@@ -474,6 +476,7 @@ class EmissionController extends AbstractController
                     } else {
                         $activity = $record->getActivity();
                         $amount = $record->getAmount();
+                        $record->setCategory($activity->getCategory());
                         $record->setEmission($amount * $activity->getEmissionFactor());
                     }
 
@@ -606,6 +609,7 @@ class EmissionController extends AbstractController
 
             $record
                 ->setActivity($selectedActivity)
+                ->setCategory($selectedActivity->getCategory())
                 ->setAmount((float) $amount)
                 ->setEmission((float) $amount * $selectedActivity->getEmissionFactor())
                 ->setCalculationDetails(null);
@@ -626,6 +630,7 @@ class EmissionController extends AbstractController
         $result = $calculator->calculate($activity, ['origin' => $origin] + $this->getWoodFormInput($form));
         $record
             ->setActivity($activity)
+            ->setCategory($activity->getCategory())
             ->setAmount($result->amount)
             ->setEmission($result->emission)
             ->setCalculationDetails(json_encode(
@@ -681,6 +686,7 @@ class EmissionController extends AbstractController
 
         $record = new EmissionRecord();
         $record->setProject($project);
+        $record->setCategory($category);
         $record->setRegisteredAt(new \DateTimeImmutable());
 
         $form = $this->createForm(EnergyEmissionType::class, $record);
@@ -708,6 +714,7 @@ class EmissionController extends AbstractController
                 } else {
                     $record->setPhase($phase);
                     $record->setActivity($activity);
+                    $record->setCategory($activity->getCategory());
                     $record->setEmission($record->getAmount() * $activity->getEmissionFactor());
 
                     $em->persist($record);
@@ -745,12 +752,12 @@ class EmissionController extends AbstractController
         TranslatorInterface $t
     ): Response {
         $project  = $activeProjectService->getActiveProject();
-        $category = $record->getActivity()->getCategory();
+        $category = $record->getEffectiveCategory();
 
         if (!$project || $record->getProject() !== $project) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
         }
-        if (!$category) {
+        if (!$category || !$record->getActivity()) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
 
@@ -781,6 +788,7 @@ class EmissionController extends AbstractController
                 } else {
                     $record->setPhase($phase);
                     $record->setActivity($activity);
+                    $record->setCategory($activity->getCategory());
                     $record->setEmission($record->getAmount() * $activity->getEmissionFactor());
 
                     $em->flush();
@@ -834,6 +842,7 @@ class EmissionController extends AbstractController
 
         $record = new EmissionRecord();
         $record->setProject($project);
+        $record->setCategory($categoryEntity);
         $record->setRegisteredAt(new \DateTimeImmutable());
 
         // Si tu Form usa el nombre, puedes pasar el de la entidad (ojo: saldrá traducido según listener)
@@ -862,6 +871,7 @@ class EmissionController extends AbstractController
             } else {
                 $record->setPhase($phase);
                 $record->setActivity($activity);
+                $record->setCategory($activity->getCategory());
                 $record->setEmission($record->getAmount() * $activity->getEmissionFactor());
 
                 $em->persist($record);
@@ -901,12 +911,12 @@ class EmissionController extends AbstractController
         TranslatorInterface $t
     ): Response {
         $project  = $activeProjectService->getActiveProject();
-        $category = $record->getActivity() ? $record->getActivity()->getCategory() : null;
+        $category = $record->getEffectiveCategory();
 
         if (!$project || $record->getProject() !== $project) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
         }
-        if (!$category) {
+        if (!$category || !$record->getActivity()) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
 
@@ -932,6 +942,7 @@ class EmissionController extends AbstractController
             } else {
                 $record->setPhase($phase);
                 $record->setActivity($activity);
+                $record->setCategory($activity->getCategory());
                 $record->setEmission($record->getAmount() * $activity->getEmissionFactor());
 
                 $em->flush();
@@ -1019,7 +1030,7 @@ class EmissionController extends AbstractController
             return $this->redirectToRoute('backend_project_edit', ['id' => $project->getId()]);
         }
 
-        $categoryName = (string) ($request->request->get('category') ?: ($record->getActivity()?->getCategory()?->getName() ?? 'Alojamientos'));
+        $categoryName = (string) ($request->request->get('category') ?: ($record->getEffectiveCategory()?->getName() ?? 'Alojamientos'));
         $category = $categoryRepository->findOneBy(['name' => $categoryName]);
 
         try {

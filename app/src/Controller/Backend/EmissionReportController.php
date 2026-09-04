@@ -35,7 +35,7 @@ class EmissionReportController extends AbstractController
 
         foreach ($records as $record) {
             $phase = $record->getPhase()?->getPhase($project->getType()) ?? $noPhase;
-            $category = $record->getActivity()->getCategory()?->getName() ?? $noCategory;
+            $category = $record->getEffectiveCategory()?->getName() ?? $noCategory;
 
             if (!isset($reportData[$phase])) {
                 $reportData[$phase] = [];
@@ -103,7 +103,7 @@ class EmissionReportController extends AbstractController
         foreach ($records as $record) {
             $activity = $record->getActivity()?->getName() ?? $noActivity;
             $phase    = $record->getPhase()?->getPhase($project->getType()) ?? $noPhase;
-            $category = $record->getActivity()?->getCategory()?->getName() ?? $noCategory;
+            $category = $record->getEffectiveCategory()?->getName() ?? $noCategory;
 
             if (!isset($data[$activity])) {
                 $data[$activity] = [];

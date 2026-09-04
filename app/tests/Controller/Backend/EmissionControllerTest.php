@@ -76,6 +76,28 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('Todas', $content);
     }
 
+    public function testIndexRendersModernRecordWithoutActivity(): void
+    {
+        $payload = $this->buildPayload();
+        $phase = $payload['records'][0]->getPhase();
+        $record = (new EmissionRecord())
+            ->setProject($payload['project'])
+            ->setPhase($phase)
+            ->setCategory($payload['categories'][1])
+            ->setAmount(12)
+            ->setEmission(3.5)
+            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'));
+        $this->setEntityId($record, 999);
+
+        $response = $this->renderIndex($payload['project'], [$record], $payload['categories'], ['categoryId' => 2]);
+
+        self::assertSame(200, $response->getStatusCode());
+        $content = (string) $response->getContent();
+        self::assertStringContainsString('—', $content);
+        self::assertStringContainsString('/backend/emission/999/delete', $content);
+        self::assertStringNotContainsString('/backend/emission/999/edit-transport-travel', $content);
+    }
+
     private function renderIndex(Project $project, array $records, array $categories, array $query): \Symfony\Component\HttpFoundation\Response
     {
         $controller = new EmissionController();
