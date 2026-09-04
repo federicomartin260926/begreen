@@ -539,13 +539,7 @@ export default class extends Controller {
           }
         } else if (data.error) {
           if (mensajeDistancia) mensajeDistancia.textContent = '';
-          if (errorDiv) {
-            if (String(data.error).includes('Could not find routable point')) {
-              errorDiv.textContent = this.t('no_road_nearby');
-            } else {
-              errorDiv.textContent = data.error;
-            }
-          }
+          if (errorDiv) errorDiv.textContent = data.error;
         } else {
           if (mensajeDistancia) mensajeDistancia.textContent = '';
           if (errorDiv) errorDiv.textContent = this.t('generic_calc_error');

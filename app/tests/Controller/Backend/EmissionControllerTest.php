@@ -93,7 +93,7 @@ final class EmissionControllerTest extends KernelTestCase
         $recordRepository->method('findByProjectOrderByPhaseAndDate')->willReturn($records);
 
         $categoryRepository = $this->createMock(CategoryRepository::class);
-        $categoryRepository->method('findAll')->willReturn($categories);
+        $categoryRepository->method('findEnabledInEmissionCalculator')->willReturn($categories);
 
         $activeProjectService = $this->createMock(ActiveProjectService::class);
         $activeProjectService->method('getActiveProject')->willReturn($project);

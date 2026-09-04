@@ -67,6 +67,10 @@ services:
         arguments:
             $projectDir: '%kernel.project_dir%'
 
+    App\Service\OpenRouteService:
+        arguments:
+            $apiKey: '%env(string:ORS_API_KEY)%'
+
     Stripe\StripeClient:
         arguments:
             - { api_key: '%stripe.secret_key%' }

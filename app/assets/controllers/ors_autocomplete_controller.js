@@ -1,18 +1,22 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Pega aquí tu API key de ORS:
-const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjQ2ODcwZjM3NTQyYjRjOGJhYWVhNjA3MWI0NjBmYzNmIiwiaCI6Im11cm11cjY0In0=';
-
 export default class extends Controller {
     static targets = ['input', 'suggestions'];
+    static values = { errorMessage: String };
 
     connect() {
-        // Borra sugerencias al perder foco si no se selecciona ninguna
-        document.addEventListener('click', (e) => {
+        this.closeSuggestions = (e) => {
             if (!this.element.contains(e.target)) {
                 this.suggestionsTarget.innerHTML = '';
             }
-        });
+        };
+        document.addEventListener('click', this.closeSuggestions);
+    }
+
+    disconnect() {
+        document.removeEventListener('click', this.closeSuggestions);
+        clearTimeout(this.searchTimer);
+        this.searchRequest?.abort();
     }
 
     inputTargetConnected(element) {
@@ -20,33 +24,60 @@ export default class extends Controller {
         element.addEventListener('focus', (e) => this.onInput(e)); // Muestra sugerencias al focus
     }
 
-    async onInput(e) {
+    onInput(e) {
         const value = e.target.value.trim();
+        if (e.type === 'input') {
+            delete e.target.dataset.lat;
+            delete e.target.dataset.lon;
+        }
+        clearTimeout(this.searchTimer);
+        this.searchRequest?.abort();
+
         if (value.length < 3) {
             this.suggestionsTarget.innerHTML = '';
             return;
         }
 
-        const url = `https://api.openrouteservice.org/geocode/autocomplete?api_key=${ORS_API_KEY}&text=${encodeURIComponent(value)}&size=5&boundary.country=ES`;
-        const res = await fetch(url);
-        const data = await res.json();
+        this.searchTimer = setTimeout(() => this.loadSuggestions(value), 250);
+    }
 
-        this.suggestionsTarget.innerHTML = '';
-        if (data.features) {
-            data.features.forEach(feature => {
+    async loadSuggestions(value) {
+        this.searchRequest = new AbortController();
+
+        try {
+            const url = `/index.php/backend/emission/location-autocomplete?text=${encodeURIComponent(value)}`;
+            const response = await fetch(url, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                signal: this.searchRequest.signal,
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || this.errorMessageValue);
+            }
+
+            this.suggestionsTarget.innerHTML = '';
+            const results = Array.isArray(data.results) ? data.results : [];
+            results.forEach(result => {
                 const item = document.createElement('div');
                 item.className = 'ors-suggestion';
-                item.textContent = feature.properties.label;
-                item.dataset.lat = feature.geometry.coordinates[1];
-                item.dataset.lon = feature.geometry.coordinates[0];
+                item.textContent = result.label;
                 item.addEventListener('mousedown', () => {
-                    this.inputTarget.value = feature.properties.label;
-                    this.inputTarget.dataset.lat = feature.geometry.coordinates[1];
-                    this.inputTarget.dataset.lon = feature.geometry.coordinates[0];
+                    this.inputTarget.value = result.label;
+                    this.inputTarget.dataset.lat = result.latitude;
+                    this.inputTarget.dataset.lon = result.longitude;
                     this.suggestionsTarget.innerHTML = '';
                 });
                 this.suggestionsTarget.appendChild(item);
             });
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+
+            this.suggestionsTarget.innerHTML = '';
+            const item = document.createElement('div');
+            item.className = 'ors-suggestion text-danger';
+            item.textContent = this.errorMessageValue;
+            this.suggestionsTarget.appendChild(item);
         }
     }
 }

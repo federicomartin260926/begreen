@@ -1813,6 +1813,7 @@ backend:
       invalid_coordinates: "Invalid coordinates."
       no_route_found: "Could not calculate the distance between the selected points."
       no_route_hint: "No route was found between the selected points. Try choosing locations closer to a road."
+      ors_unavailable: "The location service is temporarily unavailable. Please try again later."
     landing:
       title: "Emissions calculator"
       breadcrumb: "CO₂ calculator"

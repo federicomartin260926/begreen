@@ -4,10 +4,11 @@ namespace App\Controller\Backend;
 
 // App
 use App\Entity\{Category, EmissionActivity, EmissionRecord};
+use App\Exception\OpenRouteServiceException;
 use App\Form\{EmissionRecordType, EnergyEmissionType, TransportEmissionType, WoodEmissionType};
 use App\Repository\{CategoryRepository, EmissionActivityRepository, EmissionRecordRepository, ProjectRepository};
 use App\Security\{EmissionRecordVoter, ProjectVoter};
-use App\Service\{ActiveProjectService};
+use App\Service\{ActiveProjectService, OpenRouteService};
 use App\Service\Emission\{WoodCatalog, WoodEmissionCalculator};
 
 // Doctrine / Gedmo
@@ -22,7 +23,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 // Symfony Contracts
-use Symfony\Contracts\{HttpClient\HttpClientInterface, Translation\TranslatorInterface};
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/backend/emission')]
 #[IsGranted('ROLE_USER')]
@@ -1062,52 +1063,72 @@ class EmissionController extends AbstractController
     }
 
     #[Route('/calculate-distance', name: 'backend_emission_calculate_distance', methods: ['POST'])]
-    public function calculateDistance(Request $request, HttpClientInterface $http, TranslatorInterface $t): JsonResponse
+    public function calculateDistance(
+        Request $request,
+        OpenRouteService $openRouteService,
+        TranslatorInterface $t,
+    ): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $lat1 = $data['lat1'] ?? null;
-        $lon1 = $data['lon1'] ?? null;
-        $lat2 = $data['lat2'] ?? null;
-        $lon2 = $data['lon2'] ?? null;
+        $decoded = json_decode($request->getContent(), true);
+        $data = is_array($decoded) ? $decoded : [];
+        $lat1 = $this->validCoordinate($data['lat1'] ?? null, -90, 90);
+        $lon1 = $this->validCoordinate($data['lon1'] ?? null, -180, 180);
+        $lat2 = $this->validCoordinate($data['lat2'] ?? null, -90, 90);
+        $lon2 = $this->validCoordinate($data['lon2'] ?? null, -180, 180);
 
-        if (!$lat1 || !$lon1 || !$lat2 || !$lon2) {
+        if ($lat1 === null || $lon1 === null || $lat2 === null || $lon2 === null) {
             return $this->json(['error' => $t->trans('backend.emission.errors.invalid_coordinates')], 400);
         }
 
-        $apiKey = $_ENV['ORS_API_KEY'] ?? 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjQ2ODcwZjM3NTQyYjRjOGJhYWVhNjA3MWI0NjBmYzNmIiwiaCI6Im11cm11cjY0In0=';
-
         try {
-            $response = $http->request('POST', 'https://api.openrouteservice.org/v2/directions/driving-car', [
-                'headers' => [
-                    'Authorization' => $apiKey,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'coordinates' => [
-                        [(float)$lon1, (float)$lat1],
-                        [(float)$lon2, (float)$lat2],
-                    ],
-                    'radiuses' => [1000, 1000]
-                ],
-            ]);
-            $result = $response->toArray(false);
-        } catch (\Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface $e) {
-            $errorResponse = $e->getResponse()->toArray(false);
-            $errorMsg = $errorResponse['error']['message'] ?? $t->trans('backend.emission.errors.no_route_found');
-            return $this->json(['error' => $errorMsg], 422);
-        }
+            $kilometers = $openRouteService->drivingDistanceKilometers($lat1, $lon1, $lat2, $lon2);
+        } catch (OpenRouteServiceException $exception) {
+            if ($exception->reason === OpenRouteServiceException::NOT_ROUTABLE) {
+                return $this->json([
+                    'error' => $t->trans('backend.emission.transport_js.no_road_nearby'),
+                ], 422);
+            }
 
-        if (
-            !isset($result['routes'][0]['segments'][0]['distance']) ||
-            empty($result['routes'][0]['segments'][0]['distance'])
-        ) {
-            $msg = $result['error']['message'] ?? $t->trans('backend.emission.errors.no_route_hint');
-            return $this->json(['error' => $msg], 422);
+            return $this->json([
+                'error' => $t->trans('backend.emission.errors.ors_unavailable'),
+            ], 502);
         }
-
-        $meters = $result['routes'][0]['segments'][0]['distance'];
-        $kilometers = round($meters / 1000, 2);
 
         return $this->json(['kilometers' => $kilometers]);
+    }
+
+    #[Route('/location-autocomplete', name: 'backend_emission_location_autocomplete', methods: ['GET'])]
+    public function locationAutocomplete(
+        Request $request,
+        OpenRouteService $openRouteService,
+        TranslatorInterface $t,
+    ): JsonResponse {
+        $text = trim((string) $request->query->get('text', ''));
+        if (mb_strlen($text) < 3 || mb_strlen($text) > 200) {
+            return $this->json(['results' => []]);
+        }
+
+        try {
+            return $this->json([
+                'results' => $openRouteService->autocomplete($text),
+            ]);
+        } catch (OpenRouteServiceException) {
+            return $this->json([
+                'error' => $t->trans('backend.emission.errors.ors_unavailable'),
+            ], 502);
+        }
+    }
+
+    private function validCoordinate(mixed $value, float $minimum, float $maximum): ?float
+    {
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        $coordinate = (float) $value;
+
+        return is_finite($coordinate) && $coordinate >= $minimum && $coordinate <= $maximum
+            ? $coordinate
+            : null;
     }
 }

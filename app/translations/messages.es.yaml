@@ -1821,6 +1821,7 @@ backend:
       invalid_coordinates: "Coordenadas no válidas."
       no_route_found: "No se pudo calcular la distancia entre los puntos seleccionados."
       no_route_hint: "No se ha encontrado una ruta entre los puntos seleccionados. Prueba a seleccionar ubicaciones cercanas a la carretera."
+      ors_unavailable: "El servicio de ubicaciones no está disponible temporalmente. Inténtalo de nuevo más tarde."
     landing:
       title: "Calculadora de emisiones"
       breadcrumb: "Calculadora CO₂"

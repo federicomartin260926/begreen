@@ -39,7 +39,9 @@
     </div>
 
     <div class="col-md-12 row pb-3" id="transport-ubicaciones-fields">
-      <div class="col-md-6" data-controller="ors-autocomplete">
+      <div class="col-md-6"
+           data-controller="ors-autocomplete"
+           data-ors-autocomplete-error-message-value="{{ 'backend.emission.errors.ors_unavailable'|trans }}">
         <label class="form-label">{{ 'backend.emission.transport_tpl.from'|trans }}</label>
         <input type="text"
                name="desde"
@@ -51,7 +53,9 @@
                placeholder="{{ 'backend.emission.transport_tpl.from_ph'|trans }}"/>
         <div class="ors-suggestions-list" data-ors-autocomplete-target="suggestions"></div>
       </div>
-      <div class="col-md-6" data-controller="ors-autocomplete">
+      <div class="col-md-6"
+           data-controller="ors-autocomplete"
+           data-ors-autocomplete-error-message-value="{{ 'backend.emission.errors.ors_unavailable'|trans }}">
         <label class="form-label">{{ 'backend.emission.transport_tpl.to'|trans }}</label>
         <input type="text"
                name="hasta"
