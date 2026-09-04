@@ -11,6 +11,7 @@ use App\Entity\ProjectPhaseDate;
 use App\Repository\CategoryRepository;
 use App\Repository\EmissionRecordRepository;
 use App\Service\ActiveProjectService;
+use App\Service\Emission\Transport\TransportEmissionSnapshot;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -96,6 +97,52 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('—', $content);
         self::assertStringContainsString('/backend/emission/999/delete', $content);
         self::assertStringNotContainsString('/backend/emission/999/edit-transport-travel', $content);
+        self::assertStringNotContainsString('/backend/emission/999/edit-transport', $content);
+    }
+
+    public function testTransportAndTripsKeepSeparateCreateAndEditRoutes(): void
+    {
+        $payload = $this->buildPayload();
+        $phase = $payload['records'][0]->getPhase();
+        $modern = (new EmissionRecord())
+            ->setProject($payload['project'])
+            ->setPhase($phase)
+            ->setCategory($payload['categories'][1])
+            ->setAmount(10)
+            ->setEmission(2)
+            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'))
+            ->setCalculationDetails('{"version":"transport-v20"}');
+        $this->setEntityId($modern, 998);
+
+        $transportResponse = $this->renderIndex(
+            $payload['project'],
+            [$modern, $payload['records'][12]],
+            $payload['categories'],
+            ['categoryId' => 2],
+        );
+        $transportContent = (string) $transportResponse->getContent();
+        self::assertStringContainsString('/backend/emission/new-transport', $transportContent);
+        self::assertStringContainsString('/backend/emission/998/edit-transport', $transportContent);
+        self::assertStringContainsString('/backend/emission/201/edit-transport-travel', $transportContent);
+
+        $tripsActivity = (new EmissionActivity())
+            ->setName('Avión')
+            ->setUnit('km')
+            ->setEmissionFactor(0.2)
+            ->setCategory($payload['categories'][2]);
+        $tripsRecord = (new EmissionRecord())
+            ->setProject($payload['project'])
+            ->setPhase($phase)
+            ->setCategory($payload['categories'][2])
+            ->setActivity($tripsActivity)
+            ->setAmount(10)
+            ->setEmission(2)
+            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'));
+        $this->setEntityId($tripsRecord, 997);
+        $tripsResponse = $this->renderIndex($payload['project'], [$tripsRecord], $payload['categories'], ['categoryId' => 3]);
+        $tripsContent = (string) $tripsResponse->getContent();
+        self::assertStringContainsString('/backend/emission/new-transport-travel/3', $tripsContent);
+        self::assertStringContainsString('/backend/emission/997/edit-transport-travel', $tripsContent);
     }
 
     private function renderIndex(Project $project, array $records, array $categories, array $query): \Symfony\Component\HttpFoundation\Response
@@ -126,6 +173,7 @@ final class EmissionControllerTest extends KernelTestCase
             $categoryRepository,
             $this->createEntityManagerMock(),
             self::getContainer()->get(TranslatorInterface::class),
+            new TransportEmissionSnapshot(),
             $request
         );
 
@@ -142,12 +190,14 @@ final class EmissionControllerTest extends KernelTestCase
 
         $energy = (new Category())->setName('Energía');
         $transport = (new Category())->setName('Transporte');
+        $trips = (new Category())->setName('Viajes');
         $empty = (new Category())->setName('Residuos');
         $generic = (new Category())->setName('Agua');
         $this->setEntityId($energy, 1);
         $this->setEntityId($transport, 2);
-        $this->setEntityId($empty, 3);
-        $this->setEntityId($generic, 4);
+        $this->setEntityId($trips, 3);
+        $this->setEntityId($empty, 4);
+        $this->setEntityId($generic, 5);
 
         $energyActivity = (new EmissionActivity())
             ->setName('Electricidad')
@@ -197,7 +247,7 @@ final class EmissionControllerTest extends KernelTestCase
 
         return [
             'project' => $project,
-            'categories' => [$energy, $transport, $empty, $generic],
+            'categories' => [$energy, $transport, $trips, $empty, $generic],
             'records' => $records,
         ];
     }

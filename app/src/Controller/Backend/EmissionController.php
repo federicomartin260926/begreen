@@ -10,6 +10,7 @@ use App\Repository\{CategoryRepository, EmissionActivityRepository, EmissionReco
 use App\Security\{EmissionRecordVoter, ProjectVoter};
 use App\Service\{ActiveProjectService, OpenRouteService};
 use App\Service\Emission\{WoodCatalog, WoodEmissionCalculator};
+use App\Service\Emission\Transport\TransportEmissionSnapshot;
 
 // Doctrine / Gedmo
 use Doctrine\ORM\EntityManagerInterface;
@@ -84,6 +85,7 @@ class EmissionController extends AbstractController
         CategoryRepository $categoryRepository,
         EntityManagerInterface $em,
         TranslatorInterface $t,
+        TransportEmissionSnapshot $transportSnapshot,
         Request $request
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -126,6 +128,7 @@ class EmissionController extends AbstractController
                 'newRecordUrl'         => '#',
                 'hasCategories'        => false,
                 'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
+                'transportV20RecordIds' => [],
             ]);
         }
 
@@ -155,6 +158,14 @@ class EmissionController extends AbstractController
         $currentPage = min($currentPage, $totalPages);
         $offset = ($currentPage - 1) * $perPage;
         $selectedCategoryRecords = array_slice($selectedCategoryRecordsAll, $offset, $perPage);
+        $transportV20RecordIds = [];
+        if (null !== $transportId) {
+            foreach ($selectedCategoryRecords as $record) {
+                if ($transportSnapshot->isTransportV20Record($record, $transportId)) {
+                    $transportV20RecordIds[] = $record->getId();
+                }
+            }
+        }
         $paginationQuery = ['categoryId' => $selectedCategoryId];
 
         foreach ($categoriesNavigation as &$category) {
@@ -187,6 +198,7 @@ class EmissionController extends AbstractController
             'newRecordUrl'         => $newRecordUrl,
             'hasCategories'        => $categoriesVM !== [],
             'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
+            'transportV20RecordIds' => $transportV20RecordIds,
         ]);
     }
 
@@ -298,7 +310,11 @@ class EmissionController extends AbstractController
             return $this->generateUrl('backend_emission_new_energy', $params);
         }
 
-        if (($transportId !== null && $categoryId === $transportId) || ($tripsId !== null && $categoryId === $tripsId)) {
+        if ($transportId !== null && $categoryId === $transportId) {
+            return $this->generateUrl('backend_emission_new_transport_v20', $params);
+        }
+
+        if ($tripsId !== null && $categoryId === $tripsId) {
             return $this->generateUrl('backend_emission_new_transport', $params + ['category' => $categoryId]);
         }
 

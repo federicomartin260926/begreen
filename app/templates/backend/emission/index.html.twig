@@ -156,6 +156,17 @@
                                                 >
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
+                                                {% elseif record.id in transportV20RecordIds %}
+                                                <a
+                                                    href="{{ path('backend_emission_edit_transport_v20', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
                                                 {% endif %}
 
                                                 <form
