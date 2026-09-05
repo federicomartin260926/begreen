@@ -1,0 +1,143 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ edit ? 'backend.emission.transport_v20.title_edit'|trans : 'backend.emission.transport_v20.title_new'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item">
+    <a href="{{ path('backend_emission_index', backQuery) }}" class="text-decoration-none">
+      {{ 'backend.emission.transport_v20.breadcrumb_list'|trans }}
+    </a>
+  </li>
+  <li class="breadcrumb-item active">
+    {{ edit ? 'backend.emission.transport_v20.breadcrumb_edit'|trans : 'backend.emission.transport_v20.breadcrumb_new'|trans }}
+  </li>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0 backend-client-shell">
+  <div class="backend-client-content">
+    <h2 class="mb-4">{{ edit ? 'backend.emission.transport_v20.heading_edit'|trans : 'backend.emission.transport_v20.heading_new'|trans }}</h2>
+
+    <div class="mb-4 d-grid bg_green_3 rounded p-3" style="grid-template-columns: max-content 1fr; row-gap: .5rem; column-gap: 1rem;">
+      <strong>{{ 'backend.emission.transport_v20.project'|trans }}:</strong>
+      <span>{{ project.name }}</span>
+      <strong>{{ 'backend.emission.transport_v20.phases'|trans }}:</strong>
+      <ul class="list-unstyled mb-0">
+        {% for phaseDate in project.phaseDates %}
+          <li>
+            {{ project.getPhaseLabel(phaseDate.phase)|trans }}
+            — {{ phaseDate.startDate ? phaseDate.startDate|date('d/m/Y') : '—' }}
+            / {{ phaseDate.endDate ? phaseDate.endDate|date('d/m/Y') : '—' }}
+          </li>
+        {% else %}
+          <li>—</li>
+        {% endfor %}
+      </ul>
+      <strong>{{ 'backend.emission.transport_v20.doctrine_category'|trans }}:</strong>
+      <span><span class="badge text-bg-secondary">{{ category.name }}</span></span>
+    </div>
+
+    {% if errors %}
+      <div class="alert alert-danger" role="alert">
+        <ul class="mb-0">
+          {% for error in errors %}
+            <li>{{ ('backend.emission.transport_v20.errors.' ~ error)|trans }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label" for="transport-started-at">{{ 'backend.emission.transport_v20.started_at'|trans }}</label>
+          <input class="form-control" id="transport-started-at" type="date" name="startedAt" value="{{ values.startedAt|default('') }}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label" for="transport-country">{{ 'backend.emission.transport_v20.country'|trans }}</label>
+          <input class="form-control text-uppercase" id="transport-country" name="country" value="{{ values.country|default('') }}" maxlength="2" pattern="[A-Za-z]{2}" required>
+        </div>
+      </div>
+
+      <fieldset class="mb-4">
+        <legend class="h5">{{ 'backend.emission.transport_v20.group'|trans }}</legend>
+        <div class="row g-3">
+          {% for categoryCode, modes in transportCategories %}
+            <div class="col-md-4">
+              <input class="btn-check" type="radio" name="category" id="transport-category-{{ categoryCode }}" value="{{ categoryCode }}" {% if values.category == categoryCode %}checked{% endif %} required>
+              <label class="btn btn-outline-primary w-100 h-100 py-3" for="transport-category-{{ categoryCode }}">
+                {{ ('backend.emission.transport_v20.categories.' ~ categoryCode)|trans }}
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label" for="transport-mode">{{ 'backend.emission.transport_v20.mode'|trans }}</label>
+          <select class="form-select" id="transport-mode" name="mode" required>
+            {% for categoryCode, modes in transportCategories %}
+              <optgroup label="{{ ('backend.emission.transport_v20.categories.' ~ categoryCode)|trans }}">
+                {% for mode in modes %}
+                  <option value="{{ mode }}" {% if values.mode == mode %}selected{% endif %}>{{ ('backend.emission.transport_v20.modes.' ~ mode)|trans }}</option>
+                {% endfor %}
+              </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label" for="transport-method">{{ 'backend.emission.transport_v20.method'|trans }}</label>
+          <select class="form-select" id="transport-method" name="method" required>
+            {% for method in transportMethods %}
+              <option value="{{ method }}" {% if values.method == method %}selected{% endif %}>{{ ('backend.emission.transport_v20.methods.' ~ method)|trans }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div id="transport-v20-dynamic-fields" class="rounded bg_green_1 p-4 mb-3" aria-live="polite">
+        <p class="text-muted mb-3">{{ 'backend.emission.transport_v20.dynamic_hint'|trans }}</p>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="transport-activity-value">{{ 'backend.emission.transport_v20.activity_value'|trans }}</label>
+            <input class="form-control" id="transport-activity-value" name="activityValue" value="{{ values.activityValue|default('') }}" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="transport-activity-unit">{{ 'backend.emission.transport_v20.activity_unit'|trans }}</label>
+            <input class="form-control" id="transport-activity-unit" name="activityUnit" value="{{ values.activityUnit|default('') }}" required>
+          </div>
+        </div>
+      </div>
+
+      {% for optionalField in ['passengers', 'weightValue', 'weightUnit', 'vehicleType', 'carSize', 'fuel', 'thermalFuel', 'routeClassification', 'travelClass'] %}
+        <input type="hidden" name="{{ optionalField }}" value="{{ attribute(values, optionalField)|default('') }}">
+      {% endfor %}
+
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="transport-repetitions">{{ 'backend.emission.transport_v20.repetitions'|trans }}</label>
+          <input class="form-control" id="transport-repetitions" type="number" name="repetitions" value="{{ values.repetitions|default('1') }}" min="1" step="1" required>
+        </div>
+        <div class="col-md-8 mb-3">
+          <label class="form-label" for="transport-notes">{{ 'backend.emission.transport_v20.notes'|trans }}</label>
+          <textarea class="form-control" id="transport-notes" name="notes" rows="3">{{ values.notes|default('') }}</textarea>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between mt-4">
+        <a href="{{ path('backend_emission_index', backQuery) }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+        </a>
+        <button class="btn btn-primary" type="submit">
+          <i class="bi bi-save"></i> {{ 'backend.common.save'|trans }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
