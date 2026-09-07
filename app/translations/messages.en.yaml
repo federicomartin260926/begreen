@@ -1927,7 +1927,6 @@ backend:
         invalid_board_thickness: "The manual thickness must be greater than zero."
     energy:
       subcategory: "Subcategory"
-      electricity_method: "Electricity method"
       method:
         generador: "Generator charging"
         vehiculo: "EV charging"
@@ -2228,21 +2227,6 @@ backend:
         delete_failed: "The supporting document could not be deleted."
         download_failed: "The supporting document could not be downloaded."
         csrf_invalid: "The session has expired. Reload the page and try again."
-    energy_form:
-      title_new: "New emission"
-      title_edit: "Edit emission"
-      breadcrumb:
-        list_title: "CO₂ emissions"
-        new: "New emission"
-        edit: "Edit emission"
-      heading_new: "New emission"
-      heading_edit: "Edit emission"
-      project_label: "Project"
-      phases_label: "Phases"
-      category_label: "Category"
-      category_energy: "Energy"
-      date_placeholder: "—"
-      amount_label: "Amount"
     energy_tpl:
       common:
         space_name: "Space or location name"

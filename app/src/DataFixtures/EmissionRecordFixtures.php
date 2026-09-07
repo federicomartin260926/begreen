@@ -41,6 +41,11 @@ class EmissionRecordFixtures extends Fixture implements DependentFixtureInterfac
 
             foreach ($phases as $phase) {
                 foreach ($actsByCat as $catName => $acts) {
+                    // Categorías ya migradas al motor moderno no generan registros legacy.
+                    if ($catName === 'Energía') {
+                        continue;
+                    }
+
                     $count = 0;
                     $limit = rand(2,4);
                     foreach ($acts as $act) {
@@ -54,38 +59,8 @@ class EmissionRecordFixtures extends Fixture implements DependentFixtureInterfac
                             ->setActivity($act)
                             ->setCategory($act->getCategory());
 
-                        if ($catName === 'Energía'){
-                            if (stripos($act->getName(), 'Electricidad') !== false) {
-                                $details = [
-                                    'subCategory'               => 'electricidad',
-                                    'electricityMethod'         => 'contador',
-                                    'contador_localizacion'     => 'Estudio A',
-                                    'contador_fecha_lectura'    => $createdAt->format('Y-m-d'),
-                                    'contador_comercializadora' => 'Iberdrola',
-                                    'contador_tarifa'           => 'renovable',
-                                    'contador_lectura_inicial'  => 10234,
-                                    'contador_lectura_final'    => 10450,
-                                ];
-                                $amount = $details['contador_lectura_final'] - $details['contador_lectura_inicial'];
-                            } elseif (stripos($act->getName(), 'Bombona') !== false) {
-                                $details = [
-                                    'subCategory'             => 'gas_bombona',
-                                    'bombona_nombre_espacio'  => 'Cocina catering',
-                                    'bombona_periodo_uso'     => 'Rodaje 3 días',
-                                    'bombona_kg'              => 12.5,
-                                    'bombona_cantidad'        => 4,
-                                ];
-                                $amount = $details['bombona_kg'] * $details['bombona_cantidad'];
-                            }
-                            else{
-                                continue;
-                            }
-                        }
-                        else{
-                            // Solo categorías distintas a Energía
-                            $details = [];
-                            $amount  = mt_rand(10, 100);
-                        }
+                        $details = [];
+                        $amount = mt_rand(10, 100);
 
                         $rec->setAmount($amount)
                             ->setEmission(round($amount * $act->getEmissionFactor(), 4))

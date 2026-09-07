@@ -66,7 +66,6 @@ class EmissionRecord
 
     private ?string $subCategory = null;
 
-    private ?string $electricityMethod = null;
 
     public function __construct()
     {
@@ -236,15 +235,5 @@ class EmissionRecord
     public function setSubCategory(?string $subCategory): void
     {
         $this->subCategory = $subCategory;
-    }
-
-    public function getElectricityMethod(): ?string
-    {
-        return $this->electricityMethod;
-    }
-
-    public function setElectricityMethod(?string $electricityMethod): void
-    {
-        $this->electricityMethod = $electricityMethod;
     }
 }

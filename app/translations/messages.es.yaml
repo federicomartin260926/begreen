@@ -1935,7 +1935,6 @@ backend:
         invalid_board_thickness: "El grosor manual debe ser mayor que cero."
     energy:
       subcategory: "Subcategoría"
-      electricity_method: "Método de electricidad"
       method:
         generador: "Carga de generadores eléctricos"
         vehiculo: "Carga de vehículos eléctricos"
@@ -2280,21 +2279,6 @@ backend:
         delete_failed: "No se pudo eliminar el justificante."
         download_failed: "No se pudo descargar el justificante."
         csrf_invalid: "La sesión ha caducado. Recarga la página e inténtalo de nuevo."
-    energy_form:
-      title_new: "Nueva emisión"
-      title_edit: "Editar emisión"
-      breadcrumb:
-        list_title: "Emisiones de CO₂"
-        new: "Nueva emisión"
-        edit: "Editar emisión"
-      heading_new: "Nueva emisión"
-      heading_edit: "Editar emisión"
-      project_label: "Proyecto"
-      phases_label: "Fases"
-      category_label: "Categoría"
-      category_energy: "Energía"
-      date_placeholder: "—"
-      amount_label: "Cantidad"
     energy_tpl:
       common:
         space_name: "Nombre del espacio o localización"

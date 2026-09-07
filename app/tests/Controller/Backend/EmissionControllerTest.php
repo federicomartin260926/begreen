@@ -55,7 +55,7 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertSame(2, substr_count($content, 'emissions-record-row'));
         self::assertStringContainsString('27,60', $content);
         self::assertStringContainsString('/backend/emission/new-energy-v1?page=2', $content);
-        self::assertStringContainsString('/edit-energy?', $content);
+        self::assertStringNotContainsString('/edit-energy?', $content);
         self::assertStringContainsString('categoryId=1', $content);
         self::assertStringContainsString('data-emission-target="chart"', $content);
         self::assertStringContainsString('data-chart-category="Energía"', $content);

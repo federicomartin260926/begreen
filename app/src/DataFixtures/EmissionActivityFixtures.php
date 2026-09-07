@@ -126,17 +126,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             'Vehículo privado fuera de sede' => 'Private vehicle (off-site)',
             'Jet privado (vuelo corporativo)' => 'Private jet (corporate flight)',
 
-            // Energía
-            'Electricidad' => 'Electricity',
-            'Oficina en remoto' => 'Remote office',
-            'Postproducción - Animación' => 'Post-production – Animation',
-            'Postproducción - Montaje y edición' => 'Post-production – Editing',
-            'Archivo y almacenamiento digital' => 'Digital archiving & storage',
-            'Generador a gas' => 'Gas generator',
-            'Caldera de gas' => 'Gas boiler',
-            'Depósito de propano' => 'Propane tank',
-            'Bombona de gas' => 'Gas cylinder',
-
             // Catering
             'Desayuno' => 'Breakfast',
             'Bocadillo' => 'Sandwich',
@@ -255,17 +244,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             ['Viajes', 'Taxi interurbano', 'km', 0.151, 'carretera'],
             ['Viajes', 'Vehículo privado fuera de sede', 'km', 0.152, 'carretera'],
             ['Viajes', 'Jet privado (vuelo corporativo)', 'km', 1.5, 'aereo'],
-
-            // Energía
-            ['Energía', 'Electricidad', 'kWh', 0.233, 'electricidad'],
-            ['Energía', 'Oficina en remoto', 'hora', 0.025, 'remoto'],
-            ['Energía', 'Postproducción - Animación', 'hora', 0.035, 'animacion'],
-            ['Energía', 'Postproducción - Montaje y edición', 'hora', 0.03, 'montaje_edicion'],
-            ['Energía', 'Archivo y almacenamiento digital', 'GB·mes', 0.002, 'almacenamiento'],
-            ['Energía', 'Generador a gas', 'litros', 2.2, 'gas_generador'],
-            ['Energía', 'Caldera de gas', 'kWh', 0.204, 'gas_caldera'],
-            ['Energía', 'Depósito de propano', 'kg', 2.96, 'gas_propano'],
-            ['Energía', 'Bombona de gas', 'kg', 2.1, 'gas_bombona'],
 
             // Catering
             ['Catering', 'Desayuno', 'ración', 1.2, null],

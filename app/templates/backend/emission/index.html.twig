@@ -183,11 +183,9 @@
                                                 {% if activity %}
                                                 <a
                                                     href="{{
-                                                        effectiveCategory.id == energyId
-                                                            ? path('backend_emission_edit_energy', { id: record.id }|merge(currentQuery))
-                                                            : (effectiveCategory.id in [transportId, tripsId]
-                                                                ? path('backend_emission_edit_transport', { id: record.id }|merge(currentQuery))
-                                                                : path('backend_emission_edit', { id: record.id }|merge(currentQuery)))
+                                                        effectiveCategory.id in [transportId, tripsId]
+                                                            ? path('backend_emission_edit_transport', { id: record.id }|merge(currentQuery))
+                                                            : path('backend_emission_edit', { id: record.id }|merge(currentQuery))
                                                     }}"
                                                     data-bs-toggle="popover"
                                                     data-bs-trigger="hover"
