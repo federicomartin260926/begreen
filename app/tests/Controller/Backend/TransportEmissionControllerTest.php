@@ -6,6 +6,7 @@ use App\Controller\Backend\TransportEmissionController;
 use App\Entity\Category;
 use App\Entity\EmissionFactor;
 use App\Entity\EmissionRecord;
+use App\Entity\EmissionRecordAttachment;
 use App\Entity\Project;
 use App\Entity\ProjectPhaseDate;
 use App\Repository\CategoryRepository;
@@ -14,6 +15,7 @@ use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionFactorKeyGenerator;
 use App\Service\Emission\EmissionFactorResolver;
+use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\Transport\TransportEmissionCalculator;
 use App\Service\Emission\Transport\TransportEmissionInput;
 use App\Service\Emission\Transport\TransportEmissionPresentationMapper;
@@ -27,6 +29,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -34,6 +37,26 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 
 final class TransportEmissionControllerTest extends KernelTestCase
 {
+    private string $attachmentDirectory;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->attachmentDirectory = sys_get_temp_dir().'/bgfm-transport-attachments-'.bin2hex(random_bytes(8));
+    }
+
+    protected function tearDown(): void
+    {
+        if (is_dir($this->attachmentDirectory)) {
+            $items = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->attachmentDirectory, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
+            foreach ($items as $item) {
+                $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+            }
+            rmdir($this->attachmentDirectory);
+        }
+        parent::tearDown();
+    }
+
     public function testGetCreateRendersHtmlFormWithCsrfAndNoAuthoritativeFields(): void
     {
         $context = $this->context();
@@ -44,6 +67,8 @@ final class TransportEmissionControllerTest extends KernelTestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('<form method="post"', $content);
+        self::assertStringContainsString('enctype="multipart/form-data"', $content);
+        self::assertStringContainsString('name="attachments[]"', $content);
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
         self::assertStringContainsString('data-controller="transport-v20-form"', $content);
         self::assertStringContainsString('data-transport-v20-form-config-value=', $content);
@@ -71,6 +96,22 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
     }
 
+    public function testGetEditListsExistingAttachment(): void
+    {
+        $context = $this->context();
+        $record = $this->record($context);
+        $attachment = (new EmissionRecordAttachment())->setEmissionRecord($record)->setOriginalName('factura.pdf')
+            ->setStoredName(str_repeat('a', 32).'.pdf')->setMimeType('application/pdf')->setSize(2048)->setCreatedAt(new \DateTimeImmutable());
+        $this->setEntityId($attachment, 401);
+        $record->addAttachment($attachment);
+
+        $content = (string) $this->edit($record, $this->request('GET'), $context, persistCalls: 0)->getContent();
+
+        self::assertStringContainsString('factura.pdf', $content);
+        self::assertStringContainsString('/backend/emission/300/attachments/401/download', $content);
+        self::assertStringContainsString('/backend/emission/300/attachments/401/delete', $content);
+    }
+
     public function testGetEditRejectsNonV20Record(): void
     {
         $context = $this->context();
@@ -90,6 +131,30 @@ final class TransportEmissionControllerTest extends KernelTestCase
 
         self::assertSame(422, $response->getStatusCode());
         self::assertStringContainsString('sesión del formulario', (string) $response->getContent());
+    }
+
+    public function testInvalidAttachmentReturns422BeforeCreatingRecord(): void
+    {
+        $context = $this->context();
+        $request = $this->request('POST', $this->validPost(), [], ['attachments' => [$this->upload('bad.txt', 'plain text')]]);
+        $request->request->set('_token', $this->csrfToken('transport_emission_v20_create'));
+
+        $response = $this->create($request, $context, persistCalls: 0, factor: $this->factor());
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertStringContainsString('Formato de justificante no permitido', (string) $response->getContent());
+    }
+
+    public function testValidCreateStoresAttachmentEntityAndFile(): void
+    {
+        $context = $this->context();
+        $request = $this->request('POST', $this->validPost(), [], ['attachments' => [$this->upload('factura.pdf', "%PDF-1.4\n%%EOF\n")]]);
+        $request->request->set('_token', $this->csrfToken('transport_emission_v20_create'));
+
+        $response = $this->create($request, $context, persistCalls: 1, factor: $this->factor(), attachmentPersistCalls: 1);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertCount(1, glob($this->attachmentDirectory.'/10/301/*.pdf'));
     }
 
     public function testInvalidEditCsrfReturnsErrorAndDoesNotPersist(): void
@@ -115,6 +180,23 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/backend/emission/records?page=2&categoryId=20', $response->headers->get('Location'));
         self::assertSame(['backend.emission.transport_v20.flash.created'], $request->getSession()->getFlashBag()->peek('success'));
+    }
+
+    public function testEditAddsAttachmentWithoutRemovingExistingOne(): void
+    {
+        $context = $this->context();
+        $record = $this->record($context);
+        $existing = (new EmissionRecordAttachment())->setEmissionRecord($record)->setOriginalName('existing.pdf')
+            ->setStoredName(str_repeat('b', 32).'.pdf')->setMimeType('application/pdf')->setSize(20)->setCreatedAt(new \DateTimeImmutable());
+        $record->addAttachment($existing);
+        $request = $this->request('POST', $this->validPost(), [], ['attachments' => [$this->upload('new.pdf', "%PDF-1.4\n%%EOF\n")]]);
+        $request->request->set('_token', $this->csrfToken('transport_emission_v20_edit_300'));
+
+        $response = $this->edit($record, $request, $context, persistCalls: 1, factor: $this->factor(), attachmentPersistCalls: 1);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertCount(2, $record->getAttachments());
+        self::assertSame('existing.pdf', $record->getAttachments()->first()->getOriginalName());
     }
 
     public function testNonPersistiblePostReturns422AndKeepsSubmittedValues(): void
@@ -173,7 +255,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
     }
 
     /** @param array<string, mixed> $context */
-    private function create(Request $request, array $context, int $persistCalls, ?EmissionFactor $factor = null): \Symfony\Component\HttpFoundation\Response
+    private function create(Request $request, array $context, int $persistCalls, ?EmissionFactor $factor = null, int $attachmentPersistCalls = 0): \Symfony\Component\HttpFoundation\Response
     {
         return $this->controller()->create(
             $request,
@@ -184,11 +266,13 @@ final class TransportEmissionControllerTest extends KernelTestCase
             $this->recordService($persistCalls, $factor),
             new TransportEmissionPresentationMapper(),
             new TransportUiCatalog(),
+            new EmissionRecordAttachmentStorage($this->attachmentDirectory),
+            $this->attachmentEntityManager($attachmentPersistCalls),
         );
     }
 
     /** @param array<string, mixed> $context */
-    private function edit(EmissionRecord $record, Request $request, array $context, int $persistCalls, ?EmissionFactor $factor = null): \Symfony\Component\HttpFoundation\Response
+    private function edit(EmissionRecord $record, Request $request, array $context, int $persistCalls, ?EmissionFactor $factor = null, int $attachmentPersistCalls = 0): \Symfony\Component\HttpFoundation\Response
     {
         return $this->controller()->edit(
             $record,
@@ -201,6 +285,8 @@ final class TransportEmissionControllerTest extends KernelTestCase
             new TransportEmissionSnapshot(),
             new TransportEmissionPresentationMapper(),
             new TransportUiCatalog(),
+            new EmissionRecordAttachmentStorage($this->attachmentDirectory),
+            $this->attachmentEntityManager($attachmentPersistCalls),
         );
     }
 
@@ -213,9 +299,9 @@ final class TransportEmissionControllerTest extends KernelTestCase
         return $controller;
     }
 
-    private function request(string $method, array $post = [], array $query = []): Request
+    private function request(string $method, array $post = [], array $query = [], array $files = []): Request
     {
-        $request = new Request($query, $post, [], [], [], ['REQUEST_METHOD' => $method]);
+        $request = new Request($query, $post, [], [], $files, ['REQUEST_METHOD' => $method]);
         $request->setLocale('es');
         $request->attributes->set('_route', 'backend_emission_new_transport_v20');
         $request->attributes->set('_route_params', []);
@@ -242,10 +328,31 @@ final class TransportEmissionControllerTest extends KernelTestCase
         );
         /** @var EntityManagerInterface&MockObject $entityManager */
         $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->expects(self::exactly($persistCalls))->method('persist');
+        $entityManager->expects(self::exactly($persistCalls))->method('persist')->willReturnCallback(function (object $entity): void {
+            if ($entity instanceof EmissionRecord && null === $entity->getId()) {
+                $this->setEntityId($entity, 301);
+            }
+        });
         $entityManager->expects(self::exactly($persistCalls))->method('flush');
 
         return new TransportEmissionRecordService($calculator, new TransportEmissionSnapshot(), $entityManager);
+    }
+
+    private function attachmentEntityManager(int $persistCalls): EntityManagerInterface
+    {
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::exactly($persistCalls))->method('persist');
+        $entityManager->expects(self::exactly($persistCalls > 0 ? 1 : 0))->method('flush');
+
+        return $entityManager;
+    }
+
+    private function upload(string $name, string $contents): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'transport-upload-');
+        file_put_contents($path, $contents);
+
+        return new UploadedFile($path, $name, null, null, true);
     }
 
     /** @param array<string, mixed> $context */

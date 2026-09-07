@@ -11,12 +11,14 @@ use App\Entity\ProjectPhaseDate;
 use App\Repository\CategoryRepository;
 use App\Repository\EmissionRecordRepository;
 use App\Service\ActiveProjectService;
+use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -143,6 +145,41 @@ final class EmissionControllerTest extends KernelTestCase
         $tripsContent = (string) $tripsResponse->getContent();
         self::assertStringContainsString('/backend/emission/new-transport-travel/3', $tripsContent);
         self::assertStringContainsString('/backend/emission/997/edit-transport-travel', $tripsContent);
+    }
+
+    public function testDeleteRecordRemovesAttachmentFileBeforeEntity(): void
+    {
+        $payload = $this->buildPayload();
+        $record = $payload['records'][0];
+        $directory = sys_get_temp_dir().'/bgfm-delete-record-'.bin2hex(random_bytes(8));
+        $storage = new EmissionRecordAttachmentStorage($directory);
+        $path = tempnam(sys_get_temp_dir(), 'record-pdf-');
+        file_put_contents($path, "%PDF-1.4\n%%EOF\n");
+        $attachment = $storage->store($record, new UploadedFile($path, 'record.pdf', null, null, true));
+        $this->setEntityId($attachment, 700);
+        $physicalPath = $storage->absolutePath($attachment);
+
+        $controller = new EmissionController();
+        $controller->setContainer(self::getContainer());
+        $this->setAdminToken();
+        $request = new Request([], ['category' => 'Energía'], [], [], [], ['REQUEST_METHOD' => 'POST']);
+        $request->setSession(new Session(new MockArraySessionStorage()));
+        self::getContainer()->get('request_stack')->push($request);
+        $request->request->set('_token', self::getContainer()->get('security.csrf.token_manager')->getToken('delete'.$record->getId())->getValue());
+        $active = $this->createMock(ActiveProjectService::class);
+        $active->method('getActiveProject')->willReturn($payload['project']);
+        $categories = $this->createMock(CategoryRepository::class);
+        $categories->method('findOneBy')->willReturn($payload['categories'][0]);
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('remove')->with($record);
+        $entityManager->expects(self::once())->method('flush');
+
+        $response = $controller->delete($record, $request, $entityManager, $categories, $active, $storage, self::getContainer()->get(TranslatorInterface::class));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertFileDoesNotExist($physicalPath);
+        rmdir($directory.'/'.$payload['project']->getId());
+        rmdir($directory);
     }
 
     private function renderIndex(Project $project, array $records, array $categories, array $query): \Symfony\Component\HttpFoundation\Response

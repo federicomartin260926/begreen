@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Entity\Traits\TimestampableTrait;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -48,9 +50,42 @@ class EmissionRecord
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $calculationDetails = null;
 
+    /** @var Collection<int, EmissionRecordAttachment> */
+    // Intentionally no cascade persist: duplicating a record must never copy its attachments.
+    #[ORM\OneToMany(mappedBy: 'emissionRecord', targetEntity: EmissionRecordAttachment::class)]
+    private Collection $attachments;
+
     private ?string $subCategory = null;
 
     private ?string $electricityMethod = null;
+
+    public function __construct()
+    {
+        $this->attachments = new ArrayCollection();
+    }
+
+    /** @return Collection<int, EmissionRecordAttachment> */
+    public function getAttachments(): Collection
+    {
+        return $this->attachments;
+    }
+
+    public function addAttachment(EmissionRecordAttachment $attachment): self
+    {
+        if (!$this->attachments->contains($attachment)) {
+            $this->attachments->add($attachment);
+            $attachment->setEmissionRecord($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAttachment(EmissionRecordAttachment $attachment): self
+    {
+        $this->attachments->removeElement($attachment);
+
+        return $this;
+    }
 
     public function getId(): ?int
     {

@@ -10,6 +10,7 @@ use App\Repository\{CategoryRepository, EmissionActivityRepository, EmissionReco
 use App\Security\{EmissionRecordVoter, ProjectVoter};
 use App\Service\{ActiveProjectService, OpenRouteService};
 use App\Service\Emission\{WoodCatalog, WoodEmissionCalculator};
+use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
 
 // Doctrine / Gedmo
@@ -1043,6 +1044,7 @@ class EmissionController extends AbstractController
         EntityManagerInterface $em,
         CategoryRepository $categoryRepository,
         ActiveProjectService $activeProjectService,
+        EmissionRecordAttachmentStorage $attachmentStorage,
         TranslatorInterface $t
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -1062,6 +1064,7 @@ class EmissionController extends AbstractController
         $category = $categoryRepository->findOneBy(['name' => $categoryName]);
 
         try {
+            $attachmentStorage->deleteAllForRecord($record);
             $em->remove($record);
             $em->flush();
 

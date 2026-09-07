@@ -2103,6 +2103,11 @@ backend:
         created: "Registro de Transporte creado correctamente."
         updated: "Registro de Transporte actualizado correctamente."
       errors:
+        attachment_invalid: "El justificante no es un archivo válido o no se puede leer."
+        attachment_type_not_allowed: "Formato de justificante no permitido. Usa PDF, JPG, PNG o WebP."
+        attachment_too_large: "El justificante supera el máximo de 4 MB."
+        attachments_too_many: "Puedes subir un máximo de 4 justificantes por vez."
+        attachment_storage_failed: "No se pudo almacenar el justificante. El registro se ha conservado; puedes reintentar la subida."
         csrf_invalid: "La sesión del formulario ha caducado. Recarga la página e inténtalo de nuevo."
         invalid_input: "Revisa los datos introducidos: hay valores obligatorios o formatos no válidos."
         phase_not_available: "La fecha indicada no corresponde a ninguna fase del proyecto."
@@ -2110,6 +2115,17 @@ backend:
         explicit_null_factor: "La combinación existe, pero no tiene un valor de factor aplicable."
         external_factor_required: "Esta metodología requiere un factor externo que todavía no está disponible en este flujo."
         unsupported: "Esta combinación todavía no está soportada."
+    attachments:
+      title: "Justificantes"
+      add: "Añadir justificantes"
+      help: "Formatos permitidos: PDF, JPG, PNG y WebP. Máximo 4 MB por fichero y 4 ficheros por subida."
+      download: "Descargar"
+      delete: "Eliminar"
+      flash:
+        deleted: "Justificante eliminado."
+        delete_failed: "No se pudo eliminar el justificante."
+        download_failed: "No se pudo descargar el justificante."
+        csrf_invalid: "La sesión ha caducado. Recarga la página e inténtalo de nuevo."
     energy_form:
       title_new: "Nueva emisión"
       title_edit: "Editar emisión"

@@ -14,6 +14,7 @@ parameters:
     ai.report_storage_dir: '%kernel.project_dir%/var/storage/ai'
     ai.report_prompt_file: '%kernel.project_dir%/config/ai_report_prompt.yaml'
     ai.report_lock_wait_seconds: 120
+    emission_record_attachment_storage_dir: '%kernel.project_dir%/var/storage/emission-records'
     openai.api_key: '%env(default:ai.empty_api_key:AI_API_KEY)%'
     openai.model: '%env(string:AI_MODEL)%'
     openai.base_url: '%env(string:AI_BASE_URL)%'
@@ -129,6 +130,10 @@ services:
     App\Service\Ai\AiReportStorage:
         arguments:
             $storageDirectory: '%ai.report_storage_dir%'
+
+    App\Service\Emission\EmissionRecordAttachmentStorage:
+        arguments:
+            $storageDirectory: '%emission_record_attachment_storage_dir%'
 
     App\Service\Ai\FilesystemAiReportLock:
         arguments:

@@ -10,12 +10,16 @@ use App\Repository\ProjectRepository;
 use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\EmissionRecordAttachmentValidationException;
 use App\Service\Emission\Transport\TransportEmissionRecordService;
 use App\Service\Emission\Transport\TransportEmissionPresentationMapper;
 use App\Service\Emission\Transport\TransportEmissionRequestMapper;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
 use App\Service\Emission\Transport\TransportUiCatalog;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -43,6 +47,8 @@ final class TransportEmissionController extends AbstractController
         TransportEmissionRecordService $recordService,
         TransportEmissionPresentationMapper $presentationMapper,
         TransportUiCatalog $uiCatalog,
+        EmissionRecordAttachmentStorage $attachmentStorage,
+        EntityManagerInterface $entityManager,
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) {
@@ -58,6 +64,13 @@ final class TransportEmissionController extends AbstractController
 
         if (!$this->hasValidCsrfToken($request, 'transport_emission_v20_create')) {
             return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, ['csrf_invalid'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $attachments = $this->uploadedAttachments($request);
+        try {
+            $attachmentStorage->validateUploads($attachments);
+        } catch (EmissionRecordAttachmentValidationException $e) {
+            return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, [$e->errorKey], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         try {
@@ -77,6 +90,12 @@ final class TransportEmissionController extends AbstractController
             return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, [$writeResult->calculation->status], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        try {
+            $this->storeAttachments($writeResult->record, $attachments, $attachmentStorage, $entityManager);
+        } catch (\Throwable) {
+            return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $writeResult->record, ['attachment_storage_failed'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
         $this->addFlash('success', 'backend.emission.transport_v20.flash.created');
 
         return $this->redirectToRoute('backend_emission_index', $this->indexQuery($request, (int) $category->getId()));
@@ -94,6 +113,8 @@ final class TransportEmissionController extends AbstractController
         TransportEmissionSnapshot $snapshot,
         TransportEmissionPresentationMapper $presentationMapper,
         TransportUiCatalog $uiCatalog,
+        EmissionRecordAttachmentStorage $attachmentStorage,
+        EntityManagerInterface $entityManager,
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project || $record->getProject() !== $project) {
@@ -127,6 +148,13 @@ final class TransportEmissionController extends AbstractController
             return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, ['csrf_invalid'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $attachments = $this->uploadedAttachments($request);
+        try {
+            $attachmentStorage->validateUploads($attachments);
+        } catch (EmissionRecordAttachmentValidationException $e) {
+            return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, [$e->errorKey], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         try {
             $input = $requestMapper->map($request);
             $presentation = $presentationMapper->map($request);
@@ -142,6 +170,12 @@ final class TransportEmissionController extends AbstractController
 
         if (!$writeResult->isPersisted()) {
             return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, [$writeResult->calculation->status], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            $this->storeAttachments($record, $attachments, $attachmentStorage, $entityManager);
+        } catch (\Throwable) {
+            return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, ['attachment_storage_failed'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         $this->addFlash('success', 'backend.emission.transport_v20.flash.updated');
@@ -257,6 +291,45 @@ final class TransportEmissionController extends AbstractController
         $notes = $request->request->get('notes');
 
         return is_string($notes) && '' !== $notes ? $notes : null;
+    }
+
+    /** @return list<UploadedFile> */
+    private function uploadedAttachments(Request $request): array
+    {
+        $files = $request->files->all('attachments');
+
+        return array_values(array_filter($files, static fn (mixed $file): bool => $file instanceof UploadedFile));
+    }
+
+    /** @param list<UploadedFile> $files */
+    private function storeAttachments(
+        EmissionRecord $record,
+        array $files,
+        EmissionRecordAttachmentStorage $storage,
+        EntityManagerInterface $entityManager,
+    ): void {
+        $stored = [];
+        try {
+            foreach ($files as $file) {
+                $attachment = $storage->store($record, $file);
+                $stored[] = $attachment;
+                $entityManager->persist($attachment);
+            }
+            if ([] !== $stored) {
+                $entityManager->flush();
+            }
+        } catch (\Throwable $e) {
+            foreach ($stored as $attachment) {
+                try {
+                    $storage->delete($attachment);
+                } catch (\Throwable) {
+                }
+                $record->removeAttachment($attachment);
+                $entityManager->remove($attachment);
+            }
+
+            throw $e;
+        }
     }
 
     /** @return array<string, mixed> */

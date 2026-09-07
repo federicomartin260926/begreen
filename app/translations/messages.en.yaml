@@ -2095,6 +2095,11 @@ backend:
         created: "Transport record created successfully."
         updated: "Transport record updated successfully."
       errors:
+        attachment_invalid: "The supporting document is invalid or cannot be read."
+        attachment_type_not_allowed: "Supporting document format not allowed. Use PDF, JPG, PNG or WebP."
+        attachment_too_large: "The supporting document exceeds the 4 MB limit."
+        attachments_too_many: "You can upload at most 4 supporting documents at a time."
+        attachment_storage_failed: "The supporting document could not be stored. The record was kept; you can retry the upload."
         csrf_invalid: "The form session has expired. Reload the page and try again."
         invalid_input: "Review the submitted data: some required values or formats are invalid."
         phase_not_available: "The selected date does not belong to any project phase."
@@ -2102,6 +2107,17 @@ backend:
         explicit_null_factor: "The combination exists, but it has no applicable factor value."
         external_factor_required: "This method requires an external factor that is not yet available in this flow."
         unsupported: "This combination is not supported yet."
+    attachments:
+      title: "Supporting documents"
+      add: "Add supporting documents"
+      help: "Allowed formats: PDF, JPG, PNG and WebP. Maximum 4 MB per file and 4 files per upload."
+      download: "Download"
+      delete: "Delete"
+      flash:
+        deleted: "Supporting document deleted."
+        delete_failed: "The supporting document could not be deleted."
+        download_failed: "The supporting document could not be downloaded."
+        csrf_invalid: "The session has expired. Reload the page and try again."
     energy_form:
       title_new: "New emission"
       title_edit: "Edit emission"
