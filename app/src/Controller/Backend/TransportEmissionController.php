@@ -22,6 +22,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Intl\Countries;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -265,6 +266,7 @@ final class TransportEmissionController extends AbstractController
             'transportCategories' => $uiCatalog->categories(),
             'transportMethods' => $uiCatalog->methods(),
             'transportUiConfig' => $uiCatalog->configuration(),
+            'transportCountries' => Countries::getNames($request->getLocale()),
             'csrfTokenId' => $tokenId,
             'errors' => $errors,
             'backQuery' => $backQuery,
@@ -274,13 +276,11 @@ final class TransportEmissionController extends AbstractController
     /** @return array<string, string|null> */
     private function createDefaults(Project $project): array
     {
-        $country = strtoupper((string) $project->getCountry());
-
         return [
             'category' => 'local',
             'mode' => 'car',
             'method' => 'distance',
-            'country' => 1 === preg_match('/^[A-Z]{2}$/', $country) ? $country : '',
+            'country' => '',
             'startedAt' => '',
             'activityValue' => '',
             'activityUnit' => '',

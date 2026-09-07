@@ -72,6 +72,10 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
         self::assertStringContainsString('data-controller="transport-v20-form"', $content);
         self::assertStringContainsString('data-transport-v20-form-config-value=', $content);
+        self::assertStringContainsString('id="transport-country"', $content);
+        self::assertStringContainsString('name="country"', $content);
+        self::assertStringContainsString('value="ES"', $content);
+        self::assertStringContainsString('España', $content);
         foreach (['factor', 'factorValue', 'factorYear', 'source', 'functionalKey', 'amount', 'emission', 'generatedKgCo2e'] as $field) {
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
         }
@@ -177,6 +181,28 @@ final class TransportEmissionControllerTest extends KernelTestCase
 
         self::assertSame(422, $response->getStatusCode());
         self::assertStringContainsString('sesión del formulario', (string) $response->getContent());
+    }
+
+    public function testInvalidCountryReturns422BeforeCreatingRecord(): void
+    {
+        $context = $this->context();
+        $post = $this->validPost();
+        $post['country'] = 'XX';
+
+        $request = $this->request('POST', $post);
+        $request->request->set(
+            '_token',
+            $this->csrfToken('transport_emission_v20_create'),
+        );
+
+        $response = $this->create(
+            $request,
+            $context,
+            persistCalls: 0,
+            factor: $this->factor(),
+        );
+
+        self::assertSame(422, $response->getStatusCode());
     }
 
     public function testInvalidAttachmentReturns422BeforeCreatingRecord(): void

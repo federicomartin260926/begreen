@@ -3,6 +3,7 @@
 namespace App\Service\Emission\Transport;
 
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Intl\Countries;
 
 final class TransportEmissionRequestMapper
 {
@@ -16,8 +17,11 @@ final class TransportEmissionRequestMapper
         }
 
         $country = strtoupper($this->requiredString($request, 'country'));
-        if (1 !== preg_match('/^[A-Z]{2}$/', $country)) {
-            throw new \InvalidArgumentException('country must be an ISO-2 code.');
+        if (
+            1 !== preg_match('/^[A-Z]{2}$/', $country)
+            || !Countries::exists($country)
+        ) {
+            throw new \InvalidArgumentException('country must be a valid ISO-2 country code.');
         }
 
         return new TransportEmissionInput(
