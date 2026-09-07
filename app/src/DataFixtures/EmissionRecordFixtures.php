@@ -14,6 +14,14 @@ use Doctrine\Common\DataFixtures\FixtureGroupInterface;
 
 class EmissionRecordFixtures extends Fixture implements DependentFixtureInterface
 {
+    /**
+     * Las categorías migradas al motor moderno deben generar sus registros
+     * mediante fixtures específicos, nunca a partir de EmissionActivity legacy.
+     */
+    private const MODERN_CATEGORIES = [
+        'Energía',
+    ];
+
     public function getDependencies(): array
     {
         return [
@@ -42,7 +50,7 @@ class EmissionRecordFixtures extends Fixture implements DependentFixtureInterfac
             foreach ($phases as $phase) {
                 foreach ($actsByCat as $catName => $acts) {
                     // Categorías ya migradas al motor moderno no generan registros legacy.
-                    if ($catName === 'Energía') {
+                    if (in_array($catName, self::MODERN_CATEGORIES, true)) {
                         continue;
                     }
 
