@@ -193,6 +193,16 @@
                                                 >
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
+                                                <a
+                                                    href="{{ path('backend_emission_duplicate_transport_v20', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.emission.transport_v20.duplicate_action'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-files"></i>
+                                                </a>
                                                 {% endif %}
 
                                                 <form

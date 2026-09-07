@@ -1,7 +1,7 @@
 {% extends 'base_backend.html.twig' %}
 {% trans_default_domain 'messages' %}
 
-{% block title %}{{ edit ? 'backend.emission.transport_v20.title_edit'|trans : 'backend.emission.transport_v20.title_new'|trans }}{% endblock %}
+{% block title %}{{ duplicate ? 'backend.emission.transport_v20.title_duplicate'|trans : (edit ? 'backend.emission.transport_v20.title_edit'|trans : 'backend.emission.transport_v20.title_new'|trans) }}{% endblock %}
 
 {% block stylesheets %}
   {{ parent() }}
@@ -16,7 +16,7 @@
 {% block breadcrumb %}
   {{ parent() }}
   <li class="breadcrumb-item"><a href="{{ path('backend_emission_index', backQuery) }}" class="text-decoration-none">{{ 'backend.emission.transport_v20.breadcrumb_list'|trans }}</a></li>
-  <li class="breadcrumb-item active">{{ edit ? 'backend.emission.transport_v20.breadcrumb_edit'|trans : 'backend.emission.transport_v20.breadcrumb_new'|trans }}</li>
+  <li class="breadcrumb-item active">{{ duplicate ? 'backend.emission.transport_v20.breadcrumb_duplicate'|trans : (edit ? 'backend.emission.transport_v20.breadcrumb_edit'|trans : 'backend.emission.transport_v20.breadcrumb_new'|trans) }}</li>
 {% endblock %}
 
 {% block body %}
@@ -80,7 +80,7 @@
      data-transport-v20-form-autocomplete-url-value="{{ path('backend_emission_location_autocomplete') }}"
      data-transport-v20-form-distance-url-value="{{ path('backend_emission_calculate_distance') }}">
   <div class="backend-client-content">
-    <h2 class="mb-4">{{ edit ? 'backend.emission.transport_v20.heading_edit'|trans : 'backend.emission.transport_v20.heading_new'|trans }}</h2>
+    <h2 class="mb-4">{{ duplicate ? 'backend.emission.transport_v20.heading_duplicate'|trans : (edit ? 'backend.emission.transport_v20.heading_edit'|trans : 'backend.emission.transport_v20.heading_new'|trans) }}</h2>
 
     <div class="mb-4 d-grid bg_green_3 rounded p-3" style="grid-template-columns: max-content 1fr; row-gap: .5rem; column-gap: 1rem;">
       <strong>{{ 'backend.emission.transport_v20.project'|trans }}:</strong><span>{{ project.name }}</span>
@@ -121,7 +121,7 @@
       </section>
     {% endif %}
 
-    <form method="post" enctype="multipart/form-data" novalidate data-transport-v20-form-target="form" data-action="submit->transport-v20-form#validate">
+    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate data-transport-v20-form-target="form" data-action="submit->transport-v20-form#validate">
       <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
 
       <div class="row">

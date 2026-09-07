@@ -100,6 +100,7 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend/emission/999/delete', $content);
         self::assertStringNotContainsString('/backend/emission/999/edit-transport-travel', $content);
         self::assertStringNotContainsString('/backend/emission/999/edit-transport', $content);
+        self::assertStringNotContainsString('/backend/emission/999/duplicate-transport', $content);
     }
 
     public function testTransportAndTripsKeepSeparateCreateAndEditRoutes(): void
@@ -125,7 +126,9 @@ final class EmissionControllerTest extends KernelTestCase
         $transportContent = (string) $transportResponse->getContent();
         self::assertStringContainsString('/backend/emission/new-transport', $transportContent);
         self::assertStringContainsString('/backend/emission/998/edit-transport', $transportContent);
+        self::assertStringContainsString('/backend/emission/998/duplicate-transport', $transportContent);
         self::assertStringContainsString('/backend/emission/201/edit-transport-travel', $transportContent);
+        self::assertStringNotContainsString('/backend/emission/201/duplicate-transport', $transportContent);
 
         $tripsActivity = (new EmissionActivity())
             ->setName('Avión')
@@ -145,6 +148,7 @@ final class EmissionControllerTest extends KernelTestCase
         $tripsContent = (string) $tripsResponse->getContent();
         self::assertStringContainsString('/backend/emission/new-transport-travel/3', $tripsContent);
         self::assertStringContainsString('/backend/emission/997/edit-transport-travel', $tripsContent);
+        self::assertStringNotContainsString('/backend/emission/997/duplicate-transport', $tripsContent);
     }
 
     public function testDeleteRecordRemovesAttachmentFileBeforeEntity(): void

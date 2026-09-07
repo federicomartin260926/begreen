@@ -96,6 +96,52 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
     }
 
+    public function testDuplicatePreloadsSnapshotAndPostsToCreateWithoutCopyingAttachments(): void
+    {
+        $context = $this->context();
+        $record = $this->record($context, notes: 'Nota original');
+        $attachment = (new EmissionRecordAttachment())
+            ->setEmissionRecord($record)
+            ->setOriginalName('factura-origen.pdf')
+            ->setStoredName(str_repeat('c', 32).'.pdf')
+            ->setMimeType('application/pdf')
+            ->setSize(2048)
+            ->setCreatedAt(new \DateTimeImmutable());
+        $this->setEntityId($attachment, 402);
+        $record->addAttachment($attachment);
+
+        $response = $this->duplicate(
+            $record,
+            $this->request('GET', query: ['page' => '2']),
+            $context,
+        );
+        $content = (string) $response->getContent();
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Duplicar registro de Transporte', $content);
+        self::assertStringContainsString('action="/backend/emission/new-transport?', $content);
+        self::assertStringContainsString('page=2', $content);
+        self::assertStringContainsString('categoryId=20', $content);
+        self::assertStringContainsString('value="17"', $content);
+        self::assertStringContainsString('value="Madrid"', $content);
+        self::assertStringContainsString('value="Toledo"', $content);
+        self::assertStringContainsString('Nota original', $content);
+        self::assertStringNotContainsString('factura-origen.pdf', $content);
+        self::assertStringNotContainsString('/attachments/402/', $content);
+        self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
+    }
+
+    public function testDuplicateRejectsNonV20Record(): void
+    {
+        $context = $this->context();
+        $record = $this->record($context);
+        $record->setCalculationDetails('{}');
+
+        $this->expectException(NotFoundHttpException::class);
+
+        $this->duplicate($record, $this->request('GET'), $context);
+    }
+
     public function testGetEditListsExistingAttachment(): void
     {
         $context = $this->context();
@@ -268,6 +314,22 @@ final class TransportEmissionControllerTest extends KernelTestCase
             new TransportUiCatalog(),
             new EmissionRecordAttachmentStorage($this->attachmentDirectory),
             $this->attachmentEntityManager($attachmentPersistCalls),
+        );
+    }
+
+    /** @param array<string, mixed> $context */
+    private function duplicate(
+        EmissionRecord $record,
+        Request $request,
+        array $context,
+    ): \Symfony\Component\HttpFoundation\Response {
+        return $this->controller()->duplicate(
+            $record,
+            $request,
+            $context['active'],
+            $context['categories'],
+            new TransportEmissionSnapshot(),
+            new TransportUiCatalog(),
         );
     }
 

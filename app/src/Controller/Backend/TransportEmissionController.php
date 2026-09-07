@@ -101,6 +101,52 @@ final class TransportEmissionController extends AbstractController
         return $this->redirectToRoute('backend_emission_index', $this->indexQuery($request, (int) $category->getId()));
     }
 
+    #[Route('/{id}/duplicate-transport', name: 'backend_emission_duplicate_transport_v20', methods: ['GET'])]
+    public function duplicate(
+        EmissionRecord $record,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        CategoryRepository $categoryRepository,
+        TransportEmissionSnapshot $snapshot,
+        TransportUiCatalog $uiCatalog,
+    ): Response {
+        $project = $activeProjectService->getActiveProject();
+        if (!$project || $record->getProject() !== $project) {
+            throw $this->createNotFoundException('Invalid project or record ownership.');
+        }
+
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $this->denyAccessUnlessGranted(EmissionRecordVoter::VIEW, $record);
+
+        $category = $this->transportCategory($categoryRepository);
+        if (!$snapshot->isTransportV20Record($record, (int) $category->getId())) {
+            throw $this->createNotFoundException('Transport v20 record not found.');
+        }
+
+        try {
+            $values = array_replace(
+                $snapshot->inputToArray($snapshot->decode((string) $record->getCalculationDetails())),
+                $snapshot->decodePresentation((string) $record->getCalculationDetails()),
+            );
+        } catch (\JsonException|\UnexpectedValueException) {
+            throw $this->createNotFoundException('Invalid transport v20 snapshot.');
+        }
+
+        $values['notes'] = $record->getNotes();
+
+        return $this->renderForm(
+            $request,
+            $project,
+            $category,
+            $uiCatalog,
+            $values,
+            false,
+            null,
+            [],
+            duplicate: true,
+        );
+    }
+
     #[Route('/{id}/edit-transport', name: 'backend_emission_edit_transport_v20', methods: ['GET', 'POST'])]
     public function edit(
         EmissionRecord $record,
@@ -196,21 +242,32 @@ final class TransportEmissionController extends AbstractController
         ?EmissionRecord $record,
         array $errors,
         int $status = Response::HTTP_OK,
+        bool $duplicate = false,
     ): Response {
         $tokenId = $edit ? 'transport_emission_v20_edit_'.$record?->getId() : 'transport_emission_v20_create';
+        $backQuery = $this->indexQuery($request, (int) $category->getId());
+
+        $formAction = $edit && null !== $record
+            ? $this->generateUrl(
+                'backend_emission_edit_transport_v20',
+                array_merge(['id' => $record->getId()], $backQuery),
+            )
+            : $this->generateUrl('backend_emission_new_transport_v20', $backQuery);
 
         return $this->render('backend/emission/transport_v20_form.html.twig', [
             'project' => $project,
             'category' => $category,
             'edit' => $edit,
+            'duplicate' => $duplicate,
             'record' => $record,
             'values' => $values,
+            'formAction' => $formAction,
             'transportCategories' => $uiCatalog->categories(),
             'transportMethods' => $uiCatalog->methods(),
             'transportUiConfig' => $uiCatalog->configuration(),
             'csrfTokenId' => $tokenId,
             'errors' => $errors,
-            'backQuery' => $this->indexQuery($request, (int) $category->getId()),
+            'backQuery' => $backQuery,
         ], new Response(status: $status));
     }
 
