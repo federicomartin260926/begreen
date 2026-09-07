@@ -742,6 +742,13 @@ class EmissionController extends AbstractController
         if (!$categoryEntity->isEnabledInEmissionCalculator()) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
+        $travelCategory = $categoryRepository->findOneBy(['name' => 'Viajes']);
+        if (!$travelCategory
+            || null === $travelCategory->getId()
+            || $travelCategory->getId() !== $categoryEntity->getId()
+        ) {
+            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
+        }
 
         $record = new EmissionRecord();
         $record->setProject($project);
@@ -810,6 +817,7 @@ class EmissionController extends AbstractController
         ActiveProjectService $activeProjectService,
         EmissionActivityRepository $activityRepository,
         ProjectRepository $projectRepository,
+        CategoryRepository $categoryRepository,
         EntityManagerInterface $em,
         TranslatorInterface $t
     ): Response {
@@ -819,7 +827,13 @@ class EmissionController extends AbstractController
         if (!$project || $record->getProject() !== $project) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
         }
-        if (!$category || !$record->getActivity()) {
+        $travelCategory = $categoryRepository->findOneBy(['name' => 'Viajes']);
+        if (!$category
+            || !$record->getActivity()
+            || !$travelCategory
+            || null === $travelCategory->getId()
+            || $travelCategory->getId() !== $category->getId()
+        ) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
 
@@ -833,6 +847,10 @@ class EmissionController extends AbstractController
         // Campo NO mapeado: activityId
         $activityId = $request->request->get('activityId');
         $activity   = $activityId ? $activityRepository->find($activityId) : $record->getActivity();
+
+        if ($activity && $activity->getCategory()?->getId() !== $travelCategory->getId()) {
+            $activity = null;
+        }
 
         if ($form->isSubmitted() && $form->isValid() && $activity) {
             $date  = $record->getRegisteredAt();

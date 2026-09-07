@@ -2,6 +2,7 @@
 
 namespace App\Tests\Entity;
 
+use App\DataFixtures\EmissionRecordFixtures;
 use App\Entity\Category;
 use App\Entity\EmissionActivity;
 use App\Entity\EmissionRecord;
@@ -44,5 +45,17 @@ final class EmissionRecordTest extends TestCase
 
         self::assertIsString($source);
         self::assertStringContainsString('->setCategory($act->getCategory())', $source);
+    }
+
+    public function testLegacyFixturesExcludeMigratedTransportCategory(): void
+    {
+        $modernCategories = (new \ReflectionClass(EmissionRecordFixtures::class))
+            ->getReflectionConstant('MODERN_CATEGORIES')
+            ?->getValue();
+        $activityFixture = file_get_contents(__DIR__.'/../../src/DataFixtures/EmissionActivityFixtures.php');
+
+        self::assertContains('Transporte', $modernCategories);
+        self::assertIsString($activityFixture);
+        self::assertStringNotContainsString("['Transporte',", $activityFixture);
     }
 }
