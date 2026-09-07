@@ -2120,24 +2120,29 @@ backend:
         external_factor_required: "This method requires an external factor that is not yet available in this flow."
         unsupported: "This combination is not supported yet."
     energy_v1:
-      title_new: "New Energy activity"
-      title_edit: "Edit Energy activity"
-      title_duplicate: "Duplicate Energy activity"
-      heading_new: "New Energy activity"
-      heading_edit: "Edit Energy activity"
-      heading_duplicate: "Duplicate Energy activity"
+      title_new: "New Energy record"
+      title_edit: "Edit Energy record"
+      title_duplicate: "Duplicate Energy record"
+      heading_new: "New Energy record"
+      heading_edit: "Edit Energy record"
+      heading_duplicate: "Duplicate Energy record"
       breadcrumb_list: "CO₂ emissions"
-      breadcrumb_new: "New activity"
-      breadcrumb_edit: "Edit activity"
-      breadcrumb_duplicate: "Duplicate activity"
+      breadcrumb_new: "New Energy record"
+      breadcrumb_edit: "Edit Energy record"
+      breadcrumb_duplicate: "Duplicate Energy record"
       intro: "Describe the activity. The server will resolve the factor, year and emissions."
       project: "Project"
       category: "Category"
+      phases: "Phases and dates"
       duplicate_action: "Duplicate"
-      sections: { context: "Date and location", family: "Consumption type" }
+      section_context_help: "Indicate when the activity took place and the country it corresponds to."
+      section_family_help: "Select the consumption type that best represents the activity you want to record."
+      sections: { context: "Record details", family: "Consumption type" }
       families: { electricity: "Electricity", equipment: "Generators and equipment", battery: "Batteries and accumulators", digital: "Digital technology" }
       statuses: { CALCULATED: "Calculated", PENDING_DATA: "Pending", NOT_AUTOMATICALLY_CALCULABLE: "Not automatically calculable" }
-      origins: { grid: "Electricity grid", solar: "Solar panels", mixed: "Grid + solar", unknown: "I don't know" }
+      fallbacks:
+        exact_year_missing: "Using the latest available factor"
+      origins: { grid: "Electricity grid", solar: "Solar panels", mixed: "Mixed (grid + solar)", unknown: "I don't know" }
       input_methods: { total: "Total consumption", meter: "Meter readings" }
       modes: { direct: "Direct amount", cylinders: "Cylinders" }
       equipment_types: { generator: "Generator", heating: "Heating", cooking: "Cooking", boiler: "Boiler", climate: "Climate control", other: "Other equipment" }

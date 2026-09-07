@@ -3,6 +3,7 @@
 namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\EmissionRecordAttachmentController;
+use App\Entity\Category;
 use App\Entity\EmissionRecord;
 use App\Entity\EmissionRecordAttachment;
 use App\Entity\Project;
@@ -98,10 +99,54 @@ final class EmissionRecordAttachmentControllerTest extends KernelTestCase
         $request->request->set('_token', self::getContainer()->get('security.csrf.token_manager')->getToken('delete_emission_attachment_8')->getValue());
         $path = $this->storage->absolutePath($attachment);
 
-        $this->controller()->delete(7, 8, $request, $this->active($record->getProject()), $entityManager, $this->storage);
+        $response = $this->controller()->delete(
+            7,
+            8,
+            $request,
+            $this->active($record->getProject()),
+            $entityManager,
+            $this->storage
+        );
 
         self::assertFileDoesNotExist($path);
         self::assertFalse($record->getAttachments()->contains($attachment));
+        self::assertSame(
+            self::getContainer()->get('router')->generate('backend_emission_edit_transport_v20', ['id' => 7]),
+            $response->headers->get('Location')
+        );
+    }
+
+    public function testValidDeleteRedirectsEnergyRecordBackToEnergyEditor(): void
+    {
+        [$record, $attachment] = $this->fixture();
+        $record->setCategory((new Category())->setName('Energía'));
+
+        $entityManager = $this->entityManager($record, $attachment);
+        $entityManager->expects(self::once())->method('remove')->with($attachment);
+        $entityManager->expects(self::once())->method('flush');
+
+        $request = $this->request();
+        $request->request->set(
+            '_token',
+            self::getContainer()->get('security.csrf.token_manager')
+                ->getToken('delete_emission_attachment_8')
+                ->getValue()
+        );
+
+        $response = $this->controller()->delete(
+            7,
+            8,
+            $request,
+            $this->active($record->getProject()),
+            $entityManager,
+            $this->storage
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(
+            self::getContainer()->get('router')->generate('backend_emission_edit_energy_v1', ['id' => 7]),
+            $response->headers->get('Location')
+        );
     }
 
     public function testDifferentActiveProjectIsHidden(): void

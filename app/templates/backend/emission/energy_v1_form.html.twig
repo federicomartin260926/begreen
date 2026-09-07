@@ -3,6 +3,119 @@
 
 {% block title %}{{ duplicate ? 'backend.emission.energy_v1.title_duplicate'|trans : (edit ? 'backend.emission.energy_v1.title_edit'|trans : 'backend.emission.energy_v1.title_new'|trans) }}{% endblock %}
 
+{% block stylesheets %}
+  {{ parent() }}
+  <style>
+    .energy-v1-heading {
+      margin-bottom: .35rem;
+    }
+
+    .energy-v1-intro {
+      max-width: 70rem;
+      margin-bottom: 1.5rem;
+      color: var(--bs-secondary-color);
+    }
+
+    .energy-v1-context {
+      padding: 1rem 1.25rem;
+      border: 1px solid var(--bs-border-color);
+      border-radius: .75rem;
+      background: var(--bs-tertiary-bg);
+    }
+
+    .energy-v1-context-grid {
+      display: grid;
+      grid-template-columns: minmax(14rem, 1fr) auto;
+      gap: .9rem 2rem;
+      align-items: start;
+    }
+
+    .energy-v1-context-item--full {
+      grid-column: 1 / -1;
+    }
+
+    .energy-v1-context-label {
+      display: block;
+      margin-bottom: .2rem;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--bs-secondary-color);
+      text-transform: uppercase;
+      letter-spacing: .025em;
+    }
+
+    .energy-v1-phase-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+    }
+
+    .energy-v1-phase {
+      display: inline-flex;
+      align-items: center;
+      padding: .3rem .55rem;
+      border: 1px solid var(--bs-border-color);
+      border-radius: .45rem;
+      background: var(--bs-body-bg);
+      font-size: .875rem;
+    }
+
+    .energy-v1-section {
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: .85rem;
+      background: var(--bs-body-bg);
+      box-shadow: 0 .125rem .4rem rgba(0, 0, 0, .035);
+    }
+
+    .energy-v1-section__header {
+      padding: 1rem 1.25rem .8rem;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+    }
+
+    .energy-v1-section__title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .energy-v1-section__help {
+      margin: .25rem 0 0;
+      color: var(--bs-secondary-color);
+      font-size: .875rem;
+    }
+
+    .energy-v1-section__body {
+      padding: 1.25rem;
+    }
+
+    .energy-v1-type-grid .btn {
+      min-height: 3.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+    }
+
+    @media (max-width: 767.98px) {
+      .energy-v1-context-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .energy-v1-context-item--full {
+        grid-column: auto;
+      }
+
+      .energy-v1-section__body,
+      .energy-v1-section__header {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block breadcrumb %}
   {{ parent() }}
   <li class="breadcrumb-item"><a href="{{ path('backend_emission_index', backQuery) }}" class="text-decoration-none">{{ 'backend.emission.energy_v1.breadcrumb_list'|trans }}</a></li>
@@ -29,6 +142,9 @@
     PENDING_DATA: 'backend.emission.energy_v1.statuses.PENDING_DATA'|trans,
     NOT_AUTOMATICALLY_CALCULABLE: 'backend.emission.energy_v1.statuses.NOT_AUTOMATICALLY_CALCULABLE'|trans
   },
+  fallbackLabels: {
+    exact_year_missing: 'backend.emission.energy_v1.fallbacks.exact_year_missing'|trans
+  },
   messageLabels: messageLabels,
   select: 'backend.common.select'|trans
 } %}
@@ -41,13 +157,39 @@
      data-energy-v1-form-preview-url-value="{{ path('backend_emission_energy_v1_preview') }}"
      data-energy-v1-form-preview-token-value="{{ csrf_token('energy_emission_v1_preview') }}">
   <div class="backend-client-content">
-    <h2>{{ duplicate ? 'backend.emission.energy_v1.heading_duplicate'|trans : (edit ? 'backend.emission.energy_v1.heading_edit'|trans : 'backend.emission.energy_v1.heading_new'|trans) }}</h2>
-    <p class="text-muted mb-4">{{ 'backend.emission.energy_v1.intro'|trans }}</p>
+    <h2 class="energy-v1-heading">{{ duplicate ? 'backend.emission.energy_v1.heading_duplicate'|trans : (edit ? 'backend.emission.energy_v1.heading_edit'|trans : 'backend.emission.energy_v1.heading_new'|trans) }}</h2>
+    <p class="energy-v1-intro">{{ 'backend.emission.energy_v1.intro'|trans }}</p>
 
-    <div class="card bg-light border-0 mb-4"><div class="card-body d-flex flex-wrap justify-content-between gap-3">
-      <div><small class="text-muted d-block">{{ 'backend.emission.energy_v1.project'|trans }}</small><strong>{{ project.name }}</strong></div>
-      <div><small class="text-muted d-block">{{ 'backend.emission.energy_v1.category'|trans }}</small><span class="badge text-bg-success">{{ category.name }}</span></div>
-    </div></div>
+    <div class="energy-v1-context mb-4">
+      <div class="energy-v1-context-grid">
+        <div>
+          <span class="energy-v1-context-label">{{ 'backend.emission.energy_v1.project'|trans }}</span>
+          <strong>{{ project.name }}</strong>
+        </div>
+
+        <div>
+          <span class="energy-v1-context-label">{{ 'backend.emission.energy_v1.category'|trans }}</span>
+          <span class="badge text-bg-success">{{ category.name }}</span>
+        </div>
+
+        <div class="energy-v1-context-item--full">
+          <span class="energy-v1-context-label">{{ 'backend.emission.energy_v1.phases'|trans }}</span>
+          <div class="energy-v1-phase-list">
+            {% for phaseDate in project.phaseDates %}
+              <span class="energy-v1-phase">
+                {{ project.getPhaseLabel(phaseDate.phase)|trans }}
+                &nbsp;·&nbsp;
+                {{ phaseDate.startDate ? phaseDate.startDate|date('d/m/Y') : '—' }}
+                –
+                {{ phaseDate.endDate ? phaseDate.endDate|date('d/m/Y') : '—' }}
+              </span>
+            {% else %}
+              <span class="energy-v1-phase">—</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
 
     {% if errors %}
       <div class="alert alert-danger"><ul class="mb-0">{% for error in errors %}<li>{{ ('backend.emission.energy_v1.errors.' ~ error)|trans }}</li>{% endfor %}</ul></div>
@@ -78,23 +220,61 @@
           data-action="input->energy-v1-form#queuePreview change->energy-v1-form#refresh submit->energy-v1-form#validate">
       <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
 
-      <section class="card mb-4"><div class="card-body">
-        <h3 class="h5 mb-3">{{ 'backend.emission.energy_v1.sections.context'|trans }}</h3>
-        <div class="row g-3">
-          <div class="col-md-4"><label class="form-label" for="energy-start-date">{{ 'backend.emission.energy_v1.fields.start_date'|trans }}</label><input class="form-control" id="energy-start-date" type="date" name="startDate" value="{{ values.startDate|default('') }}" required></div>
-          <div class="col-md-4"><label class="form-label" for="energy-end-date">{{ 'backend.emission.energy_v1.fields.end_date'|trans }}</label><input class="form-control" id="energy-end-date" type="date" name="endDate" value="{{ values.endDate|default('') }}" required></div>
-          <div class="col-md-4"><label class="form-label" for="energy-country">{{ 'backend.emission.energy_v1.fields.country'|trans }}</label><select class="form-select" id="energy-country" name="country" required><option value="">{{ 'backend.common.select'|trans }}</option>{% for code, name in countries %}<option value="{{ code }}" {% if values.country|default('') == code %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+      <section class="energy-v1-section mb-4">
+        <div class="energy-v1-section__header">
+          <h3 class="energy-v1-section__title">{{ 'backend.emission.energy_v1.sections.context'|trans }}</h3>
+          <p class="energy-v1-section__help">{{ 'backend.emission.energy_v1.section_context_help'|trans }}</p>
         </div>
-      </div></section>
+        <div class="energy-v1-section__body">
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="energy-start-date">
+                {{ 'backend.emission.energy_v1.fields.start_date'|trans }}
+                <span class="text-danger">*</span>
+              </label>
+              <input class="form-control" id="energy-start-date" type="date" name="startDate" value="{{ values.startDate|default('') }}" required>
+            </div>
 
-      <section class="card mb-4"><div class="card-body">
-        <h3 class="h5 mb-3">{{ 'backend.emission.energy_v1.sections.family'|trans }}</h3>
-        <div class="row g-2">
-          {% for family in ['electricity', 'equipment', 'battery', 'digital'] %}
-            <div class="col-md-3"><input class="btn-check" id="energy-family-{{ family }}" type="radio" name="family" value="{{ family }}" {% if values.family|default('electricity') == family %}checked{% endif %} required><label class="btn btn-outline-primary w-100 py-3" for="energy-family-{{ family }}">{{ ('backend.emission.energy_v1.families.' ~ family)|trans }}</label></div>
-          {% endfor %}
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="energy-end-date">
+                {{ 'backend.emission.energy_v1.fields.end_date'|trans }}
+                <span class="text-danger">*</span>
+              </label>
+              <input class="form-control" id="energy-end-date" type="date" name="endDate" value="{{ values.endDate|default('') }}" required>
+            </div>
+
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="energy-country">
+                {{ 'backend.emission.energy_v1.fields.country'|trans }}
+                <span class="text-danger">*</span>
+              </label>
+              <select class="form-select" id="energy-country" name="country" required>
+                <option value="">{{ 'backend.common.select'|trans }}</option>
+                {% for code, name in countries %}
+                  <option value="{{ code }}" {% if values.country|default('') == code %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
         </div>
-      </div></section>
+      </section>
+
+      <fieldset class="energy-v1-section mb-4">
+        <div class="energy-v1-section__header">
+          <h3 class="energy-v1-section__title">{{ 'backend.emission.energy_v1.sections.family'|trans }}</h3>
+          <p class="energy-v1-section__help">{{ 'backend.emission.energy_v1.section_family_help'|trans }}</p>
+        </div>
+        <div class="energy-v1-section__body">
+          <div class="row g-2 energy-v1-type-grid">
+            {% for family in ['electricity', 'equipment', 'battery', 'digital'] %}
+              <div class="col-md-3">
+                <input class="btn-check" id="energy-family-{{ family }}" type="radio" name="family" value="{{ family }}" {% if values.family|default('electricity') == family %}checked{% endif %} required>
+                <label class="btn btn-outline-primary w-100" for="energy-family-{{ family }}">{{ ('backend.emission.energy_v1.families.' ~ family)|trans }}</label>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </fieldset>
 
       <section class="card mb-4" data-energy-v1-form-target="electricityPanel"><div class="card-body">
         <h3 class="h5 mb-3">{{ 'backend.emission.energy_v1.families.electricity'|trans }}</h3>

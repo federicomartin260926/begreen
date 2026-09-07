@@ -56,9 +56,26 @@ export default class extends Controller {
   populateFuels(preferred) {
     if (!this.hasFuelTarget) return;
     const geography = this.country === 'ES' ? 'ES' : 'OUTSIDE';
-    const fuels = this.configValue.fuels?.[geography] || {};
-    const selected = Object.prototype.hasOwnProperty.call(fuels, preferred) ? preferred : this.fuelTarget.value;
-    this.fillSelect(this.fuelTarget, Object.keys(fuels), selected);
+    const allFuels = this.configValue.fuels?.[geography] || {};
+    const cylinderMode = this.hasEquipmentModeTarget && this.equipmentModeTarget.value === 'cylinders';
+
+    const fuels = cylinderMode
+      ? Object.fromEntries(
+        Object.entries(allFuels).filter(([fuel]) => ['Gas butano', 'Gas propano'].includes(fuel)),
+      )
+      : allFuels;
+
+    const fuelNames = Object.keys(fuels);
+    const current = this.fuelTarget.value;
+    let selected = Object.prototype.hasOwnProperty.call(fuels, preferred)
+      ? preferred
+      : (Object.prototype.hasOwnProperty.call(fuels, current) ? current : '');
+
+    if (cylinderMode && !selected && fuelNames.length) {
+      selected = fuelNames[0];
+    }
+
+    this.fillSelect(this.fuelTarget, fuelNames, selected);
     this.populateFuelUnits(fuels);
   }
 
@@ -132,8 +149,10 @@ export default class extends Controller {
     if (result.normalizedAmount !== null) traceParts.push(`${result.normalizedAmount} ${result.normalizedUnit || ''}`.trim());
     (result.factorTraces || []).forEach((trace) => {
       const parts = [trace.source, trace.factorYear ? String(trace.factorYear) : trace.temporalType];
-      if (trace.factorValue !== null) parts.push(`${trace.factorValue} ${trace.factorUnit || ''}`.trim());
-      if (trace.fallback) parts.push(trace.fallbackReason);
+      if (trace.factorValue !== null) parts.push(`${this.formatDecimal(trace.factorValue)} ${trace.factorUnit || ''}`.trim());
+      if (trace.fallback) {
+        parts.push(this.i18nValue.fallbackLabels?.[trace.fallbackReason] || trace.fallbackReason);
+      }
       if (trace.geographicProxy) parts.push(`${trace.proxyGeography}`);
       traceParts.push(parts.filter(Boolean).join(' · '));
     });
@@ -145,6 +164,17 @@ export default class extends Controller {
       item.textContent = this.i18nValue.messageLabels[message] || message;
       this.previewMessagesTarget.append(item);
     });
+  }
+
+  formatDecimal(value) {
+    const text = String(value);
+    const trimmed = text.includes('.')
+      ? text.replace(/0+$/, '').replace(/\.$/, '')
+      : text;
+
+    return (document.documentElement.lang || '').toLowerCase().startsWith('es')
+      ? trimmed.replace('.', ',')
+      : trimmed;
   }
 
   validate(event) {

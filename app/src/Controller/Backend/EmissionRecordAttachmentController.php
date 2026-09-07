@@ -54,10 +54,14 @@ final class EmissionRecordAttachmentController extends AbstractController
         [$record, $attachment] = $this->ownedAttachment($recordId, $attachmentId, $activeProjectService, $entityManager);
         $this->denyAccessUnlessGranted(EmissionRecordVoter::EDIT, $record);
 
+        $editRoute = 'Energía' === $record->getEffectiveCategory()?->getName()
+            ? 'backend_emission_edit_energy_v1'
+            : 'backend_emission_edit_transport_v20';
+
         if (!$this->isCsrfTokenValid('delete_emission_attachment_'.$attachmentId, (string) $request->request->get('_token'))) {
             $this->addFlash('danger', 'backend.emission.attachments.flash.csrf_invalid');
 
-            return $this->redirectToRoute('backend_emission_edit_transport_v20', ['id' => $recordId] + $request->query->all());
+            return $this->redirectToRoute($editRoute, ['id' => $recordId] + $request->query->all());
         }
 
         try {
@@ -70,7 +74,7 @@ final class EmissionRecordAttachmentController extends AbstractController
             $this->addFlash('danger', 'backend.emission.attachments.flash.delete_failed');
         }
 
-        return $this->redirectToRoute('backend_emission_edit_transport_v20', ['id' => $recordId] + $request->query->all());
+        return $this->redirectToRoute($editRoute, ['id' => $recordId] + $request->query->all());
     }
 
     /** @return array{EmissionRecord, EmissionRecordAttachment} */
