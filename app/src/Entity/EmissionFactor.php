@@ -14,6 +14,10 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 #[UniqueEntity(fields: ['categoryKey', 'functionalKey', 'year'])]
 class EmissionFactor
 {
+    public const TEMPORAL_TYPE_ANNUAL = 'ANNUAL';
+    public const TEMPORAL_TYPE_RULE = 'RULE';
+    public const TEMPORAL_TYPE_COMPOSITE = 'COMPOSITE';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -31,6 +35,9 @@ class EmissionFactor
 
     #[ORM\Column(type: 'smallint')]
     private int $year;
+
+    #[ORM\Column(length: 20, options: ['default' => self::TEMPORAL_TYPE_ANNUAL])]
+    private string $temporalType = self::TEMPORAL_TYPE_ANNUAL;
 
     #[ORM\Column(type: 'decimal', precision: 24, scale: 18, nullable: true)]
     private ?string $value = null;
@@ -99,6 +106,18 @@ class EmissionFactor
     public function setYear(int $year): self
     {
         $this->year = $year;
+
+        return $this;
+    }
+
+    public function getTemporalType(): string
+    {
+        return $this->temporalType;
+    }
+
+    public function setTemporalType(string $temporalType): self
+    {
+        $this->temporalType = $temporalType;
 
         return $this;
     }

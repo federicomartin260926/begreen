@@ -40,6 +40,7 @@ final readonly class EmissionFactorResolver
             $factor->getYear(),
             $isFallback,
             $isFallback ? EmissionFactorResolution::FALLBACK_REASON_EXACT_YEAR_MISSING : null,
+            $factor->getTemporalType(),
         );
     }
 }

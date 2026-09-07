@@ -12,6 +12,12 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\HasLifecycleCallbacks]
 class EmissionRecord
 {
+    public const STATUS_DRAFT = 'DRAFT';
+    public const STATUS_PENDING_DATA = 'PENDING_DATA';
+    public const STATUS_CALCULATED = 'CALCULATED';
+    public const STATUS_NOT_AUTOMATICALLY_CALCULABLE = 'NOT_AUTOMATICALLY_CALCULABLE';
+    public const STATUS_CLOSED = 'CLOSED';
+
     use TimestampableTrait;
 
     #[ORM\Id]
@@ -35,11 +41,14 @@ class EmissionRecord
     #[ORM\JoinColumn(nullable: true)]
     private ?Category $category = null;
 
-    #[ORM\Column(type: 'float')]
-    private float $amount;
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $amount = null;
 
-    #[ORM\Column(type: 'float')]
-    private float $emission;
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $emission = null;
+
+    #[ORM\Column(length: 40, options: ['default' => self::STATUS_CALCULATED])]
+    private string $status = self::STATUS_CALCULATED;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $registeredAt;
@@ -142,25 +151,47 @@ class EmissionRecord
         return $this->category ?? $this->activity?->getCategory();
     }
 
-    public function getAmount(): float
+    public function getAmount(): ?float
     {
         return $this->amount;
     }
 
-    public function setAmount(float $amount): self
+    public function setAmount(?float $amount): self
     {
         $this->amount = $amount;
         return $this;
     }
 
-    public function getEmission(): float
+    public function getEmission(): ?float
     {
         return $this->emission;
     }
 
-    public function setEmission(float $emission): self
+    public function setEmission(?float $emission): self
     {
         $this->emission = $emission;
+        return $this;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status): self
+    {
+        if (!in_array($status, [
+            self::STATUS_DRAFT,
+            self::STATUS_PENDING_DATA,
+            self::STATUS_CALCULATED,
+            self::STATUS_NOT_AUTOMATICALLY_CALCULABLE,
+            self::STATUS_CLOSED,
+        ], true)) {
+            throw new \InvalidArgumentException(sprintf('Unsupported emission record status "%s".', $status));
+        }
+
+        $this->status = $status;
+
         return $this;
     }
 

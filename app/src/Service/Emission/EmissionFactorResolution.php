@@ -14,6 +14,7 @@ final readonly class EmissionFactorResolution
         public ?int $factorYear,
         public bool $isFallback,
         public ?string $fallbackReason,
+        public string $temporalType = EmissionFactor::TEMPORAL_TYPE_ANNUAL,
     ) {
     }
 
