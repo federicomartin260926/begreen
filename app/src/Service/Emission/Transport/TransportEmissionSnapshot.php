@@ -8,9 +8,10 @@ final class TransportEmissionSnapshot
 {
     public const VERSION = 'transport-v20';
 
-    public function encode(TransportEmissionInput $input, TransportEmissionResult $result): string
+    /** @param array<string, string> $presentation */
+    public function encode(TransportEmissionInput $input, TransportEmissionResult $result, array $presentation = []): string
     {
-        return json_encode([
+        $snapshot = [
             'version' => self::VERSION,
             'input' => $this->inputToArray($input),
             'calculation' => [
@@ -30,7 +31,12 @@ final class TransportEmissionSnapshot
                 'fallback' => $result->isFallback,
                 'fallbackReason' => $result->fallbackReason,
             ],
-        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
+        ];
+        if ([] !== $presentation) {
+            $snapshot['presentation'] = $presentation;
+        }
+
+        return json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
     }
 
     /** @return array<string, string|null> */
@@ -97,6 +103,86 @@ final class TransportEmissionSnapshot
             $this->optionalString($input, 'routeClassification'),
             $this->optionalString($input, 'travelClass'),
         );
+    }
+
+    /** @return array<string, string> */
+    public function decodePresentation(string $snapshot): array
+    {
+        $data = json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR);
+        $presentation = $data['presentation'] ?? [];
+        if (!is_array($presentation)) {
+            throw new \UnexpectedValueException('Invalid transport emission presentation.');
+        }
+
+        foreach ($presentation as $field => $value) {
+            if (!is_string($field) || !is_string($value)) {
+                throw new \UnexpectedValueException('Invalid transport emission presentation value.');
+            }
+        }
+
+        return $presentation;
+    }
+
+    /**
+     * @return array{
+     *     mode: string,
+     *     detailKind: ?string,
+     *     detailCode: ?string,
+     *     normalizedActivityUnit: ?string,
+     *     displayActivityUnit: ?string
+     * }
+     */
+    public function decodeSummary(string $snapshot): array
+    {
+        $data = json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($data)
+            || self::VERSION !== ($data['version'] ?? null)
+            || !is_array($data['input'] ?? null)
+            || !is_array($data['calculation'] ?? null)
+        ) {
+            throw new \UnexpectedValueException('Invalid transport emission snapshot summary.');
+        }
+
+        $mode = $data['input']['mode'] ?? null;
+        if (!is_string($mode) || '' === $mode) {
+            throw new \UnexpectedValueException('Invalid transport emission snapshot mode.');
+        }
+
+        $vehicleType = $data['input']['vehicleType'] ?? null;
+        $fuel = $data['input']['fuel'] ?? null;
+        $unit = $data['calculation']['normalizedActivityUnit'] ?? null;
+
+        foreach (['vehicleType' => $vehicleType, 'fuel' => $fuel, 'normalizedActivityUnit' => $unit] as $field => $value) {
+            if (null !== $value && !is_string($value)) {
+                throw new \UnexpectedValueException(sprintf('Invalid transport emission snapshot summary: %s.', $field));
+            }
+        }
+
+        $detailKind = null;
+        $detailCode = null;
+
+        if (is_string($vehicleType) && '' !== $vehicleType) {
+            $detailKind = 'vehicle_type';
+            $detailCode = $vehicleType;
+        } elseif (is_string($fuel) && '' !== $fuel) {
+            $detailKind = 'fuel';
+            $detailCode = $fuel;
+        }
+
+        $displayUnit = match ($unit) {
+            'km*pasajero' => 'passenger-km',
+            'km*tonelada' => 't-km',
+            'litros' => 'L',
+            default => $unit,
+        };
+
+        return [
+            'mode' => $mode,
+            'detailKind' => $detailKind,
+            'detailCode' => $detailCode,
+            'normalizedActivityUnit' => $unit,
+            'displayActivityUnit' => $displayUnit,
+        ];
     }
 
     public function isTransportV20(?string $snapshot): bool

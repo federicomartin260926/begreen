@@ -16,6 +16,7 @@ use App\Service\Emission\EmissionFactorKeyGenerator;
 use App\Service\Emission\EmissionFactorResolver;
 use App\Service\Emission\Transport\TransportEmissionCalculator;
 use App\Service\Emission\Transport\TransportEmissionInput;
+use App\Service\Emission\Transport\TransportEmissionPresentationMapper;
 use App\Service\Emission\Transport\TransportEmissionRecordService;
 use App\Service\Emission\Transport\TransportEmissionRequestMapper;
 use App\Service\Emission\Transport\TransportEmissionResult;
@@ -44,6 +45,8 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('<form method="post"', $content);
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
+        self::assertStringContainsString('data-controller="transport-v20-form"', $content);
+        self::assertStringContainsString('data-transport-v20-form-config-value=', $content);
         foreach (['factor', 'factorValue', 'factorYear', 'source', 'functionalKey', 'amount', 'emission', 'generatedKgCo2e'] as $field) {
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
         }
@@ -59,9 +62,12 @@ final class TransportEmissionControllerTest extends KernelTestCase
         $content = (string) $response->getContent();
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('value="passenger-mi"', $content);
         self::assertStringContainsString('value="17"', $content);
+        self::assertStringContainsString('value="2026-06-01"', $content);
+        self::assertStringContainsString('name="repetitions" value="2"', $content);
         self::assertStringContainsString('Nota conservada', $content);
+        self::assertStringContainsString('value="Madrid"', $content);
+        self::assertStringContainsString('value="Toledo"', $content);
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
     }
 
@@ -115,8 +121,11 @@ final class TransportEmissionControllerTest extends KernelTestCase
     {
         $context = $this->context();
         $post = $this->validPost();
+        $post['method'] = 'distance_consumption';
         $post['activityValue'] = '44.5';
         $post['notes'] = 'Valor del usuario';
+        $post['secondaryActivityValue'] = '7.2';
+        $post['secondaryActivityUnit'] = 'L/100_km';
         $request = $this->request('POST', $post);
         $request->request->set('_token', $this->csrfToken('transport_emission_v20_create'));
 
@@ -126,7 +135,8 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame(422, $response->getStatusCode());
         self::assertStringContainsString('value="44.5"', $content);
         self::assertStringContainsString('Valor del usuario', $content);
-        self::assertStringContainsString('No hay un factor disponible', $content);
+        self::assertStringContainsString('value="7.2"', $content);
+        self::assertStringContainsString('todavía no está soportada', $content);
     }
 
     public function testDateOutsideProjectPhasesReturns422WithoutPersisting(): void
@@ -172,6 +182,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
             $context['projects'],
             new TransportEmissionRequestMapper(),
             $this->recordService($persistCalls, $factor),
+            new TransportEmissionPresentationMapper(),
             new TransportUiCatalog(),
         );
     }
@@ -188,6 +199,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
             new TransportEmissionRequestMapper(),
             $this->recordService($persistCalls, $factor),
             new TransportEmissionSnapshot(),
+            new TransportEmissionPresentationMapper(),
             new TransportUiCatalog(),
         );
     }
@@ -240,14 +252,18 @@ final class TransportEmissionControllerTest extends KernelTestCase
     private function record(array $context, ?string $notes = null): EmissionRecord
     {
         $input = new TransportEmissionInput(
-            'local', 'metro', 'passenger_distance', 'ES', new \DateTimeImmutable('2026-06-01'), '17', 'passenger-mi', '2', passengers: '3',
+            'local', 'taxi', 'route', 'ES', new \DateTimeImmutable('2026-06-01'), '17', 'km', '2',
         );
         $result = new TransportEmissionResult(
-            TransportEmissionResult::STATUS_CALCULATED, '27.36', 'passenger-km', '4', [], 'server-key', 2026, 2026, '0.1', 'km*pasajero', 'MITECO',
+            TransportEmissionResult::STATUS_CALCULATED, '34', 'km', '4', [], 'server-key', 2026, 2026, '0.1', 'km', 'MITECO',
         );
         $record = (new EmissionRecord())->setProject($context['project'])->setPhase($context['phase'])
-            ->setCategory($context['category'])->setAmount(27.36)->setEmission(4)->setRegisteredAt(new \DateTimeImmutable('2026-06-01'))
-            ->setNotes($notes)->setCalculationDetails((new TransportEmissionSnapshot())->encode($input, $result));
+            ->setCategory($context['category'])->setAmount(34)->setEmission(4)->setRegisteredAt(new \DateTimeImmutable('2026-06-01'))
+            ->setNotes($notes)->setCalculationDetails((new TransportEmissionSnapshot())->encode($input, $result, [
+                'origin' => 'Madrid',
+                'destination' => 'Toledo',
+                'tripType' => 'one_way',
+            ]));
         $this->setEntityId($record, 300);
 
         return $record;

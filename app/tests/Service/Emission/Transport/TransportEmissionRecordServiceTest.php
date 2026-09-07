@@ -149,6 +149,20 @@ final class TransportEmissionRecordServiceTest extends TestCase
         self::assertSame('0.25', json_decode((string) $record->getCalculationDetails(), true, 512, JSON_THROW_ON_ERROR)['factor']['value']);
     }
 
+    public function testPresentationIsPersistedWithoutChangingCalculation(): void
+    {
+        [$service] = $this->service($this->factor('0.5'));
+        $arguments = $this->writeArguments($this->carInput());
+        $arguments['presentation'] = ['origin' => 'Madrid', 'destination' => 'Toledo'];
+
+        $result = $service->write(...$arguments);
+        $snapshot = json_decode((string) $result->record?->getCalculationDetails(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(5.0, $result->record?->getEmission());
+        self::assertSame('10', $snapshot['calculation']['normalizedActivityValue']);
+        self::assertSame(['origin' => 'Madrid', 'destination' => 'Toledo'], $snapshot['presentation']);
+    }
+
     /** @return array{0: TransportEmissionRecordService, 1: TransportEmissionSnapshot} */
     private function service(?EmissionFactor $factor, int $persistCalls = 1): array
     {

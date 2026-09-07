@@ -24,6 +24,16 @@ final class TransportUiCatalogTest extends TestCase
             $catalogValues,
             static fn (mixed $value) => self::assertIsString($value),
         );
+
+        $configuration = $catalog->configuration();
+        self::assertSame(['km', 'mi'], $configuration['unitsByMethod']['distance']);
+        self::assertSame(['passenger-km', 'passenger-mi'], $configuration['unitsByMethod']['passenger_distance']);
+        self::assertSame(['kg', 't', 'lb', 'short_ton', 'long_ton'], $configuration['weightUnits']);
+        self::assertSame(['L', 'us_gal', 'imp_gal', 'kg'], $configuration['unitsByMethod']['fuel']);
+        self::assertSame('external_factor_required', $configuration['unavailableMethods']['electricity']);
+        self::assertSame('unsupported', $configuration['unavailableMethods']['distance_consumption']);
+
+        array_walk_recursive($configuration, static fn (mixed $value) => self::assertIsString($value));
     }
 
     public function testEveryCatalogCombinationIsAcceptedByTheSharedMapperContract(): void
@@ -47,12 +57,29 @@ final class TransportUiCatalogTest extends TestCase
                         new \DateTimeImmutable('2026-01-15'),
                         '1',
                         'km',
-                        vehicleType: 'car' === $mode ? $vehicleType : null,
+                        vehicleType: (
+                            'car' === $mode
+                            || ('taxi' === $mode && in_array($method, ['distance', 'route'], true))
+                        ) ? $vehicleType : null,
                     );
 
                     self::assertTrue($mapper->supportsUiCombination($input), sprintf('%s/%s/%s', $category, $mode, $method));
                 }
             }
         }
+    }
+
+    public function testCarPowertrainMatrixRemainsIntact(): void
+    {
+        self::assertSame([
+            'petrol' => ['distance', 'fuel', 'distance_consumption'],
+            'diesel' => ['distance', 'fuel', 'distance_consumption'],
+            'lpg' => ['distance', 'fuel', 'distance_consumption'],
+            'cng' => ['distance', 'fuel', 'distance_consumption'],
+            'hev' => ['distance', 'fuel', 'distance_consumption'],
+            'bev' => ['distance', 'electricity', 'distance_consumption'],
+            'phev' => ['distance', 'fuel', 'electricity', 'fuel_and_electricity', 'distance_consumption'],
+            'unknown' => ['distance'],
+        ], (new TransportUiCatalog())->carTypeMethods());
     }
 }

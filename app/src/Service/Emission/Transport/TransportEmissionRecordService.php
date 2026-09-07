@@ -23,6 +23,7 @@ final readonly class TransportEmissionRecordService
     ) {
     }
 
+    /** @param array<string, string> $presentation */
     public function write(
         Project $project,
         Category $category,
@@ -30,6 +31,7 @@ final readonly class TransportEmissionRecordService
         TransportEmissionInput $input,
         ?string $notes = null,
         ?EmissionRecord $record = null,
+        array $presentation = [],
     ): TransportEmissionRecordWriteResult {
         $calculation = $this->calculator->calculate($input);
         if (!in_array($calculation->status, self::PERSISTABLE_STATUSES, true)) {
@@ -49,7 +51,7 @@ final readonly class TransportEmissionRecordService
             ->setNotes($notes)
             ->setAmount((float) $calculation->normalizedActivityValue)
             ->setEmission((float) $calculation->generatedKgCo2e)
-            ->setCalculationDetails($this->snapshot->encode($input, $calculation));
+            ->setCalculationDetails($this->snapshot->encode($input, $calculation, $presentation));
 
         $this->entityManager->persist($record);
         $this->entityManager->flush();

@@ -159,10 +159,21 @@ class EmissionController extends AbstractController
         $offset = ($currentPage - 1) * $perPage;
         $selectedCategoryRecords = array_slice($selectedCategoryRecordsAll, $offset, $perPage);
         $transportV20RecordIds = [];
+        $transportV20Summaries = [];
         if (null !== $transportId) {
             foreach ($selectedCategoryRecords as $record) {
-                if ($transportSnapshot->isTransportV20Record($record, $transportId)) {
-                    $transportV20RecordIds[] = $record->getId();
+                if (!$transportSnapshot->isTransportV20Record($record, $transportId)) {
+                    continue;
+                }
+
+                $transportV20RecordIds[] = $record->getId();
+
+                try {
+                    $transportV20Summaries[$record->getId()] = $transportSnapshot->decodeSummary(
+                        (string) $record->getCalculationDetails()
+                    );
+                } catch (\JsonException|\UnexpectedValueException) {
+                    // Keep the record visible/editable even if its presentation snapshot is malformed.
                 }
             }
         }
@@ -199,6 +210,7 @@ class EmissionController extends AbstractController
             'hasCategories'        => $categoriesVM !== [],
             'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
             'transportV20RecordIds' => $transportV20RecordIds,
+            'transportV20Summaries' => $transportV20Summaries,
         ]);
     }
 

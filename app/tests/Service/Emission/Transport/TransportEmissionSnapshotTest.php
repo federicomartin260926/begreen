@@ -57,4 +57,141 @@ final class TransportEmissionSnapshotTest extends TestCase
 
         (new TransportEmissionSnapshot())->decode('{"version":"transport-v19","input":{}}');
     }
+
+    public function testPresentationRoundTripsWithoutChangingInputCalculationOrFactor(): void
+    {
+        $input = new TransportEmissionInput(
+            'local', 'taxi', 'route', 'ES', new \DateTimeImmutable('2026-03-04'), '20', 'km', passengers: '2',
+        );
+        $result = new TransportEmissionResult(
+            TransportEmissionResult::STATUS_CALCULATED, '20', 'km', '3', [], 'key', 2026, 2025, '0.15', 'km', 'MITECO',
+        );
+        $snapshot = new TransportEmissionSnapshot();
+        $withoutPresentation = json_decode($snapshot->encode($input, $result), true, 512, JSON_THROW_ON_ERROR);
+        $presentation = ['origin' => 'Madrid', 'destination' => 'Toledo', 'tripType' => 'round_trip'];
+        $withPresentation = json_decode($snapshot->encode($input, $result, $presentation), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame($presentation, $snapshot->decodePresentation(json_encode($withPresentation, JSON_THROW_ON_ERROR)));
+        self::assertSame($withoutPresentation['input'], $withPresentation['input']);
+        self::assertSame($withoutPresentation['calculation'], $withPresentation['calculation']);
+        self::assertSame($withoutPresentation['factor'], $withPresentation['factor']);
+    }
+
+    public function testSummaryExposesModeDetailAndNormalizedUnit(): void
+    {
+        $input = new TransportEmissionInput(
+            'local',
+            'car',
+            'distance',
+            'ES',
+            new \DateTimeImmutable('2026-08-05'),
+            '10',
+            'km',
+            vehicleType: 'petrol',
+            carSize: 'small',
+        );
+        $result = new TransportEmissionResult(
+            TransportEmissionResult::STATUS_CALCULATED,
+            '10',
+            'km',
+            '1.83',
+            [],
+            'key',
+            2026,
+            2025,
+            '0.183',
+            'km',
+            'MITECO',
+        );
+
+        $summary = (new TransportEmissionSnapshot())->decodeSummary(
+            (new TransportEmissionSnapshot())->encode($input, $result)
+        );
+
+        self::assertSame('car', $summary['mode']);
+        self::assertSame('vehicle_type', $summary['detailKind']);
+        self::assertSame('petrol', $summary['detailCode']);
+        self::assertSame('km', $summary['normalizedActivityUnit']);
+        self::assertSame('km', $summary['displayActivityUnit']);
+    }
+
+    public function testSummaryMapsCanonicalFactorUnitsToUiUnits(): void
+    {
+        $snapshot = new TransportEmissionSnapshot();
+
+        $passengerInput = new TransportEmissionInput(
+            'local',
+            'metro',
+            'passenger_distance',
+            'ES',
+            new \DateTimeImmutable('2026-08-05'),
+            '10',
+            'passenger-km',
+        );
+        $passengerResult = new TransportEmissionResult(
+            TransportEmissionResult::STATUS_CALCULATED,
+            '10',
+            'km*pasajero',
+            '0.3828',
+            [],
+            'passenger-key',
+            2026,
+            2025,
+            '0.03828',
+            'km*pasajero',
+            'MITECO',
+        );
+
+        $passengerSummary = $snapshot->decodeSummary(
+            $snapshot->encode($passengerInput, $passengerResult)
+        );
+
+        self::assertSame('km*pasajero', $passengerSummary['normalizedActivityUnit']);
+        self::assertSame('passenger-km', $passengerSummary['displayActivityUnit']);
+
+        $freightInput = new TransportEmissionInput(
+            'freight',
+            'rigid_truck',
+            'tonne_km',
+            'ES',
+            new \DateTimeImmutable('2026-08-05'),
+            '10',
+            't-km',
+        );
+        $freightResult = new TransportEmissionResult(
+            TransportEmissionResult::STATUS_CALCULATED,
+            '10',
+            'km*tonelada',
+            '1',
+            [],
+            'freight-key',
+            2026,
+            2025,
+            '0.1',
+            'km*tonelada',
+            'MITECO',
+        );
+
+        $freightSummary = $snapshot->decodeSummary(
+            $snapshot->encode($freightInput, $freightResult)
+        );
+
+        self::assertSame('t-km', $freightSummary['displayActivityUnit']);
+    }
+
+
+    public function testOldSnapshotWithoutPresentationStillDecodesInput(): void
+    {
+        $input = new TransportEmissionInput(
+            'local', 'walk', 'distance', 'ES', new \DateTimeImmutable('2026-03-04'), '2', 'km',
+        );
+        $result = new TransportEmissionResult(
+            TransportEmissionResult::STATUS_DIRECT_ZERO, '2', 'km', '0', null, null, 2026,
+        );
+        $snapshot = new TransportEmissionSnapshot();
+        $encoded = $snapshot->encode($input, $result);
+
+        self::assertSame('2', $snapshot->decode($encoded)->activityValue);
+        self::assertSame([], $snapshot->decodePresentation($encoded));
+    }
 }

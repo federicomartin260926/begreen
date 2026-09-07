@@ -124,17 +124,43 @@
                                     {% for record in selectedCategoryRecords %}
                                         {% set activity = record.activity %}
                                         {% set effectiveCategory = record.effectiveCategory %}
+                                        {% set transportV20Summary = transportV20Summaries[record.id]|default(null) %}
                                         <tr class="emissions-record-row">
                                             <td>
-                                                {{ activity ? activity.name : '—' }}
-                                                {% if activity and activity.subcategory %}
-                                                    <span class="text-muted">
-                                                        ({{ ('backend.emission.subcat.' ~ activity.subcategory)|trans }})
-                                                    </span>
+                                                {% if activity %}
+                                                    {{ activity.name }}
+                                                    {% if activity.subcategory %}
+                                                        <span class="text-muted">
+                                                            ({{ ('backend.emission.subcat.' ~ activity.subcategory)|trans }})
+                                                        </span>
+                                                    {% endif %}
+                                                {% elseif transportV20Summary %}
+                                                    {{ ('backend.emission.transport_v20.modes.' ~ transportV20Summary.mode)|trans }}
+                                                    {% if transportV20Summary.detailCode %}
+                                                        <span class="text-muted">
+                                                            (
+                                                            {% if transportV20Summary.detailKind == 'vehicle_type' %}
+                                                                {{ ('backend.emission.transport_v20.vehicle_types.' ~ transportV20Summary.detailCode)|trans }}
+                                                            {% else %}
+                                                                {{ ('backend.emission.transport_v20.fuels.' ~ transportV20Summary.detailCode)|trans }}
+                                                            {% endif %}
+                                                            )
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    —
                                                 {% endif %}
                                             </td>
                                             <td>{{ project.getPhaseLabel(record.phase.phase)|trans }}</td>
-                                            <td>{{ activity ? activity.unit : '—' }}</td>
+                                            <td>
+                                                {% if activity %}
+                                                    {{ activity.unit }}
+                                                {% elseif transportV20Summary and transportV20Summary.displayActivityUnit %}
+                                                    {{ ('backend.emission.transport_v20.units.' ~ transportV20Summary.displayActivityUnit)|trans }}
+                                                {% else %}
+                                                    —
+                                                {% endif %}
+                                            </td>
                                             <td>{{ record.amount }}</td>
                                             <td>{{ record.emission|number_format(2, ',', '.') }}</td>
                                             <td>{{ record.registeredAt|date('d/m/Y') }}</td>

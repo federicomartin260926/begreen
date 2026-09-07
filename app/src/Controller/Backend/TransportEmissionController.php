@@ -11,6 +11,7 @@ use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\Transport\TransportEmissionRecordService;
+use App\Service\Emission\Transport\TransportEmissionPresentationMapper;
 use App\Service\Emission\Transport\TransportEmissionRequestMapper;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
 use App\Service\Emission\Transport\TransportUiCatalog;
@@ -28,6 +29,8 @@ final class TransportEmissionController extends AbstractController
         'category', 'mode', 'method', 'country', 'startedAt', 'activityValue', 'activityUnit', 'repetitions',
         'passengers', 'weightValue', 'weightUnit', 'vehicleType', 'carSize', 'fuel', 'thermalFuel',
         'routeClassification', 'travelClass', 'notes',
+        'origin', 'destination', 'originLatitude', 'originLongitude', 'destinationLatitude', 'destinationLongitude',
+        'tripType', 'stops', 'operatorReference', 'secondaryActivityValue', 'secondaryActivityUnit',
     ];
 
     #[Route('/new-transport', name: 'backend_emission_new_transport_v20', methods: ['GET', 'POST'])]
@@ -38,6 +41,7 @@ final class TransportEmissionController extends AbstractController
         ProjectRepository $projectRepository,
         TransportEmissionRequestMapper $requestMapper,
         TransportEmissionRecordService $recordService,
+        TransportEmissionPresentationMapper $presentationMapper,
         TransportUiCatalog $uiCatalog,
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -58,12 +62,13 @@ final class TransportEmissionController extends AbstractController
 
         try {
             $input = $requestMapper->map($request);
+            $presentation = $presentationMapper->map($request);
             $phase = $projectRepository->findPhaseByDate($project, \DateTimeImmutable::createFromInterface($input->startedAt));
             if (!$phase) {
                 return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, ['phase_not_available'], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $writeResult = $recordService->write($project, $category, $phase, $input, $this->notes($request));
+            $writeResult = $recordService->write($project, $category, $phase, $input, $this->notes($request), presentation: $presentation);
         } catch (\InvalidArgumentException) {
             return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, ['invalid_input'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -87,6 +92,7 @@ final class TransportEmissionController extends AbstractController
         TransportEmissionRequestMapper $requestMapper,
         TransportEmissionRecordService $recordService,
         TransportEmissionSnapshot $snapshot,
+        TransportEmissionPresentationMapper $presentationMapper,
         TransportUiCatalog $uiCatalog,
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -102,7 +108,10 @@ final class TransportEmissionController extends AbstractController
         }
 
         try {
-            $storedValues = $snapshot->inputToArray($snapshot->decode((string) $record->getCalculationDetails()));
+            $storedValues = array_replace(
+                $snapshot->inputToArray($snapshot->decode((string) $record->getCalculationDetails())),
+                $snapshot->decodePresentation((string) $record->getCalculationDetails()),
+            );
         } catch (\JsonException|\UnexpectedValueException) {
             throw $this->createNotFoundException('Invalid transport v20 snapshot.');
         }
@@ -120,12 +129,13 @@ final class TransportEmissionController extends AbstractController
 
         try {
             $input = $requestMapper->map($request);
+            $presentation = $presentationMapper->map($request);
             $phase = $projectRepository->findPhaseByDate($project, \DateTimeImmutable::createFromInterface($input->startedAt));
             if (!$phase) {
                 return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, ['phase_not_available'], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $writeResult = $recordService->write($project, $category, $phase, $input, $this->notes($request), $record);
+            $writeResult = $recordService->write($project, $category, $phase, $input, $this->notes($request), $record, $presentation);
         } catch (\InvalidArgumentException) {
             return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, ['invalid_input'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -163,6 +173,7 @@ final class TransportEmissionController extends AbstractController
             'values' => $values,
             'transportCategories' => $uiCatalog->categories(),
             'transportMethods' => $uiCatalog->methods(),
+            'transportUiConfig' => $uiCatalog->configuration(),
             'csrfTokenId' => $tokenId,
             'errors' => $errors,
             'backQuery' => $this->indexQuery($request, (int) $category->getId()),
@@ -193,6 +204,17 @@ final class TransportEmissionController extends AbstractController
             'routeClassification' => null,
             'travelClass' => null,
             'notes' => null,
+            'origin' => null,
+            'destination' => null,
+            'originLatitude' => null,
+            'originLongitude' => null,
+            'destinationLatitude' => null,
+            'destinationLongitude' => null,
+            'tripType' => null,
+            'stops' => null,
+            'operatorReference' => null,
+            'secondaryActivityValue' => null,
+            'secondaryActivityUnit' => null,
         ];
     }
 
