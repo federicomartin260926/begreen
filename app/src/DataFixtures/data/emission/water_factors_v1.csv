@@ -1,0 +1,13 @@
+geography,factor_type,factor_year,factor_value,unit,source,source_edition,status,source_url
+Reino Unido,water_supply,2022,0.149,kgCO2e/m3,UK Government / DESNZ,2022,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2022
+Reino Unido,water_treatment,2022,0.272,kgCO2e/m3,UK Government / DESNZ,2022,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2022
+Reino Unido,water_supply,2023,0.1767,kgCO2e/m3,UK Government / DESNZ,2023,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2023
+Reino Unido,water_treatment,2023,0.2013,kgCO2e/m3,UK Government / DESNZ,2023,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2023
+Reino Unido,water_supply,2024,0.15311,kgCO2e/m3,UK Government / DESNZ,2024,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2024
+Reino Unido,water_treatment,2024,0.18574,kgCO2e/m3,UK Government / DESNZ,2024,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2024
+Reino Unido,water_supply,2025,0.1913,kgCO2e/m3,UK Government / DESNZ,2025,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2025
+Reino Unido,water_treatment,2025,0.17088,kgCO2e/m3,UK Government / DESNZ,2025,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2025
+Reino Unido,water_supply,2026,0.1913,kgCO2e/m3,UK Government / DESNZ,2026,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2026
+Reino Unido,water_treatment,2026,0.17088,kgCO2e/m3,UK Government / DESNZ,2026,REAL_ANUAL,https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2026
+Cataluña,urban_water_cycle,2024,0.517,kgCO2e/m3,OCCC,2025,REAL_VERIFICADO_PROYECTO,https://canviclimatic.gencat.cat/es/actua/guia_de_calcul_demissions_de_co2/index.html
+Cataluña,urban_water_cycle,2025,0.517,kgCO2e/m3,OCCC,2026,REAL_VERIFICADO_PROYECTO,https://canviclimatic.gencat.cat/es/actua/guia_de_calcul_demissions_de_co2/index.html
