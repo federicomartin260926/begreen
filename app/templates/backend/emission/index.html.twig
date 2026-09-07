@@ -125,6 +125,7 @@
                                         {% set activity = record.activity %}
                                         {% set effectiveCategory = record.effectiveCategory %}
                                         {% set transportV20Summary = transportV20Summaries[record.id]|default(null) %}
+                                        {% set energyV1Summary = energyV1Summaries[record.id]|default(null) %}
                                         <tr class="emissions-record-row">
                                             <td>
                                                 {% if activity %}
@@ -147,6 +148,8 @@
                                                             )
                                                         </span>
                                                     {% endif %}
+                                                {% elseif energyV1Summary %}
+                                                    {{ ('backend.emission.energy_v1.families.' ~ energyV1Summary.family)|trans }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
@@ -157,12 +160,24 @@
                                                     {{ activity.unit }}
                                                 {% elseif transportV20Summary and transportV20Summary.displayActivityUnit %}
                                                     {{ ('backend.emission.transport_v20.units.' ~ transportV20Summary.displayActivityUnit)|trans }}
+                                                {% elseif energyV1Summary and energyV1Summary.normalizedUnit %}
+                                                    {{ energyV1Summary.normalizedUnit }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
                                             </td>
-                                            <td>{{ record.amount }}</td>
-                                            <td>{{ record.emission|number_format(2, ',', '.') }}</td>
+                                            <td>{{ record.amount is null ? '—' : record.amount }}</td>
+                                            <td>
+                                                {% if record.emission is not null %}
+                                                    {{ record.emission|number_format(2, ',', '.') }}
+                                                {% elseif record.status == 'PENDING_DATA' %}
+                                                    {{ 'backend.emission.energy_v1.statuses.PENDING_DATA'|trans }}
+                                                {% elseif record.status == 'NOT_AUTOMATICALLY_CALCULABLE' %}
+                                                    {{ 'backend.emission.energy_v1.statuses.NOT_AUTOMATICALLY_CALCULABLE'|trans }}
+                                                {% else %}
+                                                    —
+                                                {% endif %}
+                                            </td>
                                             <td>{{ record.registeredAt|date('d/m/Y') }}</td>
                                             <td class="text-nowrap">
                                                 {% if activity %}
@@ -199,6 +214,27 @@
                                                     data-bs-trigger="hover"
                                                     data-bs-placement="right"
                                                     data-bs-content="{{ 'backend.emission.transport_v20.duplicate_action'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-files"></i>
+                                                </a>
+                                                {% elseif record.id in energyV1RecordIds %}
+                                                <a
+                                                    href="{{ path('backend_emission_edit_energy_v1', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a
+                                                    href="{{ path('backend_emission_duplicate_energy_v1', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.emission.energy_v1.duplicate_action'|trans }}"
                                                     class="btn btn-sm btn-outline-secondary"
                                                 >
                                                     <i class="bi bi-files"></i>

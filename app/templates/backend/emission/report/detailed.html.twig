@@ -33,9 +33,9 @@
           <td>{{ record.createdAt|date('d/m/Y') }}</td>
           <td>{{ record.effectiveCategory ? record.effectiveCategory.name : ('backend.common.no_category'|trans) }}</td>
           <td>{{ record.activity ? record.activity.name : ('backend.common.no_activity'|trans) }}</td>
-          <td class="text-right">{{ record.amount }}</td>
+          <td class="text-right">{{ record.amount is null ? '—' : record.amount }}</td>
           <td>{{ record.activity ? record.activity.unit : '—' }}</td>
-          <td class="text-right">{{ record.emission|number_format(2, '.', ',') }}</td>
+          <td class="text-right">{{ record.emission is null ? '—' : record.emission|number_format(2, '.', ',') }}</td>
           <td class="small">
             {% if details %}
               {% for key, value in details %}

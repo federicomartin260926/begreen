@@ -32,4 +32,20 @@ class EmissionFactorRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /** @return list<array<string, mixed>> */
+    public function findCriteriaByCategoryKey(string $categoryKey): array
+    {
+        $rows = $this->createQueryBuilder('factor')
+            ->select('factor.criteria')
+            ->andWhere('factor.categoryKey = :categoryKey')
+            ->setParameter('categoryKey', $categoryKey)
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_values(array_filter(array_map(
+            static fn (array $row): mixed => $row['criteria'] ?? null,
+            $rows,
+        ), 'is_array'));
+    }
 }

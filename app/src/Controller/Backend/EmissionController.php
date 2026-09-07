@@ -11,6 +11,7 @@ use App\Security\{EmissionRecordVoter, ProjectVoter};
 use App\Service\{ActiveProjectService, OpenRouteService};
 use App\Service\Emission\{WoodCatalog, WoodEmissionCalculator};
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\Energy\EnergyEmissionSnapshot;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
 
 // Doctrine / Gedmo
@@ -87,6 +88,7 @@ class EmissionController extends AbstractController
         EntityManagerInterface $em,
         TranslatorInterface $t,
         TransportEmissionSnapshot $transportSnapshot,
+        EnergyEmissionSnapshot $energySnapshot,
         Request $request
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -130,6 +132,8 @@ class EmissionController extends AbstractController
                 'hasCategories'        => false,
                 'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
                 'transportV20RecordIds' => [],
+                'energyV1RecordIds' => [],
+                'energyV1Summaries' => [],
             ]);
         }
 
@@ -161,6 +165,8 @@ class EmissionController extends AbstractController
         $selectedCategoryRecords = array_slice($selectedCategoryRecordsAll, $offset, $perPage);
         $transportV20RecordIds = [];
         $transportV20Summaries = [];
+        $energyV1RecordIds = [];
+        $energyV1Summaries = [];
         if (null !== $transportId) {
             foreach ($selectedCategoryRecords as $record) {
                 if (!$transportSnapshot->isTransportV20Record($record, $transportId)) {
@@ -175,6 +181,22 @@ class EmissionController extends AbstractController
                     );
                 } catch (\JsonException|\UnexpectedValueException) {
                     // Keep the record visible/editable even if its presentation snapshot is malformed.
+                }
+            }
+        }
+        if (null !== $energyId) {
+            foreach ($selectedCategoryRecords as $record) {
+                if (!$energySnapshot->isEnergyV1Record($record, $energyId)) {
+                    continue;
+                }
+
+                $energyV1RecordIds[] = $record->getId();
+                try {
+                    $energyV1Summaries[$record->getId()] = $energySnapshot->decodeSummary(
+                        (string) $record->getCalculationDetails()
+                    );
+                } catch (\JsonException|\UnexpectedValueException) {
+                    // Keep corrupt modern records visible without treating them as legacy.
                 }
             }
         }
@@ -212,6 +234,8 @@ class EmissionController extends AbstractController
             'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
             'transportV20RecordIds' => $transportV20RecordIds,
             'transportV20Summaries' => $transportV20Summaries,
+            'energyV1RecordIds' => $energyV1RecordIds,
+            'energyV1Summaries' => $energyV1Summaries,
         ]);
     }
 
@@ -320,7 +344,7 @@ class EmissionController extends AbstractController
         ], static fn ($value): bool => $value !== null);
 
         if ($energyId !== null && $categoryId === $energyId) {
-            return $this->generateUrl('backend_emission_new_energy', $params);
+            return $this->generateUrl('backend_emission_new_energy_v1', $params);
         }
 
         if ($transportId !== null && $categoryId === $transportId) {
@@ -778,7 +802,8 @@ class EmissionController extends AbstractController
         EmissionActivityRepository $activityRepository,
         ProjectRepository $projectRepository,
         EntityManagerInterface $em,
-        TranslatorInterface $t
+        TranslatorInterface $t,
+        EnergyEmissionSnapshot $energySnapshot,
     ): Response {
         $project  = $activeProjectService->getActiveProject();
         $category = $record->getEffectiveCategory();
@@ -786,11 +811,22 @@ class EmissionController extends AbstractController
         if (!$project || $record->getProject() !== $project) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
         }
-        if (!$category || !$record->getActivity()) {
+        if (!$category) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
 
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        if (null === $record->getActivity()) {
+            if ($energySnapshot->isEnergyV1Record($record, (int) $category->getId())) {
+                return $this->redirectToRoute('backend_emission_edit_energy_v1', array_merge(
+                    ['id' => $record->getId()],
+                    $this->buildEmissionIndexQuery($request, (int) $category->getId()),
+                ));
+            }
+
+            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
+        }
 
         $form = $this->createForm(EnergyEmissionType::class, $record);
         $form->handleRequest($request);

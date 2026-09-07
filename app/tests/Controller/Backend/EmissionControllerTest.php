@@ -12,6 +12,9 @@ use App\Repository\CategoryRepository;
 use App\Repository\EmissionRecordRepository;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\Energy\EnergyEmissionSnapshot;
+use App\Service\Emission\Energy\EnergyEmissionInput;
+use App\Service\Emission\Energy\EnergyEmissionResult;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
@@ -51,7 +54,8 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('emissions-pagination', $content);
         self::assertSame(2, substr_count($content, 'emissions-record-row'));
         self::assertStringContainsString('27,60', $content);
-        self::assertStringContainsString('/backend/emission/new-energy?page=2', $content);
+        self::assertStringContainsString('/backend/emission/new-energy-v1?page=2', $content);
+        self::assertStringContainsString('/edit-energy?', $content);
         self::assertStringContainsString('categoryId=1', $content);
         self::assertStringContainsString('data-emission-target="chart"', $content);
         self::assertStringContainsString('data-chart-category="Energía"', $content);
@@ -101,6 +105,46 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('/backend/emission/999/edit-transport-travel', $content);
         self::assertStringNotContainsString('/backend/emission/999/edit-transport', $content);
         self::assertStringNotContainsString('/backend/emission/999/duplicate-transport', $content);
+    }
+
+    public function testIndexRendersModernEnergyPendingStatusAndActions(): void
+    {
+        $payload = $this->buildPayload();
+        $phase = $payload['records'][0]->getPhase();
+        $input = new EnergyEmissionInput(
+            'digital',
+            new \DateTimeImmutable('2026-01-20'),
+            new \DateTimeImmutable('2026-01-20'),
+            'ES',
+            digitalType: 'ai',
+        );
+        $result = new EnergyEmissionResult(
+            EmissionRecord::STATUS_PENDING_DATA,
+            null,
+            null,
+            null,
+            2026,
+            null,
+            messages: ['digital_activity_data_required'],
+        );
+        $record = (new EmissionRecord())
+            ->setProject($payload['project'])
+            ->setPhase($phase)
+            ->setCategory($payload['categories'][0])
+            ->setActivity(null)
+            ->setAmount(null)
+            ->setEmission(null)
+            ->setStatus(EmissionRecord::STATUS_PENDING_DATA)
+            ->setCalculationDetails((new EnergyEmissionSnapshot())->encode($input, $result))
+            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'));
+        $this->setEntityId($record, 998);
+
+        $content = (string) $this->renderIndex($payload['project'], [$record], $payload['categories'], ['categoryId' => 1])->getContent();
+
+        self::assertStringContainsString('Tecnología digital', $content);
+        self::assertStringContainsString('Pendiente', $content);
+        self::assertStringContainsString('/backend/emission/998/edit-energy-v1', $content);
+        self::assertStringContainsString('/backend/emission/998/duplicate-energy-v1', $content);
     }
 
     public function testTransportAndTripsKeepSeparateCreateAndEditRoutes(): void
@@ -215,6 +259,7 @@ final class EmissionControllerTest extends KernelTestCase
             $this->createEntityManagerMock(),
             self::getContainer()->get(TranslatorInterface::class),
             new TransportEmissionSnapshot(),
+            new EnergyEmissionSnapshot(),
             $request
         );
 
