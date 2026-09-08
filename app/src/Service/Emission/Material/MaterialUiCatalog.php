@@ -94,6 +94,9 @@ final class MaterialUiCatalog
     public function canonicalSubproduct(string $activity, ?string $subproduct): ?string
     {
         $subproduct = null === $subproduct ? '' : trim($subproduct);
+        if (self::ACTIVITY_BATTERIES === $activity && 'Desconocido' === $subproduct) {
+            return $subproduct;
+        }
         foreach ($this->routes as $route) {
             if ($activity === $route['activity'] && $subproduct === $route['subproduct']) {
                 return $subproduct;
@@ -174,7 +177,149 @@ final class MaterialUiCatalog
 
     public function isPlastic(string $activity): bool
     {
-        return str_contains(mb_strtolower($activity), 'plástic');
+        $activity = mb_strtolower($activity);
+
+        return str_contains($activity, 'plástic')
+            || 1 === preg_match('/^(?:polietileno|tereftalato|polipropileno|poliestireno|policloruro)/u', $activity);
+    }
+
+    /** @return array{families: list<array{value: string, label: string, methods: list<string>, activities: list<array{value: string, label: string, subproducts: list<array{value: string, label: string, origins: list<string>, normalizationValue: ?string}>}>}>, woodTypes: list<string>, woodBoards: array<string, list<string>>, paperFormats: list<string>, cardboardTypes: list<string>, batterySizes: list<string>} */
+    public function frontendCatalog(): array
+    {
+        $families = [];
+        foreach ($this->routes as $route) {
+            $family = $this->familyForActivity($route['activity']);
+            $families[$family]['value'] = $family;
+            $families[$family]['label'] = $this->familyLabel($family);
+            $families[$family]['methods'] = $this->methodsForFamily($family);
+            $activity = &$families[$family]['activities'][$route['activity']];
+            $activity['value'] = $route['activity'];
+            $activity['label'] = $route['activity'];
+            $subproduct = &$activity['subproducts'][$route['subproduct']];
+            $subproduct['value'] = $route['subproduct'];
+            $subproduct['label'] = '' === $route['subproduct'] ? $route['activity'] : $route['subproduct'];
+            $subproduct['origins'][$route['origin']] = $route['origin'];
+            $subproduct['normalizationValue'] = $this->batteryChemistry($route['subproduct']);
+            unset($subproduct, $activity);
+        }
+
+        foreach ($families['plastic']['activities'] ?? [] as &$activity) {
+            $subproduct = &$activity['subproducts'][''];
+            $subproduct['origins']['Reutilizado'] = 'Reutilizado';
+            unset($subproduct);
+        }
+        unset($activity);
+
+        if (isset($families['battery'])) {
+            $families['battery']['activities'][self::ACTIVITY_BATTERIES]['subproducts']['Desconocido'] = [
+                'value' => 'Desconocido',
+                'label' => 'Desconocido',
+                'origins' => ['Producción de materia prima' => 'Producción de materia prima'],
+                'normalizationValue' => null,
+            ];
+        }
+
+        foreach ($families as &$family) {
+            foreach ($family['activities'] as &$activity) {
+                foreach ($activity['subproducts'] as &$subproduct) {
+                    $subproduct['origins'] = array_values($subproduct['origins']);
+                }
+                unset($subproduct);
+                $activity['subproducts'] = array_values($activity['subproducts']);
+            }
+            unset($activity);
+            $family['activities'] = array_values($family['activities']);
+        }
+        unset($family);
+
+        $woodBoards = [];
+        foreach ($this->woodBoards as $family => $boards) {
+            $woodBoards[$family] = array_keys($boards);
+        }
+        $batterySizes = [];
+        foreach (array_keys($this->batteryWeights) as $key) {
+            [, $size] = explode("\x1f", $key, 2);
+            $batterySizes[$size] = true;
+        }
+
+        return [
+            'families' => array_values($families),
+            'woodTypes' => array_keys($this->solidWoodDensities),
+            'woodBoards' => $woodBoards,
+            'paperFormats' => array_keys($this->paperFormats),
+            'cardboardTypes' => array_keys($this->cardboardGrammages),
+            'batterySizes' => array_keys($batterySizes),
+        ];
+    }
+
+    public function familyForActivity(string $activity): string
+    {
+        return match ($activity) {
+            self::ACTIVITY_WOOD => 'wood',
+            self::ACTIVITY_PAPER => 'paper',
+            self::ACTIVITY_CARDBOARD => 'cardboard',
+            self::ACTIVITY_METAL => 'metal',
+            self::ACTIVITY_PLASTERBOARD => 'plasterboard',
+            self::ACTIVITY_BATTERIES => 'battery',
+            self::ACTIVITY_TEXTILES => 'textile',
+            self::ACTIVITY_CANVAS => 'canvas',
+            self::ACTIVITY_CARPET => 'carpet',
+            self::ACTIVITY_PAINT => 'paint',
+            self::ACTIVITY_VARNISH => 'varnish',
+            self::ACTIVITY_SOLVENT => 'solvent',
+            self::ACTIVITY_CLOTHING => 'clothing',
+            default => $this->isPlastic($activity)
+                ? 'plastic'
+                : throw new \InvalidArgumentException(sprintf('Unsupported material activity "%s".', $activity)),
+        };
+    }
+
+    /** @return list<string> */
+    private function methodsForFamily(string $family): array
+    {
+        return match ($family) {
+            'wood' => [MaterialEmissionInput::METHOD_WEIGHT, MaterialEmissionInput::METHOD_DIMENSIONS],
+            'paper' => [MaterialEmissionInput::METHOD_WEIGHT, MaterialEmissionInput::METHOD_PACKAGES, MaterialEmissionInput::METHOD_GRAMMAGE],
+            'cardboard', 'textile', 'canvas' => [MaterialEmissionInput::METHOD_WEIGHT, MaterialEmissionInput::METHOD_DIMENSIONS],
+            'metal', 'plasterboard', 'battery' => [MaterialEmissionInput::METHOD_WEIGHT, MaterialEmissionInput::METHOD_UNITS],
+            'plastic' => [MaterialEmissionInput::METHOD_WEIGHT],
+            'carpet' => [MaterialEmissionInput::METHOD_SURFACE, MaterialEmissionInput::METHOD_WEIGHT],
+            'paint', 'varnish' => [MaterialEmissionInput::METHOD_VOLUME, MaterialEmissionInput::METHOD_WEIGHT],
+            'solvent' => [MaterialEmissionInput::METHOD_VOLUME],
+            'clothing' => [MaterialEmissionInput::METHOD_UNITS],
+            default => [],
+        };
+    }
+
+    private function familyLabel(string $family): string
+    {
+        return match ($family) {
+            'wood' => 'Madera',
+            'paper' => 'Papel',
+            'cardboard' => 'Cartón',
+            'metal' => 'Metal para estructuras',
+            'plasterboard' => 'Placas de yeso',
+            'plastic' => 'Plástico',
+            'battery' => 'Pilas y baterías',
+            'textile' => 'Fibras textiles',
+            'canvas' => 'Lona / loneta',
+            'carpet' => 'Moqueta',
+            'paint' => 'Pintura',
+            'varnish' => 'Barniz',
+            'solvent' => 'Disolvente / aguarrás',
+            'clothing' => 'Ropa y accesorios',
+            default => $family,
+        };
+    }
+
+    private function batteryChemistry(string $subproduct): ?string
+    {
+        return match ($subproduct) {
+            'Pila/batería Alcalina' => 'Alcalina',
+            'Pila/batería de Ion de litio' => 'Litio-Ion',
+            'Batería NiMh' => 'NiMH',
+            default => null,
+        };
     }
 
     /** @return list<array<string, string>> */

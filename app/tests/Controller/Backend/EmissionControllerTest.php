@@ -423,6 +423,7 @@ final class EmissionControllerTest extends KernelTestCase
             new CateringEmissionSnapshot(),
             new \App\Service\Emission\Waste\WasteEmissionSnapshot(),
             new \App\Service\Emission\Waste\WasteUiCatalog(),
+            new \App\Service\Emission\Material\MaterialEmissionSnapshot(),
             $request
         );
 

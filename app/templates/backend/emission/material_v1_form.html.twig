@@ -1,0 +1,125 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ duplicate ? 'backend.emission.material_v1.title_duplicate'|trans : (edit ? 'backend.emission.material_v1.title_edit'|trans : 'backend.emission.material_v1.title_new'|trans) }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item"><a href="{{ path('backend_emission_index', backQuery) }}" class="text-decoration-none">{{ 'backend.emission.material_v1.breadcrumb_list'|trans }}</a></li>
+  <li class="breadcrumb-item active">{{ duplicate ? 'backend.emission.material_v1.breadcrumb_duplicate'|trans : (edit ? 'backend.emission.material_v1.breadcrumb_edit'|trans : 'backend.emission.material_v1.breadcrumb_new'|trans) }}</li>
+{% endblock %}
+
+{% block body %}
+{% set messageKeys = ['dates_required', 'invalid_date_range', 'activity_year_out_of_range', 'country_invalid', 'activity_required', 'activity_invalid', 'subproduct_required', 'subproduct_invalid', 'origin_required', 'measurement_method_required', 'weight_kg_required', 'weight_invalid', 'wood_board_data_invalid', 'wood_dimensions_invalid', 'cardboard_dimensions_invalid', 'textile_dimensions_invalid', 'paper_package_data_invalid', 'paper_grammage_data_invalid', 'unit_count_invalid', 'piece_weight_data_invalid', 'battery_unit_count_invalid', 'battery_unique_weight_unavailable', 'surface_invalid', 'volume_invalid', 'carpet_weight_conversion_unavailable', 'solvent_mass_conversion_unavailable', 'solvent_volume_unit_unsupported', 'automatic_factor_unavailable'] %}
+{% set messageLabels = {} %}
+{% for key in messageKeys %}{% set messageLabels = messageLabels|merge({(key): ('backend.emission.material_v1.messages.' ~ key)|trans}) %}{% endfor %}
+{% set materialI18n = {
+  select: 'backend.common.select'|trans,
+  calculating: 'backend.emission.material_v1.preview.calculating'|trans,
+  previewError: 'backend.emission.material_v1.preview.error'|trans,
+  fallback: 'backend.emission.material_v1.preview.fallback'|trans,
+  factorVersion: 'backend.emission.material_v1.preview.factor_version'|trans,
+  methods: {
+    weight: 'backend.emission.material_v1.methods.weight'|trans,
+    dimensions: 'backend.emission.material_v1.methods.dimensions'|trans,
+    packages: 'backend.emission.material_v1.methods.packages'|trans,
+    grammage: 'backend.emission.material_v1.methods.grammage'|trans,
+    units: 'backend.emission.material_v1.methods.units'|trans,
+    surface: 'backend.emission.material_v1.methods.surface'|trans,
+    volume: 'backend.emission.material_v1.methods.volume'|trans
+  },
+  statuses: {
+    CALCULATED: 'backend.emission.material_v1.statuses.CALCULATED'|trans,
+    PENDING_DATA: 'backend.emission.material_v1.statuses.PENDING_DATA'|trans,
+    NOT_AUTOMATICALLY_CALCULABLE: 'backend.emission.material_v1.statuses.NOT_AUTOMATICALLY_CALCULABLE'|trans
+  },
+  messageLabels: messageLabels
+} %}
+
+<div class="container-fluid px-0 backend-client-shell"
+     data-controller="material-v1-form"
+     data-material-v1-form-catalog-value="{{ materialCatalog|json_encode|e('html_attr') }}"
+     data-material-v1-form-initial-value="{{ values|json_encode|e('html_attr') }}"
+     data-material-v1-form-i18n-value="{{ materialI18n|json_encode|e('html_attr') }}"
+     data-material-v1-form-preview-url-value="{{ path('backend_emission_material_v1_preview') }}"
+     data-material-v1-form-preview-token-value="{{ csrf_token('material_emission_v1_preview') }}">
+  <div class="backend-client-content">
+    <h2>{{ duplicate ? 'backend.emission.material_v1.heading_duplicate'|trans : (edit ? 'backend.emission.material_v1.heading_edit'|trans : 'backend.emission.material_v1.heading_new'|trans) }}</h2>
+    <p class="text-muted mb-4">{{ 'backend.emission.material_v1.intro'|trans }}</p>
+
+    <section class="card mb-4"><div class="card-body"><div class="row g-3">
+      <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.material_v1.project'|trans }}</small><strong>{{ project.name }}</strong></div>
+      <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.material_v1.category'|trans }}</small><span class="badge text-bg-success">{{ category.name }}</span></div>
+      <div class="col-12"><small class="text-muted d-block mb-1">{{ 'backend.emission.material_v1.phases'|trans }}</small>{% for phaseDate in project.phaseDates %}<span class="badge text-bg-light border me-1">{{ project.getPhaseLabel(phaseDate.phase)|trans }} · {{ phaseDate.startDate|date('d/m/Y') }}–{{ phaseDate.endDate|date('d/m/Y') }}</span>{% else %}—{% endfor %}</div>
+    </div></div></section>
+
+    {% if errors %}<div class="alert alert-danger"><ul class="mb-0">{% for error in errors %}<li>{{ ('backend.emission.material_v1.errors.' ~ error)|trans }}</li>{% endfor %}</ul></div>{% endif %}
+
+    {% if edit and record.attachments|length > 0 %}
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5">{{ 'backend.emission.attachments.title'|trans }}</h3>
+        <div class="list-group list-group-flush">{% for attachment in record.attachments %}<div class="list-group-item px-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <span>{{ attachment.originalName }} <small class="text-muted">({{ (attachment.size / 1024)|number_format(1, ',', '.') }} KB)</small></span>
+          <div class="d-flex gap-2"><a class="btn btn-sm btn-outline-primary" href="{{ path('backend_emission_attachment_download', {recordId: record.id, attachmentId: attachment.id}) }}">{{ 'backend.emission.attachments.download'|trans }}</a><form method="post" action="{{ path('backend_emission_attachment_delete', {recordId: record.id, attachmentId: attachment.id}|merge(backQuery)) }}"><input type="hidden" name="_token" value="{{ csrf_token('delete_emission_attachment_' ~ attachment.id) }}"><button class="btn btn-sm btn-outline-danger" type="submit">{{ 'backend.emission.attachments.delete'|trans }}</button></form></div>
+        </div>{% endfor %}</div>
+      </div></section>
+    {% endif %}
+
+    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate data-material-v1-form-target="form" data-action="input->material-v1-form#queuePreview submit->material-v1-form#validate">
+      <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
+      <input type="hidden" name="batteryChemistry" value="{{ values.batteryChemistry|default('') }}" data-material-v1-form-target="batteryChemistry">
+
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5 mb-3">{{ 'backend.emission.material_v1.sections.activity'|trans }}</h3>
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label" for="material-start-date">{{ 'backend.emission.material_v1.fields.start_date'|trans }} *</label><input class="form-control" id="material-start-date" type="date" name="startDate" value="{{ values.startDate|default('') }}" required></div>
+          <div class="col-md-4"><label class="form-label" for="material-end-date">{{ 'backend.emission.material_v1.fields.end_date'|trans }} *</label><input class="form-control" id="material-end-date" type="date" name="endDate" value="{{ values.endDate|default('') }}" required></div>
+          <div class="col-md-4"><label class="form-label" for="material-country">{{ 'backend.emission.material_v1.fields.country'|trans }} *</label><select class="form-select" id="material-country" name="country" required><option value="">{{ 'backend.common.select'|trans }}</option>{% for code, name in countries %}<option value="{{ code }}" {% if values.country|default('') == code %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+
+          <div class="col-md-4"><label class="form-label" for="material-family">{{ 'backend.emission.material_v1.fields.family'|trans }} *</label><select class="form-select" id="material-family" name="family" required data-material-v1-form-target="family" data-action="change->material-v1-form#familyChanged"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
+          <div class="col-md-4"><label class="form-label" for="material-activity">{{ 'backend.emission.material_v1.fields.material'|trans }} *</label><select class="form-select" id="material-activity" name="activity" required data-material-v1-form-target="activity" data-action="change->material-v1-form#activityChanged"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
+          <div class="col-md-4 d-none" data-material-v1-form-target="subproductContainer"><label class="form-label" for="material-subproduct">{{ 'backend.emission.material_v1.fields.subproduct'|trans }} *</label><select class="form-select" id="material-subproduct" name="subproduct" data-material-v1-form-target="subproduct" data-action="change->material-v1-form#subproductChanged"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
+          <div class="col-md-6"><label class="form-label" for="material-origin">{{ 'backend.emission.material_v1.fields.origin'|trans }} *</label><select class="form-select" id="material-origin" name="origin" data-material-v1-form-target="origin" data-action="change->material-v1-form#queuePreview"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
+          <div class="col-md-6"><label class="form-label" for="material-method">{{ 'backend.emission.material_v1.fields.method'|trans }} *</label><select class="form-select" id="material-method" name="measurementMethod" required data-material-v1-form-target="method" data-action="change->material-v1-form#methodChanged"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
+        </div>
+      </div></section>
+
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5 mb-3">{{ 'backend.emission.material_v1.sections.quantity'|trans }}</h3>
+        <div class="row g-3">
+          <div class="col-md-4 d-none" data-material-field="inputQuantity"><label class="form-label" for="material-quantity">{{ 'backend.emission.material_v1.fields.quantity'|trans }} *</label><input class="form-control" id="material-quantity" type="number" min="0" step="any" name="inputQuantity" value="{{ values.inputQuantity|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="inputUnit"><label class="form-label" for="material-unit">{{ 'backend.emission.material_v1.fields.unit'|trans }} *</label><select class="form-select" id="material-unit" name="inputUnit" data-material-v1-form-target="inputUnit"></select></div>
+          <div class="col-md-4 d-none" data-material-field="unitCount"><label class="form-label" for="material-unit-count">{{ 'backend.emission.material_v1.fields.unit_count'|trans }} *</label><input class="form-control" id="material-unit-count" type="number" min="0" step="any" name="unitCount" value="{{ values.unitCount|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="pieceWeight"><label class="form-label" for="material-piece-weight">{{ 'backend.emission.material_v1.fields.piece_weight'|trans }} *</label><input class="form-control" id="material-piece-weight" type="number" min="0" step="any" name="pieceWeightKg" value="{{ values.pieceWeightKg|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="length"><label class="form-label" for="material-length">{{ 'backend.emission.material_v1.fields.length'|trans }} *</label><input class="form-control" id="material-length" type="number" min="0" step="any" name="lengthMeters" value="{{ values.lengthMeters|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="width"><label class="form-label" for="material-width">{{ 'backend.emission.material_v1.fields.width'|trans }} *</label><input class="form-control" id="material-width" type="number" min="0" step="any" name="widthMeters" value="{{ values.widthMeters|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="thickness"><label class="form-label" for="material-thickness">{{ 'backend.emission.material_v1.fields.thickness'|trans }} *</label><input class="form-control" id="material-thickness" type="number" min="0" step="any" name="thicknessMeters" value="{{ values.thicknessMeters|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="grammage"><label class="form-label" for="material-grammage">{{ 'backend.emission.material_v1.fields.grammage'|trans }}</label><input class="form-control" id="material-grammage" type="number" min="0" step="any" name="grammageGm2" value="{{ values.grammageGm2|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="paperFormat"><label class="form-label" for="material-paper-format">{{ 'backend.emission.material_v1.fields.paper_format'|trans }} *</label><select class="form-select" id="material-paper-format" name="paperFormat" data-material-v1-form-target="paperFormat"></select></div>
+          <div class="col-md-4 d-none" data-material-field="sheetsPerPackage"><label class="form-label" for="material-sheets-package">{{ 'backend.emission.material_v1.fields.sheets_per_package'|trans }}</label><input class="form-control" id="material-sheets-package" type="number" min="1" step="1" name="sheetsPerPackage" value="{{ values.sheetsPerPackage|default('500') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="cardboardType"><label class="form-label" for="material-cardboard-type">{{ 'backend.emission.material_v1.fields.cardboard_type'|trans }}</label><select class="form-select" id="material-cardboard-type" name="cardboardType" data-material-v1-form-target="cardboardType"></select></div>
+          <div class="col-md-4 d-none" data-material-field="woodType"><label class="form-label" for="material-wood-type">{{ 'backend.emission.material_v1.fields.wood_type'|trans }}</label><select class="form-select" id="material-wood-type" name="woodType" data-material-v1-form-target="woodType"></select></div>
+          <div class="col-md-4 d-none" data-material-field="boardFamily"><label class="form-label" for="material-board-family">{{ 'backend.emission.material_v1.fields.board_family'|trans }}</label><select class="form-select" id="material-board-family" name="boardFamily" data-material-v1-form-target="boardFamily" data-action="change->material-v1-form#boardFamilyChanged"></select></div>
+          <div class="col-md-4 d-none" data-material-field="boardThickness"><label class="form-label" for="material-board-thickness">{{ 'backend.emission.material_v1.fields.board_thickness'|trans }}</label><select class="form-select" id="material-board-thickness" name="boardThickness" data-material-v1-form-target="boardThickness"></select></div>
+          <div class="col-md-4 d-none" data-material-field="batterySize"><label class="form-label" for="material-battery-size">{{ 'backend.emission.material_v1.fields.battery_size'|trans }} *</label><select class="form-select" id="material-battery-size" name="batterySize" data-material-v1-form-target="batterySize"></select></div>
+        </div>
+        <div class="form-text mt-3">{{ 'backend.emission.material_v1.quantity_help'|trans }}</div>
+      </div></section>
+
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5">{{ 'backend.emission.material_v1.preview.title'|trans }}</h3>
+        <div class="d-flex flex-wrap align-items-baseline gap-3 mb-2"><strong data-material-v1-form-target="previewStatus">{{ 'backend.emission.material_v1.preview.error'|trans }}</strong><span class="fs-4" data-material-v1-form-target="previewEmission">—</span></div>
+        <ul class="small text-muted mb-2" data-material-v1-form-target="previewTrace"></ul>
+        <ul class="small text-danger mb-0" data-material-v1-form-target="previewMessages"></ul>
+      </div></section>
+
+      <section class="card mb-4"><div class="card-body">
+        <div class="mb-3"><label class="form-label" for="material-notes">{{ 'backend.emission.material_v1.fields.notes'|trans }}</label><textarea class="form-control" id="material-notes" name="notes" rows="3">{{ values.notes|default('') }}</textarea></div>
+        <div><label class="form-label" for="material-attachments">{{ 'backend.emission.attachments.add'|trans }}</label><input class="form-control" id="material-attachments" type="file" name="attachments[]" multiple accept="application/pdf,image/jpeg,image/png,image/webp"><div class="form-text">{{ 'backend.emission.attachments.help'|trans }}</div></div>
+      </div></section>
+
+      <div class="d-flex gap-2 justify-content-end"><a class="btn btn-outline-secondary" href="{{ path('backend_emission_index', backQuery) }}">{{ 'backend.common.cancel'|trans }}</a><button class="btn btn-success" type="submit">{{ 'backend.common.save'|trans }}</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

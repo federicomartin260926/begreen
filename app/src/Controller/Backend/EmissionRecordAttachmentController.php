@@ -59,6 +59,7 @@ final class EmissionRecordAttachmentController extends AbstractController
             'Agua' => 'backend_emission_edit_water_v1',
             'Alojamientos' => 'backend_emission_edit_accommodation_v1',
             'Catering' => 'backend_emission_edit_catering_v1',
+            'Materiales' => 'backend_emission_edit_material_v1',
             default => 'backend_emission_edit_transport_v20',
         };
 
