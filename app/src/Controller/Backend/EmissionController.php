@@ -590,7 +590,7 @@ class EmissionController extends AbstractController
         if (!$categoryEntity->isEnabledInEmissionCalculator()) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
-        if ('Agua' === $categoryEntity->getName()) {
+        if (in_array($categoryEntity->getName(), ['Agua', 'Catering'], true)) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
 
@@ -683,7 +683,7 @@ class EmissionController extends AbstractController
         if (!$project || $record->getProject() !== $project) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
         }
-        if (!$category || 'Agua' === $category->getName() || !$record->getActivity()) {
+        if (!$category || in_array($category->getName(), ['Agua', 'Catering'], true) || !$record->getActivity()) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);

@@ -81,17 +81,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
         ];
 
         $nameMap = [
-            // Catering
-            'Desayuno' => 'Breakfast',
-            'Bocadillo' => 'Sandwich',
-            'Menú Vegetariano' => 'Vegetarian menu',
-            'Menú Vegano' => 'Vegan menu',
-            'Menú Pescado' => 'Fish menu',
-            'Menú Carne de Pollo' => 'Chicken menu',
-            'Menú Carne Roja' => 'Red meat menu',
-            'Bebida Alcohólica' => 'Alcoholic beverage',
-            'Bebida No Alcohólica' => 'Non-alcoholic beverage',
-
             // Materiales
             'Madera comprada' => 'Purchased wood',
             'Madera reciclada' => 'Recycled wood',
@@ -151,17 +140,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
         // --- Datos base (ES por defecto) ---
         $activities = [
             // [CategoryName, Name(ES), Unit(ES), Factor, Subcategory(ES or null)]
-            // Catering
-            ['Catering', 'Desayuno', 'ración', 1.2, null],
-            ['Catering', 'Bocadillo', 'ración', 0.8, null],
-            ['Catering', 'Menú Vegetariano', 'ración', 2.0, null],
-            ['Catering', 'Menú Vegano', 'ración', 1.5, null],
-            ['Catering', 'Menú Pescado', 'ración', 3.0, null],
-            ['Catering', 'Menú Carne de Pollo', 'ración', 3.5, null],
-            ['Catering', 'Menú Carne Roja', 'ración', 5.0, null],
-            ['Catering', 'Bebida Alcohólica', 'unidad', 1.0, null],
-            ['Catering', 'Bebida No Alcohólica', 'unidad', 0.5, null],
-
             // Materiales
             ['Materiales', 'Papel (nuevo)', 'kg', 1.3, null],
             ['Materiales', 'Papel (reciclado)', 'kg', 0.9, null],
