@@ -66,7 +66,6 @@ final class WaterEmissionRecordFixturesTest extends TestCase
         $cases = [];
         foreach ($records as $record) {
             self::assertSame($category, $record->getCategory());
-            self::assertNull($record->getActivity());
             self::assertSame(EmissionRecord::STATUS_CALCULATED, $record->getStatus());
             self::assertNotNull($record->getAmount());
             self::assertNotNull($record->getEmission());

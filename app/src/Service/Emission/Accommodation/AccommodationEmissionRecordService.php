@@ -42,7 +42,6 @@ final readonly class AccommodationEmissionRecordService
         $record
             ->setProject($project)
             ->setCategory($category)
-            ->setActivity(null)
             ->setPhase($phase)
             ->setRegisteredAt(\DateTimeImmutable::createFromInterface($input->startDate))
             ->setNotes($notes)

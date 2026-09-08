@@ -66,7 +66,7 @@ final class WaterEmissionSnapshot
 
     public function isWaterV1Record(EmissionRecord $record, int $waterCategoryId): bool
     {
-        if (null !== $record->getActivity() || $waterCategoryId !== $record->getEffectiveCategory()?->getId()) {
+        if ($waterCategoryId !== $record->getEffectiveCategory()?->getId()) {
             return false;
         }
 

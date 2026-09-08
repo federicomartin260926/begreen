@@ -69,7 +69,6 @@ final class CateringEmissionControllerTest extends KernelTestCase
 
         self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         self::assertInstanceOf(EmissionRecord::class, $persisted);
-        self::assertNull($persisted->getActivity());
         self::assertSame($context['category'], $persisted->getCategory());
         self::assertSame($context['phase'], $persisted->getPhase());
         self::assertSame(100.0, $persisted->getAmount());
@@ -217,7 +216,7 @@ final class CateringEmissionControllerTest extends KernelTestCase
     {
         $input = (new CateringEmissionRequestMapper())->map($this->request('POST', $this->mealPost()));
         $result = $this->calculator()->calculate($input);
-        $record = (new EmissionRecord())->setProject($context['project'])->setPhase($context['phase'])->setCategory($context['category'])->setActivity(null)->setAmount((float) $result->normalizedAmount)->setEmission((float) $result->emissionKgCo2e)->setStatus($result->status)->setRegisteredAt(new \DateTimeImmutable('2025-01-01'))->setNotes($notes)->setCalculationDetails((new CateringEmissionSnapshot())->encode($input, $result));
+        $record = (new EmissionRecord())->setProject($context['project'])->setPhase($context['phase'])->setCategory($context['category'])->setAmount((float) $result->normalizedAmount)->setEmission((float) $result->emissionKgCo2e)->setStatus($result->status)->setRegisteredAt(new \DateTimeImmutable('2025-01-01'))->setNotes($notes)->setCalculationDetails((new CateringEmissionSnapshot())->encode($input, $result));
         $this->setId($record, 300);
 
         return $record;

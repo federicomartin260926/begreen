@@ -73,7 +73,6 @@ final class CateringEmissionRecordFixturesTest extends TestCase
         $cases = [];
         foreach ($records as $record) {
             self::assertSame($category, $record->getCategory());
-            self::assertNull($record->getActivity());
             self::assertTrue($snapshot->isCateringV1Record($record, 20));
 
             $encoded = (string) $record->getCalculationDetails();

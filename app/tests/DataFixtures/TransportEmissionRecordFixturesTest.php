@@ -81,7 +81,6 @@ final class TransportEmissionRecordFixturesTest extends TestCase
         self::assertCount(3, $records);
         foreach ($records as $record) {
             self::assertSame($category, $record->getCategory());
-            self::assertNull($record->getActivity());
             self::assertSame(EmissionRecord::STATUS_CALCULATED, $record->getStatus());
             self::assertStringContainsString('"version":"transport-v20"', (string) $record->getCalculationDetails());
         }

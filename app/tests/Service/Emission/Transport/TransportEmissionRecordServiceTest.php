@@ -33,7 +33,6 @@ final class TransportEmissionRecordServiceTest extends TestCase
         self::assertTrue($result->isPersisted());
         self::assertSame(10.0, $result->record?->getAmount());
         self::assertSame(5.0, $result->record?->getEmission());
-        self::assertNull($result->record?->getActivity());
         self::assertSame('Transporte', $result->record?->getCategory()?->getName());
         self::assertSame('2025-06-01', $result->record?->getRegisteredAt()->format('Y-m-d'));
         self::assertSame('Nota', $result->record?->getNotes());

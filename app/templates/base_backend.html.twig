@@ -118,10 +118,6 @@
                                 <i class="bi bi-list-check flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.measures'|trans }}</span>
                             </a>
-                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_emission' %}active fw-bold{% endif %}" href="{{ path('admin_emission_activity_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.factors'|trans }}">
-                                <i class="bi bi-cloud-haze2-fill flex-shrink-0"></i>
-                                <span class="ms-2">{{ 'backend.menu.factors'|trans }}</span>
-                            </a>
                             <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_auxiliary' %}active fw-bold{% endif %}" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.aux_tables'|trans }}">
                                 <i class="bi bi-table flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.aux_tables'|trans }}</span>
@@ -178,11 +174,6 @@
                             <li>
                                 <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_measures_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.measures'|trans }}">
                                     {{ 'backend.menu.measures'|trans }}
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_emission_activity_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.factors'|trans }}">
-                                    {{ 'backend.menu.factors'|trans }}
                                 </a>
                             </li>
                             <li>

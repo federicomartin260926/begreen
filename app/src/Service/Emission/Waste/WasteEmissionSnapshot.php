@@ -71,7 +71,7 @@ final class WasteEmissionSnapshot
 
     public function isWasteV1Record(EmissionRecord $record, int $categoryId): bool
     {
-        if (null !== $record->getActivity() || $categoryId !== $record->getEffectiveCategory()?->getId()) {
+        if ($categoryId !== $record->getEffectiveCategory()?->getId()) {
             return false;
         }
 

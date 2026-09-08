@@ -33,12 +33,8 @@ class EmissionRecord
     #[ORM\JoinColumn(nullable: false)]
     private ProjectPhaseDate $phase;
 
-    #[ORM\ManyToOne(targetEntity: EmissionActivity::class)]
-    #[ORM\JoinColumn(nullable: true)]
-    private ?EmissionActivity $activity = null;
-
     #[ORM\ManyToOne(targetEntity: Category::class)]
-    #[ORM\JoinColumn(nullable: true)]
+    #[ORM\JoinColumn(nullable: false)]
     private ?Category $category = null;
 
     #[ORM\Column(type: 'float', nullable: true)]
@@ -122,17 +118,6 @@ class EmissionRecord
         return $this;
     }
 
-    public function getActivity(): ?EmissionActivity
-    {
-        return $this->activity;
-    }
-
-    public function setActivity(?EmissionActivity $activity): self
-    {
-        $this->activity = $activity;
-        return $this;
-    }
-
     public function getCategory(): ?Category
     {
         return $this->category;
@@ -147,7 +132,7 @@ class EmissionRecord
 
     public function getEffectiveCategory(): ?Category
     {
-        return $this->category ?? $this->activity?->getCategory();
+        return $this->category;
     }
 
     public function getAmount(): ?float

@@ -63,7 +63,6 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
 
         self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         self::assertInstanceOf(EmissionRecord::class, $persisted);
-        self::assertNull($persisted->getActivity());
         self::assertSame($context['category'], $persisted->getCategory());
         self::assertSame(6.0, $persisted->getAmount());
         self::assertSame(57.303, $persisted->getEmission());
@@ -88,7 +87,6 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
 
             self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
             self::assertInstanceOf(EmissionRecord::class, $persisted);
-            self::assertNull($persisted->getActivity());
             self::assertSame($amount, $persisted->getAmount());
             self::assertSame($emission, $persisted->getEmission());
             self::assertSame($status, $persisted->getStatus());
@@ -363,7 +361,7 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
             ->setProject($context['project'])
             ->setPhase($context['phase'])
             ->setCategory($context['category'])
-            ->setActivity(null)
+
             ->setAmount((float) $result->normalizedAmount)
             ->setEmission((float) $result->emissionKgCo2e)
             ->setStatus($result->status)

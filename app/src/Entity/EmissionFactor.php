@@ -47,7 +47,7 @@ class EmissionFactor
     #[ORM\Column(length: 100)]
     private string $unit;
 
-    #[ORM\Column(length: 100)]
+    #[ORM\Column(length: 255)]
     private string $source;
 
     #[ORM\Column(type: 'text', nullable: true)]

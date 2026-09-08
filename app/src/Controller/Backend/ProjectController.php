@@ -2,7 +2,7 @@
 
 namespace App\Controller\Backend;
 
-use App\Entity\{CrewDepartment, CrewMemberAssignment, CrewPosition, EmissionActivity, EmissionRecord, Plan, Project, ProjectCompany, ProjectFundingSource, CrewMember, ProjectMembership, ProjectPhaseDate, User};
+use App\Entity\{CrewDepartment, CrewMemberAssignment, CrewPosition, EmissionRecord, Plan, Project, ProjectCompany, ProjectFundingSource, CrewMember, ProjectMembership, ProjectPhaseDate, User};
 use App\Form\{ProjectType, CrewMemberCollectionType};
 use App\Repository\{CrewDepartmentRepository, CrewPositionRepository, ProjectBillingDocumentRepository, ProjectRepository, EmissionRecordRepository, PlanRepository};
 use App\Security\ProjectVoter;

@@ -80,7 +80,6 @@ final class CateringEmissionRecordFixtures extends Fixture implements DependentF
                         ->setProject($project)
                         ->setPhase($phase)
                         ->setCategory($category)
-                        ->setActivity(null)
                         ->setRegisteredAt(\DateTimeImmutable::createFromInterface($input->startDate))
                         ->setNotes($case['notes'])
                         ->setAmount(null === $calculation->normalizedAmount ? null : (float) $calculation->normalizedAmount)

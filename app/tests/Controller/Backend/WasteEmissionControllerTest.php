@@ -91,7 +91,6 @@ final class WasteEmissionControllerTest extends KernelTestCase
 
         self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         self::assertInstanceOf(EmissionRecord::class, $persisted);
-        self::assertNull($persisted->getActivity());
         self::assertSame(10.0, $persisted->getAmount());
         self::assertSame(2.4542, $persisted->getEmission());
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $persisted->getStatus());
@@ -429,7 +428,7 @@ final class WasteEmissionControllerTest extends KernelTestCase
             ->setProject($context['project'])
             ->setPhase($context['phase'])
             ->setCategory($context['category'])
-            ->setActivity(null)
+
             ->setAmount((float) $result->normalizedAmount)
             ->setEmission((float) $result->emissionKgCo2e)
             ->setStatus($result->status)

@@ -63,7 +63,6 @@ final class WasteEmissionRecordFixturesTest extends TestCase
         $cases = [];
         foreach ($records as $record) {
             self::assertSame($category, $record->getCategory());
-            self::assertNull($record->getActivity());
             self::assertTrue($snapshot->isWasteV1Record($record, 70));
 
             $encoded = (string) $record->getCalculationDetails();
@@ -119,12 +118,8 @@ final class WasteEmissionRecordFixturesTest extends TestCase
 
         $source = file_get_contents(__DIR__.'/../../src/DataFixtures/WasteEmissionRecordFixtures.php');
         self::assertIsString($source);
-        self::assertStringContainsString('->setActivity(null)', $source);
         self::assertStringContainsString('->setEmission(null === $calculation->emissionKgCo2e', $source);
 
-        $legacySource = file_get_contents(__DIR__.'/../../src/DataFixtures/EmissionRecordFixtures.php');
-        self::assertIsString($legacySource);
-        self::assertStringContainsString("'Residuos',", $legacySource);
     }
 
     private function calculator(): WasteEmissionCalculator

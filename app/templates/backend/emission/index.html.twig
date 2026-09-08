@@ -122,7 +122,6 @@
                                     </thead>
                                     <tbody>
                                     {% for record in selectedCategoryRecords %}
-                                        {% set activity = record.activity %}
                                         {% set effectiveCategory = record.effectiveCategory %}
                                         {% set transportV20Summary = transportV20Summaries[record.id]|default(null) %}
                                         {% set energyV1Summary = energyV1Summaries[record.id]|default(null) %}
@@ -133,14 +132,7 @@
                                         {% set materialV1Summary = materialV1Summaries[record.id]|default(null) %}
                                         <tr class="emissions-record-row">
                                             <td>
-                                                {% if activity %}
-                                                    {{ activity.name }}
-                                                    {% if activity.subcategory %}
-                                                        <span class="text-muted">
-                                                            ({{ ('backend.emission.subcat.' ~ activity.subcategory)|trans }})
-                                                        </span>
-                                                    {% endif %}
-                                                {% elseif transportV20Summary %}
+                                                {% if transportV20Summary %}
                                                     {{ ('backend.emission.transport_v20.modes.' ~ transportV20Summary.mode)|trans }}
                                                     {% if transportV20Summary.detailCode %}
                                                         <span class="text-muted">
@@ -171,9 +163,7 @@
                                             </td>
                                             <td>{{ project.getPhaseLabel(record.phase.phase)|trans }}</td>
                                             <td>
-                                                {% if activity %}
-                                                    {{ activity.unit }}
-                                                {% elseif transportV20Summary and transportV20Summary.displayActivityUnit %}
+                                                {% if transportV20Summary and transportV20Summary.displayActivityUnit %}
                                                     {{ ('backend.emission.transport_v20.units.' ~ transportV20Summary.displayActivityUnit)|trans }}
                                                 {% elseif energyV1Summary and energyV1Summary.normalizedUnit %}
                                                     {{ energyV1Summary.normalizedUnit }}
@@ -205,18 +195,7 @@
                                             </td>
                                             <td>{{ record.registeredAt|date('d/m/Y') }}</td>
                                             <td class="text-nowrap">
-                                                {% if activity %}
-                                                <a
-                                                    href="{{ path('backend_emission_edit', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                {% elseif record.id in transportV20RecordIds %}
+                                                {% if record.id in transportV20RecordIds %}
                                                 <a
                                                     href="{{ path('backend_emission_edit_transport_v20', { id: record.id }|merge(currentQuery)) }}"
                                                     data-bs-toggle="popover"

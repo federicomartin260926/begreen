@@ -77,7 +77,6 @@ final class TransportEmissionRecordFixtures extends Fixture implements Dependent
                         ->setProject($project)
                         ->setPhase($phase)
                         ->setCategory($category)
-                        ->setActivity(null)
                         ->setRegisteredAt($date)
                         ->setNotes($case['notes'])
                         ->setAmount((float) $calculation->normalizedActivityValue)

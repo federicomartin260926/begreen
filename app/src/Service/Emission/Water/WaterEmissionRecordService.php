@@ -38,7 +38,6 @@ final readonly class WaterEmissionRecordService
         $record
             ->setProject($project)
             ->setCategory($category)
-            ->setActivity(null)
             ->setPhase($phase)
             ->setRegisteredAt(\DateTimeImmutable::createFromInterface($input->startDate))
             ->setNotes($notes)

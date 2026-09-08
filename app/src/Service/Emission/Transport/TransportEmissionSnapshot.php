@@ -202,8 +202,7 @@ final class TransportEmissionSnapshot
 
     public function isTransportV20Record(EmissionRecord $record, int $transportCategoryId): bool
     {
-        return null === $record->getActivity()
-            && $transportCategoryId === $record->getEffectiveCategory()?->getId()
+        return $transportCategoryId === $record->getEffectiveCategory()?->getId()
             && $this->isTransportV20($record->getCalculationDetails());
     }
 

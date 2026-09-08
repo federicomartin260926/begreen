@@ -148,7 +148,7 @@ final class WaterEmissionSnapshotTest extends TestCase
         $details = (new WaterEmissionSnapshot())->encode($this->input(), $result);
         $record = (new EmissionRecord())
             ->setCategory($category)
-            ->setActivity(null)
+
             ->setCalculationDetails($details);
 
         $snapshot = new WaterEmissionSnapshot();

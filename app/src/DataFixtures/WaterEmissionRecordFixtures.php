@@ -74,7 +74,6 @@ final class WaterEmissionRecordFixtures extends Fixture implements DependentFixt
                         ->setProject($project)
                         ->setPhase($phase)
                         ->setCategory($category)
-                        ->setActivity(null)
                         ->setRegisteredAt($date)
                         ->setNotes($case['notes'])
                         ->setAmount(null === $calculation->normalizedAmount ? null : (float) $calculation->normalizedAmount)

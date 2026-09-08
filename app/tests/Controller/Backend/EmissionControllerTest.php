@@ -4,12 +4,10 @@ namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\EmissionController;
 use App\Entity\Category;
-use App\Entity\EmissionActivity;
 use App\Entity\EmissionRecord;
 use App\Entity\Project;
 use App\Entity\ProjectPhaseDate;
 use App\Repository\CategoryRepository;
-use App\Repository\EmissionActivityRepository;
 use App\Repository\EmissionRecordRepository;
 use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
@@ -142,7 +140,7 @@ final class EmissionControllerTest extends KernelTestCase
             ->setProject($payload['project'])
             ->setPhase($phase)
             ->setCategory($payload['categories'][0])
-            ->setActivity(null)
+
             ->setAmount(null)
             ->setEmission(null)
             ->setStatus(EmissionRecord::STATUS_PENDING_DATA)
@@ -225,7 +223,7 @@ final class EmissionControllerTest extends KernelTestCase
             ->setProject($payload['project'])
             ->setPhase($payload['records'][0]->getPhase())
             ->setCategory($payload['categories'][3])
-            ->setActivity(null)
+
             ->setAmount(1)
             ->setEmission(0.517)
             ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'))
@@ -270,7 +268,7 @@ final class EmissionControllerTest extends KernelTestCase
             ->setProject($payload['project'])
             ->setPhase($payload['records'][0]->getPhase())
             ->setCategory($payload['categories'][4])
-            ->setActivity(null)
+
             ->setAmount(6)
             ->setEmission(9.5505)
             ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'))
@@ -289,68 +287,6 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('huésped-noche', $content);
         self::assertStringContainsString('/backend/emission/995/edit-accommodation-v1', $content);
         self::assertStringContainsString('/backend/emission/995/duplicate-accommodation-v1', $content);
-    }
-
-    public function testLegacyGenericCreateRouteRejectsWater(): void
-    {
-        $payload = $this->buildPayload();
-        $project = $payload['project'];
-        $water = $payload['categories'][3];
-        $activeProject = $this->createMock(ActiveProjectService::class);
-        $activeProject->method('getActiveProject')->willReturn($project);
-        $categories = $this->createMock(CategoryRepository::class);
-        $categories->method('find')->with(5)->willReturn($water);
-        $controller = new EmissionController();
-        $controller->setContainer(self::getContainer());
-        $this->setAdminToken();
-
-        $this->expectException(NotFoundHttpException::class);
-        $controller->new(
-            '5',
-            new Request(),
-            $activeProject,
-            $this->createMock(EntityManagerInterface::class),
-            $this->createMock(ProjectRepository::class),
-            $categories,
-            $this->createMock(EmissionActivityRepository::class),
-            self::getContainer()->get(\App\Service\Emission\WoodCatalog::class),
-            self::getContainer()->get(\App\Service\Emission\WoodEmissionCalculator::class),
-            self::getContainer()->get(TranslatorInterface::class),
-        );
-    }
-
-    public function testLegacyGenericEditRouteRejectsWater(): void
-    {
-        $payload = $this->buildPayload();
-        $water = $payload['categories'][3];
-        $activity = (new EmissionActivity())
-            ->setCategory($water)
-            ->setName('Actividad residual')
-            ->setUnit('litros')
-            ->setEmissionFactor(0.1);
-        $record = (new EmissionRecord())
-            ->setProject($payload['project'])
-            ->setPhase($payload['records'][0]->getPhase())
-            ->setCategory($water)
-            ->setActivity($activity)
-            ->setAmount(10)
-            ->setEmission(1)
-            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'));
-        $controller = new EmissionController();
-        $controller->setContainer(self::getContainer());
-        $this->setAdminToken();
-
-        $this->expectException(NotFoundHttpException::class);
-        $controller->edit(
-            $record,
-            new Request(),
-            $this->createMock(EntityManagerInterface::class),
-            $this->createMock(ProjectRepository::class),
-            $this->createMock(EmissionActivityRepository::class),
-            self::getContainer()->get(\App\Service\Emission\WoodCatalog::class),
-            self::getContainer()->get(\App\Service\Emission\WoodEmissionCalculator::class),
-            self::getContainer()->get(TranslatorInterface::class),
-        );
     }
 
     public function testDeleteRecordRemovesAttachmentFileBeforeEntity(): void
@@ -449,20 +385,6 @@ final class EmissionControllerTest extends KernelTestCase
         $this->setEntityId($generic, 5);
         $this->setEntityId($accommodation, 3);
 
-        $energyActivity = (new EmissionActivity())
-            ->setName('Electricidad')
-            ->setUnit('kWh')
-            ->setEmissionFactor(0.23)
-            ->setCategory($energy);
-        $this->setEntityId($energyActivity, 11);
-
-        $transportActivity = (new EmissionActivity())
-            ->setName('Furgoneta')
-            ->setUnit('km')
-            ->setEmissionFactor(0.45)
-            ->setCategory($transport);
-        $this->setEntityId($transportActivity, 12);
-
         $phase = (new ProjectPhaseDate())
             ->setPhase('actividad')
             ->setStartDate(new \DateTimeImmutable('2026-01-01'))
@@ -475,7 +397,7 @@ final class EmissionControllerTest extends KernelTestCase
             $record = (new EmissionRecord())
                 ->setProject($project)
                 ->setPhase($phase)
-                ->setActivity($energyActivity)
+                ->setCategory($energy)
                 ->setAmount(10)
                 ->setEmission(2.3)
                 ->setRegisteredAt(new \DateTimeImmutable(sprintf('2026-01-%02d', 9 + $i)));
@@ -487,7 +409,7 @@ final class EmissionControllerTest extends KernelTestCase
             $record = (new EmissionRecord())
                 ->setProject($project)
                 ->setPhase($phase)
-                ->setActivity($transportActivity)
+                ->setCategory($transport)
                 ->setAmount(20)
                 ->setEmission(9.0)
                 ->setRegisteredAt(new \DateTimeImmutable(sprintf('2026-02-%02d', $i)));

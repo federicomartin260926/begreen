@@ -32,7 +32,6 @@ final readonly class EnergyEmissionRecordService
         $record
             ->setProject($project)
             ->setCategory($category)
-            ->setActivity(null)
             ->setPhase($phase)
             ->setRegisteredAt(\DateTimeImmutable::createFromInterface($input->startDate))
             ->setNotes($notes)

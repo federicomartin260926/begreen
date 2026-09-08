@@ -137,7 +137,7 @@ final class EnergyEmissionSnapshot
 
     public function isEnergyV1Record(\App\Entity\EmissionRecord $record, int $energyCategoryId): bool
     {
-        if (null !== $record->getActivity() || $energyCategoryId !== $record->getEffectiveCategory()?->getId()) {
+        if ($energyCategoryId !== $record->getEffectiveCategory()?->getId()) {
             return false;
         }
 

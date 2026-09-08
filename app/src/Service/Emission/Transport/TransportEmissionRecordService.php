@@ -45,7 +45,6 @@ final readonly class TransportEmissionRecordService
         $record
             ->setProject($project)
             ->setCategory($category)
-            ->setActivity(null)
             ->setPhase($phase)
             ->setRegisteredAt(\DateTimeImmutable::createFromInterface($input->startedAt))
             ->setNotes($notes)

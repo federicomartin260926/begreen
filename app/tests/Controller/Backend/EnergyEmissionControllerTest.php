@@ -120,7 +120,6 @@ final class EnergyEmissionControllerTest extends KernelTestCase
 
         self::assertSame(302, $response->getStatusCode());
         self::assertInstanceOf(EmissionRecord::class, $persisted);
-        self::assertNull($persisted->getActivity());
         self::assertSame($context['category'], $persisted->getCategory());
         self::assertSame(10.0, $persisted->getAmount());
         self::assertSame(2.58, $persisted->getEmission());
@@ -351,7 +350,7 @@ final class EnergyEmissionControllerTest extends KernelTestCase
             ->setProject($context['project'])
             ->setPhase($context['phase'])
             ->setCategory($context['category'])
-            ->setActivity(null)
+
             ->setAmount(10)
             ->setEmission(2.58)
             ->setStatus(EmissionRecord::STATUS_CALCULATED)

@@ -129,7 +129,6 @@ final class MaterialEmissionControllerTest extends KernelTestCase
 
         self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         self::assertInstanceOf(EmissionRecord::class, $persisted);
-        self::assertNull($persisted->getActivity());
         self::assertSame('Materiales', $persisted->getCategory()?->getName());
         self::assertSame(100.0, $persisted->getAmount());
         self::assertSame(26.950416, $persisted->getEmission());
@@ -336,7 +335,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         $result = $this->calculator()->calculate($input);
         $record = (new EmissionRecord())
             ->setProject($context['project'])->setPhase($context['phase'])->setCategory($context['category'])
-            ->setActivity(null)->setAmount((float) $result->normalizedAmount)->setEmission((float) $result->emissionKgCo2e)
+            ->setAmount((float) $result->normalizedAmount)->setEmission((float) $result->emissionKgCo2e)
             ->setStatus($result->status)->setRegisteredAt(new \DateTimeImmutable('2026-01-01'))
             ->setCalculationDetails((new MaterialEmissionSnapshot())->encode($input, $result));
         $this->setId($record, 300);

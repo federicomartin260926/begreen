@@ -3,13 +3,11 @@
 namespace App\Controller\Backend;
 
 // App
-use App\Entity\{Category, EmissionActivity, EmissionRecord};
+use App\Entity\{Category, EmissionRecord};
 use App\Exception\OpenRouteServiceException;
-use App\Form\{EmissionRecordType, WoodEmissionType};
-use App\Repository\{CategoryRepository, EmissionActivityRepository, EmissionRecordRepository, ProjectRepository};
+use App\Repository\{CategoryRepository, EmissionRecordRepository, ProjectRepository};
 use App\Security\{EmissionRecordVoter, ProjectVoter};
 use App\Service\{ActiveProjectService, OpenRouteService};
-use App\Service\Emission\{WoodCatalog, WoodEmissionCalculator};
 use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\Accommodation\AccommodationEmissionSnapshot;
 use App\Service\Emission\Catering\CateringEmissionSnapshot;
@@ -26,8 +24,7 @@ use Gedmo\Translatable\Entity\Translation;
 
 // Symfony
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Form\FormInterface;
-use Symfony\Component\HttpFoundation\{JsonResponse, Request, Response};
+use Symfony\Component\HttpFoundation\{Request, Response};
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -456,14 +453,13 @@ class EmissionController extends AbstractController
         }
 
         foreach ($records as $record) {
-            $activity = $record->getActivity();
             $cat = $record->getEffectiveCategory();
             if (!$cat) {
                 continue;
             }
 
             $catId    = $cat->getId();
-            $actName = $activity?->getName() ?? $this->modernActivityName($record, $waterSnapshot, $accommodationSnapshot, $cateringSnapshot, $wasteSnapshot, $wasteCatalog, $materialSnapshot, $translator);
+            $actName = $this->modernActivityName($record, $waterSnapshot, $accommodationSnapshot, $cateringSnapshot, $wasteSnapshot, $wasteCatalog, $materialSnapshot, $translator);
 
             if (!isset($categoriesVM[$catId])) {
                 continue;
@@ -679,7 +675,10 @@ class EmissionController extends AbstractController
             return $this->generateUrl('backend_emission_new_material_v1', $params);
         }
 
-        return $this->generateUrl('backend_emission_new', $params + ['category' => $categoryId]);
+        throw new \LogicException(sprintf(
+            'Unsupported emission calculator category id %d.',
+            $categoryId,
+        ));
     }
 
     private function findCategoryIdByNameEs(EntityManagerInterface $em, string $nameEs): ?int
@@ -689,390 +688,6 @@ class EmissionController extends AbstractController
                 ->setMaxResults(1)
                 ->getOneOrNullResult(); // ['id'=>X] | null
         return $row['id'] ?? null;
-    }
-
-
-    #[Route('/new/{category}', name: 'backend_emission_new', methods: ['GET','POST'])]
-    public function new(
-        string $category,
-        Request $request,
-        ActiveProjectService $activeProjectService,
-        EntityManagerInterface $em,
-        ProjectRepository $projectRepository,
-        CategoryRepository $categoryRepository,
-        EmissionActivityRepository $activityRepository,
-        WoodCatalog $woodCatalog,
-        WoodEmissionCalculator $calculator,
-        TranslatorInterface $t
-    ): Response {
-        $project = $activeProjectService->getActiveProject();
-        if (!$project) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.no_active_project'));
-        }
-        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
-
-        // Resolver categoría por ID, nombre ES o traducción EN
-        $categoryEntity = $this->resolveCategoryFromRouteParam($category, $categoryRepository, $em);
-        if (!$categoryEntity) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
-        }
-        if (!$categoryEntity->isEnabledInEmissionCalculator()) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
-        }
-        if (in_array($categoryEntity->getName(), ['Agua', 'Catering', 'Residuos'], true)) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
-        }
-
-        $record = new EmissionRecord();
-        $record->setProject($project);
-        $record->setCategory($categoryEntity);
-        $record->setRegisteredAt(new \DateTimeImmutable());
-
-        $isMaterials = $categoryEntity->getId() === $this->findCategoryIdByNameEs($em, 'Materiales');
-        $materialActivities = $isMaterials
-            ? $this->buildMaterialActivities($activityRepository, $categoryEntity, $project)
-            : [];
-        $form = $isMaterials
-            ? $this->createForm(WoodEmissionType::class, $record, [
-                'material_activities' => $materialActivities,
-            ])
-            : $this->createForm(EmissionRecordType::class, $record, [
-                'category' => $categoryEntity,
-            ]);
-        $form->handleRequest($request);
-
-        if (!$isMaterials) {
-            $calculationDetails = $request->request->get('calculationDetails');
-            if ($calculationDetails !== null) {
-                $record->setCalculationDetails($calculationDetails);
-            }
-        }
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $date  = $record->getRegisteredAt();
-            $phase = $projectRepository->findPhaseByDate($project, $date);
-            if (!$phase) {
-                $this->addFlash('danger', $t->trans('backend.emission.errors.date_out_of_phase', [
-                    '%date%' => $date->format('Y-m-d')
-                ]));
-            } else {
-                try {
-                    if ($isMaterials) {
-                        $this->applyMaterialCalculation($record, $form, $categoryEntity, $activityRepository, $calculator);
-                    } else {
-                        $activity = $record->getActivity();
-                        $amount = $record->getAmount();
-                        $record->setCategory($activity->getCategory());
-                        $record->setEmission($amount * $activity->getEmissionFactor());
-                    }
-
-                    $record->setPhase($phase);
-                    $em->persist($record);
-                    $em->flush();
-
-                    $this->addFlash('success', $t->trans('backend.emission.flash.created'));
-                    return $this->redirectToRoute(
-                        'backend_emission_index',
-                        $this->buildEmissionIndexQuery($request, $categoryEntity->getId()),
-                    );
-                } catch (\InvalidArgumentException $exception) {
-                    $this->addFlash('danger', $t->trans(
-                        'backend.emission.wood.errors.' . $exception->getMessage(),
-                    ));
-                }
-            }
-        }
-
-        return $this->render('backend/emission/form.html.twig', [
-            'form'     => $form->createView(),
-            'project'  => $project,
-            'category' => $categoryEntity,
-            'edit'     => false,
-            'isMaterials' => $isMaterials,
-            'materialActivities' => $materialActivities,
-            'densities' => $isMaterials ? $woodCatalog->getDefaultDensities() : [],
-            'woodScenarios' => $isMaterials ? $woodCatalog->getScenarioCatalog() : [],
-        ]);
-    }
-
-    #[Route('/{id}/edit', name: 'backend_emission_edit', methods: ['GET','POST'])]
-    public function edit(
-        EmissionRecord $record,
-        Request $request,
-        EntityManagerInterface $em,
-        ProjectRepository $projectRepository,
-        EmissionActivityRepository $activityRepository,
-        WoodCatalog $woodCatalog,
-        WoodEmissionCalculator $calculator,
-        TranslatorInterface $t,
-    ): Response {
-        $project  = $record->getProject();
-        $category = $record->getEffectiveCategory();
-
-        if (!$project || $record->getProject() !== $project) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
-        }
-        if (!$category || in_array($category->getName(), ['Agua', 'Catering', 'Residuos'], true) || !$record->getActivity()) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
-        }
-        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
-
-        $isMaterials = $category->getId() === $this->findCategoryIdByNameEs($em, 'Materiales');
-        $materialActivities = $isMaterials
-            ? $this->buildMaterialActivities($activityRepository, $category, $project, $record->getActivity())
-            : [];
-        $details = $isMaterials ? $this->decodeCalculationDetails($record) : [];
-        $form = $isMaterials
-            ? $this->createForm(WoodEmissionType::class, $record, [
-                'wood_details' => $details,
-                'material_activities' => $materialActivities,
-                'initial_subcategory' => $record->getActivity()->getSubcategory() === 'madera' ? 'madera' : 'generic',
-                'initial_activity_id' => $record->getActivity()->getId(),
-                'generic_amount' => $record->getAmount(),
-            ])
-            : $this->createForm(EmissionRecordType::class, $record, [
-                'category' => $category,
-            ]);
-        $form->handleRequest($request);
-
-        if (!$isMaterials) {
-            $calculationDetails = $request->request->get('calculationDetails');
-            if ($calculationDetails !== null) {
-                $record->setCalculationDetails($calculationDetails);
-            }
-        }
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $date  = $record->getRegisteredAt();
-            $phase = $projectRepository->findPhaseByDate($project, $date);
-            if (!$phase) {
-                $this->addFlash('danger', $t->trans('backend.emission.errors.date_out_of_phase', [
-                    '%date%' => $date->format('Y-m-d')
-                ]));
-            } else {
-                try {
-                    if ($isMaterials) {
-                        $this->applyMaterialCalculation($record, $form, $category, $activityRepository, $calculator);
-                    } else {
-                        $activity = $record->getActivity();
-                        $amount = $record->getAmount();
-                        $record->setCategory($activity->getCategory());
-                        $record->setEmission($amount * $activity->getEmissionFactor());
-                    }
-
-                    $record->setPhase($phase);
-                    $em->flush();
-
-                    $this->addFlash('success', $t->trans('backend.emission.flash.updated'));
-                    return $this->redirectToRoute(
-                        'backend_emission_index',
-                        $this->buildEmissionIndexQuery($request, $category->getId()),
-                    );
-                } catch (\InvalidArgumentException $exception) {
-                    $this->addFlash('danger', $t->trans(
-                        'backend.emission.wood.errors.' . $exception->getMessage(),
-                    ));
-                }
-            }
-        }
-
-        return $this->render('backend/emission/form.html.twig', [
-            'form'    => $form->createView(),
-            'project' => $project,
-            'record'  => $record,
-            'category'=> $category,
-            'edit'    => true,
-            'isMaterials' => $isMaterials,
-            'materialActivities' => $materialActivities,
-            'densities' => $isMaterials ? $woodCatalog->getDefaultDensities() : [],
-            'woodScenarios' => $isMaterials ? $woodCatalog->getScenarioCatalog() : [],
-        ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function getWoodFormInput(FormInterface $form): array
-    {
-        return [
-            'method' => $form->get('method')->getData(),
-            'certification' => $form->get('certification')->getData(),
-            'quantity' => $form->get('quantity')->getData(),
-            'inputWeightKg' => $form->get('inputWeightKg')->getData(),
-            'woodClassification' => $form->get('woodClassification')->getData(),
-            'thicknessM' => $form->get('thicknessM')->getData(),
-            'lengthM' => $form->get('lengthM')->getData(),
-            'widthM' => $form->get('widthM')->getData(),
-            'speciesKey' => $form->get('speciesKey')->getData(),
-            'boardFamily' => $form->get('boardFamily')->getData(),
-            'boardOption' => $form->get('boardOption')->getData(),
-            'manualBoardThicknessMm' => $form->get('manualBoardThicknessMm')->getData(),
-        ];
-    }
-
-    /**
-     * @return array<string, array<int, array{id:int,name:string,unit:string}>>
-     */
-    private function buildMaterialActivities(
-        EmissionActivityRepository $repository,
-        Category $category,
-        object $project,
-        ?EmissionActivity $currentActivity = null,
-    ): array {
-        $activities = ['generic' => [], 'madera' => []];
-        $sourceName = $project->getEmissionSourceName() ?: 'MITECO';
-
-        foreach ($repository->getActivitiesForLatestYearByCategoryId($sourceName, $category->getId()) as $activity) {
-            if ($activity->getSubcategory() === null) {
-                $activities['generic'][$activity->getId()] = [
-                    'id' => $activity->getId(),
-                    'name' => $activity->getName(),
-                    'unit' => $activity->getUnit(),
-                ];
-            }
-        }
-
-        foreach (['purchased', 'recycled', 'reused'] as $origin) {
-            $activity = $repository->findWoodFactorForOrigin($origin);
-            if ($activity && $activity->getCategory()?->getId() === $category->getId()) {
-                $activities['madera'][$activity->getId()] = [
-                    'id' => $activity->getId(),
-                    'name' => $activity->getName(),
-                    'unit' => $activity->getUnit(),
-                ];
-            }
-        }
-
-        if ($currentActivity && $currentActivity->getCategory()?->getId() === $category->getId()) {
-            $group = match ($currentActivity->getSubcategory()) {
-                'madera' => 'madera',
-                null => 'generic',
-                default => null,
-            };
-            if ($group !== null) {
-                $activities[$group][$currentActivity->getId()] = [
-                    'id' => $currentActivity->getId(),
-                    'name' => $currentActivity->getName(),
-                    'unit' => $currentActivity->getUnit(),
-                ];
-            }
-        }
-
-        return $activities;
-    }
-
-    private function applyMaterialCalculation(
-        EmissionRecord $record,
-        FormInterface $form,
-        Category $category,
-        EmissionActivityRepository $repository,
-        WoodEmissionCalculator $calculator,
-    ): void {
-        $activityId = $form->get('activityId')->getData();
-        $selectedActivity = $activityId ? $repository->find((int) $activityId) : null;
-        if (!$selectedActivity || $selectedActivity->getCategory()?->getId() !== $category->getId()) {
-            throw new \InvalidArgumentException('invalid_activity');
-        }
-        $selectedGroup = $form->get('subCategory')->getData();
-        if (
-            ($selectedGroup === 'madera' && $selectedActivity->getSubcategory() !== 'madera')
-            || ($selectedGroup === 'generic' && $selectedActivity->getSubcategory() !== null)
-        ) {
-            throw new \InvalidArgumentException('invalid_activity');
-        }
-
-        if ($selectedActivity->getSubcategory() === null) {
-            $amount = $form->get('amount')->getData();
-            if (!is_numeric($amount) || (float) $amount < 0) {
-                throw new \InvalidArgumentException('invalid_generic_amount');
-            }
-
-            $record
-                ->setActivity($selectedActivity)
-                ->setCategory($selectedActivity->getCategory())
-                ->setAmount((float) $amount)
-                ->setEmission((float) $amount * $selectedActivity->getEmissionFactor())
-                ->setCalculationDetails(null);
-            return;
-        }
-
-        $origin = match ($selectedActivity->getCalculationCode()) {
-            'wood_purchased' => 'purchased',
-            'wood_recycled' => 'recycled',
-            'wood_reused' => 'reused',
-            default => throw new \InvalidArgumentException('invalid_activity'),
-        };
-        $activity = $repository->findWoodFactorForOrigin($origin);
-        if (!$activity || $activity->getCategory()?->getId() !== $category->getId()) {
-            throw new \InvalidArgumentException('invalid_activity');
-        }
-
-        $result = $calculator->calculate($activity, ['origin' => $origin] + $this->getWoodFormInput($form));
-        $record
-            ->setActivity($activity)
-            ->setCategory($activity->getCategory())
-            ->setAmount($result->amount)
-            ->setEmission($result->emission)
-            ->setCalculationDetails(json_encode(
-                $result->details,
-                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION,
-            ));
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function decodeCalculationDetails(EmissionRecord $record): array
-    {
-        if (!$record->getCalculationDetails()) {
-            return [];
-        }
-
-        try {
-            return json_decode($record->getCalculationDetails(), true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return [];
-        }
-    }
-
-    // =======================
-    // Helper para resolver categoría por ID / ES / EN
-    // =======================
-    private function resolveCategoryFromRouteParam(
-        string $param,
-        CategoryRepository $categoryRepository,
-        EntityManagerInterface $em
-    ): ?Category {
-        $param = trim($param);
-
-        // 1) ID numérico
-        if ($param !== '' && ctype_digit($param)) {
-            return $categoryRepository->find((int)$param);
-        }
-
-        // 2) Nombre base ES
-        if ($param !== '') {
-            $cat = $categoryRepository->findOneBy(['name' => $param]);
-            if ($cat) {
-                return $cat;
-            }
-        }
-
-        // 3) Traducción EN (Gedmo ext_translations)
-        if ($param !== '') {
-            /** @var \Gedmo\Translatable\Entity\Translation|null $tr */
-            $tr = $em->getRepository(\Gedmo\Translatable\Entity\Translation::class)->findOneBy([
-                'objectClass' => Category::class,
-                'field'       => 'name',
-                'locale'      => 'en',
-                'content'     => $param,
-            ]);
-            if ($tr) {
-                return $categoryRepository->find($tr->getForeignKey());
-            }
-        }
-
-        return null;
     }
 
 
@@ -1115,32 +730,6 @@ class EmissionController extends AbstractController
         }
 
         return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $category?->getId()));
-    }
-
-    #[Route('/by-subcategory', name: 'backend_emission_by_subcategory', methods: ['GET'])]
-    public function bySubcategory(Request $request, EmissionActivityRepository $repo): JsonResponse
-    {
-        $subcategory = $request->query->get('subcategory');        // código canónico: 'carretera','aereo',...
-        $sourceName  = $request->query->get('sourceName', 'MITECO');
-        $categoryId  = $request->query->getInt('categoryId', 0);   // <-- ID
-
-        if ($categoryId <= 0) {
-            return new JsonResponse(['error' => 'Missing or invalid categoryId'], 400);
-        }
-
-        // Nuevo método por ID (ver repo abajo)
-        $activities = $repo->getActivitiesForLatestYearByCategoryId($sourceName, $categoryId, $subcategory ?: null);
-
-        $result = [];
-        foreach ($activities as $activity) {
-            $result[] = [
-                'id'   => $activity->getId(),
-                'name' => $activity->getName(),
-                'unit' => $activity->getUnit(),
-            ];
-        }
-
-        return new JsonResponse($result);
     }
 
     #[Route('/calculate-distance', name: 'backend_emission_calculate_distance', methods: ['POST'])]

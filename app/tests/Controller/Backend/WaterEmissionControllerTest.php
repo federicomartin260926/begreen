@@ -7,7 +7,6 @@ namespace App\Tests\Controller\Backend;
 use App\Controller\Backend\WaterEmissionController;
 use App\DataFixtures\WaterEmissionFactorFixtures;
 use App\Entity\Category;
-use App\Entity\EmissionActivity;
 use App\Entity\EmissionFactor;
 use App\Entity\EmissionRecord;
 use App\Entity\EmissionRecordAttachment;
@@ -138,7 +137,6 @@ final class WaterEmissionControllerTest extends KernelTestCase
 
         self::assertSame(302, $response->getStatusCode());
         self::assertInstanceOf(EmissionRecord::class, $persisted);
-        self::assertNull($persisted->getActivity());
         self::assertSame($context['category'], $persisted->getCategory());
         self::assertSame(1.0, $persisted->getAmount());
         self::assertSame(0.517, $persisted->getEmission());
@@ -232,16 +230,6 @@ final class WaterEmissionControllerTest extends KernelTestCase
 
         self::assertStringContainsString('contador.pdf', $content);
         self::assertStringContainsString('/backend/emission/300/attachments/401/download', $content);
-    }
-
-    public function testEditRejectsWaterRecordThatIsNotWaterV1(): void
-    {
-        $context = $this->context();
-        $unexpectedActivity = (new EmissionActivity())->setCategory($context['category'])->setName('Actividad residual');
-        $record = $this->record($context)->setActivity($unexpectedActivity);
-
-        $this->expectException(NotFoundHttpException::class);
-        $this->edit($record, $this->request('GET'), $context, 0);
     }
 
     public function testEditHidesRecordOwnedByAnotherProject(): void
@@ -441,7 +429,7 @@ final class WaterEmissionControllerTest extends KernelTestCase
             ->setProject($context['project'])
             ->setPhase($context['phase'])
             ->setCategory($context['category'])
-            ->setActivity(null)
+
             ->setAmount(1)
             ->setEmission(0.517)
             ->setStatus(EmissionRecord::STATUS_CALCULATED)

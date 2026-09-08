@@ -76,7 +76,6 @@ final class EnergyEmissionRecordFixtures extends Fixture implements DependentFix
                         ->setProject($project)
                         ->setPhase($phase)
                         ->setCategory($category)
-                        ->setActivity(null)
                         ->setRegisteredAt($date)
                         ->setNotes($case['notes'])
                         ->setAmount(

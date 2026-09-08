@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\DataFixtures;
 
-use App\DataFixtures\EmissionRecordFixtures;
 use App\DataFixtures\MaterialEmissionFactorFixtures;
 use App\DataFixtures\MaterialEmissionRecordFixtures;
 use App\Entity\Category;
@@ -78,7 +77,6 @@ final class MaterialEmissionRecordFixturesTest extends TestCase
 
         foreach ($records as $record) {
             self::assertSame($category, $record->getCategory());
-            self::assertNull($record->getActivity());
             self::assertTrue($snapshot->isMaterialV1Record($record, 80));
 
             $encoded = (string) $record->getCalculationDetails();
@@ -144,15 +142,9 @@ final class MaterialEmissionRecordFixturesTest extends TestCase
 
         self::assertContains(MaterialEmissionFactorFixtures::class, $fixture->getDependencies());
 
-        $modernCategories = (new \ReflectionClass(EmissionRecordFixtures::class))
-            ->getReflectionConstant('MODERN_CATEGORIES');
-
-        self::assertNotFalse($modernCategories);
-        self::assertContains('Materiales', $modernCategories->getValue());
 
         $source = file_get_contents(__DIR__.'/../../src/DataFixtures/MaterialEmissionRecordFixtures.php');
         self::assertIsString($source);
-        self::assertStringContainsString('->setActivity(null)', $source);
         self::assertStringContainsString(
             '->setEmission(null === $calculation->emissionKgCo2e',
             $source,

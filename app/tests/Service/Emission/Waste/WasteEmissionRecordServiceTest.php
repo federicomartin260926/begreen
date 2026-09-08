@@ -65,7 +65,6 @@ final class WasteEmissionRecordServiceTest extends TestCase
         self::assertSame($project, $record->getProject());
         self::assertSame($category, $record->getCategory());
         self::assertSame($phase, $record->getPhase());
-        self::assertNull($record->getActivity());
         self::assertSame(10.0, $record->getAmount());
         self::assertSame(2.4542, $record->getEmission());
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $record->getStatus());
