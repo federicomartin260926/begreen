@@ -24,6 +24,7 @@ class EmissionRecordFixtures extends Fixture implements DependentFixtureInterfac
         'Agua',
         'Alojamientos',
         'Catering',
+        'Residuos',
     ];
 
     public function getDependencies(): array
