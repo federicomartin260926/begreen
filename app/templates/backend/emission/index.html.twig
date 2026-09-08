@@ -129,6 +129,7 @@
                                         {% set waterV1Summary = waterV1Summaries[record.id]|default(null) %}
                                         {% set accommodationV1Summary = accommodationV1Summaries[record.id]|default(null) %}
                                         {% set cateringV1Summary = cateringV1Summaries[record.id]|default(null) %}
+                                        {% set wasteV1Summary = wasteV1Summaries[record.id]|default(null) %}
                                         <tr class="emissions-record-row">
                                             <td>
                                                 {% if activity %}
@@ -159,6 +160,8 @@
                                                     {{ ('backend.emission.accommodation_v1.types.' ~ accommodationV1Summary.accommodationType)|trans }}
                                                 {% elseif cateringV1Summary and cateringV1Summary.activityType %}
                                                     {{ ('backend.emission.catering_v1.activities.' ~ cateringV1Summary.activityType)|trans }}
+                                                {% elseif wasteV1Summary and wasteV1Summary.displayActivity %}
+                                                    {{ wasteV1Summary.displayActivity }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
@@ -177,6 +180,8 @@
                                                     {{ ('backend.emission.accommodation_v1.units.' ~ accommodationV1Summary.normalizedUnitKey)|trans }}
                                                 {% elseif cateringV1Summary and cateringV1Summary.normalizedUnitKey %}
                                                     {{ ('backend.emission.catering_v1.units.' ~ cateringV1Summary.normalizedUnitKey)|trans }}
+                                                {% elseif wasteV1Summary and wasteV1Summary.normalizedUnit %}
+                                                    {{ wasteV1Summary.normalizedUnit }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
@@ -307,6 +312,27 @@
                                                     data-bs-trigger="hover"
                                                     data-bs-placement="right"
                                                     data-bs-content="{{ 'backend.emission.catering_v1.duplicate_action'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-files"></i>
+                                                </a>
+                                                {% elseif record.id in wasteV1RecordIds %}
+                                                <a
+                                                    href="{{ path('backend_emission_edit_waste_v1', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a
+                                                    href="{{ path('backend_emission_duplicate_waste_v1', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.emission.waste_v1.duplicate_action'|trans }}"
                                                     class="btn btn-sm btn-outline-secondary"
                                                 >
                                                     <i class="bi bi-files"></i>

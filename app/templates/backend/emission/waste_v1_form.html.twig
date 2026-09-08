@@ -1,0 +1,104 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ duplicate ? 'backend.emission.waste_v1.title_duplicate'|trans : (edit ? 'backend.emission.waste_v1.title_edit'|trans : 'backend.emission.waste_v1.title_new'|trans) }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item"><a href="{{ path('backend_emission_index', backQuery) }}" class="text-decoration-none">{{ 'backend.emission.waste_v1.breadcrumb_list'|trans }}</a></li>
+  <li class="breadcrumb-item active">{{ duplicate ? 'backend.emission.waste_v1.breadcrumb_duplicate'|trans : (edit ? 'backend.emission.waste_v1.breadcrumb_edit'|trans : 'backend.emission.waste_v1.breadcrumb_new'|trans) }}</li>
+{% endblock %}
+
+{% block body %}
+{% set messageKeys = ['dates_required', 'invalid_date_range', 'activity_crosses_year', 'country_invalid', 'waste_type_required', 'waste_type_invalid', 'waste_activity_required', 'waste_activity_invalid', 'treatment_unavailable', 'treatment_required', 'treatment_invalid', 'weight_invalid', 'automatic_factor_unavailable'] %}
+{% set messageLabels = {} %}
+{% for key in messageKeys %}{% set messageLabels = messageLabels|merge({(key): ('backend.emission.waste_v1.messages.' ~ key)|trans}) %}{% endfor %}
+{% set wasteI18n = {
+  select: 'backend.common.select'|trans,
+  calculating: 'backend.emission.waste_v1.preview.calculating'|trans,
+  previewError: 'backend.emission.waste_v1.preview.error'|trans,
+  chosenTreatment: 'backend.emission.waste_v1.preview.chosen_treatment'|trans,
+  fallback: 'backend.emission.waste_v1.preview.fallback'|trans,
+  geographicProxy: 'backend.emission.waste_v1.preview.geographic_proxy'|trans,
+  nonWasteZero: 'backend.emission.waste_v1.preview.non_waste_zero'|trans,
+  unknownRule: 'backend.emission.waste_v1.preview.unknown_rule'|trans,
+  statusLabels: {
+    CALCULATED: 'backend.emission.waste_v1.statuses.CALCULATED'|trans,
+    PENDING_DATA: 'backend.emission.waste_v1.statuses.PENDING_DATA'|trans,
+    NOT_AUTOMATICALLY_CALCULABLE: 'backend.emission.waste_v1.statuses.NOT_AUTOMATICALLY_CALCULABLE'|trans
+  },
+  messageLabels: messageLabels
+} %}
+
+<div class="container-fluid px-0 backend-client-shell"
+     data-controller="waste-v1-form"
+     data-waste-v1-form-catalog-value="{{ wasteCatalog|json_encode|e('html_attr') }}"
+     data-waste-v1-form-initial-value="{{ {
+       wasteType: values.wasteType|default(null),
+       wasteActivity: values.wasteActivity|default(null),
+       treatment: values.treatment|default(null)
+     }|json_encode|e('html_attr') }}"
+     data-waste-v1-form-i18n-value="{{ wasteI18n|json_encode|e('html_attr') }}"
+     data-waste-v1-form-preview-url-value="{{ path('backend_emission_waste_v1_preview') }}"
+     data-waste-v1-form-preview-token-value="{{ csrf_token('waste_emission_v1_preview') }}">
+  <div class="backend-client-content">
+    <h2>{{ duplicate ? 'backend.emission.waste_v1.heading_duplicate'|trans : (edit ? 'backend.emission.waste_v1.heading_edit'|trans : 'backend.emission.waste_v1.heading_new'|trans) }}</h2>
+    <p class="text-muted mb-4">{{ 'backend.emission.waste_v1.intro'|trans }}</p>
+
+    <section class="card mb-4"><div class="card-body"><div class="row g-3">
+      <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.waste_v1.project'|trans }}</small><strong>{{ project.name }}</strong></div>
+      <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.waste_v1.category'|trans }}</small><span class="badge text-bg-success">{{ category.name }}</span></div>
+      <div class="col-12"><small class="text-muted d-block mb-1">{{ 'backend.emission.waste_v1.phases'|trans }}</small>{% for phaseDate in project.phaseDates %}<span class="badge text-bg-light border me-1">{{ project.getPhaseLabel(phaseDate.phase)|trans }} · {{ phaseDate.startDate|date('d/m/Y') }}–{{ phaseDate.endDate|date('d/m/Y') }}</span>{% else %}—{% endfor %}</div>
+    </div></div></section>
+
+    {% if errors %}<div class="alert alert-danger"><ul class="mb-0">{% for error in errors %}<li>{{ ('backend.emission.waste_v1.errors.' ~ error)|trans }}</li>{% endfor %}</ul></div>{% endif %}
+
+    {% if edit and record.attachments|length > 0 %}
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5">{{ 'backend.emission.attachments.title'|trans }}</h3>
+        <div class="list-group list-group-flush">{% for attachment in record.attachments %}<div class="list-group-item px-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <span>{{ attachment.originalName }} <small class="text-muted">({{ (attachment.size / 1024)|number_format(1, ',', '.') }} KB)</small></span>
+          <div class="d-flex gap-2"><a class="btn btn-sm btn-outline-primary" href="{{ path('backend_emission_attachment_download', {recordId: record.id, attachmentId: attachment.id}) }}">{{ 'backend.emission.attachments.download'|trans }}</a><form method="post" action="{{ path('backend_emission_attachment_delete', {recordId: record.id, attachmentId: attachment.id}|merge(backQuery)) }}"><input type="hidden" name="_token" value="{{ csrf_token('delete_emission_attachment_' ~ attachment.id) }}"><button class="btn btn-sm btn-outline-danger" type="submit">{{ 'backend.emission.attachments.delete'|trans }}</button></form></div>
+        </div>{% endfor %}</div>
+      </div></section>
+    {% endif %}
+
+    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate
+          data-waste-v1-form-target="form"
+          data-action="input->waste-v1-form#queuePreview submit->waste-v1-form#validate">
+      <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
+
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5 mb-3">{{ 'backend.emission.waste_v1.sections.activity'|trans }}</h3>
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label" for="waste-start-date">{{ 'backend.emission.waste_v1.fields.start_date'|trans }} *</label><input class="form-control" id="waste-start-date" type="date" name="startDate" value="{{ values.startDate|default('') }}" required></div>
+          <div class="col-md-4"><label class="form-label" for="waste-end-date">{{ 'backend.emission.waste_v1.fields.end_date'|trans }} *</label><input class="form-control" id="waste-end-date" type="date" name="endDate" value="{{ values.endDate|default('') }}" required></div>
+          <div class="col-md-4"><label class="form-label" for="waste-country">{{ 'backend.emission.waste_v1.fields.country'|trans }} *</label><select class="form-select" id="waste-country" name="country" required data-waste-v1-form-target="country" data-action="change->waste-v1-form#countryChanged"><option value="">{{ 'backend.common.select'|trans }}</option>{% for code, name in countries %}<option value="{{ code }}" {% if values.country|default('') == code %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+
+          <div class="col-md-6"><label class="form-label" for="waste-type">{{ 'backend.emission.waste_v1.fields.waste_type'|trans }} *</label><select class="form-select" id="waste-type" name="wasteType" required data-waste-v1-form-target="type" data-action="change->waste-v1-form#typeChanged"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
+          <div class="col-md-6 d-none" data-waste-v1-form-target="activityContainer"><label class="form-label" for="waste-activity">{{ 'backend.emission.waste_v1.fields.waste_activity'|trans }} *</label><select class="form-select" id="waste-activity" name="wasteActivity" data-waste-v1-form-target="activity" data-action="change->waste-v1-form#activityChanged"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
+
+          <div class="col-md-8"><label class="form-label" for="waste-treatment">{{ 'backend.emission.waste_v1.fields.treatment'|trans }} *</label><select class="form-select" id="waste-treatment" name="treatment" required data-waste-v1-form-target="treatment" data-action="change->waste-v1-form#queuePreview"><option value="">{{ 'backend.common.select'|trans }}</option></select><div class="form-text">{{ 'backend.emission.waste_v1.fields.treatment_help'|trans }}</div></div>
+          <div class="col-md-2"><label class="form-label" for="waste-weight">{{ 'backend.emission.waste_v1.fields.weight'|trans }} *</label><input class="form-control" id="waste-weight" type="number" name="weight" value="{{ values.weight|default('') }}" min="0" step="any" inputmode="decimal" required></div>
+          <div class="col-md-2"><label class="form-label" for="waste-unit">{{ 'backend.emission.waste_v1.fields.weight_unit'|trans }} *</label><select class="form-select" id="waste-unit" name="weightUnit" required><option value="kg" {% if values.weightUnit|default('kg') == 'kg' %}selected{% endif %}>kg</option><option value="t" {% if values.weightUnit|default('kg') == 't' %}selected{% endif %}>t</option></select></div>
+        </div>
+        <div class="alert alert-info mt-3 mb-0 py-2">{{ 'backend.emission.waste_v1.cross_year_help'|trans }}</div>
+      </div></section>
+
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5">{{ 'backend.emission.waste_v1.preview.title'|trans }}</h3>
+        <div class="d-flex flex-wrap align-items-baseline gap-3 mb-2"><strong data-waste-v1-form-target="previewStatus">{{ 'backend.emission.waste_v1.preview.error'|trans }}</strong><span class="fs-4" data-waste-v1-form-target="previewEmission">—</span></div>
+        <ul class="small text-muted mb-2" data-waste-v1-form-target="previewTrace"></ul>
+        <ul class="small text-danger mb-0" data-waste-v1-form-target="previewMessages"></ul>
+      </div></section>
+
+      <section class="card mb-4"><div class="card-body">
+        <div class="mb-3"><label class="form-label" for="waste-notes">{{ 'backend.emission.waste_v1.fields.notes'|trans }}</label><textarea class="form-control" id="waste-notes" name="notes" rows="3">{{ values.notes|default('') }}</textarea></div>
+        <div><label class="form-label" for="waste-attachments">{{ 'backend.emission.attachments.add'|trans }}</label><input class="form-control" id="waste-attachments" type="file" name="attachments[]" multiple accept="application/pdf,image/jpeg,image/png,image/webp"><div class="form-text">{{ 'backend.emission.attachments.help'|trans }}</div></div>
+      </div></section>
+
+      <div class="d-flex gap-2 justify-content-end"><a class="btn btn-outline-secondary" href="{{ path('backend_emission_index', backQuery) }}">{{ 'backend.common.cancel'|trans }}</a><button class="btn btn-success" type="submit">{{ 'backend.common.save'|trans }}</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

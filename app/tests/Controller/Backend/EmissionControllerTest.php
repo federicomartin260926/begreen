@@ -421,6 +421,8 @@ final class EmissionControllerTest extends KernelTestCase
             new WaterEmissionSnapshot(),
             new AccommodationEmissionSnapshot(),
             new CateringEmissionSnapshot(),
+            new \App\Service\Emission\Waste\WasteEmissionSnapshot(),
+            new \App\Service\Emission\Waste\WasteUiCatalog(),
             $request
         );
 
@@ -501,7 +503,7 @@ final class EmissionControllerTest extends KernelTestCase
 
     private function createEntityManagerMock(): EntityManagerInterface
     {
-        $ids = [1, 2, 5, 3];
+        $ids = [1, 2, 5, 3, null, 4];
 
         $query = $this->createMock(Query::class);
         foreach (['setParameter', 'setMaxResults'] as $method) {
