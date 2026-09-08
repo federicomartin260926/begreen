@@ -82,9 +82,10 @@ final class AccommodationFactorResolverTest extends TestCase
                 return $candidates[0] ?? null;
             },
         );
-        $repository->method('findVersioned')->willReturnCallback(
-            static function (string $categoryKey, string $functionalKey) use (&$factors): ?EmissionFactor {
+        $repository->method('findMethodological')->willReturnCallback(
+            static function (string $categoryKey, string $functionalKey, string $temporalType) use (&$factors): ?EmissionFactor {
                 self::assertSame('accommodation', $categoryKey);
+                self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $temporalType);
                 foreach ($factors as $factor) {
                     if (EmissionFactor::TEMPORAL_TYPE_VERSIONED === $factor->getTemporalType()
                         && $factor->getFunctionalKey() === $functionalKey

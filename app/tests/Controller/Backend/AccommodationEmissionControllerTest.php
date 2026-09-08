@@ -305,10 +305,11 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
                 return $candidates[0] ?? null;
             },
         );
-        $repository->method('findVersioned')->willReturnCallback(
-            static function (string $categoryKey, string $functionalKey) use (&$factors): ?EmissionFactor {
+        $repository->method('findMethodological')->willReturnCallback(
+            static function (string $categoryKey, string $functionalKey, string $temporalType) use (&$factors): ?EmissionFactor {
                 foreach ($factors as $factor) {
                     if ('accommodation' === $categoryKey
+                        && EmissionFactor::TEMPORAL_TYPE_VERSIONED === $temporalType
                         && EmissionFactor::TEMPORAL_TYPE_VERSIONED === $factor->getTemporalType()
                         && $factor->getFunctionalKey() === $functionalKey
                     ) {

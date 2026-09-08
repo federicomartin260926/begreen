@@ -114,7 +114,7 @@ final class AccommodationEmissionFactorFixtures extends Fixture implements Fixtu
                 ->setCategoryKey(self::CATEGORY_KEY)
                 ->setFunctionalKey($functionalKey)
                 ->setCriteria($criteria)
-                ->setYear(2025)
+                ->setYear(null)
                 ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_VERSIONED)
                 ->setValue($row['factor_value'])
                 ->setUnit($row['factor_unit'])

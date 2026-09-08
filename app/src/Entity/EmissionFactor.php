@@ -18,6 +18,7 @@ class EmissionFactor
     public const TEMPORAL_TYPE_VERSIONED = 'VERSIONED';
     public const TEMPORAL_TYPE_RULE = 'RULE';
     public const TEMPORAL_TYPE_COMPOSITE = 'COMPOSITE';
+    public const TEMPORAL_TYPE_PROXY_LCA = 'PROXY_LCA';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -34,8 +35,8 @@ class EmissionFactor
     #[ORM\Column(type: 'json')]
     private array $criteria = [];
 
-    #[ORM\Column(type: 'smallint')]
-    private int $year;
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $year = null;
 
     #[ORM\Column(length: 20, options: ['default' => self::TEMPORAL_TYPE_ANNUAL])]
     private string $temporalType = self::TEMPORAL_TYPE_ANNUAL;
@@ -99,12 +100,12 @@ class EmissionFactor
         return $this;
     }
 
-    public function getYear(): int
+    public function getYear(): ?int
     {
         return $this->year;
     }
 
-    public function setYear(int $year): self
+    public function setYear(?int $year): self
     {
         $this->year = $year;
 

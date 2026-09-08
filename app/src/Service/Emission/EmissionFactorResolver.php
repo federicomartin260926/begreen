@@ -2,6 +2,7 @@
 
 namespace App\Service\Emission;
 
+use App\Entity\EmissionFactor;
 use App\Repository\EmissionFactorRepository;
 
 final readonly class EmissionFactorResolver
@@ -32,12 +33,16 @@ final readonly class EmissionFactorResolver
             return new EmissionFactorResolution(null, $activityYear, null, false, null);
         }
 
-        $isFallback = $factor->getYear() < $activityYear;
+        $factorYear = $factor->getYear();
+        if (null === $factorYear) {
+            throw new \UnexpectedValueException('Annual emission factors must define a year.');
+        }
+        $isFallback = $factorYear < $activityYear;
 
         return new EmissionFactorResolution(
             $factor,
             $activityYear,
-            $factor->getYear(),
+            $factorYear,
             $isFallback,
             $isFallback ? EmissionFactorResolution::FALLBACK_REASON_EXACT_YEAR_MISSING : null,
             $factor->getTemporalType(),
@@ -47,7 +52,34 @@ final readonly class EmissionFactorResolver
     /** @param array<string, mixed> $criteria */
     public function resolveVersioned(string $categoryKey, array $criteria, int $activityYear): EmissionFactorResolution
     {
-        $factor = $this->repository->findVersioned($categoryKey, $this->keyGenerator->generate($criteria));
+        return $this->resolveMethodological(
+            $categoryKey,
+            $criteria,
+            $activityYear,
+            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+        );
+    }
+
+    /** @param array<string, mixed> $criteria */
+    public function resolveMethodological(
+        string $categoryKey,
+        array $criteria,
+        int $activityYear,
+        string $temporalType,
+    ): EmissionFactorResolution {
+        if (!in_array($temporalType, [
+            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+            EmissionFactor::TEMPORAL_TYPE_COMPOSITE,
+            EmissionFactor::TEMPORAL_TYPE_PROXY_LCA,
+        ], true)) {
+            throw new \InvalidArgumentException(sprintf('Unsupported methodological temporal type "%s".', $temporalType));
+        }
+
+        $factor = $this->repository->findMethodological(
+            $categoryKey,
+            $this->keyGenerator->generate($criteria),
+            $temporalType,
+        );
 
         return new EmissionFactorResolution(
             $factor,
@@ -55,7 +87,7 @@ final readonly class EmissionFactorResolver
             null,
             false,
             null,
-            \App\Entity\EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+            $temporalType,
         );
     }
 }

@@ -153,6 +153,79 @@ final class EmissionFactorResolverTest extends TestCase
         self::assertFalse($result->isFallback);
     }
 
+    public function testResolvesSupportedMethodologicalFactorsWithoutFactorYearOrFallback(): void
+    {
+        $repository = $this->createMock(EmissionFactorRepository::class);
+        $repository->expects(self::exactly(3))
+            ->method('findMethodological')
+            ->willReturnCallback(fn (string $category, string $key, string $temporalType): EmissionFactor =>
+                (new EmissionFactor())
+                    ->setCategoryKey($category)
+                    ->setFunctionalKey($key)
+                    ->setCriteria([])
+                    ->setYear(null)
+                    ->setTemporalType($temporalType)
+                    ->setValue('1.25')
+                    ->setUnit('unit')
+                    ->setSource('test')
+            );
+        $resolver = new EmissionFactorResolver($repository, $this->keyGenerator);
+        $criteria = ['activity' => 'methodological'];
+
+        $results = [
+            $resolver->resolveVersioned('test', $criteria, 2022),
+            $resolver->resolveMethodological('test', $criteria, 2024, EmissionFactor::TEMPORAL_TYPE_COMPOSITE),
+            $resolver->resolveMethodological('test', $criteria, 2026, EmissionFactor::TEMPORAL_TYPE_PROXY_LCA),
+        ];
+
+        foreach ($results as $index => $result) {
+            self::assertSame([2022, 2024, 2026][$index], $result->activityYear);
+            self::assertSame([
+                EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+                EmissionFactor::TEMPORAL_TYPE_COMPOSITE,
+                EmissionFactor::TEMPORAL_TYPE_PROXY_LCA,
+            ][$index], $result->temporalType);
+            self::assertTrue($result->hasFactor());
+            self::assertNull($result->factorYear);
+            self::assertFalse($result->isFallback);
+            self::assertNull($result->fallbackReason);
+        }
+    }
+
+    public function testRejectsUnsupportedMethodologicalTemporalType(): void
+    {
+        $repository = $this->createMock(EmissionFactorRepository::class);
+        $repository->expects(self::never())->method('findMethodological');
+        $resolver = new EmissionFactorResolver($repository, $this->keyGenerator);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $resolver->resolveMethodological('test', [], 2026, EmissionFactor::TEMPORAL_TYPE_RULE);
+    }
+
+    public function testMissingMethodologicalFactorPreservesRequestedTypeWithoutFactorYear(): void
+    {
+        $repository = $this->createMock(EmissionFactorRepository::class);
+        $repository->expects(self::once())
+            ->method('findMethodological')
+            ->with('catering', self::anything(), EmissionFactor::TEMPORAL_TYPE_PROXY_LCA)
+            ->willReturn(null);
+        $resolver = new EmissionFactorResolver($repository, $this->keyGenerator);
+
+        $result = $resolver->resolveMethodological(
+            'catering',
+            ['activity' => 'proxy'],
+            2026,
+            EmissionFactor::TEMPORAL_TYPE_PROXY_LCA,
+        );
+
+        self::assertFalse($result->hasFactor());
+        self::assertSame(2026, $result->activityYear);
+        self::assertSame(EmissionFactor::TEMPORAL_TYPE_PROXY_LCA, $result->temporalType);
+        self::assertNull($result->factorYear);
+        self::assertFalse($result->isFallback);
+        self::assertNull($result->fallbackReason);
+    }
+
     private function resolverReturning(?EmissionFactor $factor, int $activityYear): EmissionFactorResolver
     {
         $repository = $this->createMock(EmissionFactorRepository::class);

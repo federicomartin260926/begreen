@@ -35,13 +35,26 @@ class EmissionFactorRepository extends ServiceEntityRepository
 
     public function findVersioned(string $categoryKey, string $functionalKey): ?EmissionFactor
     {
+        return $this->findMethodological(
+            $categoryKey,
+            $functionalKey,
+            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+        );
+    }
+
+    public function findMethodological(
+        string $categoryKey,
+        string $functionalKey,
+        string $temporalType,
+    ): ?EmissionFactor
+    {
         return $this->createQueryBuilder('factor')
             ->andWhere('factor.categoryKey = :categoryKey')
             ->andWhere('factor.functionalKey = :functionalKey')
             ->andWhere('factor.temporalType = :temporalType')
             ->setParameter('categoryKey', $categoryKey)
             ->setParameter('functionalKey', $functionalKey)
-            ->setParameter('temporalType', EmissionFactor::TEMPORAL_TYPE_VERSIONED)
+            ->setParameter('temporalType', $temporalType)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

@@ -51,6 +51,7 @@ final class AccommodationEmissionFactorFixturesTest extends TestCase
 
         $apartment = $apartments[0];
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $apartment->getTemporalType());
+        self::assertNull($apartment->getYear());
         self::assertSame('4.087', $apartment->getValue());
         self::assertSame('Land 2025 · factor contextual de apartamento turístico', $apartment->getMetadata()['factorVersion']);
         self::assertTrue($apartment->getMetadata()['isGeographicProxy']);
