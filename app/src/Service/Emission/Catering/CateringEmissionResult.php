@@ -19,6 +19,8 @@ final readonly class CateringEmissionResult
         public ?int $activityYear,
         public array $factorTraces = [],
         public array $messages = [],
+        public ?string $foodEmissionKgCo2e = null,
+        public ?string $tablewareEmissionKgCo2e = null,
     ) {
     }
 
@@ -36,6 +38,8 @@ final readonly class CateringEmissionResult
             'normalizedAmount' => $this->normalizedAmount,
             'normalizedUnit' => $this->normalizedUnit,
             'activityYear' => $this->activityYear,
+            'foodEmissionKgCo2e' => $this->foodEmissionKgCo2e,
+            'tablewareEmissionKgCo2e' => $this->tablewareEmissionKgCo2e,
             'messages' => $this->messages,
             'factorTraces' => array_map(
                 static fn (CateringFactorTrace $trace): array => $trace->toArray(),

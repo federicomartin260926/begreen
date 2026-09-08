@@ -108,6 +108,7 @@ final readonly class CateringEmissionCalculator
         }
 
         $totalEmission = $foodEmission;
+        $tablewareEmission = null;
         $tableware = $this->factorResolver->resolveTableware($input->tablewareType, $activityYear);
         if (null === $tableware || !$tableware->hasFactor() || null === $tableware->factorValue) {
             $messages[] = 'tableware_automatic_factor_unavailable';
@@ -125,6 +126,8 @@ final readonly class CateringEmissionCalculator
             $activityYear,
             $traces,
             $messages,
+            $foodEmission,
+            $tablewareEmission,
         );
     }
 

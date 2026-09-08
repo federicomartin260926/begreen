@@ -9,6 +9,7 @@ use App\Entity\Project;
 use App\Entity\ProjectPhaseDate;
 use App\Repository\EmissionRecordRepository;
 use App\Service\ActiveProjectService;
+use App\Service\Emission\Catering\CateringEmissionSnapshot;
 use App\Service\Emission\Water\WaterEmissionInput;
 use App\Service\Emission\Water\WaterEmissionResult;
 use App\Service\Emission\Water\WaterEmissionSnapshot;
@@ -74,9 +75,10 @@ final class EmissionReportControllerTest extends TestCase
 
         $controller = new EmissionReportController();
         $snapshot = new WaterEmissionSnapshot();
+        $cateringSnapshot = new CateringEmissionSnapshot();
         $controller->overview($activeProject, $repository, $pdf, $translator);
-        $controller->downloadDetailedReport($activeProject, $repository, $pdf, $translator, $snapshot);
-        $controller->emissionsByActivityPdf($activeProject, $repository, $pdf, $translator, $snapshot);
+        $controller->downloadDetailedReport($activeProject, $repository, $pdf, $translator, $snapshot, $cateringSnapshot);
+        $controller->emissionsByActivityPdf($activeProject, $repository, $pdf, $translator, $snapshot, $cateringSnapshot);
 
         $activityLabel = 'backend.emission.water_v1.water_use_types.limpieza';
         self::assertSame(2.5, $rendered['backend/emission/report/overview.html.twig']['reportData']['actividad']['Agua']);

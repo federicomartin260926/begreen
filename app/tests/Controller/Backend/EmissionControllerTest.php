@@ -17,6 +17,7 @@ use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\Accommodation\AccommodationEmissionInput;
 use App\Service\Emission\Accommodation\AccommodationEmissionResult;
 use App\Service\Emission\Accommodation\AccommodationEmissionSnapshot;
+use App\Service\Emission\Catering\CateringEmissionSnapshot;
 use App\Service\Emission\Energy\EnergyEmissionSnapshot;
 use App\Service\Emission\Energy\EnergyEmissionInput;
 use App\Service\Emission\Energy\EnergyEmissionResult;
@@ -419,6 +420,7 @@ final class EmissionControllerTest extends KernelTestCase
             new EnergyEmissionSnapshot(),
             new WaterEmissionSnapshot(),
             new AccommodationEmissionSnapshot(),
+            new CateringEmissionSnapshot(),
             $request
         );
 

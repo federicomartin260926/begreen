@@ -128,6 +128,7 @@
                                         {% set energyV1Summary = energyV1Summaries[record.id]|default(null) %}
                                         {% set waterV1Summary = waterV1Summaries[record.id]|default(null) %}
                                         {% set accommodationV1Summary = accommodationV1Summaries[record.id]|default(null) %}
+                                        {% set cateringV1Summary = cateringV1Summaries[record.id]|default(null) %}
                                         <tr class="emissions-record-row">
                                             <td>
                                                 {% if activity %}
@@ -156,6 +157,8 @@
                                                     {{ ('backend.emission.water_v1.water_use_types.' ~ waterV1Summary.waterUseType)|trans }}
                                                 {% elseif accommodationV1Summary and accommodationV1Summary.accommodationType %}
                                                     {{ ('backend.emission.accommodation_v1.types.' ~ accommodationV1Summary.accommodationType)|trans }}
+                                                {% elseif cateringV1Summary and cateringV1Summary.activityType %}
+                                                    {{ ('backend.emission.catering_v1.activities.' ~ cateringV1Summary.activityType)|trans }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
@@ -172,6 +175,8 @@
                                                     {{ ('backend.emission.water_v1.units.' ~ waterV1Summary.normalizedUnit)|trans }}
                                                 {% elseif accommodationV1Summary and accommodationV1Summary.normalizedUnitKey %}
                                                     {{ ('backend.emission.accommodation_v1.units.' ~ accommodationV1Summary.normalizedUnitKey)|trans }}
+                                                {% elseif cateringV1Summary and cateringV1Summary.normalizedUnitKey %}
+                                                    {{ ('backend.emission.catering_v1.units.' ~ cateringV1Summary.normalizedUnitKey)|trans }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
@@ -281,6 +286,27 @@
                                                     data-bs-trigger="hover"
                                                     data-bs-placement="right"
                                                     data-bs-content="{{ 'backend.emission.accommodation_v1.duplicate_action'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-files"></i>
+                                                </a>
+                                                {% elseif record.id in cateringV1RecordIds %}
+                                                <a
+                                                    href="{{ path('backend_emission_edit_catering_v1', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a
+                                                    href="{{ path('backend_emission_duplicate_catering_v1', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.emission.catering_v1.duplicate_action'|trans }}"
                                                     class="btn btn-sm btn-outline-secondary"
                                                 >
                                                     <i class="bi bi-files"></i>

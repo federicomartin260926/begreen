@@ -6,6 +6,7 @@ use App\Entity\EmissionRecord;
 use App\Repository\EmissionRecordRepository;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\Water\WaterEmissionSnapshot;
+use App\Service\Emission\Catering\CateringEmissionSnapshot;
 use App\Service\PdfService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -65,6 +66,7 @@ class EmissionReportController extends AbstractController
         PdfService $pdfService,
         TranslatorInterface $t,
         WaterEmissionSnapshot $waterSnapshot,
+        CateringEmissionSnapshot $cateringSnapshot,
     ): Response {
         $project = $activeProjectService->getActiveProject();
 
@@ -80,7 +82,7 @@ class EmissionReportController extends AbstractController
             'project' => $project,
             'records' => $records,
             'recordPresentations' => array_map(
-                fn (EmissionRecord $record): array => $this->recordPresentation($record, $waterSnapshot, $t),
+                fn (EmissionRecord $record): array => $this->recordPresentation($record, $waterSnapshot, $cateringSnapshot, $t),
                 $records,
             ),
         ], $filename);
@@ -93,6 +95,7 @@ class EmissionReportController extends AbstractController
         PdfService $pdfService,
         TranslatorInterface $t,
         WaterEmissionSnapshot $waterSnapshot,
+        CateringEmissionSnapshot $cateringSnapshot,
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) {
@@ -107,7 +110,7 @@ class EmissionReportController extends AbstractController
         $noPhase = $t->trans('backend.common.no_phase');
         $noCategory = $t->trans('backend.common.no_category');
         foreach ($records as $record) {
-            $activity = $this->recordPresentation($record, $waterSnapshot, $t)['activity'];
+            $activity = $this->recordPresentation($record, $waterSnapshot, $cateringSnapshot, $t)['activity'];
             $phase    = $record->getPhase()?->getPhase($project->getType()) ?? $noPhase;
             $category = $record->getEffectiveCategory()?->getName() ?? $noCategory;
 
@@ -140,6 +143,7 @@ class EmissionReportController extends AbstractController
     private function recordPresentation(
         EmissionRecord $record,
         WaterEmissionSnapshot $waterSnapshot,
+        CateringEmissionSnapshot $cateringSnapshot,
         TranslatorInterface $translator,
     ): array {
         $activity = $record->getActivity();
@@ -162,6 +166,31 @@ class EmissionReportController extends AbstractController
                         'unit' => null === $record->getAmount()
                             ? '—'
                             : $translator->trans('backend.emission.water_v1.units.m3'),
+                    ];
+                }
+            } catch (\JsonException|\UnexpectedValueException) {
+            }
+        }
+
+        if ('Catering' === $category?->getName()
+            && $cateringSnapshot->isCateringV1Record($record, (int) $category->getId())
+        ) {
+            try {
+                $activityType = $cateringSnapshot->decodeInput((string) $record->getCalculationDetails())->activityType;
+                $calculation = $cateringSnapshot->decodeCalculation((string) $record->getCalculationDetails());
+                if (null !== $activityType && '' !== $activityType) {
+                    $unit = $calculation['normalizedUnit'] ?? null;
+
+                    return [
+                        'activity' => $translator->trans('backend.emission.catering_v1.activities.'.$activityType),
+                        'unit' => is_string($unit) && '' !== $unit
+                            ? $translator->trans('backend.emission.catering_v1.units.'.match ($unit) {
+                                'prepared_menu' => 'prepared_menu',
+                                'prepared sandwich' => 'prepared_sandwich',
+                                'L' => 'liter',
+                                default => $unit,
+                            })
+                            : '—',
                     ];
                 }
             } catch (\JsonException|\UnexpectedValueException) {

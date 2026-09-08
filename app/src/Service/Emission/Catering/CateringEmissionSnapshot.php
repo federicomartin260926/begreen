@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Emission\Catering;
 
+use App\Entity\EmissionRecord;
+
 final class CateringEmissionSnapshot
 {
     public const VERSION = 'catering-v1';
@@ -92,6 +94,27 @@ final class CateringEmissionSnapshot
         }
 
         return $presentation;
+    }
+
+    public function isCateringV1Record(EmissionRecord $record, int $categoryId): bool
+    {
+        if (null !== $record->getActivity() || $categoryId !== $record->getEffectiveCategory()?->getId()) {
+            return false;
+        }
+
+        try {
+            $this->decode((string) $record->getCalculationDetails());
+        } catch (\JsonException|\UnexpectedValueException) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /** @return array<string, mixed> */
+    public function decodeCalculation(string $snapshot): array
+    {
+        return $this->section($snapshot, 'calculation');
     }
 
     /** @return array<string, mixed> */

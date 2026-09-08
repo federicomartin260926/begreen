@@ -1,0 +1,114 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ duplicate ? 'backend.emission.catering_v1.title_duplicate'|trans : (edit ? 'backend.emission.catering_v1.title_edit'|trans : 'backend.emission.catering_v1.title_new'|trans) }}{% endblock %}
+
+{% block breadcrumb %}
+  {{ parent() }}
+  <li class="breadcrumb-item"><a href="{{ path('backend_emission_index', backQuery) }}" class="text-decoration-none">{{ 'backend.emission.catering_v1.breadcrumb_list'|trans }}</a></li>
+  <li class="breadcrumb-item active">{{ duplicate ? 'backend.emission.catering_v1.breadcrumb_duplicate'|trans : (edit ? 'backend.emission.catering_v1.breadcrumb_edit'|trans : 'backend.emission.catering_v1.breadcrumb_new'|trans) }}</li>
+{% endblock %}
+
+{% block body %}
+{% set messageKeys = ['automatic_factor_unavailable', 'food_automatic_factor_unavailable', 'tableware_automatic_factor_unavailable', 'dates_required', 'invalid_date_range', 'country_required', 'country_invalid', 'activity_type_required', 'activity_type_unknown', 'tableware_type_invalid', 'menu_line_invalid', 'menu_counts_invalid', 'consumed_exceeds_prepared', 'menu_variant_invalid', 'prepared_menu_required', 'people_invalid', 'prepared_count_invalid', 'consumed_count_invalid', 'water_input_invalid', 'drink_input_invalid', 'service_count_invalid', 'gas_input_invalid'] %}
+{% set messageLabels = {} %}
+{% for key in messageKeys %}{% set messageLabels = messageLabels|merge({(key): ('backend.emission.catering_v1.messages.' ~ key)|trans}) %}{% endfor %}
+{% set cateringI18n = {
+  calculating: 'backend.emission.catering_v1.preview.calculating'|trans,
+  previewError: 'backend.emission.catering_v1.preview.error'|trans,
+  food: 'backend.emission.catering_v1.preview.food'|trans,
+  tableware: 'backend.emission.catering_v1.preview.tableware'|trans,
+  total: 'backend.emission.catering_v1.preview.total'|trans,
+  removeLine: 'backend.emission.catering_v1.menu.remove_line'|trans,
+  select: 'backend.common.select'|trans,
+  statusLabels: {
+    CALCULATED: 'backend.emission.catering_v1.statuses.CALCULATED'|trans,
+    PENDING_DATA: 'backend.emission.catering_v1.statuses.PENDING_DATA'|trans,
+    NOT_AUTOMATICALLY_CALCULABLE: 'backend.emission.catering_v1.statuses.NOT_AUTOMATICALLY_CALCULABLE'|trans
+  },
+  unitLabels: {
+    people: 'backend.emission.catering_v1.units.people'|trans,
+    prepared_menu: 'backend.emission.catering_v1.units.prepared_menu'|trans,
+    consumed_menu: 'backend.emission.catering_v1.units.consumed_menu'|trans,
+    'prepared sandwich': 'backend.emission.catering_v1.units.prepared_sandwich'|trans,
+    L: 'backend.emission.catering_v1.units.liter'|trans,
+    service: 'backend.emission.catering_v1.units.service'|trans,
+    kg: 'backend.emission.catering_v1.units.kg'|trans
+  },
+  messageLabels: messageLabels
+} %}
+
+<div class="container-fluid px-0 backend-client-shell"
+     data-controller="catering-v1-form"
+     data-catering-v1-form-i18n-value="{{ cateringI18n|json_encode|e('html_attr') }}"
+     data-catering-v1-form-preview-url-value="{{ path('backend_emission_catering_v1_preview') }}"
+     data-catering-v1-form-preview-token-value="{{ csrf_token('catering_emission_v1_preview') }}">
+  <div class="backend-client-content">
+    <h2>{{ duplicate ? 'backend.emission.catering_v1.heading_duplicate'|trans : (edit ? 'backend.emission.catering_v1.heading_edit'|trans : 'backend.emission.catering_v1.heading_new'|trans) }}</h2>
+    <p class="text-muted mb-4">{{ 'backend.emission.catering_v1.intro'|trans }}</p>
+
+    <section class="card mb-4"><div class="card-body"><div class="row g-3">
+      <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.catering_v1.project'|trans }}</small><strong>{{ project.name }}</strong></div>
+      <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.catering_v1.category'|trans }}</small><span class="badge text-bg-success">{{ category.name }}</span></div>
+      <div class="col-12"><small class="text-muted d-block mb-1">{{ 'backend.emission.catering_v1.phases'|trans }}</small>{% for phaseDate in project.phaseDates %}<span class="badge text-bg-light border me-1">{{ project.getPhaseLabel(phaseDate.phase)|trans }} · {{ phaseDate.startDate|date('d/m/Y') }}–{{ phaseDate.endDate|date('d/m/Y') }}</span>{% else %}—{% endfor %}</div>
+    </div></div></section>
+
+    {% if errors %}<div class="alert alert-danger"><ul class="mb-0">{% for error in errors %}<li>{{ ('backend.emission.catering_v1.errors.' ~ error)|trans }}</li>{% endfor %}</ul></div>{% endif %}
+
+    {% if edit and record.attachments|length > 0 %}
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5">{{ 'backend.emission.attachments.title'|trans }}</h3>
+        <div class="list-group list-group-flush">{% for attachment in record.attachments %}<div class="list-group-item px-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <span>{{ attachment.originalName }} <small class="text-muted">({{ (attachment.size / 1024)|number_format(1, ',', '.') }} KB)</small></span>
+          <div class="d-flex gap-2"><a class="btn btn-sm btn-outline-primary" href="{{ path('backend_emission_attachment_download', {recordId: record.id, attachmentId: attachment.id}) }}">{{ 'backend.emission.attachments.download'|trans }}</a><form method="post" action="{{ path('backend_emission_attachment_delete', {recordId: record.id, attachmentId: attachment.id}|merge(backQuery)) }}"><input type="hidden" name="_token" value="{{ csrf_token('delete_emission_attachment_' ~ attachment.id) }}"><button class="btn btn-sm btn-outline-danger" type="submit">{{ 'backend.emission.attachments.delete'|trans }}</button></form></div>
+        </div>{% endfor %}</div>
+      </div></section>
+    {% endif %}
+
+    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate
+          data-catering-v1-form-target="form"
+          data-action="input->catering-v1-form#queuePreview change->catering-v1-form#updateFields submit->catering-v1-form#validate">
+      <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
+
+      <section class="card mb-4"><div class="card-body">
+        <h3 class="h5 mb-3">{{ 'backend.emission.catering_v1.sections.activity'|trans }}</h3>
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label" for="catering-start-date">{{ 'backend.emission.catering_v1.fields.start_date'|trans }} *</label><input class="form-control" id="catering-start-date" type="date" name="startDate" value="{{ values.startDate|default('') }}" required></div>
+          <div class="col-md-4"><label class="form-label" for="catering-end-date">{{ 'backend.emission.catering_v1.fields.end_date'|trans }} *</label><input class="form-control" id="catering-end-date" type="date" name="endDate" value="{{ values.endDate|default('') }}" required></div>
+          <div class="col-md-4"><label class="form-label" for="catering-country">{{ 'backend.emission.catering_v1.fields.country'|trans }} *</label><select class="form-select" id="catering-country" name="country" required><option value="">{{ 'backend.common.select'|trans }}</option>{% for code, name in countries %}<option value="{{ code }}" {% if values.country|default('') == code %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+          <div class="col-md-6"><label class="form-label" for="catering-activity">{{ 'backend.emission.catering_v1.fields.activity_type'|trans }} *</label><select class="form-select" id="catering-activity" name="activityType" required data-catering-v1-form-target="type"><option value="">{{ 'backend.common.select'|trans }}</option>{% for type in activityTypes %}<option value="{{ type }}" {% if values.activityType|default('') == type %}selected{% endif %}>{{ ('backend.emission.catering_v1.activities.' ~ type)|trans }}</option>{% endfor %}</select></div>
+        </div>
+
+        <div class="mt-4 d-none" data-catering-v1-form-target="peopleFields"><label class="form-label">{{ 'backend.emission.catering_v1.fields.people'|trans }} *</label><input class="form-control" name="people" value="{{ values.people|default('') }}" inputmode="numeric"></div>
+
+        <div class="mt-4 d-none" data-catering-v1-form-target="mealFields">
+          <h4 class="h6">{{ 'backend.emission.catering_v1.menu.title'|trans }}</h4>
+          <p class="small text-muted">{{ 'backend.emission.catering_v1.menu.help'|trans }}</p>
+          <div data-catering-v1-form-target="menuLines">
+            {% for line in values.menuLines %}
+              <div class="row g-2 align-items-end mb-2" data-catering-v1-form-target="menuLine">
+                <div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.menu_variant'|trans }} *</label><select class="form-select" name="menuVariant[]"><option value="">{{ 'backend.common.select'|trans }}</option>{% for variant in menuVariants %}<option value="{{ variant }}" {% if line.menuVariant|default('') == variant %}selected{% endif %}>{{ ('backend.emission.catering_v1.menu_variants.' ~ variant)|trans }}</option>{% endfor %}</select></div>
+                <div class="col-md-3"><label class="form-label">{{ 'backend.emission.catering_v1.fields.prepared_count'|trans }} *</label><input class="form-control" name="preparedCount[]" value="{{ line.preparedCount|default('') }}" inputmode="numeric"></div>
+                <div class="col-md-3"><label class="form-label">{{ 'backend.emission.catering_v1.fields.consumed_count'|trans }} *</label><input class="form-control" name="consumedCount[]" value="{{ line.consumedCount|default('') }}" inputmode="numeric"></div>
+                <div class="col-md-2"><button type="button" class="btn btn-outline-danger w-100" data-action="catering-v1-form#removeMenuLine">{{ 'backend.emission.catering_v1.menu.remove_line'|trans }}</button></div>
+              </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-action="catering-v1-form#addMenuLine">{{ 'backend.emission.catering_v1.menu.add_line'|trans }}</button>
+          <div class="mt-3"><label class="form-label">{{ 'backend.emission.catering_v1.fields.tableware_type'|trans }} *</label><select class="form-select" name="tablewareType">{% for type in tablewareTypes %}<option value="{{ type }}" {% if values.tablewareType|default('unknown') == type %}selected{% endif %}>{{ ('backend.emission.catering_v1.tableware_types.' ~ type)|trans }}</option>{% endfor %}</select></div>
+        </div>
+
+        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="sandwichFields"><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.sandwich_type'|trans }}</label><input class="form-control" name="sandwichType" value="{{ values.sandwichType|default('') }}"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.prepared_count'|trans }} *</label><input class="form-control" name="preparedCountSingle" value="{{ values.preparedCountSingle|default('') }}" inputmode="numeric"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.consumed_count'|trans }}</label><input class="form-control" name="consumedCountSingle" value="{{ values.consumedCountSingle|default('') }}" inputmode="numeric"></div></div>
+        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="waterFields"><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.container_volume'|trans }} *</label><input class="form-control" name="containerVolumeLiters" value="{{ values.containerVolumeLiters|default('') }}" inputmode="decimal"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.container_material'|trans }} *</label><input class="form-control" name="containerMaterial" value="{{ values.containerMaterial|default('') }}"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.container_count'|trans }} *</label><input class="form-control" name="containerCount" value="{{ values.containerCount|default('') }}" inputmode="numeric"></div></div>
+        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="drinkFields"><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.description'|trans }} *</label><input class="form-control" name="description" value="{{ values.description|default('') }}"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.unit_count'|trans }} *</label><input class="form-control" name="unitCount" value="{{ values.unitCount|default('') }}" inputmode="numeric"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.liters_per_unit'|trans }} *</label><input class="form-control" name="litersPerUnit" value="{{ values.litersPerUnit|default('') }}" inputmode="decimal"></div></div>
+        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="coffeeFields"><div class="col-md-6"><label class="form-label">{{ 'backend.emission.catering_v1.fields.service_count'|trans }} *</label><input class="form-control" name="serviceCount" value="{{ values.serviceCount|default('') }}" inputmode="numeric"></div><div class="col-md-6"><label class="form-label">{{ 'backend.emission.catering_v1.fields.coffee_type'|trans }}</label><input class="form-control" name="coffeeType" value="{{ values.coffeeType|default('') }}"></div></div>
+        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="gasFields"><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.gas_type'|trans }} *</label><select class="form-select" name="gasType"><option value="">{{ 'backend.common.select'|trans }}</option>{% for type in ['propane', 'butane'] %}<option value="{{ type }}" {% if values.gasType|default('') == type %}selected{% endif %}>{{ ('backend.emission.catering_v1.gas_types.' ~ type)|trans }}</option>{% endfor %}</select></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.cylinder_count'|trans }} *</label><input class="form-control" name="cylinderCount" value="{{ values.cylinderCount|default('') }}" inputmode="numeric"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.kg_per_cylinder'|trans }} *</label><input class="form-control" name="kgPerCylinder" value="{{ values.kgPerCylinder|default('') }}" inputmode="decimal"></div></div>
+      </div></section>
+
+      <section class="card mb-4"><div class="card-body"><h3 class="h5">{{ 'backend.emission.catering_v1.preview.title'|trans }}</h3><div class="d-flex flex-wrap align-items-baseline gap-3 mb-2"><strong data-catering-v1-form-target="previewStatus">{{ 'backend.emission.catering_v1.preview.error'|trans }}</strong><span class="fs-4" data-catering-v1-form-target="previewEmission">—</span></div><ul class="small text-muted mb-2" data-catering-v1-form-target="previewTrace"></ul><ul class="small text-danger mb-0" data-catering-v1-form-target="previewMessages"></ul></div></section>
+      <section class="card mb-4"><div class="card-body"><div class="mb-3"><label class="form-label" for="catering-notes">{{ 'backend.emission.catering_v1.fields.notes'|trans }}</label><textarea class="form-control" id="catering-notes" name="notes" rows="3">{{ values.notes|default('') }}</textarea></div><div><label class="form-label" for="catering-attachments">{{ 'backend.emission.attachments.add'|trans }}</label><input class="form-control" id="catering-attachments" type="file" name="attachments[]" multiple accept="application/pdf,image/jpeg,image/png,image/webp"><div class="form-text">{{ 'backend.emission.attachments.help'|trans }}</div></div></div></section>
+      <div class="d-flex gap-2 justify-content-end"><a class="btn btn-outline-secondary" href="{{ path('backend_emission_index', backQuery) }}">{{ 'backend.common.cancel'|trans }}</a><button class="btn btn-success" type="submit">{{ 'backend.common.save'|trans }}</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
