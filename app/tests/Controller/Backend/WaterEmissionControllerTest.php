@@ -234,11 +234,11 @@ final class WaterEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend/emission/300/attachments/401/download', $content);
     }
 
-    public function testEditRejectsLegacyWaterRecord(): void
+    public function testEditRejectsWaterRecordThatIsNotWaterV1(): void
     {
         $context = $this->context();
-        $legacyActivity = (new EmissionActivity())->setCategory($context['category'])->setName('Agua en escena');
-        $record = $this->record($context)->setActivity($legacyActivity);
+        $unexpectedActivity = (new EmissionActivity())->setCategory($context['category'])->setName('Actividad residual');
+        $record = $this->record($context)->setActivity($unexpectedActivity);
 
         $this->expectException(NotFoundHttpException::class);
         $this->edit($record, $this->request('GET'), $context, 0);

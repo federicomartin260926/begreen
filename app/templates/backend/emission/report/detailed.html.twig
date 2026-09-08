@@ -27,19 +27,24 @@
     <tbody>
       {% for record in records %}
         {% set details = record.calculationDetails ? record.calculationDetails|json_decode : {} %}
+        {% set presentation = recordPresentations[loop.index0] %}
         <tr>
           <td>{{ loop.index }}</td>
           <td>{{ record.phase.getPhase(project.type) }}</td>
           <td>{{ record.createdAt|date('d/m/Y') }}</td>
           <td>{{ record.effectiveCategory ? record.effectiveCategory.name : ('backend.common.no_category'|trans) }}</td>
-          <td>{{ record.activity ? record.activity.name : ('backend.common.no_activity'|trans) }}</td>
+          <td>{{ presentation.activity }}</td>
           <td class="text-right">{{ record.amount is null ? '—' : record.amount }}</td>
-          <td>{{ record.activity ? record.activity.unit : '—' }}</td>
+          <td>{{ presentation.unit }}</td>
           <td class="text-right">{{ record.emission is null ? '—' : record.emission|number_format(2, '.', ',') }}</td>
           <td class="small">
-            {% if details %}
+            {% if details.version is defined %}
+              <strong>Version:</strong> {{ details.version }}
+            {% elseif details %}
               {% for key, value in details %}
-                <strong>{{ key|replace({'_': ' '})|capitalize }}:</strong> {{ value }}<br>
+                {% if value is not iterable %}
+                  <strong>{{ key|replace({'_': ' '})|capitalize }}:</strong> {{ value }}<br>
+                {% endif %}
               {% endfor %}
             {% else %}
               –

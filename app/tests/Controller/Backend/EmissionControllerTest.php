@@ -243,6 +243,68 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend/emission/996/duplicate-water-v1', $content);
     }
 
+    public function testLegacyGenericCreateRouteRejectsWater(): void
+    {
+        $payload = $this->buildPayload();
+        $project = $payload['project'];
+        $water = $payload['categories'][4];
+        $activeProject = $this->createMock(ActiveProjectService::class);
+        $activeProject->method('getActiveProject')->willReturn($project);
+        $categories = $this->createMock(CategoryRepository::class);
+        $categories->method('find')->with(5)->willReturn($water);
+        $controller = new EmissionController();
+        $controller->setContainer(self::getContainer());
+        $this->setAdminToken();
+
+        $this->expectException(NotFoundHttpException::class);
+        $controller->new(
+            '5',
+            new Request(),
+            $activeProject,
+            $this->createMock(EntityManagerInterface::class),
+            $this->createMock(ProjectRepository::class),
+            $categories,
+            $this->createMock(EmissionActivityRepository::class),
+            self::getContainer()->get(\App\Service\Emission\WoodCatalog::class),
+            self::getContainer()->get(\App\Service\Emission\WoodEmissionCalculator::class),
+            self::getContainer()->get(TranslatorInterface::class),
+        );
+    }
+
+    public function testLegacyGenericEditRouteRejectsWater(): void
+    {
+        $payload = $this->buildPayload();
+        $water = $payload['categories'][4];
+        $activity = (new EmissionActivity())
+            ->setCategory($water)
+            ->setName('Actividad residual')
+            ->setUnit('litros')
+            ->setEmissionFactor(0.1);
+        $record = (new EmissionRecord())
+            ->setProject($payload['project'])
+            ->setPhase($payload['records'][0]->getPhase())
+            ->setCategory($water)
+            ->setActivity($activity)
+            ->setAmount(10)
+            ->setEmission(1)
+            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'));
+        $controller = new EmissionController();
+        $controller->setContainer(self::getContainer());
+        $this->setAdminToken();
+
+        $this->expectException(NotFoundHttpException::class);
+        $controller->edit(
+            $record,
+            new Request(),
+            $this->createMock(EntityManagerInterface::class),
+            $this->createMock(ProjectRepository::class),
+            $this->createMock(EmissionActivityRepository::class),
+            self::getContainer()->get(\App\Service\Emission\WoodCatalog::class),
+            self::getContainer()->get(\App\Service\Emission\WoodEmissionCalculator::class),
+            self::getContainer()->get(TranslatorInterface::class),
+        );
+    }
+
     public function testLegacyTransportCreateRouteStillRendersForTrips(): void
     {
         $context = $this->legacyTransportRouteContext();

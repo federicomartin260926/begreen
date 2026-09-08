@@ -69,7 +69,7 @@ class EmissionController extends AbstractController
 
             foreach ($records as $record) {
                 if ($record->getPhase()?->getId() === $phase->getId()) {
-                    $chartData[$label] += $record->getEmission();
+                    $chartData[$label] += (float) $record->getEmission();
                 }
             }
         }
@@ -101,7 +101,7 @@ class EmissionController extends AbstractController
 
         $records = $recordRepository->findByProjectOrderByPhaseAndDate($project);
         $allCategories = $categoryRepository->findEnabledInEmissionCalculator();
-        $categoryData = $this->buildEmissionCategoryData($records, $allCategories, $em);
+        $categoryData = $this->buildEmissionCategoryData($records, $allCategories, $em, $waterSnapshot, $t);
         $categoriesVM = $categoryData['categoriesVM'];
         $allChart = $categoryData['allChart'];
         $categoriesNavigation = $categoryData['categoriesNavigation'];
@@ -292,7 +292,13 @@ class EmissionController extends AbstractController
      *     waterId: ?int
      * }
      */
-    private function buildEmissionCategoryData(array $records, array $allCategories, EntityManagerInterface $em): array
+    private function buildEmissionCategoryData(
+        array $records,
+        array $allCategories,
+        EntityManagerInterface $em,
+        WaterEmissionSnapshot $waterSnapshot,
+        TranslatorInterface $translator,
+    ): array
     {
         $categoriesVM = [];
         $allChart = [];
@@ -314,15 +320,15 @@ class EmissionController extends AbstractController
             }
 
             $catId    = $cat->getId();
-            $actName  = $activity?->getName() ?? '—';
+            $actName = $activity?->getName() ?? $this->waterActivityName($record, $waterSnapshot, $translator);
 
             if (!isset($categoriesVM[$catId])) {
                 continue;
             }
 
             $categoriesVM[$catId]['records'][] = $record;
-            $categoriesVM[$catId]['chart'][$actName] = ($categoriesVM[$catId]['chart'][$actName] ?? 0) + $record->getEmission();
-            $allChart[$actName] = ($allChart[$actName] ?? 0) + $record->getEmission();
+            $categoriesVM[$catId]['chart'][$actName] = ($categoriesVM[$catId]['chart'][$actName] ?? 0) + (float) $record->getEmission();
+            $allChart[$actName] = ($allChart[$actName] ?? 0) + (float) $record->getEmission();
         }
 
         $energyId    = $this->findCategoryIdByNameEs($em, 'Energía');
@@ -362,6 +368,27 @@ class EmissionController extends AbstractController
             'tripsId' => $tripsId,
             'waterId' => $waterId,
         ];
+    }
+
+    private function waterActivityName(
+        EmissionRecord $record,
+        WaterEmissionSnapshot $snapshot,
+        TranslatorInterface $translator,
+    ): string {
+        $category = $record->getEffectiveCategory();
+        if ('Agua' !== $category?->getName() || !$snapshot->isWaterV1Record($record, (int) $category->getId())) {
+            return '—';
+        }
+
+        try {
+            $waterUseType = $snapshot->decodeInput((string) $record->getCalculationDetails())->waterUseType;
+        } catch (\JsonException|\UnexpectedValueException) {
+            return '—';
+        }
+
+        return null === $waterUseType || '' === $waterUseType
+            ? '—'
+            : $translator->trans('backend.emission.water_v1.water_use_types.'.$waterUseType);
     }
 
     private function buildEmissionCreateUrl(
@@ -430,6 +457,9 @@ class EmissionController extends AbstractController
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
         if (!$categoryEntity->isEnabledInEmissionCalculator()) {
+            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
+        }
+        if ('Agua' === $categoryEntity->getName()) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
 
@@ -522,7 +552,7 @@ class EmissionController extends AbstractController
         if (!$project || $record->getProject() !== $project) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
         }
-        if (!$category || !$record->getActivity()) {
+        if (!$category || 'Agua' === $category->getName() || !$record->getActivity()) {
             throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
         }
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);

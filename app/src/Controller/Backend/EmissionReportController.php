@@ -2,8 +2,10 @@
 
 namespace App\Controller\Backend;
 
+use App\Entity\EmissionRecord;
 use App\Repository\EmissionRecordRepository;
 use App\Service\ActiveProjectService;
+use App\Service\Emission\Water\WaterEmissionSnapshot;
 use App\Service\PdfService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -45,7 +47,7 @@ class EmissionReportController extends AbstractController
                 $reportData[$phase][$category] = 0;
             }
 
-            $reportData[$phase][$category] += $record->getEmission();
+            $reportData[$phase][$category] += (float) $record->getEmission();
         }
 
         $filename = $t->trans('backend.emission.reports.filenames.overview');
@@ -61,7 +63,8 @@ class EmissionReportController extends AbstractController
         ActiveProjectService $activeProjectService,
         EmissionRecordRepository $recordRepository,
         PdfService $pdfService,
-        TranslatorInterface $t
+        TranslatorInterface $t,
+        WaterEmissionSnapshot $waterSnapshot,
     ): Response {
         $project = $activeProjectService->getActiveProject();
 
@@ -76,6 +79,10 @@ class EmissionReportController extends AbstractController
         return $pdfService->renderPdf('backend/emission/report/detailed.html.twig', [
             'project' => $project,
             'records' => $records,
+            'recordPresentations' => array_map(
+                fn (EmissionRecord $record): array => $this->recordPresentation($record, $waterSnapshot, $t),
+                $records,
+            ),
         ], $filename);
     }
 
@@ -84,7 +91,8 @@ class EmissionReportController extends AbstractController
         ActiveProjectService $activeProjectService,
         EmissionRecordRepository $recordRepo,
         PdfService $pdfService,
-        TranslatorInterface $t
+        TranslatorInterface $t,
+        WaterEmissionSnapshot $waterSnapshot,
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) {
@@ -98,10 +106,8 @@ class EmissionReportController extends AbstractController
 
         $noPhase = $t->trans('backend.common.no_phase');
         $noCategory = $t->trans('backend.common.no_category');
-        $noActivity = $t->trans('backend.common.no_activity');
-
         foreach ($records as $record) {
-            $activity = $record->getActivity()?->getName() ?? $noActivity;
+            $activity = $this->recordPresentation($record, $waterSnapshot, $t)['activity'];
             $phase    = $record->getPhase()?->getPhase($project->getType()) ?? $noPhase;
             $category = $record->getEffectiveCategory()?->getName() ?? $noCategory;
 
@@ -114,7 +120,7 @@ class EmissionReportController extends AbstractController
                 $data[$activity][$phase] = 0;
             }
 
-            $data[$activity][$phase] += $record->getEmission();
+            $data[$activity][$phase] += (float) $record->getEmission();
         }
 
         $filename = $t->trans('backend.emission.reports.filenames.by_activity');
@@ -128,5 +134,43 @@ class EmissionReportController extends AbstractController
             ],
             $filename
         );
+    }
+
+    /** @return array{activity: string, unit: string} */
+    private function recordPresentation(
+        EmissionRecord $record,
+        WaterEmissionSnapshot $waterSnapshot,
+        TranslatorInterface $translator,
+    ): array {
+        $activity = $record->getActivity();
+        if (null !== $activity) {
+            return [
+                'activity' => $activity->getName(),
+                'unit' => $activity->getUnit(),
+            ];
+        }
+
+        $category = $record->getEffectiveCategory();
+        if ('Agua' === $category?->getName()
+            && $waterSnapshot->isWaterV1Record($record, (int) $category->getId())
+        ) {
+            try {
+                $waterUseType = $waterSnapshot->decodeInput((string) $record->getCalculationDetails())->waterUseType;
+                if (null !== $waterUseType && '' !== $waterUseType) {
+                    return [
+                        'activity' => $translator->trans('backend.emission.water_v1.water_use_types.'.$waterUseType),
+                        'unit' => null === $record->getAmount()
+                            ? '—'
+                            : $translator->trans('backend.emission.water_v1.units.m3'),
+                    ];
+                }
+            } catch (\JsonException|\UnexpectedValueException) {
+            }
+        }
+
+        return [
+            'activity' => $translator->trans('backend.common.no_activity'),
+            'unit' => '—',
+        ];
     }
 }

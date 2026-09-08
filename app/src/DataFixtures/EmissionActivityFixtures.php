@@ -152,11 +152,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             'Elementos de atrezzo' => 'Props',
             'Equipo de rodaje (por día)' => 'Shooting equipment (per day)',
 
-            // Agua
-            'Agua en escena' => 'Water on set',
-            'Agua embotellada para beber' => 'Bottled drinking water',
-            'Agua para FX' => 'Water for FX',
-
             // Residuos
             'Orgánico' => 'Organic',
             'Compost' => 'Compost',
@@ -245,11 +240,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             ['Materiales', 'Decorados / escenografía', '€', 1.5, null],
             ['Materiales', 'Elementos de atrezzo', '€', 1.0, null],
             ['Materiales', 'Equipo de rodaje (por día)', 'día', 2.0, null],
-
-            // Agua
-            ['Agua', 'Agua en escena', 'litros', 0.0003, null],
-            ['Agua', 'Agua embotellada para beber', 'litros', 0.5, null],
-            ['Agua', 'Agua para FX', 'litros', 0.0003, null],
 
             // Residuos
             ['Residuos', 'Orgánico', 'kg', 0.05, null],

@@ -9,9 +9,6 @@ use App\Entity\EmissionRecordAttachment;
 use App\Entity\Project;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
-use App\Service\Emission\Water\WaterEmissionInput;
-use App\Service\Emission\Water\WaterEmissionResult;
-use App\Service\Emission\Water\WaterEmissionSnapshot;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -86,7 +83,7 @@ final class EmissionRecordAttachmentControllerTest extends KernelTestCase
         $entityManager->expects(self::never())->method('remove');
         $request = $this->request(['_token' => 'invalid']);
 
-        $response = $this->controller()->delete(7, 8, $request, $this->active($record->getProject()), $entityManager, $this->storage, new WaterEmissionSnapshot());
+        $response = $this->controller()->delete(7, 8, $request, $this->active($record->getProject()), $entityManager, $this->storage);
 
         self::assertSame(302, $response->getStatusCode());
         self::assertFileExists($this->storage->absolutePath($attachment));
@@ -109,7 +106,6 @@ final class EmissionRecordAttachmentControllerTest extends KernelTestCase
             $this->active($record->getProject()),
             $entityManager,
             $this->storage,
-            new WaterEmissionSnapshot(),
         );
 
         self::assertFileDoesNotExist($path);
@@ -144,7 +140,6 @@ final class EmissionRecordAttachmentControllerTest extends KernelTestCase
             $this->active($record->getProject()),
             $entityManager,
             $this->storage,
-            new WaterEmissionSnapshot(),
         );
 
         self::assertSame(302, $response->getStatusCode());
@@ -155,52 +150,6 @@ final class EmissionRecordAttachmentControllerTest extends KernelTestCase
     }
 
     public function testValidDeleteRedirectsWaterRecordBackToWaterEditor(): void
-    {
-        [$record, $attachment] = $this->fixture();
-        $category = (new Category())->setName('Agua');
-        $this->setId($category, 5);
-        $record
-            ->setCategory($category)
-            ->setCalculationDetails((new WaterEmissionSnapshot())->encode(
-                new WaterEmissionInput(
-                    new \DateTimeImmutable('2024-01-01'),
-                    new \DateTimeImmutable('2024-01-31'),
-                    'ES',
-                    WaterEmissionInput::USE_CLEANING,
-                    '1',
-                    WaterEmissionInput::UNIT_CUBIC_METRES,
-                    WaterEmissionInput::DESTINATION_SEWER,
-                ),
-                new WaterEmissionResult(EmissionRecord::STATUS_CALCULATED, '0.517', '1', 'm3', 2024, 'annual'),
-            ));
-        $entityManager = $this->entityManager($record, $attachment);
-        $entityManager->expects(self::once())->method('remove')->with($attachment);
-        $entityManager->expects(self::once())->method('flush');
-        $request = $this->request();
-        $request->request->set(
-            '_token',
-            self::getContainer()->get('security.csrf.token_manager')
-                ->getToken('delete_emission_attachment_8')
-                ->getValue()
-        );
-
-        $response = $this->controller()->delete(
-            7,
-            8,
-            $request,
-            $this->active($record->getProject()),
-            $entityManager,
-            $this->storage,
-            new WaterEmissionSnapshot(),
-        );
-
-        self::assertSame(
-            self::getContainer()->get('router')->generate('backend_emission_edit_water_v1', ['id' => 7]),
-            $response->headers->get('Location')
-        );
-    }
-
-    public function testValidDeleteKeepsLegacyWaterRecordOnLegacyEditor(): void
     {
         [$record, $attachment] = $this->fixture();
         $category = (new Category())->setName('Agua');
@@ -224,11 +173,10 @@ final class EmissionRecordAttachmentControllerTest extends KernelTestCase
             $this->active($record->getProject()),
             $entityManager,
             $this->storage,
-            new WaterEmissionSnapshot(),
         );
 
         self::assertSame(
-            self::getContainer()->get('router')->generate('backend_emission_edit', ['id' => 7]),
+            self::getContainer()->get('router')->generate('backend_emission_edit_water_v1', ['id' => 7]),
             $response->headers->get('Location')
         );
     }
