@@ -1,0 +1,26 @@
+tamaño,química,peso_kg,source_row
+AAAA,Alcalina,0.0065,2
+AAA,Alcalina,0.0115,3
+AAA,Litio-Ion,0.0077,4
+AAA,NiMH,0.014,5
+AA,Alcalina,0.0238,6
+AA,Litio-Ion,0.0145,7
+AA,NiMH,0.031,8
+9V,Alcalina,0.046,9
+9V,Litio-Ion,0.041,10
+9V,NiMH,0.036,11
+C,Alcalina,0.0658,12
+C,Litio-Ion,0.055,13
+C,NiMH,0.036,14
+"4,5V (petaca)",Alcalina,0.154,15
+D,Alcalina,0.1369,16
+D,Litio-Ion,0.14,17
+D,NiMH,0.16,18
+6V,Alcalina,0.668,19
+6V,Litio-Ion,0.6,20
+6V,NiMH,0.1,21
+9V,Alcalina,0.046,22
+9V,Litio-Ion,0.045,23
+9V,NiMH,0.036,24
+18V,Litio-Ion,0.62,25
+18V,NiMH,0.65,26
