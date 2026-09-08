@@ -57,6 +57,7 @@ final class EmissionRecordAttachmentController extends AbstractController
         $editRoute = match ($record->getEffectiveCategory()?->getName()) {
             'Energía' => 'backend_emission_edit_energy_v1',
             'Agua' => 'backend_emission_edit_water_v1',
+            'Alojamientos' => 'backend_emission_edit_accommodation_v1',
             default => 'backend_emission_edit_transport_v20',
         };
 
