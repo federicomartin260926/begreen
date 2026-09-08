@@ -55,6 +55,7 @@ final class TransportUiCatalogTest extends TestCase
                         $method,
                         'ES',
                         new \DateTimeImmutable('2026-01-15'),
+                        new \DateTimeImmutable('2026-01-15'),
                         '1',
                         'km',
                         vehicleType: (

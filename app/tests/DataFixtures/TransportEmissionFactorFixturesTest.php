@@ -4,7 +4,10 @@ namespace App\Tests\DataFixtures;
 
 use App\DataFixtures\TransportEmissionFactorFixtures;
 use App\Entity\EmissionFactor;
+use App\Repository\EmissionFactorRepository;
 use App\Service\Emission\EmissionFactorKeyGenerator;
+use App\Service\Emission\EmissionFactorResolution;
+use App\Service\Emission\EmissionFactorResolver;
 use Doctrine\Persistence\ObjectManager;
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +23,7 @@ final class TransportEmissionFactorFixturesTest extends TestCase
         $this->keyGenerator = new EmissionFactorKeyGenerator();
 
         $manager = $this->createMock(ObjectManager::class);
-        $manager->expects(self::exactly(1032))
+        $manager->expects(self::exactly(1193))
             ->method('persist')
             ->with(self::callback(function (object $factor): bool {
                 self::assertInstanceOf(EmissionFactor::class, $factor);
@@ -35,7 +38,7 @@ final class TransportEmissionFactorFixturesTest extends TestCase
 
     public function testFinalV20CatalogContract(): void
     {
-        self::assertCount(1032, $this->factors);
+        self::assertCount(1193, $this->factors);
 
         $functionalKeys = [];
         $exactKeys = [];
@@ -62,9 +65,9 @@ final class TransportEmissionFactorFixturesTest extends TestCase
         }
 
         self::assertCount(259, $functionalKeys);
-        self::assertCount(1032, $exactKeys);
-        self::assertSame([2022 => 256, 2023 => 258, 2024 => 259, 2025 => 259], $years);
-        self::assertSame(9, $zeroCount);
+        self::assertCount(1193, $exactKeys);
+        self::assertSame([2022 => 256, 2023 => 258, 2024 => 259, 2025 => 259, 2026 => 161], $years);
+        self::assertSame(15, $zeroCount);
     }
 
     public function testKeepsRawPrecisionAndCanonicalSourceValues(): void
@@ -126,6 +129,62 @@ final class TransportEmissionFactorFixturesTest extends TestCase
 
         self::assertSame('0', $factor->getValue());
         self::assertNotNull($factor->getValue());
+    }
+
+    public function testDefra2026CombinationResolvesExactFactor(): void
+    {
+        $criteria = [
+            'area' => 'FUERA DE ESPAÑA',
+            'subcategory' => 'PÚBLICO',
+            'activity' => 'Taxi regular',
+            'fuel' => 'Desconocido',
+            'unit' => 'km',
+            'method' => 'distancia',
+        ];
+        $resolution = $this->resolve($criteria, 2026, $this->factor($criteria, 2026));
+
+        self::assertSame(2026, $resolution->activityYear);
+        self::assertSame(2026, $resolution->factorYear);
+        self::assertFalse($resolution->isFallback);
+        self::assertNull($resolution->fallbackReason);
+        self::assertSame('0.20806', $resolution->factor?->getValue());
+        self::assertSame('DEFRA', $resolution->factor?->getSource());
+        self::assertSame(
+            'DEFRA - "Business Travel - Land" "Taxis" "Regular Taxi" | 2026 exacto: columna final DEFRA de la referencia, corregida por deriva de cabecera; contrastada con publicación DESNZ 2026.',
+            $resolution->factor?->getSourceDetail(),
+        );
+    }
+
+    public function testMitecoCombinationWithout2026FallsBackTo2025(): void
+    {
+        $criteria = [
+            'area' => 'ESPAÑA',
+            'subcategory' => 'MERCANCÍAS',
+            'activity' => 'Vehículos pesados (> 3,5 tn ) (sin carga)',
+            'fuel' => 'CNG',
+            'unit' => 'km',
+            'method' => 'distancia',
+        ];
+        $resolution = $this->resolve($criteria, 2026, $this->factor($criteria, 2025));
+
+        self::assertSame(2026, $resolution->activityYear);
+        self::assertSame(2025, $resolution->factorYear);
+        self::assertTrue($resolution->isFallback);
+        self::assertSame(EmissionFactorResolution::FALLBACK_REASON_EXACT_YEAR_MISSING, $resolution->fallbackReason);
+        self::assertSame('MITECO', $resolution->factor?->getSource());
+    }
+
+    /** @param array<string, string> $criteria */
+    private function resolve(array $criteria, int $activityYear, EmissionFactor $factor): EmissionFactorResolution
+    {
+        $repository = $this->createMock(EmissionFactorRepository::class);
+        $repository->expects(self::once())
+            ->method('findForActivityYear')
+            ->with('transport', $this->keyGenerator->generate($criteria), $activityYear)
+            ->willReturn($factor);
+
+        return (new EmissionFactorResolver($repository, $this->keyGenerator))
+            ->resolve('transport', $criteria, $activityYear);
     }
 
     /** @param array<string, string> $criteria */

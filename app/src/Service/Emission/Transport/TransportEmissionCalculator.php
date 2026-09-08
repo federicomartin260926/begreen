@@ -19,7 +19,7 @@ final readonly class TransportEmissionCalculator
 
     public function calculate(TransportEmissionInput $input): TransportEmissionResult
     {
-        $year = (int) $input->startedAt->format('Y');
+        $year = (int) $input->startDate->format('Y');
         $this->positiveInteger($input->repetitions, 'repetitions');
 
         if (!$this->mapper->supportsUiCombination($input)) {

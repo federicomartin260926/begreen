@@ -12,6 +12,7 @@ use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\EmissionRecordAttachmentValidationException;
+use App\Service\Emission\Transport\TransportEmissionCalculator;
 use App\Service\Emission\Transport\TransportEmissionRecordService;
 use App\Service\Emission\Transport\TransportEmissionPresentationMapper;
 use App\Service\Emission\Transport\TransportEmissionRequestMapper;
@@ -20,6 +21,7 @@ use App\Service\Emission\Transport\TransportUiCatalog;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Intl\Countries;
@@ -31,12 +33,52 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class TransportEmissionController extends AbstractController
 {
     private const FORM_FIELDS = [
-        'category', 'mode', 'method', 'country', 'startedAt', 'activityValue', 'activityUnit', 'repetitions',
+        'category', 'mode', 'method', 'country', 'startDate', 'endDate', 'activityValue', 'activityUnit', 'repetitions',
         'passengers', 'weightValue', 'weightUnit', 'vehicleType', 'carSize', 'fuel', 'thermalFuel',
         'routeClassification', 'travelClass', 'notes',
         'origin', 'destination', 'originLatitude', 'originLongitude', 'destinationLatitude', 'destinationLongitude',
         'tripType', 'stops', 'operatorReference', 'secondaryActivityValue', 'secondaryActivityUnit',
     ];
+
+    #[Route('/transport/preview', name: 'backend_emission_transport_v20_preview', methods: ['POST'])]
+    public function preview(
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        TransportEmissionRequestMapper $requestMapper,
+        TransportEmissionCalculator $calculator,
+    ): JsonResponse {
+        $project = $activeProjectService->getActiveProject();
+        if (!$project) {
+            throw $this->createNotFoundException('No active project.');
+        }
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $token = $request->request->get('_preview_token');
+        if (!is_string($token) || !$this->isCsrfTokenValid('transport_emission_v20_preview', $token)) {
+            return $this->json(['error' => 'csrf_invalid'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            $result = $calculator->calculate($requestMapper->map($request));
+
+            return $this->json([
+                'status' => $result->status,
+                'normalizedActivityValue' => $result->normalizedActivityValue,
+                'normalizedActivityUnit' => $result->normalizedActivityUnit,
+                'generatedKgCo2e' => $result->generatedKgCo2e,
+                'activityYear' => $result->activityYear,
+                'factorYear' => $result->factorYear,
+                'factorValue' => $result->factorValue,
+                'factorUnit' => $result->factorUnit,
+                'source' => $result->source,
+                'sourceDetail' => $result->sourceDetail,
+                'fallback' => $result->isFallback,
+                'fallbackReason' => $result->fallbackReason,
+            ]);
+        } catch (\InvalidArgumentException) {
+            return $this->json(['error' => 'invalid_input'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+    }
 
     #[Route('/new-transport', name: 'backend_emission_new_transport_v20', methods: ['GET', 'POST'])]
     public function create(
@@ -77,7 +119,7 @@ final class TransportEmissionController extends AbstractController
         try {
             $input = $requestMapper->map($request);
             $presentation = $presentationMapper->map($request);
-            $phase = $projectRepository->findPhaseByDate($project, \DateTimeImmutable::createFromInterface($input->startedAt));
+            $phase = $projectRepository->findPhaseByDate($project, $input->startDate);
             if (!$phase) {
                 return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, ['phase_not_available'], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
@@ -205,7 +247,7 @@ final class TransportEmissionController extends AbstractController
         try {
             $input = $requestMapper->map($request);
             $presentation = $presentationMapper->map($request);
-            $phase = $projectRepository->findPhaseByDate($project, \DateTimeImmutable::createFromInterface($input->startedAt));
+            $phase = $projectRepository->findPhaseByDate($project, $input->startDate);
             if (!$phase) {
                 return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, ['phase_not_available'], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
@@ -281,7 +323,8 @@ final class TransportEmissionController extends AbstractController
             'mode' => 'car',
             'method' => 'distance',
             'country' => '',
-            'startedAt' => '',
+            'startDate' => '',
+            'endDate' => '',
             'activityValue' => '',
             'activityUnit' => '',
             'repetitions' => '1',

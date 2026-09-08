@@ -94,7 +94,7 @@ final class TransportFactorCriteriaMapperTest extends TestCase
     public function testMapperRejectsCategoryModeAndModeMethodOutsideTheUiContract(): void
     {
         $wrongCategory = new TransportEmissionInput(
-            'local', 'plane', 'route', 'ES', new \DateTimeImmutable('2025-06-01'), '1', 'km', passengers: '1', routeClassification: 'domestic',
+            'local', 'plane', 'route', 'ES', new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '1', 'km', passengers: '1', routeClassification: 'domestic',
         );
         self::assertFalse($this->mapper->supportsUiCombination($wrongCategory));
         self::assertNull($this->mapper->map($wrongCategory));
@@ -141,7 +141,8 @@ final class TransportFactorCriteriaMapperTest extends TestCase
         ?string $thermalFuel = null,
     ): TransportEmissionInput {
         return new TransportEmissionInput(
-            $this->categoryForMode($mode), $mode, $method, $country, new \DateTimeImmutable('2025-06-01'), '1', 'km',
+            $this->categoryForMode($mode), $mode, $method, $country,
+            new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '1', 'km',
             vehicleType: $vehicleType, carSize: $carSize, fuel: $fuel, thermalFuel: $thermalFuel,
         );
     }

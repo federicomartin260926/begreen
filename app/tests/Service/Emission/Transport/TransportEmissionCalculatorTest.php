@@ -133,6 +133,23 @@ final class TransportEmissionCalculatorTest extends TestCase
         self::assertNull($futureOnly->factorYear);
     }
 
+    public function testCrossYearRangeUsesStartDateActivityYear(): void
+    {
+        $result = $this->calculate(
+            'taxi',
+            'route',
+            'FR',
+            '10',
+            'km',
+            date: '2026-12-30',
+            endDate: '2027-01-02',
+        );
+
+        self::assertSame(2026, $result->activityYear);
+        self::assertSame(2026, $result->factorYear);
+        self::assertFalse($result->isFallback);
+    }
+
     public function testUiContractSeparatesUnsupportedFromUnavailableAndExternalPaths(): void
     {
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('plane', 'route', 'ES', '10', 'km', category: 'local')->status);
@@ -246,9 +263,11 @@ final class TransportEmissionCalculatorTest extends TestCase
         string $date = '2025-06-01',
         ?string $category = null,
         ?string $routeClassification = null,
+        ?string $endDate = null,
     ): TransportEmissionResult {
         return $this->calculator->calculate(new TransportEmissionInput(
-            $category ?? $this->categoryForMode($mode), $mode, $method, $country, new \DateTimeImmutable($date), $value, $unit,
+            $category ?? $this->categoryForMode($mode), $mode, $method, $country,
+            new \DateTimeImmutable($date), new \DateTimeImmutable($endDate ?? $date), $value, $unit,
             $repetitions, $passengers, $weightValue, $weightUnit, $vehicleType, $carSize, $fuel,
             routeClassification: $routeClassification,
         ));

@@ -9,7 +9,8 @@ export default class extends Controller {
     'routeButton', 'routeMessage', 'activityFields', 'activityLabel', 'activityValue', 'activityUnit',
     'weightFields', 'weightValue', 'weightUnit', 'secondaryFields', 'secondaryLabel',
     'secondaryValue', 'secondaryUnit', 'passengerFields', 'passengers', 'operatorFields',
-    'operatorReference', 'availabilityNotice', 'submit',
+    'operatorReference', 'availabilityNotice', 'submit', 'startDate', 'endDate',
+    'previewStatus', 'previewEmission', 'previewTrace', 'previewMessages',
   ];
 
   static values = {
@@ -18,13 +19,108 @@ export default class extends Controller {
     i18n: Object,
     autocompleteUrl: String,
     distanceUrl: String,
+    previewUrl: String,
+    previewToken: String,
   };
 
   connect() {
+    this.startDateChanged();
     this.populateFixedOptions();
     this.refreshModes(this.initialValue.mode);
     this.refreshMethods(this.initialValue.method);
     this.renderFields(false);
+    this.queuePreview();
+  }
+
+  startDateChanged() {
+    this.endDateTarget.min = this.startDateTarget.value;
+  }
+
+  queuePreview() {
+    clearTimeout(this.previewTimer);
+    this.previewTimer = setTimeout(() => this.preview(), 300);
+  }
+
+  async preview() {
+    if (!this.formTarget.checkValidity()) {
+      this.clearPreview();
+      return;
+    }
+
+    this.previewRequest?.abort();
+    this.previewRequest = new AbortController();
+    const body = new URLSearchParams();
+    new FormData(this.formTarget).forEach((value, key) => {
+      if (typeof value === 'string' && key !== '_token') body.append(key, value);
+    });
+    body.set('_preview_token', this.previewTokenValue);
+    this.previewStatusTarget.textContent = this.i18nValue.previewCalculating;
+
+    try {
+      const response = await fetch(this.previewUrlValue, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        },
+        body: body.toString(),
+        signal: this.previewRequest.signal,
+      });
+      const result = await response.json();
+      if (!response.ok || result.error) throw new Error(result.error || 'preview_failed');
+      this.renderPreview(result);
+    } catch (error) {
+      if (error.name !== 'AbortError') this.clearPreview();
+    }
+  }
+
+  renderPreview(result) {
+    this.previewStatusTarget.textContent = this.i18nValue.statusLabels[result.status] || result.status;
+    this.previewEmissionTarget.textContent = result.generatedKgCo2e === null
+      ? '—'
+      : `${this.formatDecimal(result.generatedKgCo2e)} kg CO₂e`;
+
+    const lines = [];
+    if (result.normalizedActivityValue !== null) {
+      lines.push(`${this.i18nValue.previewNormalized}: ${this.formatDecimal(result.normalizedActivityValue)} ${result.normalizedActivityUnit || ''}`.trim());
+    }
+    if (result.factorValue !== null) {
+      const factor = `${this.i18nValue.previewFactor}: ${this.formatDecimal(result.factorValue)} ${result.factorUnit || ''}`.trim();
+      const provenance = [result.source, result.sourceDetail].filter(Boolean).join(' · ');
+      lines.push(provenance ? `${factor} · ${provenance}` : factor);
+    }
+    if (result.factorYear !== null) {
+      lines.push(`${this.i18nValue.previewFactorYear}: ${result.factorYear}${result.fallback ? ` · ${this.i18nValue.previewFallback}` : ''}`);
+    }
+    this.previewTraceTarget.replaceChildren();
+    lines.forEach((line) => {
+      const item = document.createElement('li');
+      item.textContent = line;
+      this.previewTraceTarget.append(item);
+    });
+
+    this.previewMessagesTarget.replaceChildren();
+    const message = this.i18nValue.statusMessages[result.status];
+    if (message) {
+      const item = document.createElement('li');
+      item.textContent = message;
+      this.previewMessagesTarget.append(item);
+    }
+  }
+
+  clearPreview() {
+    this.previewStatusTarget.textContent = this.i18nValue.previewError;
+    this.previewEmissionTarget.textContent = '—';
+    this.previewTraceTarget.replaceChildren();
+    this.previewMessagesTarget.replaceChildren();
+  }
+
+  formatDecimal(value) {
+    const number = Number(value);
+    return Number.isFinite(number)
+      ? new Intl.NumberFormat(document.documentElement.lang || 'es', { maximumFractionDigits: 6 }).format(number)
+      : value;
   }
 
   disconnect() {
@@ -33,6 +129,8 @@ export default class extends Controller {
     this.destinationSearchRequest?.abort();
     clearTimeout(this.originSearchTimer);
     clearTimeout(this.destinationSearchTimer);
+    clearTimeout(this.previewTimer);
+    this.previewRequest?.abort();
   }
 
   categoryChanged() {
@@ -333,6 +431,7 @@ export default class extends Controller {
     const multiplier = this.tripTypeTarget.value === 'round_trip' ? 2 : 1;
     this.activityValueTarget.value = String(Math.round(Number(oneWay) * multiplier * 100) / 100);
     this.activityUnitTarget.value = 'km';
+    this.queuePreview();
   }
 
   syncCoordinates() {

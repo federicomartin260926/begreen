@@ -37,19 +37,23 @@ final class TransportEmissionRecordServiceTest extends TestCase
         self::assertSame('2025-06-01', $result->record?->getRegisteredAt()->format('Y-m-d'));
         self::assertSame('Nota', $result->record?->getNotes());
         self::assertTrue($snapshot->isTransportV20($result->record?->getCalculationDetails()));
-        self::assertSame('10', json_decode((string) $result->record?->getCalculationDetails(), true, 512, JSON_THROW_ON_ERROR)['calculation']['normalizedActivityValue']);
+        $snapshotData = json_decode((string) $result->record?->getCalculationDetails(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('10', $snapshotData['calculation']['normalizedActivityValue']);
+        self::assertSame('2025-06-01', $snapshotData['input']['startDate']);
+        self::assertSame('2025-06-01', $snapshotData['input']['endDate']);
+        self::assertArrayNotHasKey('startedAt', $snapshotData['input']);
     }
 
     public function testDirectZeroAndOperatorArePersistedIncludingZero(): void
     {
         [$zeroService] = $this->service(null, persistCalls: 1);
-        $zeroInput = new TransportEmissionInput('local', 'walk', 'distance', 'ES', new \DateTimeImmutable('2025-06-01'), '3', 'km');
+        $zeroInput = new TransportEmissionInput('local', 'walk', 'distance', 'ES', new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '3', 'km');
         $zero = $zeroService->write(...$this->writeArguments($zeroInput));
         self::assertSame(TransportEmissionResult::STATUS_DIRECT_ZERO, $zero->calculation->status);
         self::assertSame(0.0, $zero->record?->getEmission());
 
         [$operatorService] = $this->service(null, persistCalls: 1);
-        $operatorInput = new TransportEmissionInput('local', 'taxi', 'operator', 'ES', new \DateTimeImmutable('2025-06-01'), '2', 'kg_co2e', '3');
+        $operatorInput = new TransportEmissionInput('local', 'taxi', 'operator', 'ES', new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '2', 'kg_co2e', '3');
         $operator = $operatorService->write(...$this->writeArguments($operatorInput));
         self::assertSame(TransportEmissionResult::STATUS_DIRECT_OPERATOR_EMISSION, $operator->calculation->status);
         self::assertSame(6.0, $operator->record?->getEmission());
@@ -68,7 +72,7 @@ final class TransportEmissionRecordServiceTest extends TestCase
     public function testExternalFactorRequiredIsNotPersisted(): void
     {
         [$service] = $this->service(null, persistCalls: 0);
-        $input = new TransportEmissionInput('local', 'car', 'electricity', 'ES', new \DateTimeImmutable('2025-06-01'), '10', 'kWh', vehicleType: 'bev');
+        $input = new TransportEmissionInput('local', 'car', 'electricity', 'ES', new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '10', 'kWh', vehicleType: 'bev');
 
         $result = $service->write(...$this->writeArguments($input));
 
@@ -79,7 +83,7 @@ final class TransportEmissionRecordServiceTest extends TestCase
     public function testUnsupportedResultIsNotPersisted(): void
     {
         [$service] = $this->service(null, persistCalls: 0);
-        $input = new TransportEmissionInput('local', 'car', 'fuel', 'ES', new \DateTimeImmutable('2025-06-01'), '10', 'l', vehicleType: 'bev', fuel: 'petrol');
+        $input = new TransportEmissionInput('local', 'car', 'fuel', 'ES', new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '10', 'l', vehicleType: 'bev', fuel: 'petrol');
 
         $result = $service->write(...$this->writeArguments($input));
 
@@ -101,7 +105,7 @@ final class TransportEmissionRecordServiceTest extends TestCase
     {
         $request = Request::create('/', 'POST', [
             'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'es',
-            'startedAt' => '2025-06-01', 'activityValue' => '10', 'activityUnit' => 'km',
+            'startDate' => '2025-06-01', 'endDate' => '2025-06-01', 'activityValue' => '10', 'activityUnit' => 'km',
             'vehicleType' => 'petrol', 'factorValue' => '999', 'factorYear' => '1900',
             'source' => 'browser', 'functionalKey' => 'browser', 'amount' => '999',
             'emission' => '999', 'generatedKgCo2e' => '999',
@@ -118,6 +122,27 @@ final class TransportEmissionRecordServiceTest extends TestCase
         self::assertSame('MITECO', $data['factor']['source']);
         self::assertArrayNotHasKey('emission', $data['input']);
         self::assertArrayNotHasKey('factorValue', $data['input']);
+    }
+
+    public function testRequestMapperAcceptsSameDayAndCrossYearRanges(): void
+    {
+        $mapper = new TransportEmissionRequestMapper();
+        $base = [
+            'category' => 'local', 'mode' => 'walk', 'method' => 'distance', 'country' => 'ES',
+            'activityValue' => '2', 'activityUnit' => 'km',
+        ];
+
+        $sameDay = $mapper->map(Request::create('/', 'POST', $base + [
+            'startDate' => '2026-06-01', 'endDate' => '2026-06-01',
+        ]));
+        $crossYear = $mapper->map(Request::create('/', 'POST', $base + [
+            'startDate' => '2026-12-30', 'endDate' => '2027-01-02',
+        ]));
+
+        self::assertSame('2026-06-01', $sameDay->startDate->format('Y-m-d'));
+        self::assertSame('2026-06-01', $sameDay->endDate->format('Y-m-d'));
+        self::assertSame('2026-12-30', $crossYear->startDate->format('Y-m-d'));
+        self::assertSame('2027-01-02', $crossYear->endDate->format('Y-m-d'));
     }
 
     public function testEditingRecalculatesWithCurrentResolverInsteadOfStoredFactor(): void
@@ -192,7 +217,7 @@ final class TransportEmissionRecordServiceTest extends TestCase
     private function carInput(): TransportEmissionInput
     {
         return new TransportEmissionInput(
-            'local', 'car', 'distance', 'ES', new \DateTimeImmutable('2025-06-01'), '10', 'km', vehicleType: 'petrol',
+            'local', 'car', 'distance', 'ES', new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '10', 'km', vehicleType: 'petrol',
         );
     }
 

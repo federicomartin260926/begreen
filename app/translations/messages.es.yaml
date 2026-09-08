@@ -1969,7 +1969,8 @@ backend:
       project: "Proyecto"
       phases: "Fases y fechas"
       doctrine_category: "Categoría"
-      started_at: "Fecha de actividad"
+      start_date: "Fecha de inicio"
+      end_date: "Fecha final"
       country: "País"
       group: "Tipo de transporte"
       mode: "Modo"
@@ -2114,6 +2115,22 @@ backend:
       flash:
         created: "Registro de Transporte creado correctamente."
         updated: "Registro de Transporte actualizado correctamente."
+      preview:
+        title: "Cálculo de emisiones"
+        calculating: "Calculando…"
+        error: "Completa los datos necesarios para calcular."
+        normalized: "Actividad normalizada"
+        factor: "Factor aplicado"
+        factor_year: "Año del factor"
+        fallback: "Se utiliza el último año anterior disponible"
+      statuses:
+        calculated: "Calculado"
+        factor_not_available: "Factor no disponible"
+        explicit_null_factor: "No calculable automáticamente"
+        external_factor_required: "Factor externo requerido"
+        unsupported: "No calculable automáticamente"
+        direct_operator_emission: "Emisión declarada por operador"
+        direct_zero: "Emisión cero"
       errors:
         attachment_invalid: "El justificante no es un archivo válido o no se puede leer."
         attachment_type_not_allowed: "Formato de justificante no permitido. Usa PDF, JPG, PNG o WebP."

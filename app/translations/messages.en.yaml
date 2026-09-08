@@ -1961,7 +1961,8 @@ backend:
       project: "Project"
       phases: "Phases and dates"
       doctrine_category: "Category"
-      started_at: "Activity date"
+      start_date: "Start date"
+      end_date: "End date"
       country: "Country"
       group: "Transport type"
       mode: "Mode"
@@ -2106,6 +2107,22 @@ backend:
       flash:
         created: "Transport record created successfully."
         updated: "Transport record updated successfully."
+      preview:
+        title: "Emissions calculation"
+        calculating: "Calculating…"
+        error: "Complete the required data to calculate."
+        normalized: "Normalized activity"
+        factor: "Applied factor"
+        factor_year: "Factor year"
+        fallback: "Using the latest available previous year"
+      statuses:
+        calculated: "Calculated"
+        factor_not_available: "Factor not available"
+        explicit_null_factor: "Not automatically calculable"
+        external_factor_required: "External factor required"
+        unsupported: "Not automatically calculable"
+        direct_operator_emission: "Operator-reported emission"
+        direct_zero: "Zero emission"
       errors:
         attachment_invalid: "The supporting document is invalid or cannot be read."
         attachment_type_not_allowed: "Supporting document format not allowed. Use PDF, JPG, PNG or WebP."

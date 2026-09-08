@@ -46,7 +46,7 @@ final readonly class TransportEmissionRecordService
             ->setProject($project)
             ->setCategory($category)
             ->setPhase($phase)
-            ->setRegisteredAt(\DateTimeImmutable::createFromInterface($input->startedAt))
+            ->setRegisteredAt($input->startDate)
             ->setNotes($notes)
             ->setAmount((float) $calculation->normalizedActivityValue)
             ->setEmission((float) $calculation->generatedKgCo2e)

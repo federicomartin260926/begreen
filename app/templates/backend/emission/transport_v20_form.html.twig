@@ -211,6 +211,27 @@
   genericOrsError: 'backend.emission.transport_v20.ors.error'|trans,
   distanceReady: 'backend.emission.transport_v20.ors.distance_ready'|trans,
   multipleManualDistance: 'backend.emission.transport_v20.ors.multiple_manual_distance'|trans,
+  previewCalculating: 'backend.emission.transport_v20.preview.calculating'|trans,
+  previewError: 'backend.emission.transport_v20.preview.error'|trans,
+  previewNormalized: 'backend.emission.transport_v20.preview.normalized'|trans,
+  previewFactor: 'backend.emission.transport_v20.preview.factor'|trans,
+  previewFactorYear: 'backend.emission.transport_v20.preview.factor_year'|trans,
+  previewFallback: 'backend.emission.transport_v20.preview.fallback'|trans,
+  statusLabels: {
+    calculated: 'backend.emission.transport_v20.statuses.calculated'|trans,
+    factor_not_available: 'backend.emission.transport_v20.statuses.factor_not_available'|trans,
+    explicit_null_factor: 'backend.emission.transport_v20.statuses.explicit_null_factor'|trans,
+    external_factor_required: 'backend.emission.transport_v20.statuses.external_factor_required'|trans,
+    unsupported: 'backend.emission.transport_v20.statuses.unsupported'|trans,
+    direct_operator_emission: 'backend.emission.transport_v20.statuses.direct_operator_emission'|trans,
+    direct_zero: 'backend.emission.transport_v20.statuses.direct_zero'|trans
+  },
+  statusMessages: {
+    factor_not_available: 'backend.emission.transport_v20.errors.factor_not_available'|trans,
+    explicit_null_factor: 'backend.emission.transport_v20.errors.explicit_null_factor'|trans,
+    external_factor_required: 'backend.emission.transport_v20.errors.external_factor_required'|trans,
+    unsupported: 'backend.emission.transport_v20.errors.unsupported'|trans
+  },
   external_factor_required: 'backend.emission.transport_v20.errors.external_factor_required'|trans,
   unsupported: 'backend.emission.transport_v20.errors.unsupported'|trans
 } %}
@@ -220,6 +241,8 @@
      data-transport-v20-form-config-value="{{ transportUiConfig|json_encode|e('html_attr') }}"
      data-transport-v20-form-initial-value="{{ values|json_encode|e('html_attr') }}"
      data-transport-v20-form-i18n-value="{{ transportI18n|json_encode|e('html_attr') }}"
+     data-transport-v20-form-preview-url-value="{{ path('backend_emission_transport_v20_preview') }}"
+     data-transport-v20-form-preview-token-value="{{ csrf_token('transport_emission_v20_preview') }}"
      data-transport-v20-form-autocomplete-url-value="{{ path('backend_emission_location_autocomplete') }}"
      data-transport-v20-form-distance-url-value="{{ path('backend_emission_calculate_distance') }}">
   <div class="backend-client-content">
@@ -285,7 +308,7 @@
       </section>
     {% endif %}
 
-    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate data-transport-v20-form-target="form" data-action="submit->transport-v20-form#validate">
+    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate data-transport-v20-form-target="form" data-action="input->transport-v20-form#queuePreview change->transport-v20-form#queuePreview submit->transport-v20-form#validate">
       <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
 
       <section class="transport-v20-section mb-4">
@@ -296,11 +319,18 @@
         <div class="transport-v20-section__body">
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label class="form-label" for="transport-started-at">
-                {{ 'backend.emission.transport_v20.started_at'|trans }}
+              <label class="form-label" for="transport-start-date">
+                {{ 'backend.emission.transport_v20.start_date'|trans }}
                 <span class="text-danger">*</span>
               </label>
-              <input class="form-control" id="transport-started-at" type="date" name="startedAt" value="{{ values.startedAt|default('') }}" required>
+              <input class="form-control" id="transport-start-date" type="date" name="startDate" value="{{ values.startDate|default('') }}" required data-transport-v20-form-target="startDate" data-action="change->transport-v20-form#startDateChanged">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="transport-end-date">
+                {{ 'backend.emission.transport_v20.end_date'|trans }}
+                <span class="text-danger">*</span>
+              </label>
+              <input class="form-control" id="transport-end-date" type="date" name="endDate" value="{{ values.endDate|default('') }}" min="{{ values.startDate|default('') }}" required data-transport-v20-form-target="endDate">
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label" for="transport-country">
@@ -473,6 +503,20 @@
         <div class="alert alert-warning mb-0" data-transport-v20-form-target="availabilityNotice" hidden></div>
       </div>
 
+        </div>
+      </section>
+
+      <section class="transport-v20-section mb-4">
+        <div class="transport-v20-section__header">
+          <h3 class="transport-v20-section__title">{{ 'backend.emission.transport_v20.preview.title'|trans }}</h3>
+        </div>
+        <div class="transport-v20-section__body">
+          <div class="d-flex flex-wrap align-items-baseline gap-3 mb-2">
+            <strong data-transport-v20-form-target="previewStatus">{{ 'backend.emission.transport_v20.preview.error'|trans }}</strong>
+            <span class="fs-4" data-transport-v20-form-target="previewEmission">—</span>
+          </div>
+          <ul class="small text-muted mb-2" data-transport-v20-form-target="previewTrace"></ul>
+          <ul class="small text-danger mb-0" data-transport-v20-form-target="previewMessages"></ul>
         </div>
       </section>
 

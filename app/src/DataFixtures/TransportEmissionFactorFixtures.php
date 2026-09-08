@@ -9,8 +9,8 @@ use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 
 /**
- * Source: Transporte_Base_Maestra_y_Contrato_FINAL.xlsx, FINAL v20 delivery,
- * received 2026-09-04. The versioned CSV contains the raw XLSX values.
+ * Source: consolidated BGMF calculator master base, received 2026-09-05.
+ * The versioned CSV contains the raw XLSX values.
  */
 final class TransportEmissionFactorFixtures extends Fixture implements FixtureGroupInterface
 {

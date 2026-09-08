@@ -12,7 +12,8 @@ final class TransportEmissionSnapshotTest extends TestCase
     public function testSnapshotPreservesVersionDecimalStringsAndFactorProvenance(): void
     {
         $input = new TransportEmissionInput(
-            'local', 'car', 'distance', 'ES', new \DateTimeImmutable('2026-03-04'),
+            'local', 'car', 'distance', 'ES',
+            new \DateTimeImmutable('2026-03-04'), new \DateTimeImmutable('2026-03-06'),
             '12.3400', 'km', '2', vehicleType: 'petrol', carSize: 'average',
         );
         $result = new TransportEmissionResult(
@@ -47,7 +48,11 @@ final class TransportEmissionSnapshotTest extends TestCase
         self::assertTrue($data['factor']['fallback']);
         self::assertSame('exact_year_missing', $data['factor']['fallbackReason']);
         self::assertSame('12.3400', $decoded->activityValue);
-        self::assertSame('2026-03-04', $decoded->startedAt->format('Y-m-d'));
+        self::assertSame('2026-03-04', $data['input']['startDate']);
+        self::assertSame('2026-03-06', $data['input']['endDate']);
+        self::assertArrayNotHasKey('startedAt', $data['input']);
+        self::assertSame('2026-03-04', $decoded->startDate->format('Y-m-d'));
+        self::assertSame('2026-03-06', $decoded->endDate->format('Y-m-d'));
         self::assertSame('petrol', $decoded->vehicleType);
     }
 
@@ -61,7 +66,7 @@ final class TransportEmissionSnapshotTest extends TestCase
     public function testPresentationRoundTripsWithoutChangingInputCalculationOrFactor(): void
     {
         $input = new TransportEmissionInput(
-            'local', 'taxi', 'route', 'ES', new \DateTimeImmutable('2026-03-04'), '20', 'km', passengers: '2',
+            'local', 'taxi', 'route', 'ES', new \DateTimeImmutable('2026-03-04'), new \DateTimeImmutable('2026-03-04'), '20', 'km', passengers: '2',
         );
         $result = new TransportEmissionResult(
             TransportEmissionResult::STATUS_CALCULATED, '20', 'km', '3', [], 'key', 2026, 2025, '0.15', 'km', 'MITECO',
@@ -84,6 +89,7 @@ final class TransportEmissionSnapshotTest extends TestCase
             'car',
             'distance',
             'ES',
+            new \DateTimeImmutable('2026-08-05'),
             new \DateTimeImmutable('2026-08-05'),
             '10',
             'km',
@@ -125,6 +131,7 @@ final class TransportEmissionSnapshotTest extends TestCase
             'passenger_distance',
             'ES',
             new \DateTimeImmutable('2026-08-05'),
+            new \DateTimeImmutable('2026-08-05'),
             '10',
             'passenger-km',
         );
@@ -155,6 +162,7 @@ final class TransportEmissionSnapshotTest extends TestCase
             'tonne_km',
             'ES',
             new \DateTimeImmutable('2026-08-05'),
+            new \DateTimeImmutable('2026-08-05'),
             '10',
             't-km',
         );
@@ -183,7 +191,7 @@ final class TransportEmissionSnapshotTest extends TestCase
     public function testOldSnapshotWithoutPresentationStillDecodesInput(): void
     {
         $input = new TransportEmissionInput(
-            'local', 'walk', 'distance', 'ES', new \DateTimeImmutable('2026-03-04'), '2', 'km',
+            'local', 'walk', 'distance', 'ES', new \DateTimeImmutable('2026-03-04'), new \DateTimeImmutable('2026-03-04'), '2', 'km',
         );
         $result = new TransportEmissionResult(
             TransportEmissionResult::STATUS_DIRECT_ZERO, '2', 'km', '0', null, null, 2026,
@@ -193,5 +201,24 @@ final class TransportEmissionSnapshotTest extends TestCase
 
         self::assertSame('2', $snapshot->decode($encoded)->activityValue);
         self::assertSame([], $snapshot->decodePresentation($encoded));
+    }
+
+    public function testHistoricalStartedAtSnapshotDecodesAsSameStartAndEndDate(): void
+    {
+        $snapshot = new TransportEmissionSnapshot();
+        $input = new TransportEmissionInput(
+            'local', 'walk', 'distance', 'ES', new \DateTimeImmutable('2026-03-04'), new \DateTimeImmutable('2026-03-04'), '2', 'km',
+        );
+        $result = new TransportEmissionResult(
+            TransportEmissionResult::STATUS_DIRECT_ZERO, '2', 'km', '0', null, null, 2026,
+        );
+        $data = json_decode($snapshot->encode($input, $result), true, 512, JSON_THROW_ON_ERROR);
+        $data['input']['startedAt'] = $data['input']['startDate'];
+        unset($data['input']['startDate'], $data['input']['endDate']);
+
+        $decoded = $snapshot->decode(json_encode($data, JSON_THROW_ON_ERROR));
+
+        self::assertSame('2026-03-04', $decoded->startDate->format('Y-m-d'));
+        self::assertSame('2026-03-04', $decoded->endDate->format('Y-m-d'));
     }
 }

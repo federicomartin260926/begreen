@@ -47,7 +47,8 @@ final class TransportEmissionSnapshot
             'mode' => $input->mode,
             'method' => $input->method,
             'country' => $input->country,
-            'startedAt' => $input->startedAt->format('Y-m-d'),
+            'startDate' => $input->startDate->format('Y-m-d'),
+            'endDate' => $input->endDate->format('Y-m-d'),
             'activityValue' => $input->activityValue,
             'activityUnit' => $input->activityUnit,
             'repetitions' => $input->repetitions,
@@ -71,17 +72,22 @@ final class TransportEmissionSnapshot
         }
 
         $input = $data['input'];
-        $required = ['category', 'mode', 'method', 'country', 'startedAt', 'activityValue', 'activityUnit', 'repetitions'];
+        $required = ['category', 'mode', 'method', 'country', 'activityValue', 'activityUnit', 'repetitions'];
         foreach ($required as $field) {
             if (!isset($input[$field]) || !is_string($input[$field])) {
                 throw new \UnexpectedValueException(sprintf('Invalid transport emission snapshot input: %s.', $field));
             }
         }
 
-        $startedAt = \DateTimeImmutable::createFromFormat('!Y-m-d', $input['startedAt']);
-        $dateErrors = \DateTimeImmutable::getLastErrors();
-        if (!$startedAt || (is_array($dateErrors) && (0 !== $dateErrors['warning_count'] || 0 !== $dateErrors['error_count']))) {
-            throw new \UnexpectedValueException('Invalid transport emission snapshot date.');
+        if (array_key_exists('startDate', $input) || array_key_exists('endDate', $input)) {
+            $startDate = $this->requiredDate($input, 'startDate');
+            $endDate = $this->requiredDate($input, 'endDate');
+        } else {
+            $startDate = $this->requiredDate($input, 'startedAt');
+            $endDate = $startDate;
+        }
+        if ($endDate < $startDate) {
+            throw new \UnexpectedValueException('Invalid transport emission snapshot date range.');
         }
 
         return new TransportEmissionInput(
@@ -89,7 +95,8 @@ final class TransportEmissionSnapshot
             $input['mode'],
             $input['method'],
             $input['country'],
-            $startedAt,
+            $startDate,
+            $endDate,
             $input['activityValue'],
             $input['activityUnit'],
             $input['repetitions'],
@@ -103,6 +110,22 @@ final class TransportEmissionSnapshot
             $this->optionalString($input, 'routeClassification'),
             $this->optionalString($input, 'travelClass'),
         );
+    }
+
+    /** @param array<string, mixed> $input */
+    private function requiredDate(array $input, string $field): \DateTimeImmutable
+    {
+        $value = $input[$field] ?? null;
+        if (!is_string($value)) {
+            throw new \UnexpectedValueException(sprintf('Invalid transport emission snapshot input: %s.', $field));
+        }
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = \DateTimeImmutable::getLastErrors();
+        if (!$date || (is_array($errors) && (0 !== $errors['warning_count'] || 0 !== $errors['error_count']))) {
+            throw new \UnexpectedValueException(sprintf('Invalid transport emission snapshot date: %s.', $field));
+        }
+
+        return $date;
     }
 
     /** @return array<string, string> */

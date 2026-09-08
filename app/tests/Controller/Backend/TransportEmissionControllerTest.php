@@ -72,8 +72,13 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
         self::assertStringContainsString('data-controller="transport-v20-form"', $content);
         self::assertStringContainsString('data-transport-v20-form-config-value=', $content);
+        self::assertStringContainsString('data-transport-v20-form-preview-url-value="/backend/emission/transport/preview"', $content);
+        self::assertStringContainsString('data-transport-v20-form-target="previewEmission"', $content);
         self::assertStringContainsString('id="transport-country"', $content);
         self::assertStringContainsString('name="country"', $content);
+        self::assertStringContainsString('name="startDate"', $content);
+        self::assertStringContainsString('name="endDate"', $content);
+        self::assertStringNotContainsString('name="startedAt"', $content);
         self::assertStringContainsString('value="ES"', $content);
         self::assertStringContainsString('España', $content);
         foreach (['factor', 'factorValue', 'factorYear', 'source', 'functionalKey', 'amount', 'emission', 'generatedKgCo2e'] as $field) {
@@ -93,6 +98,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('value="17"', $content);
         self::assertStringContainsString('value="2026-06-01"', $content);
+        self::assertStringContainsString('value="2026-06-02"', $content);
         self::assertStringContainsString('name="repetitions" value="2"', $content);
         self::assertStringContainsString('Nota conservada', $content);
         self::assertStringContainsString('value="Madrid"', $content);
@@ -127,11 +133,16 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('page=2', $content);
         self::assertStringContainsString('categoryId=20', $content);
         self::assertStringContainsString('value="17"', $content);
+        self::assertStringContainsString('value="2026-06-01"', $content);
+        self::assertStringContainsString('value="2026-06-02"', $content);
         self::assertStringContainsString('value="Madrid"', $content);
         self::assertStringContainsString('value="Toledo"', $content);
         self::assertStringContainsString('Nota original', $content);
         self::assertStringNotContainsString('factura-origen.pdf', $content);
         self::assertStringNotContainsString('/attachments/402/', $content);
+        foreach (['factor', 'factorValue', 'factorYear', 'source', 'functionalKey', 'amount', 'emission', 'generatedKgCo2e'] as $field) {
+            self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
+        }
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
     }
 
@@ -183,6 +194,65 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('sesión del formulario', (string) $response->getContent());
     }
 
+    public function testPreviewCalculatesOnBackendAndIgnoresAuthoritativeBrowserValues(): void
+    {
+        $context = $this->context();
+        $post = $this->validPost() + [
+            'factorValue' => '999',
+            'factorYear' => '1900',
+            'source' => 'browser',
+            'emission' => '999',
+        ];
+        $request = $this->request('POST', $post);
+        $request->request->set('_preview_token', $this->csrfToken('transport_emission_v20_preview'));
+
+        $response = $this->preview($request, $context, $this->factor());
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $data['status']);
+        self::assertSame('10', $data['normalizedActivityValue']);
+        self::assertSame('5', $data['generatedKgCo2e']);
+        self::assertSame('0.5', $data['factorValue']);
+        self::assertSame(2026, $data['factorYear']);
+        self::assertSame('MITECO', $data['source']);
+        self::assertFalse($data['fallback']);
+    }
+
+    public function testPreviewReportsTemporalFallback(): void
+    {
+        $context = $this->context();
+        $request = $this->request('POST', $this->validPost());
+        $request->request->set('_preview_token', $this->csrfToken('transport_emission_v20_preview'));
+        $factor = $this->factor()->setYear(2025);
+
+        $data = json_decode(
+            (string) $this->preview($request, $context, $factor)->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+
+        self::assertSame(2026, $data['activityYear']);
+        self::assertSame(2025, $data['factorYear']);
+        self::assertTrue($data['fallback']);
+        self::assertSame('exact_year_missing', $data['fallbackReason']);
+    }
+
+    public function testPreviewRejectsInvalidInput(): void
+    {
+        $context = $this->context();
+        $post = $this->validPost();
+        $post['endDate'] = '2026-05-31';
+        $request = $this->request('POST', $post);
+        $request->request->set('_preview_token', $this->csrfToken('transport_emission_v20_preview'));
+
+        $response = $this->preview($request, $context, $this->factor());
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertSame(['error' => 'invalid_input'], json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR));
+    }
+
     public function testInvalidCountryReturns422BeforeCreatingRecord(): void
     {
         $context = $this->context();
@@ -201,6 +271,19 @@ final class TransportEmissionControllerTest extends KernelTestCase
             persistCalls: 0,
             factor: $this->factor(),
         );
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testEndDateBeforeStartDateReturns422WithoutPersisting(): void
+    {
+        $context = $this->context();
+        $post = $this->validPost();
+        $post['endDate'] = '2026-05-31';
+        $request = $this->request('POST', $post);
+        $request->request->set('_token', $this->csrfToken('transport_emission_v20_create'));
+
+        $response = $this->create($request, $context, persistCalls: 0, factor: $this->factor());
 
         self::assertSame(422, $response->getStatusCode());
     }
@@ -344,6 +427,26 @@ final class TransportEmissionControllerTest extends KernelTestCase
     }
 
     /** @param array<string, mixed> $context */
+    private function preview(Request $request, array $context, ?EmissionFactor $factor): \Symfony\Component\HttpFoundation\Response
+    {
+        $keyGenerator = new EmissionFactorKeyGenerator();
+        $repository = $this->createMock(EmissionFactorRepository::class);
+        $repository->method('findForActivityYear')->willReturn($factor);
+        $calculator = new TransportEmissionCalculator(
+            new TransportFactorCriteriaMapper(),
+            new EmissionFactorResolver($repository, $keyGenerator),
+            $keyGenerator,
+        );
+
+        return $this->controller()->preview(
+            $request,
+            $context['active'],
+            new TransportEmissionRequestMapper(),
+            $calculator,
+        );
+    }
+
+    /** @param array<string, mixed> $context */
     private function duplicate(
         EmissionRecord $record,
         Request $request,
@@ -447,7 +550,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
     private function record(array $context, ?string $notes = null): EmissionRecord
     {
         $input = new TransportEmissionInput(
-            'local', 'taxi', 'route', 'ES', new \DateTimeImmutable('2026-06-01'), '17', 'km', '2',
+            'local', 'taxi', 'route', 'ES', new \DateTimeImmutable('2026-06-01'), new \DateTimeImmutable('2026-06-02'), '17', 'km', '2',
         );
         $result = new TransportEmissionResult(
             TransportEmissionResult::STATUS_CALCULATED, '34', 'km', '4', [], 'server-key', 2026, 2026, '0.1', 'km', 'MITECO',
@@ -469,7 +572,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
     {
         return [
             'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'ES',
-            'startedAt' => '2026-06-01', 'activityValue' => '10', 'activityUnit' => 'km',
+            'startDate' => '2026-06-01', 'endDate' => '2026-06-02', 'activityValue' => '10', 'activityUnit' => 'km',
             'repetitions' => '1', 'vehicleType' => 'petrol', 'notes' => 'Nota nueva',
         ];
     }

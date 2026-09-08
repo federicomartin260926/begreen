@@ -83,6 +83,8 @@ final class TransportEmissionRecordFixturesTest extends TestCase
             self::assertSame($category, $record->getCategory());
             self::assertSame(EmissionRecord::STATUS_CALCULATED, $record->getStatus());
             self::assertStringContainsString('"version":"transport-v20"', (string) $record->getCalculationDetails());
+            $input = (new TransportEmissionSnapshot())->decode((string) $record->getCalculationDetails());
+            self::assertSame($input->startDate->format('Y-m-d'), $input->endDate->format('Y-m-d'));
         }
 
         self::assertSame(6.0, $records[0]->getEmission());
