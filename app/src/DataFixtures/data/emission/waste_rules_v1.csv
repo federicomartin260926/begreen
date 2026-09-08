@@ -1,0 +1,92 @@
+region_scope,region_label,waste_type,waste_activity,treatment,rule_type,value,detail,source_row
+spain,España,Construcción / Set promedio,Construcción / Set promedio,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,22
+spain,España,Textil,Textil,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,27
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,32
+spain,España,Pilas y baterías,Pilas y baterías,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,36
+spain,España,Pilas y baterías,Pilas y baterías usadas,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,162
+spain,España,"Residuos metálicos, no férreos",Cables,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,166
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Dispositivos electrónicos,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,171
+spain,España,Residuos plásticos,Vinilos,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,176
+spain,España,Textil,Moquetas,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,181
+spain,España,Residuos plásticos,Lonas o lonetas,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,186
+spain,España,Textil,Telas y tejidos,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,191
+spain,España,Materiales mezclados y no diferenciados,Cuadros,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,206
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Bombillas y fluorescentes,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,219
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Discos duros,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,248
+spain,España,Residuos plásticos,Cintas LTO,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,266
+outside_spain,Fuera de España,Orgánico (alimentación y bebidas),Orgánico (alimentación),Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,297
+outside_spain,Fuera de España,Plástico (envases),Plástico (envases),Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,307
+outside_spain,Fuera de España,Metal (envases),Metal (envases),Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,312
+outside_spain,Fuera de España,Vidrio,Vidrio,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,322
+outside_spain,Fuera de España,Madera,Madera,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,331
+outside_spain,Fuera de España,Construcción / Set promedio,Construcción / Set promedio,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,335
+outside_spain,Fuera de España,Metal (estructuras),Metal (estructuras),Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,339
+outside_spain,Fuera de España,Textil,Textil,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,344
+outside_spain,Fuera de España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,349
+outside_spain,Fuera de España,Pilas y baterías,Pilas y baterías,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,0,Regla metodológica; no FE anual,353
+spain,España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,12
+spain,España,Construcción / Set promedio,Construcción / Set promedio,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,23
+spain,España,Textil,Textil,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,28
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,33
+spain,España,Pilas y baterías,Pilas y baterías,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,37
+spain,España,Disolventes usados,Acetonas y alcohol isopropílico,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,40
+spain,España,Disolventes usados,Aguarrás mineral (White Spirit),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,43
+spain,España,Disolventes usados,Alcohol isopropílico,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,46
+spain,España,Disolventes usados,Disolventes universales o de Poliuretano (PU),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,49
+spain,España,Residuos químicos (peligrosos),Limpiadores de contacto en aerosol,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,56
+spain,España,Residuos químicos (no peligrosos),Pintura al agua,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,60
+spain,España,Residuos químicos (peligrosos),"Pinturas, barnices y resinas",Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,67
+spain,España,Residuos químicos (peligrosos),Texturizadores,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,74
+spain,España,Residuos químicos (peligrosos),Lacas,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,81
+spain,España,Residuos químicos (peligrosos),Pegamentos,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,88
+spain,España,Residuos químicos (peligrosos),Colas,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,95
+spain,España,Residuos químicos (no peligrosos),Cola blanca,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,99
+spain,España,Residuos plásticos (proxy),Látex / Caucho,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,103
+spain,España,Residuos químicos (peligrosos),Plastificantes,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,110
+spain,España,Residuos químicos (peligrosos),Aerosoles,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,117
+spain,España,Residuos químicos (peligrosos),Betún de judea,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,124
+spain,España,Residuos químicos (peligrosos),Esmaltes sintéticos,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,131
+spain,España,Residuos químicos (peligrosos),Químicos de baños portátiles,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,138
+spain,España,Residuos químicos (peligrosos),Pegamentos y resinas de dos componentes,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,145
+spain,España,Residuos químicos (peligrosos),Líquidos de FX (base de glicol o glicerina),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,152
+spain,España,Aceites usados,Aceites y combustibles usados,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,159
+spain,España,Pilas y baterías,Pilas y baterías usadas,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,163
+spain,España,"Residuos metálicos, no férreos",Cables,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,167
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Dispositivos electrónicos,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,172
+spain,España,Residuos plásticos,Vinilos,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,177
+spain,España,Textil,Moquetas,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,182
+spain,España,Residuos plásticos,Lonas o lonetas,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,187
+spain,España,Textil,Telas y tejidos,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,192
+spain,España,Aceites usados,Aceites y sustancias oleosas,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,199
+spain,España,Materiales mezclados y no diferenciados,Cuadros,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,207
+spain,España,Materiales mezclados y no diferenciados,Papel fotográfico,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,214
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Bombillas y fluorescentes,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,220
+spain,España,Residuos plásticos,CD Rom,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,224
+spain,España,Materiales mezclados y no diferenciados,Radiografías,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,231
+spain,España,Residuos animales y de productos alimenticios mezclados,Aceite vegetal,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,237
+spain,España,Residuos químicos (peligrosos),Pintura al disolvente,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,244
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Discos duros,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,249
+spain,España,Residuos animales y de productos alimenticios mezclados,Aceite de cocinado de catering,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,255
+spain,España,Residuos químicos (peligrosos),Imprimación,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,262
+spain,España,Residuos plásticos,Cintas LTO,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,267
+spain,España,Residuos químicos (peligrosos),"Botes y latas con restos de pintura, barniz y disolventes",Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,274
+spain,España,Residuos químicos (peligrosos),"Absorbentes, trapos y materiales de limpieza contaminados",Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,281
+spain,España,Lodos de efluentes industriales (no peligrosos),Lodos de efluentes industriales,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,283
+outside_spain,Fuera de España,Residuos domésticos residuales,Residuos domésticos residuales,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,292
+outside_spain,Fuera de España,Orgánico (alimentación y bebidas),Orgánico (alimentación),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,298
+outside_spain,Fuera de España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,303
+outside_spain,Fuera de España,Plástico (envases),Plástico (envases),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,308
+outside_spain,Fuera de España,Metal (envases),Metal (envases),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,313
+outside_spain,Fuera de España,Papel y cartón,Papel y cartón,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,318
+outside_spain,Fuera de España,Vidrio,Vidrio,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,323
+outside_spain,Fuera de España,Resto (mezcla),Resto (mezcla),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,326
+outside_spain,Fuera de España,Madera,Madera,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,332
+outside_spain,Fuera de España,Construcción / Set promedio,Construcción / Set promedio,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,336
+outside_spain,Fuera de España,Metal (estructuras),Metal (estructuras),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,340
+outside_spain,Fuera de España,Textil,Textil,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,345
+outside_spain,Fuera de España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,350
+outside_spain,Fuera de España,Pilas y baterías,Pilas y baterías,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,Calcular máximo entre destinos válidos calculables del mismo residuo y año lógico,354
+global,GLOBAL,,,País = España,CATALOG_ROUTING_CRITICAL,,Mostrar exclusivamente el catálogo España (25 tipos). No mezclar nombres ni opciones del catálogo exterior.,
+global,GLOBAL,,,País ≠ España,CATALOG_ROUTING_CRITICAL,,Mostrar exclusivamente el catálogo Fuera de España (14 tipos). No mostrar conceptos exclusivos de España.,
+global,GLOBAL,,,Destinos,DESTINATION_ROUTING_CRITICAL,,"Después de elegir país y residuo, mostrar solo los destinos válidos de ese bloque geográfico y de ese residuo.",
+global,GLOBAL,,,Nomenclatura,NO_UI_NORMALIZATION_ACROSS_REGIONS,,No unificar nombres visibles entre España y extranjero aunque sean conceptualmente comparables. Mantener la nomenclatura de cada catálogo.,

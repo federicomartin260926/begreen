@@ -199,7 +199,7 @@ final class EmissionFactorResolverTest extends TestCase
         $resolver = new EmissionFactorResolver($repository, $this->keyGenerator);
 
         $this->expectException(\InvalidArgumentException::class);
-        $resolver->resolveMethodological('test', [], 2026, EmissionFactor::TEMPORAL_TYPE_RULE);
+        $resolver->resolveMethodological('test', [], 2026, 'UNSUPPORTED');
     }
 
     public function testMissingMethodologicalFactorPreservesRequestedTypeWithoutFactorYear(): void

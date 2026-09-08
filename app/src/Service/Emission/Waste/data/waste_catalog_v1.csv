@@ -1,0 +1,342 @@
+region_scope,region_label,waste_type,waste_type_label,waste_activity,has_subactivity,treatment,route_type,source_family,temporal_type
+outside_spain,Fuera de España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),false,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Construcción / Set promedio,Construcción / Set promedio,Construcción / Set promedio,false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Construcción / Set promedio,Construcción / Set promedio,Construcción / Set promedio,false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Construcción / Set promedio,Construcción / Set promedio,Construcción / Set promedio,false,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Construcción / Set promedio,Construcción / Set promedio,Construcción / Set promedio,false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Madera,Madera,Madera,false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Madera,Madera,Madera,false,Compostaje,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Madera,Madera,Madera,false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Madera,Madera,Madera,false,Reciclaje (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Madera,Madera,Madera,false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Madera,Madera,Madera,false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Metal (envases),Metal (envases),Metal (envases),false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Metal (envases),Metal (envases),Metal (envases),false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Metal (envases),Metal (envases),Metal (envases),false,Reciclaje (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Metal (envases),Metal (envases),Metal (envases),false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Metal (envases),Metal (envases),Metal (envases),false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Metal (estructuras),Metal (estructuras),Metal (estructuras),false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Metal (estructuras),Metal (estructuras),Metal (estructuras),false,Reciclado (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Metal (estructuras),Metal (estructuras),Metal (estructuras),false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Metal (estructuras),Metal (estructuras),Metal (estructuras),false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Orgánico (alimentación y bebidas),Orgánico (alimentación y bebidas),Orgánico (alimentación),false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Orgánico (alimentación y bebidas),Orgánico (alimentación y bebidas),Orgánico (alimentación),false,Compostaje,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Orgánico (alimentación y bebidas),Orgánico (alimentación y bebidas),Orgánico (alimentación),false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Orgánico (alimentación y bebidas),Orgánico (alimentación y bebidas),Orgánico (alimentación),false,Digestión anaeróbica (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Orgánico (alimentación y bebidas),Orgánico (alimentación y bebidas),Orgánico (alimentación),false,Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Orgánico (alimentación y bebidas),Orgánico (alimentación y bebidas),Orgánico (alimentación),false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Orgánico (residuos de jardín),false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Orgánico (residuos de jardín),false,Compostaje,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Orgánico (residuos de jardín),false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Orgánico (residuos de jardín),false,Digestión anaeróbica (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Orgánico (residuos de jardín),false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Papel y cartón,Papel y cartón,Papel y cartón,false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Papel y cartón,Papel y cartón,Papel y cartón,false,Compostaje,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Papel y cartón,Papel y cartón,Papel y cartón,false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Papel y cartón,Papel y cartón,Papel y cartón,false,Reciclaje (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Papel y cartón,Papel y cartón,Papel y cartón,false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Pilas y baterías,Pilas y baterías,Pilas y baterías,false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Pilas y baterías,Pilas y baterías,Pilas y baterías,false,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Pilas y baterías,Pilas y baterías,Pilas y baterías,false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Pilas y baterías,Pilas y baterías,Pilas y baterías,false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Plástico (envases),Plástico (envases),Plástico (envases),false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Plástico (envases),Plástico (envases),Plástico (envases),false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Plástico (envases),Plástico (envases),Plástico (envases),false,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Plástico (envases),Plástico (envases),Plástico (envases),false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Plástico (envases),Plástico (envases),Plástico (envases),false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Residuos domésticos residuales,Residuos domésticos residuales,Residuos domésticos residuales,false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Residuos domésticos residuales,Residuos domésticos residuales,Residuos domésticos residuales,false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Residuos domésticos residuales,Residuos domésticos residuales,Residuos domésticos residuales,false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Resto (mezcla),Resto (mezcla),Resto (mezcla),false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Resto (mezcla),Resto (mezcla),Resto (mezcla),false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Resto (mezcla),Resto (mezcla),Resto (mezcla),false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Textil,Textil,Textil,false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Textil,Textil,Textil,false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Textil,Textil,Textil,false,Reciclaje (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Textil,Textil,Textil,false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Textil,Textil,Textil,false,Vertedero,FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Vidrio,Vidrio,Vidrio,false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Vidrio,Vidrio,Vidrio,false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+outside_spain,Fuera de España,Vidrio,Vidrio,Vidrio,false,Reciclaje (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+outside_spain,Fuera de España,Vidrio,Vidrio,Vidrio,false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+outside_spain,Fuera de España,Vidrio,Vidrio,Vidrio,false,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Aceites usados,Aceites usados,Aceites y combustibles usados,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Aceites usados,Aceites usados,Aceites y combustibles usados,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y combustibles usados,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y combustibles usados,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y combustibles usados,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y combustibles usados,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y combustibles usados,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y sustancias oleosas,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Aceites usados,Aceites usados,Aceites y sustancias oleosas,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y sustancias oleosas,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y sustancias oleosas,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y sustancias oleosas,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y sustancias oleosas,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Aceites usados,Aceites usados,Aceites y sustancias oleosas,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),true,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),true,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Bombillas y fluorescentes,true,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Bombillas y fluorescentes,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Bombillas y fluorescentes,true,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Bombillas y fluorescentes,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Bombillas y fluorescentes,true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Discos duros,true,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Discos duros,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Discos duros,true,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Discos duros,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Discos duros,true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Dispositivos electrónicos,true,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Dispositivos electrónicos,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Dispositivos electrónicos,true,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Dispositivos electrónicos,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Aparatos eléctricos y electrónicos (RAEE),Aparatos eléctricos y electrónicos (RAEE),Dispositivos electrónicos,true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Construcción / Set promedio,Construcción / Set promedio,Construcción / Set promedio,false,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+spain,España,Construcción / Set promedio,Construcción / Set promedio,Construcción / Set promedio,false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Construcción / Set promedio,Construcción / Set promedio,Construcción / Set promedio,false,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+spain,España,Construcción / Set promedio,Construcción / Set promedio,Construcción / Set promedio,false,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Disolventes usados,Disolventes usados,Acetonas y alcohol isopropílico,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Disolventes usados,Disolventes usados,Acetonas y alcohol isopropílico,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Disolventes usados,Disolventes usados,Acetonas y alcohol isopropílico,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Disolventes usados,Disolventes usados,Aguarrás mineral (White Spirit),true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Disolventes usados,Disolventes usados,Aguarrás mineral (White Spirit),true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Disolventes usados,Disolventes usados,Aguarrás mineral (White Spirit),true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Disolventes usados,Disolventes usados,Alcohol isopropílico,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Disolventes usados,Disolventes usados,Alcohol isopropílico,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Disolventes usados,Disolventes usados,Alcohol isopropílico,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Disolventes usados,Disolventes usados,Disolventes universales o de Poliuretano (PU),true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Disolventes usados,Disolventes usados,Disolventes universales o de Poliuretano (PU),true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Disolventes usados,Disolventes usados,Disolventes universales o de Poliuretano (PU),true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Lodos de efluentes industriales (no peligrosos),Lodos de efluentes industriales (no peligrosos),Lodos de efluentes industriales,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Lodos de efluentes industriales (no peligrosos),Lodos de efluentes industriales (no peligrosos),Lodos de efluentes industriales,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Madera,Madera,Madera,false,Reciclaje (Circuito cerrado),FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Cuadros,true,Compostaje,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Cuadros,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Cuadros,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Cuadros,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Cuadros,true,Reciclaje de sustancias orgánicas que no se utilizan como disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Cuadros,true,Reciclaje y recuperación de metales o compuestos metálicos,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Cuadros,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Cuadros,true,Utilización en provecho de la agricultura,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Papel fotográfico,true,Compostaje,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Papel fotográfico,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Papel fotográfico,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Papel fotográfico,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Papel fotográfico,true,Reciclaje de sustancias orgánicas que no se utilizan como disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Papel fotográfico,true,Reciclaje y recuperación de metales o compuestos metálicos,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Papel fotográfico,true,Utilización en provecho de la agricultura,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Radiografías,true,Compostaje,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Radiografías,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Radiografías,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Radiografías,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Radiografías,true,Reciclaje de sustancias orgánicas que no se utilizan como disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Radiografías,true,Reciclaje y recuperación de metales o compuestos metálicos,FACTOR,OCCC,VERSIONED
+spain,España,Materiales mezclados y no diferenciados,Materiales mezclados y no diferenciados,Radiografías,true,Utilización en provecho de la agricultura,FACTOR,OCCC,VERSIONED
+spain,España,Metal (envases),Metal (envases),Metal (envases),false,Gestión municipal (envases ligeros),FACTOR,OCCC,VERSIONED
+spain,España,Metal (estructuras),Metal (estructuras),Metal (estructuras),false,Reciclado (Circuito cerrado),FACTOR,OCCC,VERSIONED
+spain,España,Orgánico (alimentación y bebidas),Orgánico (alimentación y bebidas),Orgánico (alimentación),false,Gestión municipal (FORM),FACTOR,OCCC,VERSIONED
+spain,España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Orgánico (residuos de jardín),false,Compostaje,FACTOR,OCCC,VERSIONED
+spain,España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Orgánico (residuos de jardín),false,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Orgánico (residuos de jardín),Orgánico (residuos de jardín),Orgánico (residuos de jardín),false,Digestión anaeróbica (recuperación de energía),FACTOR,OCCC,VERSIONED
+spain,España,Papel y cartón,Papel y cartón,Papel y cartón,false,Gestión municipal (mezcla real),FACTOR,OCCC,VERSIONED
+spain,España,Pilas y baterías,Pilas y baterías,Pilas y baterías,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Pilas y baterías,Pilas y baterías,Pilas y baterías,true,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+spain,España,Pilas y baterías,Pilas y baterías,Pilas y baterías,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Pilas y baterías,Pilas y baterías,Pilas y baterías,true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Pilas y baterías,Pilas y baterías,Pilas y baterías usadas,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Pilas y baterías,Pilas y baterías,Pilas y baterías usadas,true,Reciclaje (Bucle abierto),FACTOR,DEFRA,ANNUAL
+spain,España,Pilas y baterías,Pilas y baterías,Pilas y baterías usadas,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Pilas y baterías,Pilas y baterías,Pilas y baterías usadas,true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Plástico (envases),Plástico (envases),Plástico (envases),false,Gestión municipal (envases ligeros),FACTOR,OCCC,VERSIONED
+spain,España,Residuo general (no recogida selectiva),Basura mezclada (sin separar),Residuo general (no recogida selectiva),false,Gestión municipal (mezcla real),FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite de cocinado de catering,true,Compostaje,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite de cocinado de catering,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite de cocinado de catering,true,Recuperación de productos alimenticios,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite de cocinado de catering,true,Recuperación de tejidos y órganos animales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite de cocinado de catering,true,Tratamiento específico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite de cocinado de catering,true,Valorización mediante proceso anaerobio,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite vegetal,true,Compostaje,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite vegetal,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite vegetal,true,Recuperación de productos alimenticios,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite vegetal,true,Recuperación de tejidos y órganos animales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite vegetal,true,Tratamiento específico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos animales y de productos alimenticios mezclados,Residuos animales y de productos alimenticios mezclados,Aceite vegetal,true,Valorización mediante proceso anaerobio,FACTOR,OCCC,VERSIONED
+spain,España,Residuos de vidrio,Residuos de vidrio,Espejos,true,Reciclaje de vidrio,FACTOR,OCCC,VERSIONED
+spain,España,"Residuos metálicos, no férreos","Residuos metálicos, no férreos",Cables,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,"Residuos metálicos, no férreos","Residuos metálicos, no férreos",Cables,true,Reciclaje y recuperación de metales o compuestos metálicos,FACTOR,OCCC,VERSIONED
+spain,España,"Residuos metálicos, no férreos","Residuos metálicos, no férreos",Cables,true,Recuperación de cables,FACTOR,OCCC,VERSIONED
+spain,España,"Residuos metálicos, no férreos","Residuos metálicos, no férreos",Cables,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Residuos plásticos,Residuos plásticos,CD Rom,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,CD Rom,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos plásticos,Residuos plásticos,CD Rom,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,CD Rom,true,Reciclaje de plásticos,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Cintas LTO,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Cintas LTO,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos plásticos,Residuos plásticos,Cintas LTO,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Cintas LTO,true,Reciclaje de plásticos,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Cintas LTO,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Residuos plásticos,Residuos plásticos,Lonas o lonetas,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Lonas o lonetas,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos plásticos,Residuos plásticos,Lonas o lonetas,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Lonas o lonetas,true,Reciclaje de plásticos,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Lonas o lonetas,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Residuos plásticos,Residuos plásticos,Vinilos,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Vinilos,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos plásticos,Residuos plásticos,Vinilos,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Vinilos,true,Reciclaje de plásticos,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos,Residuos plásticos,Vinilos,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Residuos plásticos (proxy),Residuos plásticos (proxy),Látex / Caucho,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos (proxy),Residuos plásticos (proxy),Látex / Caucho,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos plásticos (proxy),Residuos plásticos (proxy),Látex / Caucho,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos plásticos (proxy),Residuos plásticos (proxy),Látex / Caucho,true,Reciclaje de plásticos,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (no peligrosos),Residuos químicos (no peligrosos),Cola blanca,true,Compostaje,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (no peligrosos),Residuos químicos (no peligrosos),Cola blanca,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (no peligrosos),Residuos químicos (no peligrosos),Cola blanca,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (no peligrosos),Residuos químicos (no peligrosos),Cola blanca,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (no peligrosos),Residuos químicos (no peligrosos),Pintura al agua,true,Compostaje,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (no peligrosos),Residuos químicos (no peligrosos),Pintura al agua,true,Deposición de residuos no especiales,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (no peligrosos),Residuos químicos (no peligrosos),Pintura al agua,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (no peligrosos),Residuos químicos (no peligrosos),Pintura al agua,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Absorbentes, trapos y materiales de limpieza contaminados",true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Absorbentes, trapos y materiales de limpieza contaminados",true,Gestión a través de un Centro de Recogida y Transferencia (CRT),FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Absorbentes, trapos y materiales de limpieza contaminados",true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Absorbentes, trapos y materiales de limpieza contaminados",true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Absorbentes, trapos y materiales de limpieza contaminados",true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Absorbentes, trapos y materiales de limpieza contaminados",true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Absorbentes, trapos y materiales de limpieza contaminados",true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Aerosoles,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Aerosoles,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Aerosoles,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Aerosoles,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Aerosoles,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Aerosoles,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Aerosoles,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Betún de judea,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Betún de judea,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Betún de judea,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Betún de judea,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Betún de judea,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Betún de judea,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Betún de judea,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Botes y latas con restos de pintura, barniz y disolventes",true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Botes y latas con restos de pintura, barniz y disolventes",true,Gestión a través de un Centro de Recogida y Transferencia (CRT),FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Botes y latas con restos de pintura, barniz y disolventes",true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Botes y latas con restos de pintura, barniz y disolventes",true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Botes y latas con restos de pintura, barniz y disolventes",true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Botes y latas con restos de pintura, barniz y disolventes",true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Botes y latas con restos de pintura, barniz y disolventes",true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Colas,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Colas,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Colas,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Colas,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Colas,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Colas,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Colas,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Esmaltes sintéticos,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Esmaltes sintéticos,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Esmaltes sintéticos,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Esmaltes sintéticos,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Esmaltes sintéticos,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Esmaltes sintéticos,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Esmaltes sintéticos,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Imprimación,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Imprimación,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Imprimación,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Imprimación,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Imprimación,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Imprimación,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Imprimación,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Lacas,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Lacas,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Lacas,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Lacas,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Lacas,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Lacas,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Lacas,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Limpiadores de contacto en aerosol,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Limpiadores de contacto en aerosol,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Limpiadores de contacto en aerosol,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Limpiadores de contacto en aerosol,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Limpiadores de contacto en aerosol,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Limpiadores de contacto en aerosol,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Limpiadores de contacto en aerosol,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Líquidos de FX (base de glicol o glicerina),true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Líquidos de FX (base de glicol o glicerina),true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Líquidos de FX (base de glicol o glicerina),true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Líquidos de FX (base de glicol o glicerina),true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Líquidos de FX (base de glicol o glicerina),true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Líquidos de FX (base de glicol o glicerina),true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Líquidos de FX (base de glicol o glicerina),true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos y resinas de dos componentes,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos y resinas de dos componentes,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos y resinas de dos componentes,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos y resinas de dos componentes,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos y resinas de dos componentes,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos y resinas de dos componentes,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pegamentos y resinas de dos componentes,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pintura al disolvente,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pintura al disolvente,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pintura al disolvente,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pintura al disolvente,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pintura al disolvente,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pintura al disolvente,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Pintura al disolvente,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Pinturas, barnices y resinas",true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Pinturas, barnices y resinas",true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Pinturas, barnices y resinas",true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Pinturas, barnices y resinas",true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Pinturas, barnices y resinas",true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Pinturas, barnices y resinas",true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),"Pinturas, barnices y resinas",true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Plastificantes,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Plastificantes,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Plastificantes,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Plastificantes,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Plastificantes,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Plastificantes,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Plastificantes,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Químicos de baños portátiles,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Químicos de baños portátiles,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Químicos de baños portátiles,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Químicos de baños portátiles,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Químicos de baños portátiles,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Químicos de baños portátiles,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Químicos de baños portátiles,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Texturizadores,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Texturizadores,true,Gestión a través de un Centro de Recogida y Transferencia,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Texturizadores,true,Incineración de residuos no halogenados,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Texturizadores,true,"Recuperación, regeneración y reutilización de envases",FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Texturizadores,true,Regeneración de disolventes,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Texturizadores,true,Tratamiento físico-químico y biológico,FACTOR,OCCC,VERSIONED
+spain,España,Residuos químicos (peligrosos),Residuos químicos (peligrosos),Texturizadores,true,Tratamiento por evaporación,FACTOR,OCCC,VERSIONED
+spain,España,Resto (mezcla),Fracción resto (después de separar),Resto (mezcla),false,Gestión municipal (fracción resto),FACTOR,OCCC,VERSIONED
+spain,España,Textil,Textil,Moquetas,true,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+spain,España,Textil,Textil,Moquetas,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Textil,Textil,Moquetas,true,Reciclaje (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+spain,España,Textil,Textil,Moquetas,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Textil,Textil,Moquetas,true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Textil,Textil,Telas y tejidos,true,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+spain,España,Textil,Textil,Telas y tejidos,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Textil,Textil,Telas y tejidos,true,Reciclaje (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+spain,España,Textil,Textil,Telas y tejidos,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Textil,Textil,Telas y tejidos,true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Textil,Textil,Textil,true,Combustión / Incineración (recuperación de energía),FACTOR,DEFRA,ANNUAL
+spain,España,Textil,Textil,Textil,true,Desconocido,DERIVED_MAX_VALID_TREATMENTS,,
+spain,España,Textil,Textil,Textil,true,Reciclaje (Circuito cerrado),FACTOR,DEFRA,ANNUAL
+spain,España,Textil,Textil,Textil,true,Reutilización / Donación,NON_WASTE_ROUTE_ZERO,,RULE
+spain,España,Textil,Textil,Textil,true,Vertedero,FACTOR,DEFRA,ANNUAL
+spain,España,Vidrio,Vidrio,Vidrio,false,Gestión municipal (envases de vidrio),FACTOR,OCCC,VERSIONED

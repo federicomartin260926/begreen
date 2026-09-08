@@ -69,6 +69,7 @@ final readonly class EmissionFactorResolver
     ): EmissionFactorResolution {
         if (!in_array($temporalType, [
             EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+            EmissionFactor::TEMPORAL_TYPE_RULE,
             EmissionFactor::TEMPORAL_TYPE_COMPOSITE,
             EmissionFactor::TEMPORAL_TYPE_PROXY_LCA,
         ], true)) {
