@@ -2355,6 +2355,8 @@ backend:
         fallback: "Latest prior factor available"
         geographic_proxy: "Geographic proxy"
         hotel_base: "Underlying 4-star Hotel factor"
+        hostel_proxy_reason: "Travel & Climate v5.1 proxy derived from the Greenview Hotel 4-star factor"
+        apartment_proxy_reason: "Land 2025 contextual apartment factor for all countries"
       flash:
         created: "Accommodation record created successfully."
         updated: "Accommodation record updated successfully."

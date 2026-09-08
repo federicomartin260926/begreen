@@ -83,13 +83,13 @@ export default class extends Controller {
 
     const lines = [];
     if (result.normalizedAmount !== null) {
-      lines.push(`${this.formatDecimal(result.normalizedAmount)} ${result.normalizedUnit || ''}`.trim());
+      lines.push(`${this.formatDecimal(result.normalizedAmount)} ${this.localizeUnit(result.normalizedUnit)}`.trim());
     }
     (result.factorTraces || []).forEach((trace) => {
       const parts = [this.i18nValue.typeLabels[trace.accommodationType] || trace.accommodationType, trace.source];
       if (trace.metadata?.dataset) parts.push(trace.metadata.dataset);
       if (trace.effectiveFactorValue !== null) {
-        parts.push(`${this.formatDecimal(trace.effectiveFactorValue)} ${trace.effectiveFactorUnit || ''}`.trim());
+        parts.push(`${this.formatDecimal(trace.effectiveFactorValue)} ${this.localizeUnit(trace.effectiveFactorUnit)}`.trim());
       }
       if (trace.accommodationType === 'hostel' && trace.baseFactorValue !== null) {
         parts.push(`${this.i18nValue.hotelBase}: ${this.formatDecimal(trace.baseFactorValue)}`);
@@ -98,7 +98,9 @@ export default class extends Controller {
       if (trace.temporalType === 'VERSIONED') parts.push('VERSIONED');
       if (trace.fallback) parts.push(this.i18nValue.fallback);
       if (trace.geographicProxy) parts.push(this.i18nValue.geographicProxy);
-      if (trace.proxyReason) parts.push(trace.proxyReason);
+      if (trace.proxyReason) {
+        parts.push(this.i18nValue.proxyReasonLabels[trace.proxyReason] || trace.proxyReason);
+      }
       lines.push(parts.filter(Boolean).join(' · '));
     });
     this.previewTraceTarget.replaceChildren();
@@ -128,6 +130,18 @@ export default class extends Controller {
       event.preventDefault();
       this.formTarget.classList.add('was-validated');
     }
+  }
+
+  localizeUnit(unit) {
+    if (!unit) return '';
+
+    const factorPrefix = 'kgCO2e/';
+    if (unit.startsWith(factorPrefix)) {
+      const baseUnit = unit.slice(factorPrefix.length);
+      return `${factorPrefix}${this.i18nValue.unitLabels[baseUnit] || baseUnit}`;
+    }
+
+    return this.i18nValue.unitLabels[unit] || unit;
   }
 
   formatDecimal(value) {

@@ -2407,6 +2407,8 @@ backend:
         fallback: "Último factor anterior disponible"
         geographic_proxy: "Proxy geográfico"
         hotel_base: "Factor Hotel 4★ subyacente"
+        hostel_proxy_reason: "Proxy Travel & Climate v5.1 derivado del factor Greenview de Hotel 4★"
+        apartment_proxy_reason: "Factor contextual Land 2025 para apartamento turístico aplicable a todos los países"
       flash:
         created: "Registro de Alojamientos creado correctamente."
         updated: "Registro de Alojamientos actualizado correctamente."
