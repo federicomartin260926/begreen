@@ -21,6 +21,7 @@ class EmissionRecordFixtures extends Fixture implements DependentFixtureInterfac
     private const MODERN_CATEGORIES = [
         'Energía',
         'Transporte',
+        'Agua',
     ];
 
     public function getDependencies(): array

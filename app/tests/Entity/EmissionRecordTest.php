@@ -47,7 +47,7 @@ final class EmissionRecordTest extends TestCase
         self::assertStringContainsString('->setCategory($act->getCategory())', $source);
     }
 
-    public function testLegacyFixturesExcludeMigratedTransportCategory(): void
+    public function testLegacyFixturesExcludeAllMigratedCategories(): void
     {
         $modernCategories = (new \ReflectionClass(EmissionRecordFixtures::class))
             ->getReflectionConstant('MODERN_CATEGORIES')
@@ -55,7 +55,10 @@ final class EmissionRecordTest extends TestCase
         $activityFixture = file_get_contents(__DIR__.'/../../src/DataFixtures/EmissionActivityFixtures.php');
 
         self::assertContains('Transporte', $modernCategories);
+        self::assertContains('Energía', $modernCategories);
+        self::assertContains('Agua', $modernCategories);
         self::assertIsString($activityFixture);
         self::assertStringNotContainsString("['Transporte',", $activityFixture);
+        self::assertStringNotContainsString("['Agua',", $activityFixture);
     }
 }
