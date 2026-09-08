@@ -118,23 +118,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             'Elementos de atrezzo' => 'Props',
             'Equipo de rodaje (por día)' => 'Shooting equipment (per day)',
 
-            // Residuos
-            'Orgánico' => 'Organic',
-            'Compost' => 'Compost',
-            'Papel' => 'Paper',
-            'Envases' => 'Packaging',
-            //'Vidrio' => 'Glass',
-            'Resto' => 'Residual waste',
-            'Metal' => 'Metal',
-            'Textil' => 'Textile',
-            'Pinturas, disolventes, barnices' => 'Paints, solvents, varnishes',
-            'Madera' => 'Wood',
-            'Pequeños electrodomésticos' => 'Small appliances',
-            'Aceite usado' => 'Used oil',
-            //'Plástico' => 'Plastic',
-            'Toner' => 'Toner',
-            'Pilas' => 'Batteries',
-            'Mezcla de todo tipo' => 'Mixed waste',
         ];
 
         // --- Datos base (ES por defecto) ---
@@ -174,24 +157,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             ['Materiales', 'Elementos de atrezzo', '€', 1.0, null],
             ['Materiales', 'Equipo de rodaje (por día)', 'día', 2.0, null],
 
-            // Residuos
-            ['Residuos', 'Orgánico', 'kg', 0.05, null],
-            ['Residuos', 'Compost', 'kg', 0.01, null],
-            ['Residuos', 'Papel', 'kg', 0.07, null],
-            ['Residuos', 'Envases', 'kg', 0.08, null],
-            ['Residuos', 'Vidrio', 'kg', 0.02, null],
-            ['Residuos', 'Resto', 'kg', 0.10, null],
-            ['Residuos', 'Metal', 'kg', 0.06, null],
-            ['Residuos', 'Textil', 'kg', 0.45, null],
-            ['Residuos', 'Pinturas, disolventes, barnices', 'kg', 2.00, null],
-            ['Residuos', 'Madera', 'kg', 0.09, null],
-            ['Residuos', 'Pequeños electrodomésticos', 'kg', 1.00, null],
-            ['Residuos', 'Aceite usado', 'kg', 2.50, null],
-            ['Residuos', 'Plástico', 'kg', 1.20, null],
-            ['Residuos', 'Toner', 'kg', 3.00, null],
-            ['Residuos', 'Bombillas', 'kg', 1.50, null],
-            ['Residuos', 'Pilas', 'kg', 3.50, null],
-            ['Residuos', 'Mezcla de todo tipo', 'kg', 1.00, null],
         ];
 
         foreach ($activities as [$categoryName, $nameEs, $unitEs, $factor, $subcategoryEs]) {
