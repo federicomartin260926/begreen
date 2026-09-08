@@ -3070,6 +3070,50 @@ backend:
                 title: "Incompleta"
                 content: "Faltan: %missing%"
                 aria: "Medida incompleta"
+    emission_factor:
+      index:
+        title: "Factores de emisión"
+        breadcrumb: "Factores de emisión"
+        heading: "Catálogo de factores de emisión"
+        total: "%count% factores encontrados"
+        empty: "No se encontraron factores con estos filtros."
+      show:
+        title: "Detalle del factor de emisión"
+        heading: "Factor de emisión #%id%"
+      form:
+        title_new: "Nuevo factor de emisión"
+        title_edit: "Editar factor de emisión"
+        heading_new: "Nuevo factor de emisión"
+        heading_edit: "Editar factor de emisión"
+      fields:
+        category_key: "Categoría"
+        functional_key: "Clave funcional"
+        criteria: "Criterios (JSON)"
+        temporal_type: "Tipo temporal"
+        year: "Año"
+        value: "Valor"
+        unit: "Unidad"
+        source: "Fuente"
+        source_detail: "Detalle de la fuente"
+        metadata: "Metadatos (JSON)"
+      filters:
+        all: "Todos"
+      actions:
+        new: "Nuevo"
+        show: "Ver"
+        edit: "Editar"
+        filter: "Filtrar"
+        clear: "Limpiar"
+        confirm_delete: "¿Eliminar este factor de emisión?"
+      validation:
+        invalid_json_object: "Introduce un objeto JSON válido."
+        invalid_decimal: "Introduce un número decimal válido usando punto."
+        annual_year_required: "Los factores ANNUAL necesitan un año."
+        duplicate_identity: "Ya existe un factor de emisión con estos criterios para esta categoría y año."
+      flash:
+        created: "Factor de emisión creado correctamente."
+        updated: "Factor de emisión actualizado correctamente."
+        deleted: "Factor de emisión eliminado correctamente."
     emission:
       activity:
         flash:

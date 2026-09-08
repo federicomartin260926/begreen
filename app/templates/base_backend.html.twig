@@ -118,6 +118,10 @@
                                 <i class="bi bi-list-check flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.measures'|trans }}</span>
                             </a>
+                            <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_emission_factor' %}active fw-bold{% endif %}" href="{{ path('admin_emission_factor_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.factors'|trans }}">
+                                <i class="bi bi-calculator flex-shrink-0"></i>
+                                <span class="ms-2">{{ 'backend.menu.factors'|trans }}</span>
+                            </a>
                             <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_auxiliary' %}active fw-bold{% endif %}" href="{{ path('admin_auxiliary_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.aux_tables'|trans }}">
                                 <i class="bi bi-table flex-shrink-0"></i>
                                 <span class="ms-2">{{ 'backend.menu.aux_tables'|trans }}</span>
@@ -151,6 +155,13 @@
                     {% endif %}
                 </div>
             </nav>
+            {% elseif 'ROLE_ADMIN' in app.user.roles %}
+            <nav class="nav flex-column px-3 pb-3 pt-1 d-none d-md-flex">
+                <a class="nav-link my-1 text-decoration-none {% if app.request.attributes.get('_route') starts with 'admin_emission_factor' %}active fw-bold{% endif %}" href="{{ path('admin_emission_factor_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.factors'|trans }}">
+                    <i class="bi bi-calculator flex-shrink-0"></i>
+                    <span class="ms-2">{{ 'backend.menu.factors'|trans }}</span>
+                </a>
+            </nav>
             {% endif %}
 
             {# VERSIÓN SOLO ICONOS (pantallas pequeñas) #}
@@ -174,6 +185,11 @@
                             <li>
                                 <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_measures_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.measures'|trans }}">
                                     {{ 'backend.menu.measures'|trans }}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item text-decoration-none ms-2" href="{{ path('admin_emission_factor_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.factors'|trans }}">
+                                    {{ 'backend.menu.factors'|trans }}
                                 </a>
                             </li>
                             <li>
@@ -208,7 +224,10 @@
                             </li>
                         </ul>
                     </div>
-
+                    {% elseif 'ROLE_ADMIN' in app.user.roles %}
+                    <a class="nav-link text-decoration-none d-flex align-items-center justify-content-center py-2" href="{{ path('admin_emission_factor_index', {'_locale': app.request.locale}) }}" title="{{ 'backend.menu.factors'|trans }}" aria-label="{{ 'backend.menu.factors'|trans }}">
+                        <i class="bi bi-calculator fs-4" aria-hidden="true"></i>
+                    </a>
                     {% endif %}
                 </div>
             </nav>

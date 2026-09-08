@@ -1,0 +1,96 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.admin.emission_factor.index.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active">{{ 'backend.admin.emission_factor.index.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0 backend-admin-shell">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-1">{{ 'backend.admin.emission_factor.index.heading'|trans }}</h2>
+            <p class="text-muted mb-0">{{ 'backend.admin.emission_factor.index.total'|trans({'%count%': total}) }}</p>
+        </div>
+        <a class="btn btn-success text-decoration-none" href="{{ path('admin_emission_factor_new') }}">
+            <i class="bi bi-plus-circle me-1"></i>{{ 'backend.admin.emission_factor.actions.new'|trans }}
+        </a>
+    </div>
+
+    <form method="get" class="card card-body mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label" for="factor-category">{{ 'backend.admin.emission_factor.fields.category_key'|trans }}</label>
+                <select class="form-select" id="factor-category" name="categoryKey">
+                    <option value="">{{ 'backend.admin.emission_factor.filters.all'|trans }}</option>
+                    {% for categoryKey in categoryKeys %}<option value="{{ categoryKey }}" {{ filters.categoryKey|default('') == categoryKey ? 'selected' : '' }}>{{ categoryKey }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="factor-temporal-type">{{ 'backend.admin.emission_factor.fields.temporal_type'|trans }}</label>
+                <select class="form-select" id="factor-temporal-type" name="temporalType">
+                    <option value="">{{ 'backend.admin.emission_factor.filters.all'|trans }}</option>
+                    {% for temporalType in temporalTypes %}<option value="{{ temporalType }}" {{ filters.temporalType|default('') == temporalType ? 'selected' : '' }}>{{ temporalType }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="factor-year">{{ 'backend.admin.emission_factor.fields.year'|trans }}</label>
+                <input class="form-control" id="factor-year" name="year" type="number" value="{{ filters.year|default('') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="factor-source">{{ 'backend.admin.emission_factor.fields.source'|trans }}</label>
+                <input class="form-control" id="factor-source" name="source" value="{{ filters.source|default('') }}">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">{{ 'backend.admin.emission_factor.actions.filter'|trans }}</button>
+                <a class="btn btn-outline-secondary" href="{{ path('admin_emission_factor_index') }}">{{ 'backend.admin.emission_factor.actions.clear'|trans }}</a>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle green_table_1">
+            <thead><tr>
+                <th>{{ 'backend.admin.emission_factor.fields.category_key'|trans }}</th>
+                <th>{{ 'backend.admin.emission_factor.fields.temporal_type'|trans }}</th>
+                <th>{{ 'backend.admin.emission_factor.fields.year'|trans }}</th>
+                <th>{{ 'backend.admin.emission_factor.fields.value'|trans }}</th>
+                <th>{{ 'backend.admin.emission_factor.fields.unit'|trans }}</th>
+                <th>{{ 'backend.admin.emission_factor.fields.source'|trans }}</th>
+                <th class="text-center">{{ 'backend.common.actions'|trans }}</th>
+            </tr></thead>
+            <tbody>
+            {% for factor in factors %}
+                <tr>
+                    <td><code>{{ factor.categoryKey }}</code></td>
+                    <td>{{ factor.temporalType }}</td>
+                    <td>{{ factor.year is null ? 'NULL' : factor.year }}</td>
+                    <td>{{ factor.value is null ? 'NULL' : factor.value }}</td>
+                    <td>{{ factor.unit }}</td>
+                    <td>{{ factor.source }}</td>
+                    <td class="text-center text-nowrap">
+                        <a class="btn" href="{{ path('admin_emission_factor_show', {id: factor.id}) }}" title="{{ 'backend.admin.emission_factor.actions.show'|trans }}"><i class="bi bi-eye"></i></a>
+                        <a class="btn" href="{{ path('admin_emission_factor_edit', {id: factor.id}) }}" title="{{ 'backend.common.edit'|trans }}"><i class="bi bi-pencil"></i></a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="7" class="text-center text-muted">{{ 'backend.admin.emission_factor.index.empty'|trans }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pages > 1 %}
+        <nav aria-label="{{ 'backend.pagination.title'|trans }}">
+            <ul class="pagination justify-content-center">
+                {% set query = app.request.query.all|filter((value, key) => key != 'page') %}
+                <li class="page-item {{ page <= 1 ? 'disabled' : '' }}"><a class="page-link" href="{{ path('admin_emission_factor_index', query|merge({page: page - 1})) }}">{{ 'backend.pagination.previous'|trans }}</a></li>
+                <li class="page-item disabled"><span class="page-link">{{ page }} / {{ pages }}</span></li>
+                <li class="page-item {{ page >= pages ? 'disabled' : '' }}"><a class="page-link" href="{{ path('admin_emission_factor_index', query|merge({page: page + 1})) }}">{{ 'backend.pagination.next'|trans }}</a></li>
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}

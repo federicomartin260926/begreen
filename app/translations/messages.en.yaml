@@ -3016,6 +3016,50 @@ backend:
                 title: "Incomplete"
                 content: "Missing: %missing%"
                 aria: "Measure incomplete"
+    emission_factor:
+      index:
+        title: "Emission factors"
+        breadcrumb: "Emission factors"
+        heading: "Emission factor catalogue"
+        total: "%count% factors found"
+        empty: "No factors matched these filters."
+      show:
+        title: "Emission factor details"
+        heading: "Emission factor #%id%"
+      form:
+        title_new: "New emission factor"
+        title_edit: "Edit emission factor"
+        heading_new: "New emission factor"
+        heading_edit: "Edit emission factor"
+      fields:
+        category_key: "Category"
+        functional_key: "Functional key"
+        criteria: "Criteria (JSON)"
+        temporal_type: "Temporal type"
+        year: "Year"
+        value: "Value"
+        unit: "Unit"
+        source: "Source"
+        source_detail: "Source details"
+        metadata: "Metadata (JSON)"
+      filters:
+        all: "All"
+      actions:
+        new: "New"
+        show: "View"
+        edit: "Edit"
+        filter: "Filter"
+        clear: "Clear"
+        confirm_delete: "Delete this emission factor?"
+      validation:
+        invalid_json_object: "Enter a valid JSON object."
+        invalid_decimal: "Enter a valid decimal number using a point."
+        annual_year_required: "ANNUAL factors require a year."
+        duplicate_identity: "An emission factor already exists with these criteria for this category and year."
+      flash:
+        created: "Emission factor created successfully."
+        updated: "Emission factor updated successfully."
+        deleted: "Emission factor deleted successfully."
     emission:
       activity:
         flash:
