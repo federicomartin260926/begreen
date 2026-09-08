@@ -81,20 +81,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
         ];
 
         $nameMap = [
-            // Alojamientos
-            'HOTEL *****' => 'HOTEL *****',
-            'HOTEL ****' => 'HOTEL ****',
-            'HOTEL ***' => 'HOTEL ***',
-            'HOTEL **' => 'HOTEL **',
-            'HOTEL *' => 'HOTEL *',
-            'HOSTAL' => 'Hostel',
-            'CASA RURAL (menos de 100 m²)' => 'Country house (under 100 m²)',
-            'CASA RURAL (de 100 m² a 200 m²)' => 'Country house (100–200 m²)',
-            'CASA RURAL (más de 200 m²)' => 'Country house (over 200 m²)',
-            'APARTAMENTO (menos de 50 m²)' => 'Apartment (under 50 m²)',
-            'APARTAMENTO (de 50 a 150 m²)' => 'Apartment (50–150 m²)',
-            'APARTAMENTO (más de 150 m²)' => 'Apartment (over 150 m²)',
-
             // Catering
             'Desayuno' => 'Breakfast',
             'Bocadillo' => 'Sandwich',
@@ -165,19 +151,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
         // --- Datos base (ES por defecto) ---
         $activities = [
             // [CategoryName, Name(ES), Unit(ES), Factor, Subcategory(ES or null)]
-            ['Alojamientos', 'HOTEL *****', 'noche', 12.0, null],
-            ['Alojamientos', 'HOTEL ****', 'noche', 10.5, null],
-            ['Alojamientos', 'HOTEL ***', 'noche', 9.0, null],
-            ['Alojamientos', 'HOTEL **', 'noche', 7.5, null],
-            ['Alojamientos', 'HOTEL *', 'noche', 6.5, null],
-            ['Alojamientos', 'HOSTAL', 'noche', 5.5, null],
-            ['Alojamientos', 'CASA RURAL (menos de 100 m²)', 'noche', 5.0, null],
-            ['Alojamientos', 'CASA RURAL (de 100 m² a 200 m²)', 'noche', 6.5, null],
-            ['Alojamientos', 'CASA RURAL (más de 200 m²)', 'noche', 7.5, null],
-            ['Alojamientos', 'APARTAMENTO (menos de 50 m²)', 'noche', 4.5, null],
-            ['Alojamientos', 'APARTAMENTO (de 50 a 150 m²)', 'noche', 5.5, null],
-            ['Alojamientos', 'APARTAMENTO (más de 150 m²)', 'noche', 6.5, null],
-
             // Catering
             ['Catering', 'Desayuno', 'ración', 1.2, null],
             ['Catering', 'Bocadillo', 'ración', 0.8, null],

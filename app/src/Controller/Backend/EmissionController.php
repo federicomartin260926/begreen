@@ -905,7 +905,7 @@ class EmissionController extends AbstractController
             return $this->redirectToRoute('backend_project_edit', ['id' => $project->getId()]);
         }
 
-        $categoryName = (string) ($request->request->get('category') ?: ($record->getEffectiveCategory()?->getName() ?? 'Alojamientos'));
+        $categoryName = (string) ($request->request->get('category') ?: ($record->getEffectiveCategory()?->getName() ?? ''));
         $category = $categoryRepository->findOneBy(['name' => $categoryName]);
 
         try {

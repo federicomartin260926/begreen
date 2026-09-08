@@ -57,10 +57,12 @@ final class EmissionRecordTest extends TestCase
         self::assertContains('Transporte', $modernCategories);
         self::assertContains('Energía', $modernCategories);
         self::assertContains('Agua', $modernCategories);
+        self::assertContains('Alojamientos', $modernCategories);
         self::assertNotContains('Viajes', $modernCategories);
         self::assertIsString($activityFixture);
         self::assertStringNotContainsString("['Transporte',", $activityFixture);
         self::assertStringNotContainsString("['Agua',", $activityFixture);
         self::assertStringNotContainsString("['Viajes',", $activityFixture);
+        self::assertStringNotContainsString("['Alojamientos',", $activityFixture);
     }
 }
