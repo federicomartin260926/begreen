@@ -7,6 +7,7 @@ use App\Entity\EmissionRecordAttachment;
 use App\Security\EmissionRecordVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\Water\WaterEmissionSnapshot;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -50,13 +51,19 @@ final class EmissionRecordAttachmentController extends AbstractController
         ActiveProjectService $activeProjectService,
         EntityManagerInterface $entityManager,
         EmissionRecordAttachmentStorage $storage,
+        WaterEmissionSnapshot $waterSnapshot,
     ): Response {
         [$record, $attachment] = $this->ownedAttachment($recordId, $attachmentId, $activeProjectService, $entityManager);
         $this->denyAccessUnlessGranted(EmissionRecordVoter::EDIT, $record);
 
-        $editRoute = 'Energía' === $record->getEffectiveCategory()?->getName()
-            ? 'backend_emission_edit_energy_v1'
-            : 'backend_emission_edit_transport_v20';
+        $category = $record->getEffectiveCategory();
+        $editRoute = match ($category?->getName()) {
+            'Energía' => 'backend_emission_edit_energy_v1',
+            'Agua' => $waterSnapshot->isWaterV1Record($record, (int) $category->getId())
+                ? 'backend_emission_edit_water_v1'
+                : 'backend_emission_edit',
+            default => 'backend_emission_edit_transport_v20',
+        };
 
         if (!$this->isCsrfTokenValid('delete_emission_attachment_'.$attachmentId, (string) $request->request->get('_token'))) {
             $this->addFlash('danger', 'backend.emission.attachments.flash.csrf_invalid');

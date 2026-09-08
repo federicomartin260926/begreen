@@ -18,6 +18,9 @@ use App\Service\Emission\Energy\EnergyEmissionSnapshot;
 use App\Service\Emission\Energy\EnergyEmissionInput;
 use App\Service\Emission\Energy\EnergyEmissionResult;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
+use App\Service\Emission\Water\WaterEmissionInput;
+use App\Service\Emission\Water\WaterEmissionResult;
+use App\Service\Emission\Water\WaterEmissionSnapshot;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -196,6 +199,50 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('/backend/emission/997/duplicate-transport', $tripsContent);
     }
 
+    public function testWaterUsesModernCreateEditAndDuplicateRoutes(): void
+    {
+        $payload = $this->buildPayload();
+        $input = new WaterEmissionInput(
+            new \DateTimeImmutable('2026-01-20'),
+            new \DateTimeImmutable('2026-01-20'),
+            'ES',
+            WaterEmissionInput::USE_CLEANING,
+            '1',
+            'm3',
+            WaterEmissionInput::DESTINATION_SEWER,
+        );
+        $result = new WaterEmissionResult(
+            EmissionRecord::STATUS_CALCULATED,
+            '0.517',
+            '1',
+            'm3',
+            2026,
+            'ANNUAL',
+        );
+        $record = (new EmissionRecord())
+            ->setProject($payload['project'])
+            ->setPhase($payload['records'][0]->getPhase())
+            ->setCategory($payload['categories'][4])
+            ->setActivity(null)
+            ->setAmount(1)
+            ->setEmission(0.517)
+            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'))
+            ->setCalculationDetails((new WaterEmissionSnapshot())->encode($input, $result));
+        $this->setEntityId($record, 996);
+
+        $content = (string) $this->renderIndex(
+            $payload['project'],
+            [$record],
+            $payload['categories'],
+            ['categoryId' => 5],
+        )->getContent();
+
+        self::assertStringContainsString('/backend/emission/new-water-v1', $content);
+        self::assertStringContainsString('Limpieza', $content);
+        self::assertStringContainsString('/backend/emission/996/edit-water-v1', $content);
+        self::assertStringContainsString('/backend/emission/996/duplicate-water-v1', $content);
+    }
+
     public function testLegacyTransportCreateRouteStillRendersForTrips(): void
     {
         $context = $this->legacyTransportRouteContext();
@@ -345,6 +392,7 @@ final class EmissionControllerTest extends KernelTestCase
             self::getContainer()->get(TranslatorInterface::class),
             new TransportEmissionSnapshot(),
             new EnergyEmissionSnapshot(),
+            new WaterEmissionSnapshot(),
             $request
         );
 
@@ -506,17 +554,15 @@ final class EmissionControllerTest extends KernelTestCase
 
     private function createEntityManagerMock(): EntityManagerInterface
     {
-        $call = 0;
+        $ids = [1, 2, 3, 5];
 
         $query = $this->createMock(Query::class);
         foreach (['setParameter', 'setMaxResults'] as $method) {
             $query->method($method)->willReturnSelf();
         }
         $query->method('getOneOrNullResult')->willReturnCallback(
-            static function () use (&$call): array {
-                $call++;
-
-                return ['id' => $call];
+            static function () use (&$ids): array {
+                return ['id' => array_shift($ids)];
             }
         );
 

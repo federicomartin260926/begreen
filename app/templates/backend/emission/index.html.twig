@@ -126,6 +126,7 @@
                                         {% set effectiveCategory = record.effectiveCategory %}
                                         {% set transportV20Summary = transportV20Summaries[record.id]|default(null) %}
                                         {% set energyV1Summary = energyV1Summaries[record.id]|default(null) %}
+                                        {% set waterV1Summary = waterV1Summaries[record.id]|default(null) %}
                                         <tr class="emissions-record-row">
                                             <td>
                                                 {% if activity %}
@@ -150,6 +151,8 @@
                                                     {% endif %}
                                                 {% elseif energyV1Summary %}
                                                     {{ ('backend.emission.energy_v1.families.' ~ energyV1Summary.family)|trans }}
+                                                {% elseif waterV1Summary and waterV1Summary.waterUseType %}
+                                                    {{ ('backend.emission.water_v1.water_use_types.' ~ waterV1Summary.waterUseType)|trans }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
@@ -162,6 +165,8 @@
                                                     {{ ('backend.emission.transport_v20.units.' ~ transportV20Summary.displayActivityUnit)|trans }}
                                                 {% elseif energyV1Summary and energyV1Summary.normalizedUnit %}
                                                     {{ energyV1Summary.normalizedUnit }}
+                                                {% elseif waterV1Summary and waterV1Summary.normalizedUnit %}
+                                                    {{ ('backend.emission.water_v1.units.' ~ waterV1Summary.normalizedUnit)|trans }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
@@ -233,6 +238,27 @@
                                                     data-bs-trigger="hover"
                                                     data-bs-placement="right"
                                                     data-bs-content="{{ 'backend.emission.energy_v1.duplicate_action'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-files"></i>
+                                                </a>
+                                                {% elseif record.id in waterV1RecordIds %}
+                                                <a
+                                                    href="{{ path('backend_emission_edit_water_v1', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                >
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a
+                                                    href="{{ path('backend_emission_duplicate_water_v1', { id: record.id }|merge(currentQuery)) }}"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-placement="right"
+                                                    data-bs-content="{{ 'backend.emission.water_v1.duplicate_action'|trans }}"
                                                     class="btn btn-sm btn-outline-secondary"
                                                 >
                                                     <i class="bi bi-files"></i>

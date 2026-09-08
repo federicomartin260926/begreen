@@ -13,6 +13,7 @@ use App\Service\Emission\{WoodCatalog, WoodEmissionCalculator};
 use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\Energy\EnergyEmissionSnapshot;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
+use App\Service\Emission\Water\WaterEmissionSnapshot;
 
 // Doctrine / Gedmo
 use Doctrine\ORM\EntityManagerInterface;
@@ -89,6 +90,7 @@ class EmissionController extends AbstractController
         TranslatorInterface $t,
         TransportEmissionSnapshot $transportSnapshot,
         EnergyEmissionSnapshot $energySnapshot,
+        WaterEmissionSnapshot $waterSnapshot,
         Request $request
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -109,6 +111,7 @@ class EmissionController extends AbstractController
         $energyId    = $categoryData['energyId'];
         $transportId = $categoryData['transportId'];
         $tripsId     = $categoryData['tripsId'];
+        $waterId     = $categoryData['waterId'];
 
         if ($categoriesNavigation === []) {
             return $this->render('backend/emission/index.html.twig', [
@@ -118,6 +121,7 @@ class EmissionController extends AbstractController
                 'energyId'            => $energyId,
                 'transportId'         => $transportId,
                 'tripsId'             => $tripsId,
+                'waterId'             => $waterId,
                 'selectedCategoryId'   => 0,
                 'selectedCategoryName' => '',
                 'selectedCategoryCount'=> 0,
@@ -134,6 +138,8 @@ class EmissionController extends AbstractController
                 'transportV20RecordIds' => [],
                 'energyV1RecordIds' => [],
                 'energyV1Summaries' => [],
+                'waterV1RecordIds' => [],
+                'waterV1Summaries' => [],
             ]);
         }
 
@@ -167,6 +173,8 @@ class EmissionController extends AbstractController
         $transportV20Summaries = [];
         $energyV1RecordIds = [];
         $energyV1Summaries = [];
+        $waterV1RecordIds = [];
+        $waterV1Summaries = [];
         if (null !== $transportId) {
             foreach ($selectedCategoryRecords as $record) {
                 if (!$transportSnapshot->isTransportV20Record($record, $transportId)) {
@@ -200,6 +208,24 @@ class EmissionController extends AbstractController
                 }
             }
         }
+        if (null !== $waterId) {
+            foreach ($selectedCategoryRecords as $record) {
+                if (!$waterSnapshot->isWaterV1Record($record, $waterId)) {
+                    continue;
+                }
+
+                $waterV1RecordIds[] = $record->getId();
+                try {
+                    $input = $waterSnapshot->decodeInput((string) $record->getCalculationDetails());
+                    $waterV1Summaries[$record->getId()] = [
+                        'waterUseType' => $input->waterUseType,
+                        'normalizedUnit' => null === $record->getAmount() ? null : 'm3',
+                    ];
+                } catch (\JsonException|\UnexpectedValueException) {
+                    // Keep corrupt modern records visible without treating them as legacy.
+                }
+            }
+        }
         $paginationQuery = ['categoryId' => $selectedCategoryId];
 
         foreach ($categoriesNavigation as &$category) {
@@ -207,7 +233,7 @@ class EmissionController extends AbstractController
         }
         unset($category);
 
-        $newRecordUrl = $this->buildEmissionCreateUrl($selectedCategoryId, $energyId, $transportId, $tripsId, $currentPage > 1 ? $currentPage : null);
+        $newRecordUrl = $this->buildEmissionCreateUrl($selectedCategoryId, $energyId, $transportId, $tripsId, $waterId, $currentPage > 1 ? $currentPage : null);
 
         return $this->render('backend/emission/index.html.twig', [
             'project'             => $project,
@@ -219,6 +245,7 @@ class EmissionController extends AbstractController
             'energyId'            => $energyId,
             'transportId'         => $transportId,
             'tripsId'             => $tripsId,
+            'waterId'             => $waterId,
             'selectedCategoryId'   => $selectedCategoryId,
             'selectedCategoryName' => $selectedCategoryName,
             'selectedCategoryCount'=> $selectedCategoryCount,
@@ -236,6 +263,8 @@ class EmissionController extends AbstractController
             'transportV20Summaries' => $transportV20Summaries,
             'energyV1RecordIds' => $energyV1RecordIds,
             'energyV1Summaries' => $energyV1Summaries,
+            'waterV1RecordIds' => $waterV1RecordIds,
+            'waterV1Summaries' => $waterV1Summaries,
         ]);
     }
 
@@ -259,7 +288,8 @@ class EmissionController extends AbstractController
      *     allChart: array<string, float>,
      *     energyId: ?int,
      *     transportId: ?int,
-     *     tripsId: ?int
+     *     tripsId: ?int,
+     *     waterId: ?int
      * }
      */
     private function buildEmissionCategoryData(array $records, array $allCategories, EntityManagerInterface $em): array
@@ -298,6 +328,7 @@ class EmissionController extends AbstractController
         $energyId    = $this->findCategoryIdByNameEs($em, 'Energía');
         $transportId = $this->findCategoryIdByNameEs($em, 'Transporte');
         $tripsId     = $this->findCategoryIdByNameEs($em, 'Viajes');
+        $waterId     = $this->findCategoryIdByNameEs($em, 'Agua');
 
         $nonEmptyCategories = [];
         $emptyCategories = [];
@@ -311,7 +342,7 @@ class EmissionController extends AbstractController
                 'active' => false,
                 'empty' => $recordCount === 0,
                 'url' => $this->generateUrl('backend_emission_index', ['categoryId' => $category['id']]),
-                'createUrl' => $this->buildEmissionCreateUrl($category['id'], $energyId, $transportId, $tripsId),
+                'createUrl' => $this->buildEmissionCreateUrl($category['id'], $energyId, $transportId, $tripsId, $waterId),
                 'icon' => 'bi-folder2-open',
             ];
 
@@ -329,6 +360,7 @@ class EmissionController extends AbstractController
             'energyId' => $energyId,
             'transportId' => $transportId,
             'tripsId' => $tripsId,
+            'waterId' => $waterId,
         ];
     }
 
@@ -337,6 +369,7 @@ class EmissionController extends AbstractController
         ?int $energyId,
         ?int $transportId,
         ?int $tripsId,
+        ?int $waterId,
         ?int $page = null
     ): string {
         $params = array_filter([
@@ -353,6 +386,10 @@ class EmissionController extends AbstractController
 
         if ($tripsId !== null && $categoryId === $tripsId) {
             return $this->generateUrl('backend_emission_new_transport', $params + ['category' => $categoryId]);
+        }
+
+        if ($waterId !== null && $categoryId === $waterId) {
+            return $this->generateUrl('backend_emission_new_water_v1', $params);
         }
 
         return $this->generateUrl('backend_emission_new', $params + ['category' => $categoryId]);
