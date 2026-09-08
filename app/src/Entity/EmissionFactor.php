@@ -15,6 +15,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 class EmissionFactor
 {
     public const TEMPORAL_TYPE_ANNUAL = 'ANNUAL';
+    public const TEMPORAL_TYPE_VERSIONED = 'VERSIONED';
     public const TEMPORAL_TYPE_RULE = 'RULE';
     public const TEMPORAL_TYPE_COMPOSITE = 'COMPOSITE';
 

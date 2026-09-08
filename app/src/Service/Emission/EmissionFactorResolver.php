@@ -43,4 +43,19 @@ final readonly class EmissionFactorResolver
             $factor->getTemporalType(),
         );
     }
+
+    /** @param array<string, mixed> $criteria */
+    public function resolveVersioned(string $categoryKey, array $criteria, int $activityYear): EmissionFactorResolution
+    {
+        $factor = $this->repository->findVersioned($categoryKey, $this->keyGenerator->generate($criteria));
+
+        return new EmissionFactorResolution(
+            $factor,
+            $activityYear,
+            null,
+            false,
+            null,
+            \App\Entity\EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+        );
+    }
 }

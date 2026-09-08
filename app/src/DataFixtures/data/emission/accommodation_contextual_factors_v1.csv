@@ -1,0 +1,2 @@
+accommodation_type,country_scope,activity_year_scope,factor_value,factor_unit,temporal_type,factor_version,is_temporal_fallback,is_geographic_proxy,source,source_url
+Apartamento / vivienda,TODOS,2022-2026,4.087,kgCO2e/persona-noche,VERSIONED,Land 2025 · factor contextual de apartamento turístico,False,True,"Calculating the Carbon Footprint of Urban Tourism Destinations (Land, 2025)",https://www.mdpi.com/2073-445X/14/3/534
