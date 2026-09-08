@@ -11,6 +11,7 @@ use App\Security\{EmissionRecordVoter, ProjectVoter};
 use App\Service\{ActiveProjectService, OpenRouteService};
 use App\Service\Emission\{WoodCatalog, WoodEmissionCalculator};
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\Accommodation\AccommodationEmissionSnapshot;
 use App\Service\Emission\Energy\EnergyEmissionSnapshot;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
 use App\Service\Emission\Water\WaterEmissionSnapshot;
@@ -91,6 +92,7 @@ class EmissionController extends AbstractController
         TransportEmissionSnapshot $transportSnapshot,
         EnergyEmissionSnapshot $energySnapshot,
         WaterEmissionSnapshot $waterSnapshot,
+        AccommodationEmissionSnapshot $accommodationSnapshot,
         Request $request
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -101,7 +103,7 @@ class EmissionController extends AbstractController
 
         $records = $recordRepository->findByProjectOrderByPhaseAndDate($project);
         $allCategories = $categoryRepository->findEnabledInEmissionCalculator();
-        $categoryData = $this->buildEmissionCategoryData($records, $allCategories, $em, $waterSnapshot, $t);
+        $categoryData = $this->buildEmissionCategoryData($records, $allCategories, $em, $waterSnapshot, $accommodationSnapshot, $t);
         $categoriesVM = $categoryData['categoriesVM'];
         $allChart = $categoryData['allChart'];
         $categoriesNavigation = $categoryData['categoriesNavigation'];
@@ -111,6 +113,7 @@ class EmissionController extends AbstractController
         $energyId    = $categoryData['energyId'];
         $transportId = $categoryData['transportId'];
         $waterId     = $categoryData['waterId'];
+        $accommodationId = $categoryData['accommodationId'];
 
         if ($categoriesNavigation === []) {
             return $this->render('backend/emission/index.html.twig', [
@@ -120,6 +123,7 @@ class EmissionController extends AbstractController
                 'energyId'            => $energyId,
                 'transportId'         => $transportId,
                 'waterId'             => $waterId,
+                'accommodationId'     => $accommodationId,
                 'selectedCategoryId'   => 0,
                 'selectedCategoryName' => '',
                 'selectedCategoryCount'=> 0,
@@ -138,6 +142,8 @@ class EmissionController extends AbstractController
                 'energyV1Summaries' => [],
                 'waterV1RecordIds' => [],
                 'waterV1Summaries' => [],
+                'accommodationV1RecordIds' => [],
+                'accommodationV1Summaries' => [],
             ]);
         }
 
@@ -173,6 +179,8 @@ class EmissionController extends AbstractController
         $energyV1Summaries = [];
         $waterV1RecordIds = [];
         $waterV1Summaries = [];
+        $accommodationV1RecordIds = [];
+        $accommodationV1Summaries = [];
         if (null !== $transportId) {
             foreach ($selectedCategoryRecords as $record) {
                 if (!$transportSnapshot->isTransportV20Record($record, $transportId)) {
@@ -224,6 +232,29 @@ class EmissionController extends AbstractController
                 }
             }
         }
+        if (null !== $accommodationId) {
+            foreach ($selectedCategoryRecords as $record) {
+                if (!$accommodationSnapshot->isAccommodationV1Record($record, $accommodationId)) {
+                    continue;
+                }
+
+                $accommodationV1RecordIds[] = $record->getId();
+                try {
+                    $input = $accommodationSnapshot->decodeInput((string) $record->getCalculationDetails());
+                    $accommodationV1Summaries[$record->getId()] = [
+                        'accommodationType' => $input->accommodationType,
+                        'normalizedUnitKey' => match ($input->accommodationType) {
+                            'hotel' => 'occupied_room_night',
+                            'hostel' => 'guest_night',
+                            'apartment' => 'person_night',
+                            default => null,
+                        },
+                    ];
+                } catch (\JsonException|\UnexpectedValueException) {
+                    // Keep corrupt modern records visible without treating them as legacy.
+                }
+            }
+        }
         $paginationQuery = ['categoryId' => $selectedCategoryId];
 
         foreach ($categoriesNavigation as &$category) {
@@ -231,7 +262,7 @@ class EmissionController extends AbstractController
         }
         unset($category);
 
-        $newRecordUrl = $this->buildEmissionCreateUrl($selectedCategoryId, $energyId, $transportId, $waterId, $currentPage > 1 ? $currentPage : null);
+        $newRecordUrl = $this->buildEmissionCreateUrl($selectedCategoryId, $energyId, $transportId, $waterId, $accommodationId, $currentPage > 1 ? $currentPage : null);
 
         return $this->render('backend/emission/index.html.twig', [
             'project'             => $project,
@@ -243,6 +274,7 @@ class EmissionController extends AbstractController
             'energyId'            => $energyId,
             'transportId'         => $transportId,
             'waterId'             => $waterId,
+            'accommodationId'     => $accommodationId,
             'selectedCategoryId'   => $selectedCategoryId,
             'selectedCategoryName' => $selectedCategoryName,
             'selectedCategoryCount'=> $selectedCategoryCount,
@@ -262,6 +294,8 @@ class EmissionController extends AbstractController
             'energyV1Summaries' => $energyV1Summaries,
             'waterV1RecordIds' => $waterV1RecordIds,
             'waterV1Summaries' => $waterV1Summaries,
+            'accommodationV1RecordIds' => $accommodationV1RecordIds,
+            'accommodationV1Summaries' => $accommodationV1Summaries,
         ]);
     }
 
@@ -285,7 +319,8 @@ class EmissionController extends AbstractController
      *     allChart: array<string, float>,
      *     energyId: ?int,
      *     transportId: ?int,
-     *     waterId: ?int
+     *     waterId: ?int,
+     *     accommodationId: ?int
      * }
      */
     private function buildEmissionCategoryData(
@@ -293,6 +328,7 @@ class EmissionController extends AbstractController
         array $allCategories,
         EntityManagerInterface $em,
         WaterEmissionSnapshot $waterSnapshot,
+        AccommodationEmissionSnapshot $accommodationSnapshot,
         TranslatorInterface $translator,
     ): array
     {
@@ -316,7 +352,7 @@ class EmissionController extends AbstractController
             }
 
             $catId    = $cat->getId();
-            $actName = $activity?->getName() ?? $this->waterActivityName($record, $waterSnapshot, $translator);
+            $actName = $activity?->getName() ?? $this->modernActivityName($record, $waterSnapshot, $accommodationSnapshot, $translator);
 
             if (!isset($categoriesVM[$catId])) {
                 continue;
@@ -330,6 +366,7 @@ class EmissionController extends AbstractController
         $energyId    = $this->findCategoryIdByNameEs($em, 'Energía');
         $transportId = $this->findCategoryIdByNameEs($em, 'Transporte');
         $waterId     = $this->findCategoryIdByNameEs($em, 'Agua');
+        $accommodationId = $this->findCategoryIdByNameEs($em, 'Alojamientos');
 
         $nonEmptyCategories = [];
         $emptyCategories = [];
@@ -343,7 +380,7 @@ class EmissionController extends AbstractController
                 'active' => false,
                 'empty' => $recordCount === 0,
                 'url' => $this->generateUrl('backend_emission_index', ['categoryId' => $category['id']]),
-                'createUrl' => $this->buildEmissionCreateUrl($category['id'], $energyId, $transportId, $waterId),
+                'createUrl' => $this->buildEmissionCreateUrl($category['id'], $energyId, $transportId, $waterId, $accommodationId),
                 'icon' => 'bi-folder2-open',
             ];
 
@@ -361,7 +398,42 @@ class EmissionController extends AbstractController
             'energyId' => $energyId,
             'transportId' => $transportId,
             'waterId' => $waterId,
+            'accommodationId' => $accommodationId,
         ];
+    }
+
+    private function modernActivityName(
+        EmissionRecord $record,
+        WaterEmissionSnapshot $waterSnapshot,
+        AccommodationEmissionSnapshot $accommodationSnapshot,
+        TranslatorInterface $translator,
+    ): string {
+        return match ($record->getEffectiveCategory()?->getName()) {
+            'Agua' => $this->waterActivityName($record, $waterSnapshot, $translator),
+            'Alojamientos' => $this->accommodationActivityName($record, $accommodationSnapshot, $translator),
+            default => '—',
+        };
+    }
+
+    private function accommodationActivityName(
+        EmissionRecord $record,
+        AccommodationEmissionSnapshot $snapshot,
+        TranslatorInterface $translator,
+    ): string {
+        $category = $record->getEffectiveCategory();
+        if (!$snapshot->isAccommodationV1Record($record, (int) $category?->getId())) {
+            return '—';
+        }
+
+        try {
+            $type = $snapshot->decodeInput((string) $record->getCalculationDetails())->accommodationType;
+        } catch (\JsonException|\UnexpectedValueException) {
+            return '—';
+        }
+
+        return null === $type || '' === $type
+            ? '—'
+            : $translator->trans('backend.emission.accommodation_v1.types.'.$type);
     }
 
     private function waterActivityName(
@@ -390,6 +462,7 @@ class EmissionController extends AbstractController
         ?int $energyId,
         ?int $transportId,
         ?int $waterId,
+        ?int $accommodationId,
         ?int $page = null
     ): string {
         $params = array_filter([
@@ -406,6 +479,10 @@ class EmissionController extends AbstractController
 
         if ($waterId !== null && $categoryId === $waterId) {
             return $this->generateUrl('backend_emission_new_water_v1', $params);
+        }
+
+        if ($accommodationId !== null && $categoryId === $accommodationId) {
+            return $this->generateUrl('backend_emission_new_accommodation_v1', $params);
         }
 
         return $this->generateUrl('backend_emission_new', $params + ['category' => $categoryId]);

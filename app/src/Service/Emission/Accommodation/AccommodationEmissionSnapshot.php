@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Emission\Accommodation;
 
+use App\Entity\EmissionRecord;
+
 final class AccommodationEmissionSnapshot
 {
     public const VERSION = 'accommodation-v1';
@@ -65,6 +67,21 @@ final class AccommodationEmissionSnapshot
         }
 
         return $presentation;
+    }
+
+    public function isAccommodationV1Record(EmissionRecord $record, int $categoryId): bool
+    {
+        if (null !== $record->getActivity() || $categoryId !== $record->getEffectiveCategory()?->getId()) {
+            return false;
+        }
+
+        try {
+            $this->decode((string) $record->getCalculationDetails());
+        } catch (\JsonException|\UnexpectedValueException) {
+            return false;
+        }
+
+        return true;
     }
 
     /** @return array<string, mixed> */

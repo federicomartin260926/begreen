@@ -14,6 +14,9 @@ use App\Repository\EmissionRecordRepository;
 use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\Accommodation\AccommodationEmissionInput;
+use App\Service\Emission\Accommodation\AccommodationEmissionResult;
+use App\Service\Emission\Accommodation\AccommodationEmissionSnapshot;
 use App\Service\Emission\Energy\EnergyEmissionSnapshot;
 use App\Service\Emission\Energy\EnergyEmissionInput;
 use App\Service\Emission\Energy\EnergyEmissionResult;
@@ -85,6 +88,7 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('Transporte', $content);
         self::assertStringContainsString('Residuos', $content);
         self::assertStringContainsString('Agua', $content);
+        self::assertStringContainsString('Alojamientos', $content);
         self::assertStringNotContainsString('Viajes', $content);
         self::assertStringNotContainsString('emissions-category-item--empty', $content);
         self::assertStringNotContainsString('Todas', $content);
@@ -240,6 +244,52 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend/emission/996/duplicate-water-v1', $content);
     }
 
+    public function testAccommodationUsesModernLabelCreateEditAndDuplicateRoutes(): void
+    {
+        $payload = $this->buildPayload();
+        $input = new AccommodationEmissionInput(
+            new \DateTimeImmutable('2026-01-20'),
+            new \DateTimeImmutable('2026-01-20'),
+            'ESP',
+            AccommodationEmissionInput::TYPE_HOSTEL,
+            null,
+            null,
+            '2',
+            '3',
+        );
+        $result = new AccommodationEmissionResult(
+            EmissionRecord::STATUS_CALCULATED,
+            '9.5505',
+            '6',
+            'guest-night',
+            2026,
+            'ANNUAL',
+        );
+        $record = (new EmissionRecord())
+            ->setProject($payload['project'])
+            ->setPhase($payload['records'][0]->getPhase())
+            ->setCategory($payload['categories'][4])
+            ->setActivity(null)
+            ->setAmount(6)
+            ->setEmission(9.5505)
+            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'))
+            ->setCalculationDetails((new AccommodationEmissionSnapshot())->encode($input, $result));
+        $this->setEntityId($record, 995);
+
+        $content = (string) $this->renderIndex(
+            $payload['project'],
+            [$record],
+            $payload['categories'],
+            ['categoryId' => 3],
+        )->getContent();
+
+        self::assertStringContainsString('/backend/emission/new-accommodation-v1', $content);
+        self::assertStringContainsString('Hostal / pensión', $content);
+        self::assertStringContainsString('huésped-noche', $content);
+        self::assertStringContainsString('/backend/emission/995/edit-accommodation-v1', $content);
+        self::assertStringContainsString('/backend/emission/995/duplicate-accommodation-v1', $content);
+    }
+
     public function testLegacyGenericCreateRouteRejectsWater(): void
     {
         $payload = $this->buildPayload();
@@ -368,6 +418,7 @@ final class EmissionControllerTest extends KernelTestCase
             new TransportEmissionSnapshot(),
             new EnergyEmissionSnapshot(),
             new WaterEmissionSnapshot(),
+            new AccommodationEmissionSnapshot(),
             $request
         );
 
@@ -386,10 +437,12 @@ final class EmissionControllerTest extends KernelTestCase
         $transport = (new Category())->setName('Transporte');
         $empty = (new Category())->setName('Residuos');
         $generic = (new Category())->setName('Agua');
+        $accommodation = (new Category())->setName('Alojamientos');
         $this->setEntityId($energy, 1);
         $this->setEntityId($transport, 2);
         $this->setEntityId($empty, 4);
         $this->setEntityId($generic, 5);
+        $this->setEntityId($accommodation, 3);
 
         $energyActivity = (new EmissionActivity())
             ->setName('Electricidad')
@@ -439,14 +492,14 @@ final class EmissionControllerTest extends KernelTestCase
 
         return [
             'project' => $project,
-            'categories' => [$energy, $transport, $empty, $generic],
+            'categories' => [$energy, $transport, $empty, $generic, $accommodation],
             'records' => $records,
         ];
     }
 
     private function createEntityManagerMock(): EntityManagerInterface
     {
-        $ids = [1, 2, 5];
+        $ids = [1, 2, 5, 3];
 
         $query = $this->createMock(Query::class);
         foreach (['setParameter', 'setMaxResults'] as $method) {
