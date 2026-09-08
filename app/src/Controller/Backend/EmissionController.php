@@ -5,7 +5,7 @@ namespace App\Controller\Backend;
 // App
 use App\Entity\{Category, EmissionActivity, EmissionRecord};
 use App\Exception\OpenRouteServiceException;
-use App\Form\{EmissionRecordType, TransportEmissionType, WoodEmissionType};
+use App\Form\{EmissionRecordType, WoodEmissionType};
 use App\Repository\{CategoryRepository, EmissionActivityRepository, EmissionRecordRepository, ProjectRepository};
 use App\Security\{EmissionRecordVoter, ProjectVoter};
 use App\Service\{ActiveProjectService, OpenRouteService};
@@ -110,7 +110,6 @@ class EmissionController extends AbstractController
         // IDs canónicos por nombre ES base (no depende del listener)
         $energyId    = $categoryData['energyId'];
         $transportId = $categoryData['transportId'];
-        $tripsId     = $categoryData['tripsId'];
         $waterId     = $categoryData['waterId'];
 
         if ($categoriesNavigation === []) {
@@ -120,7 +119,6 @@ class EmissionController extends AbstractController
                 'chartDataByCategory' => ['all' => $allChart],
                 'energyId'            => $energyId,
                 'transportId'         => $transportId,
-                'tripsId'             => $tripsId,
                 'waterId'             => $waterId,
                 'selectedCategoryId'   => 0,
                 'selectedCategoryName' => '',
@@ -233,7 +231,7 @@ class EmissionController extends AbstractController
         }
         unset($category);
 
-        $newRecordUrl = $this->buildEmissionCreateUrl($selectedCategoryId, $energyId, $transportId, $tripsId, $waterId, $currentPage > 1 ? $currentPage : null);
+        $newRecordUrl = $this->buildEmissionCreateUrl($selectedCategoryId, $energyId, $transportId, $waterId, $currentPage > 1 ? $currentPage : null);
 
         return $this->render('backend/emission/index.html.twig', [
             'project'             => $project,
@@ -244,7 +242,6 @@ class EmissionController extends AbstractController
             ),
             'energyId'            => $energyId,
             'transportId'         => $transportId,
-            'tripsId'             => $tripsId,
             'waterId'             => $waterId,
             'selectedCategoryId'   => $selectedCategoryId,
             'selectedCategoryName' => $selectedCategoryName,
@@ -288,7 +285,6 @@ class EmissionController extends AbstractController
      *     allChart: array<string, float>,
      *     energyId: ?int,
      *     transportId: ?int,
-     *     tripsId: ?int,
      *     waterId: ?int
      * }
      */
@@ -333,7 +329,6 @@ class EmissionController extends AbstractController
 
         $energyId    = $this->findCategoryIdByNameEs($em, 'Energía');
         $transportId = $this->findCategoryIdByNameEs($em, 'Transporte');
-        $tripsId     = $this->findCategoryIdByNameEs($em, 'Viajes');
         $waterId     = $this->findCategoryIdByNameEs($em, 'Agua');
 
         $nonEmptyCategories = [];
@@ -348,7 +343,7 @@ class EmissionController extends AbstractController
                 'active' => false,
                 'empty' => $recordCount === 0,
                 'url' => $this->generateUrl('backend_emission_index', ['categoryId' => $category['id']]),
-                'createUrl' => $this->buildEmissionCreateUrl($category['id'], $energyId, $transportId, $tripsId, $waterId),
+                'createUrl' => $this->buildEmissionCreateUrl($category['id'], $energyId, $transportId, $waterId),
                 'icon' => 'bi-folder2-open',
             ];
 
@@ -365,7 +360,6 @@ class EmissionController extends AbstractController
             'allChart' => $allChart,
             'energyId' => $energyId,
             'transportId' => $transportId,
-            'tripsId' => $tripsId,
             'waterId' => $waterId,
         ];
     }
@@ -395,7 +389,6 @@ class EmissionController extends AbstractController
         int $categoryId,
         ?int $energyId,
         ?int $transportId,
-        ?int $tripsId,
         ?int $waterId,
         ?int $page = null
     ): string {
@@ -409,10 +402,6 @@ class EmissionController extends AbstractController
 
         if ($transportId !== null && $categoryId === $transportId) {
             return $this->generateUrl('backend_emission_new_transport_v20', $params);
-        }
-
-        if ($tripsId !== null && $categoryId === $tripsId) {
-            return $this->generateUrl('backend_emission_new_transport', $params + ['category' => $categoryId]);
         }
 
         if ($waterId !== null && $categoryId === $waterId) {
@@ -774,186 +763,6 @@ class EmissionController extends AbstractController
             return [];
         }
     }
-
-    // =======================
-    // NEW ENERGY
-
-    // =======================
-    // EDIT ENERGY
-
-    // =======================
-    // NEW TRANSPORT / TRAVEL
-    // =======================
-    #[Route('/new-transport-travel/{category}', name: 'backend_emission_new_transport')]
-    public function newTransport(
-        string $category,
-        Request $request,
-        ActiveProjectService $activeProjectService,
-        EmissionActivityRepository $activityRepository,
-        EntityManagerInterface $em,
-        CategoryRepository $categoryRepository,
-        ProjectRepository $projectRepository,
-        TranslatorInterface $t
-    ): Response {
-        $project = $activeProjectService->getActiveProject();
-        if (!$project) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.no_active_project'));
-        }
-        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
-
-        // Resolver categoría (ID / ES / EN)
-        $categoryEntity = $this->resolveCategoryFromRouteParam($category, $categoryRepository, $em);
-        if (!$categoryEntity) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
-        }
-        if (!$categoryEntity->isEnabledInEmissionCalculator()) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
-        }
-        $travelCategory = $categoryRepository->findOneBy(['name' => 'Viajes']);
-        if (!$travelCategory
-            || null === $travelCategory->getId()
-            || $travelCategory->getId() !== $categoryEntity->getId()
-        ) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
-        }
-
-        $record = new EmissionRecord();
-        $record->setProject($project);
-        $record->setCategory($categoryEntity);
-        $record->setRegisteredAt(new \DateTimeImmutable());
-
-        // Si tu Form usa el nombre, puedes pasar el de la entidad (ojo: saldrá traducido según listener)
-        // Idealmente, pasa el ID y ajusta el Form para trabajar por ID.
-        $form = $this->createForm(TransportEmissionType::class, $record, [
-            'categoryId' => $categoryEntity->getId(),
-        ]);
-        $form->handleRequest($request);
-
-        // Campo NO mapeado: activityId
-        $activityId = $request->request->get('activityId');
-        $activity   = $activityId ? $activityRepository->find($activityId) : null;
-
-        if ($activity && $activity->getCategory()?->getId() !== $categoryEntity->getId()) {
-            $activity = null;
-        }
-
-        if ($form->isSubmitted() && $form->isValid() && $activity) {
-            $date  = $record->getRegisteredAt();
-            $phase = $projectRepository->findPhaseByDate($project, $date);
-
-            if (!$phase) {
-                $this->addFlash('danger', $t->trans('backend.emission.errors.date_out_of_phase', [
-                    '%date%' => $date->format('Y-m-d')
-                ]));
-            } else {
-                $record->setPhase($phase);
-                $record->setActivity($activity);
-                $record->setCategory($activity->getCategory());
-                $record->setEmission($record->getAmount() * $activity->getEmissionFactor());
-
-                $em->persist($record);
-                $em->flush();
-
-                $this->addFlash('success', $t->trans('backend.emission.flash.created'));
-
-                $categoryId = $activity->getCategory()->getId();
-                return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
-            }
-        } elseif ($form->isSubmitted() && !$activity) {
-            $this->addFlash('danger', $t->trans('backend.emission.errors.activity_required'));
-        }
-
-        return $this->render('backend/emission/transport_form.html.twig', [
-            'form'      => $form->createView(),
-            'project'   => $project,
-            'record'    => $record,
-            'category'  => $categoryEntity,
-            'edit'      => false,
-            'activityId'=> ''
-        ]);
-    }
-
-
-    // =======================
-    // EDIT TRANSPORT / TRAVEL
-    // =======================
-    #[Route('/{id}/edit-transport-travel', name: 'backend_emission_edit_transport')]
-    public function editTransport(
-        Request $request,
-        EmissionRecord $record,
-        ActiveProjectService $activeProjectService,
-        EmissionActivityRepository $activityRepository,
-        ProjectRepository $projectRepository,
-        CategoryRepository $categoryRepository,
-        EntityManagerInterface $em,
-        TranslatorInterface $t
-    ): Response {
-        $project  = $activeProjectService->getActiveProject();
-        $category = $record->getEffectiveCategory();
-
-        if (!$project || $record->getProject() !== $project) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.invalid_project_or_ownership'));
-        }
-        $travelCategory = $categoryRepository->findOneBy(['name' => 'Viajes']);
-        if (!$category
-            || !$record->getActivity()
-            || !$travelCategory
-            || null === $travelCategory->getId()
-            || $travelCategory->getId() !== $category->getId()
-        ) {
-            throw $this->createNotFoundException($t->trans('backend.emission.errors.category_not_found'));
-        }
-
-        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
-
-        $form = $this->createForm(TransportEmissionType::class, $record, [
-            'categoryId' => $category->getId(),
-        ]);
-        $form->handleRequest($request);
-
-        // Campo NO mapeado: activityId
-        $activityId = $request->request->get('activityId');
-        $activity   = $activityId ? $activityRepository->find($activityId) : $record->getActivity();
-
-        if ($activity && $activity->getCategory()?->getId() !== $travelCategory->getId()) {
-            $activity = null;
-        }
-
-        if ($form->isSubmitted() && $form->isValid() && $activity) {
-            $date  = $record->getRegisteredAt();
-            $phase = $projectRepository->findPhaseByDate($project, $date);
-
-            if (!$phase) {
-                $this->addFlash('danger', $t->trans('backend.emission.errors.date_out_of_phase', [
-                    '%date%' => $date->format('Y-m-d')
-                ]));
-            } else {
-                $record->setPhase($phase);
-                $record->setActivity($activity);
-                $record->setCategory($activity->getCategory());
-                $record->setEmission($record->getAmount() * $activity->getEmissionFactor());
-
-                $em->flush();
-
-                $this->addFlash('success', $t->trans('backend.emission.flash.updated'));
-
-                $categoryId = $activity->getCategory()->getId();
-                return $this->redirectToRoute('backend_emission_index', $this->buildEmissionIndexQuery($request, $categoryId));
-            }
-        } elseif ($form->isSubmitted() && !$activity) {
-            $this->addFlash('danger', $t->trans('backend.emission.errors.activity_required'));
-        }
-
-        return $this->render('backend/emission/transport_form.html.twig', [
-            'form'       => $form->createView(),
-            'project'    => $project,
-            'record'     => $record,
-            'category'   => $category,
-            'edit'       => true,
-            'activityId' => $record->getActivity() ? $record->getActivity()->getId() : ''
-        ]);
-    }
-
 
     // =======================
     // Helper para resolver categoría por ID / ES / EN

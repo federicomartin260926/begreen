@@ -95,15 +95,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             'APARTAMENTO (de 50 a 150 m²)' => 'Apartment (50–150 m²)',
             'APARTAMENTO (más de 150 m²)' => 'Apartment (over 150 m²)',
 
-            // Viajes
-            'Tren AVE o larga distancia' => 'High-speed / long-distance train',
-            'Vuelo nacional (clase turista)' => 'Domestic flight (economy)',
-            'Vuelo internacional (clase turista)' => 'International flight (economy)',
-            'Coche de alquiler' => 'Rental car',
-            'Taxi interurbano' => 'Intercity taxi',
-            'Vehículo privado fuera de sede' => 'Private vehicle (off-site)',
-            'Jet privado (vuelo corporativo)' => 'Private jet (corporate flight)',
-
             // Catering
             'Desayuno' => 'Breakfast',
             'Bocadillo' => 'Sandwich',
@@ -186,15 +177,6 @@ class EmissionActivityFixtures extends Fixture implements FixtureGroupInterface
             ['Alojamientos', 'APARTAMENTO (menos de 50 m²)', 'noche', 4.5, null],
             ['Alojamientos', 'APARTAMENTO (de 50 a 150 m²)', 'noche', 5.5, null],
             ['Alojamientos', 'APARTAMENTO (más de 150 m²)', 'noche', 6.5, null],
-
-            // Viajes
-            ['Viajes', 'Tren AVE o larga distancia', 'km', 0.028, 'ferroviario'],
-            ['Viajes', 'Vuelo nacional (clase turista)', 'km', 0.133, 'aereo'],
-            ['Viajes', 'Vuelo internacional (clase turista)', 'km', 0.110, 'aereo'],
-            ['Viajes', 'Coche de alquiler', 'km', 0.160, 'carretera'],
-            ['Viajes', 'Taxi interurbano', 'km', 0.151, 'carretera'],
-            ['Viajes', 'Vehículo privado fuera de sede', 'km', 0.152, 'carretera'],
-            ['Viajes', 'Jet privado (vuelo corporativo)', 'km', 1.5, 'aereo'],
 
             // Catering
             ['Catering', 'Desayuno', 'ración', 1.2, null],

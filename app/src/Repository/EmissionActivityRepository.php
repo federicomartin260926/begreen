@@ -46,13 +46,6 @@ class EmissionActivityRepository extends ServiceEntityRepository
                 'Marítimo'    => 'maritimo',
                 'Otros'       => 'otros',
             ],
-            'Viajes' => [
-                'Aéreo'       => 'aereo',
-                'Carretera'   => 'carretera',
-                'Ferroviario' => 'ferroviario',
-                'Marítimo'    => 'maritimo',
-                'Otros'       => 'otros',
-            ],
             'Materiales' => [
                 'Madera' => 'madera',
             ],

@@ -153,7 +153,7 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
             ['name' => 'Contenido', 'sortOrder' => 110, 'enabledInEmissionCalculator' => false],
             ['name' => 'Contenidos', 'sortOrder' => 110, 'enabledInEmissionCalculator' => false],
             ['name' => 'Social', 'sortOrder' => 120, 'enabledInEmissionCalculator' => false],
-            ['name' => 'Viajes', 'sortOrder' => 130, 'enabledInEmissionCalculator' => true],
+            ['name' => 'Viajes', 'sortOrder' => 130, 'enabledInEmissionCalculator' => false],
             ['name' => 'Agua', 'sortOrder' => 140, 'enabledInEmissionCalculator' => true],
         ] as $data) {
             $c = $upsert($manager, Category::class, ['name' => $data['name']], function (?Category $entity = null) use ($data) {

@@ -32,7 +32,7 @@ final class EmissionRecordTest extends TestCase
     public function testExplicitCategoryTakesPrecedenceOverActivityCategory(): void
     {
         $explicit = (new Category())->setName('Transporte');
-        $legacy = (new Category())->setName('Viajes');
+        $legacy = (new Category())->setName('Residuos');
         $activity = (new EmissionActivity())->setCategory($legacy);
         $record = (new EmissionRecord())->setActivity($activity)->setCategory($explicit);
 
@@ -57,8 +57,10 @@ final class EmissionRecordTest extends TestCase
         self::assertContains('Transporte', $modernCategories);
         self::assertContains('Energía', $modernCategories);
         self::assertContains('Agua', $modernCategories);
+        self::assertNotContains('Viajes', $modernCategories);
         self::assertIsString($activityFixture);
         self::assertStringNotContainsString("['Transporte',", $activityFixture);
         self::assertStringNotContainsString("['Agua',", $activityFixture);
+        self::assertStringNotContainsString("['Viajes',", $activityFixture);
     }
 }

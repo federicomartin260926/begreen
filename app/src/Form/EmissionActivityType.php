@@ -25,7 +25,6 @@ class EmissionActivityType extends AbstractType
         $maps = [
             $this->repo->getSubcategories('Energía'),
             $this->repo->getSubcategories('Transporte'),
-            $this->repo->getSubcategories('Viajes'),
             $this->repo->getSubcategories('Materiales'),
         ];
         $codes = [];

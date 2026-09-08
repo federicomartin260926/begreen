@@ -85,6 +85,7 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('Transporte', $content);
         self::assertStringContainsString('Residuos', $content);
         self::assertStringContainsString('Agua', $content);
+        self::assertStringNotContainsString('Viajes', $content);
         self::assertStringNotContainsString('emissions-category-item--empty', $content);
         self::assertStringNotContainsString('Todas', $content);
     }
@@ -108,7 +109,6 @@ final class EmissionControllerTest extends KernelTestCase
         $content = (string) $response->getContent();
         self::assertStringContainsString('—', $content);
         self::assertStringContainsString('/backend/emission/999/delete', $content);
-        self::assertStringNotContainsString('/backend/emission/999/edit-transport-travel', $content);
         self::assertStringNotContainsString('/backend/emission/999/edit-transport', $content);
         self::assertStringNotContainsString('/backend/emission/999/duplicate-transport', $content);
     }
@@ -153,7 +153,7 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend/emission/998/duplicate-energy-v1', $content);
     }
 
-    public function testTransportAndTripsKeepSeparateCreateAndEditRoutes(): void
+    public function testTransportKeepsModernCreateEditAndDuplicateRoutes(): void
     {
         $payload = $this->buildPayload();
         $phase = $payload['records'][0]->getPhase();
@@ -177,26 +177,23 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend/emission/new-transport', $transportContent);
         self::assertStringContainsString('/backend/emission/998/edit-transport', $transportContent);
         self::assertStringContainsString('/backend/emission/998/duplicate-transport', $transportContent);
+    }
 
-        $tripsActivity = (new EmissionActivity())
-            ->setName('Avión')
-            ->setUnit('km')
-            ->setEmissionFactor(0.2)
-            ->setCategory($payload['categories'][2]);
-        $tripsRecord = (new EmissionRecord())
-            ->setProject($payload['project'])
-            ->setPhase($phase)
-            ->setCategory($payload['categories'][2])
-            ->setActivity($tripsActivity)
-            ->setAmount(10)
-            ->setEmission(2)
-            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'));
-        $this->setEntityId($tripsRecord, 997);
-        $tripsResponse = $this->renderIndex($payload['project'], [$tripsRecord], $payload['categories'], ['categoryId' => 3]);
-        $tripsContent = (string) $tripsResponse->getContent();
-        self::assertStringContainsString('/backend/emission/new-transport-travel/3', $tripsContent);
-        self::assertStringContainsString('/backend/emission/997/edit-transport-travel', $tripsContent);
-        self::assertStringNotContainsString('/backend/emission/997/duplicate-transport', $tripsContent);
+    public function testTripsIsDisabledAndLegacyRoutesAreRemoved(): void
+    {
+        $fixture = file_get_contents(__DIR__.'/../../../src/DataFixtures/AuxiliaryFixtures.php');
+        self::assertIsString($fixture);
+        self::assertStringContainsString(
+            "['name' => 'Viajes', 'sortOrder' => 130, 'enabledInEmissionCalculator' => false]",
+            $fixture,
+        );
+
+        $routes = self::getContainer()->get('router')->getRouteCollection();
+        self::assertNull($routes->get('backend_emission_new_transport'));
+        self::assertNull($routes->get('backend_emission_edit_transport'));
+        self::assertNotNull($routes->get('backend_emission_new_transport_v20'));
+        self::assertNotNull($routes->get('backend_emission_edit_transport_v20'));
+        self::assertNotNull($routes->get('backend_emission_duplicate_transport_v20'));
     }
 
     public function testWaterUsesModernCreateEditAndDuplicateRoutes(): void
@@ -222,7 +219,7 @@ final class EmissionControllerTest extends KernelTestCase
         $record = (new EmissionRecord())
             ->setProject($payload['project'])
             ->setPhase($payload['records'][0]->getPhase())
-            ->setCategory($payload['categories'][4])
+            ->setCategory($payload['categories'][3])
             ->setActivity(null)
             ->setAmount(1)
             ->setEmission(0.517)
@@ -247,7 +244,7 @@ final class EmissionControllerTest extends KernelTestCase
     {
         $payload = $this->buildPayload();
         $project = $payload['project'];
-        $water = $payload['categories'][4];
+        $water = $payload['categories'][3];
         $activeProject = $this->createMock(ActiveProjectService::class);
         $activeProject->method('getActiveProject')->willReturn($project);
         $categories = $this->createMock(CategoryRepository::class);
@@ -274,7 +271,7 @@ final class EmissionControllerTest extends KernelTestCase
     public function testLegacyGenericEditRouteRejectsWater(): void
     {
         $payload = $this->buildPayload();
-        $water = $payload['categories'][4];
+        $water = $payload['categories'][3];
         $activity = (new EmissionActivity())
             ->setCategory($water)
             ->setName('Actividad residual')
@@ -302,90 +299,6 @@ final class EmissionControllerTest extends KernelTestCase
             self::getContainer()->get(\App\Service\Emission\WoodCatalog::class),
             self::getContainer()->get(\App\Service\Emission\WoodEmissionCalculator::class),
             self::getContainer()->get(TranslatorInterface::class),
-        );
-    }
-
-    public function testLegacyTransportCreateRouteStillRendersForTrips(): void
-    {
-        $context = $this->legacyTransportRouteContext();
-
-        $response = $context['controller']->newTransport(
-            '3',
-            $context['request'],
-            $context['activeProject'],
-            $context['activities'],
-            $context['entityManager'],
-            $context['categories'],
-            $context['projects'],
-            $context['translator'],
-        );
-
-        self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('data-controller="transport-form"', (string) $response->getContent());
-    }
-
-    public function testLegacyTransportCreateRouteRejectsTransport(): void
-    {
-        $context = $this->legacyTransportRouteContext();
-
-        $this->expectException(NotFoundHttpException::class);
-        $context['controller']->newTransport(
-            '2',
-            $context['request'],
-            $context['activeProject'],
-            $context['activities'],
-            $context['entityManager'],
-            $context['categories'],
-            $context['projects'],
-            $context['translator'],
-        );
-    }
-
-    public function testLegacyTransportEditRouteStillRendersForTrips(): void
-    {
-        $context = $this->legacyTransportRouteContext();
-        $record = $this->legacyTransportRecord(
-            $context['project'],
-            $context['phase'],
-            $context['trips'],
-            301,
-        );
-
-        $response = $context['controller']->editTransport(
-            $context['request'],
-            $record,
-            $context['activeProject'],
-            $context['activities'],
-            $context['projects'],
-            $context['categories'],
-            $context['entityManager'],
-            $context['translator'],
-        );
-
-        self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('data-controller="transport-form"', (string) $response->getContent());
-    }
-
-    public function testLegacyTransportEditRouteRejectsTransportRecord(): void
-    {
-        $context = $this->legacyTransportRouteContext();
-        $record = $this->legacyTransportRecord(
-            $context['project'],
-            $context['phase'],
-            $context['transport'],
-            302,
-        );
-
-        $this->expectException(NotFoundHttpException::class);
-        $context['controller']->editTransport(
-            $context['request'],
-            $record,
-            $context['activeProject'],
-            $context['activities'],
-            $context['projects'],
-            $context['categories'],
-            $context['entityManager'],
-            $context['translator'],
         );
     }
 
@@ -461,87 +374,6 @@ final class EmissionControllerTest extends KernelTestCase
         return $response;
     }
 
-    /** @return array<string, mixed> */
-    private function legacyTransportRouteContext(): array
-    {
-        $project = (new Project())->setName('Proyecto')->setType('rodaje')->setCountry('ES');
-        $this->setEntityId($project, 99);
-        $transport = (new Category())->setName('Transporte');
-        $trips = (new Category())->setName('Viajes');
-        $this->setEntityId($transport, 2);
-        $this->setEntityId($trips, 3);
-        $phase = (new ProjectPhaseDate())
-            ->setProject($project)
-            ->setPhase('actividad')
-            ->setStartDate(new \DateTimeImmutable('2026-01-01'))
-            ->setEndDate(new \DateTimeImmutable('2026-01-31'));
-
-        $activities = $this->createMock(EmissionActivityRepository::class);
-        $activities->method('getSubcategoriesByCategoryId')->willReturn(['aereo']);
-        self::getContainer()->set(EmissionActivityRepository::class, $activities);
-
-        $categories = $this->createMock(CategoryRepository::class);
-        $categories->method('find')->willReturnMap([
-            [2, $transport],
-            [3, $trips],
-        ]);
-        $categories->method('findOneBy')->willReturnCallback(
-            static fn (array $criteria): ?Category => ['name' => 'Viajes'] === $criteria ? $trips : null,
-        );
-        $activeProject = $this->createMock(ActiveProjectService::class);
-        $activeProject->method('getActiveProject')->willReturn($project);
-
-        $controller = new EmissionController();
-        $controller->setContainer(self::getContainer());
-        $this->setAdminToken();
-        $this->ensureTwigGlobals($project);
-        $request = new Request();
-        $request->attributes->set('_route', 'backend_emission_new_transport');
-        $request->attributes->set('_route_params', ['category' => '3']);
-        $request->setSession(new Session(new MockArraySessionStorage()));
-        self::getContainer()->get('request_stack')->push($request);
-
-        return [
-            'controller' => $controller,
-            'request' => $request,
-            'project' => $project,
-            'phase' => $phase,
-            'transport' => $transport,
-            'trips' => $trips,
-            'activities' => $activities,
-            'categories' => $categories,
-            'activeProject' => $activeProject,
-            'projects' => $this->createMock(ProjectRepository::class),
-            'entityManager' => $this->createMock(EntityManagerInterface::class),
-            'translator' => self::getContainer()->get(TranslatorInterface::class),
-        ];
-    }
-
-    private function legacyTransportRecord(
-        Project $project,
-        ProjectPhaseDate $phase,
-        Category $category,
-        int $id,
-    ): EmissionRecord {
-        $activity = (new EmissionActivity())
-            ->setCategory($category)
-            ->setName('Actividad')
-            ->setUnit('km')
-            ->setEmissionFactor(0.1)
-            ->setSubcategory('aereo');
-        $record = (new EmissionRecord())
-            ->setProject($project)
-            ->setPhase($phase)
-            ->setCategory($category)
-            ->setActivity($activity)
-            ->setRegisteredAt(new \DateTimeImmutable('2026-01-10'))
-            ->setAmount(10)
-            ->setEmission(1);
-        $this->setEntityId($record, $id);
-
-        return $record;
-    }
-
     private function buildPayload(): array
     {
         $project = (new Project())
@@ -552,12 +384,10 @@ final class EmissionControllerTest extends KernelTestCase
 
         $energy = (new Category())->setName('Energía');
         $transport = (new Category())->setName('Transporte');
-        $trips = (new Category())->setName('Viajes');
         $empty = (new Category())->setName('Residuos');
         $generic = (new Category())->setName('Agua');
         $this->setEntityId($energy, 1);
         $this->setEntityId($transport, 2);
-        $this->setEntityId($trips, 3);
         $this->setEntityId($empty, 4);
         $this->setEntityId($generic, 5);
 
@@ -609,14 +439,14 @@ final class EmissionControllerTest extends KernelTestCase
 
         return [
             'project' => $project,
-            'categories' => [$energy, $transport, $trips, $empty, $generic],
+            'categories' => [$energy, $transport, $empty, $generic],
             'records' => $records,
         ];
     }
 
     private function createEntityManagerMock(): EntityManagerInterface
     {
-        $ids = [1, 2, 3, 5];
+        $ids = [1, 2, 5];
 
         $query = $this->createMock(Query::class);
         foreach (['setParameter', 'setMaxResults'] as $method) {
