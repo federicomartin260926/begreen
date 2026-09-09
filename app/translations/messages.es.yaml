@@ -199,7 +199,7 @@ backend:
     measures: "Medidas"
     factors: "Factores emisión"
     aux_tables: "Tablas auxiliares"
-    crew_catalog: "Catálogo de equipo técnico"
+    crew_catalog: "Equipo técnico"
     cms: "CMS"
     ai: "IA"
     communication: "Comunicaciones"
