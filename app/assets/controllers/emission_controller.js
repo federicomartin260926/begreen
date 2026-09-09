@@ -2,12 +2,11 @@
 import { Controller } from '@hotwired/stimulus';
 import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-import $ from 'jquery';
 
 Chart.register(ChartDataLabels);
 
 export default class extends Controller {
-  static targets = ['form', 'detailsField', 'activity', 'unit', 'chart'];
+  static targets = ['chart'];
 
   static values = {
     chartData: Object,
@@ -26,126 +25,7 @@ export default class extends Controller {
 
   connect() {
     this.initCharts();
-    this.initUnitLabel();
     this.initActiveTab();
-    this.restoreFieldsFromDetails();
-
-    if (this.hasFormTarget) {
-      this.initAmountCalculation();
-      this.formTarget.addEventListener('submit', this.handleSubmit.bind(this));
-    }
-  }
-
-  handleSubmit() {
-    this.saveCalculationDetails();
-  }
-
-  // 🔹 Restaurar valores desde calculationDetails
-  restoreFieldsFromDetails() {
-    if (!this.hasDetailsFieldTarget) return;
-
-    const raw = this.detailsFieldTarget.value;
-    if (!raw) return;
-
-    let storedData = {};
-    try {
-      storedData = JSON.parse(raw);
-    } catch (e) {
-      console.warn('[emission] malformed JSON in calculationDetails');
-      return;
-    }
-
-    Object.entries(storedData).forEach(([key, value]) => {
-      const input = this.element.querySelector(`[data-field="${key}"]`);
-      if (input) {
-        if (input.type === 'checkbox') {
-          input.checked = !!value;
-        } else {
-          input.value = value;
-        }
-      }
-    });
-  }
-
-  // 🔹 Guardar valores en calculationDetails al enviar
-  saveCalculationDetails() {
-    const inputs = this.element.querySelectorAll('[data-field]');
-    const details = {};
-
-    inputs.forEach((input) => {
-      const key = input.dataset.field;
-      details[key] = input.type === 'checkbox' ? input.checked : input.value;
-    });
-
-    if (this.hasDetailsFieldTarget) {
-      this.detailsFieldTarget.value = JSON.stringify(details);
-    } else {
-      console.warn('[emission] detailsFieldTarget not found');
-    }
-  }
-
-  // 🔹 Cálculos automáticos por categoría
-  initAmountCalculation() {
-    const category = this.formTarget?.dataset.category;
-    if (!category) return;
-
-    switch (category) {
-      case 'eventos_online':
-        this.initEventosOnlineCalculation();
-        break;
-      default:
-        return;
-    }
-  }
-
-  initEventosOnlineCalculation() {
-    const get = (fieldName) => {
-      const el = this.element.querySelector(`[data-field="${fieldName}"]`);
-      if (!el) return 0;
-      const n = parseFloat(String(el.value).replace(',', '.'));
-      return isNaN(n) ? 0 : n;
-    };
-
-    const fields = [
-      'participantes_evento_virtual',
-      'duracion_asistencia_virtual',
-      'participantes_ensayos',
-      'duracion_ensayos',
-    ];
-
-    const updateAmount = () => {
-      const participantes = get('participantes_evento_virtual');
-      const duracion = get('duracion_asistencia_virtual');
-      const ensayos = get('participantes_ensayos');
-      const ensayoDuracion = get('duracion_ensayos');
-      const totalHoras = participantes * duracion + ensayos * ensayoDuracion;
-
-      const amountInput = this.element.querySelector('#emission_record_amount');
-      if (amountInput) amountInput.value = totalHoras.toFixed(2);
-    };
-
-    fields.forEach((field) => {
-      const el = this.element.querySelector(`[data-field="${field}"]`);
-      if (el) el.addEventListener('input', updateAmount);
-    });
-
-    updateAmount(); // inicializa
-  }
-
-  // 🔹 Mostrar unidad dinámica junto al label del amount (según actividad)
-  initUnitLabel() {
-    if (!this.hasActivityTarget || !this.hasUnitTarget) return;
-
-    const $activity = $(this.activityTarget);
-    const $unit = $(this.unitTarget);
-
-    const update = () => {
-      const unit = $activity.find(':selected').data('unit') || '';
-      $unit.text(unit ? ` (${unit})` : '');
-    };
-
-    $activity.on('change', update);
-    update();
   }
 
   // 🔹 Activar pestaña si se pasa por query string
