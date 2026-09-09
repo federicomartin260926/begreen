@@ -56,7 +56,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         $content = (string) $response->getContent();
         self::assertStringContainsString('data-controller="material-v1-form"', $content);
-        self::assertStringContainsString('Materiales', $content);
+        self::assertStringContainsString('Materiales y Productos', $content);
         self::assertStringNotContainsString('densidad_kg_m3', $content);
         self::assertSame(1, preg_match('/data-material-v1-form-catalog-value="([^"]+)"/', $content, $matches));
         $catalog = json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);

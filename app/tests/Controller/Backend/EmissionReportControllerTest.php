@@ -22,12 +22,24 @@ use App\Service\Emission\Water\WaterEmissionSnapshot;
 use App\Service\Emission\Waste\WasteEmissionSnapshot;
 use App\Service\Emission\Waste\WasteUiCatalog;
 use App\Service\PdfService;
-use PHPUnit\Framework\TestCase;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-final class EmissionReportControllerTest extends TestCase
+final class EmissionReportControllerTest extends KernelTestCase
 {
+    public function testOverviewPdfUsesAUnicodeFontForCo2e(): void
+    {
+        $project = (new Project())->setName('Proyecto')->setType('rodaje')->setCountry('ES');
+        $pdf = self::getContainer()->get(PdfService::class)->generatePdf(
+            'backend/emission/report/overview.html.twig',
+            ['project' => $project, 'reportData' => ['Rodaje' => ['Energía' => 2.58]]],
+        );
+
+        self::assertStringStartsWith('%PDF-', $pdf);
+        self::assertStringContainsString('DejaVuSans', $pdf);
+    }
+
     public function testReportsPresentModernWaterRecordWithoutActivity(): void
     {
         $project = (new Project())->setName('Proyecto')->setType('rodaje')->setCountry('ES');

@@ -93,6 +93,18 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('Todas', $content);
     }
 
+    public function testIndexUsesFunctionalMaterialLabelOnlyInCalculatorPresentation(): void
+    {
+        $payload = $this->buildPayload();
+
+        $content = (string) $this->renderIndex($payload['project'], [], $payload['categories'], [
+            'categoryId' => 6,
+        ])->getContent();
+
+        self::assertStringContainsString('Materiales y Productos', $content);
+        self::assertStringContainsString('&quot;Materiales&quot;', $content);
+    }
+
     public function testIndexRendersModernRecordWithoutActivity(): void
     {
         $payload = $this->buildPayload();
@@ -379,11 +391,13 @@ final class EmissionControllerTest extends KernelTestCase
         $empty = (new Category())->setName('Residuos');
         $generic = (new Category())->setName('Agua');
         $accommodation = (new Category())->setName('Alojamientos');
+        $material = (new Category())->setName('Materiales');
         $this->setEntityId($energy, 1);
         $this->setEntityId($transport, 2);
         $this->setEntityId($empty, 4);
         $this->setEntityId($generic, 5);
         $this->setEntityId($accommodation, 3);
+        $this->setEntityId($material, 6);
 
         $phase = (new ProjectPhaseDate())
             ->setPhase('actividad')
@@ -419,14 +433,14 @@ final class EmissionControllerTest extends KernelTestCase
 
         return [
             'project' => $project,
-            'categories' => [$energy, $transport, $empty, $generic, $accommodation],
+            'categories' => [$energy, $transport, $empty, $generic, $accommodation, $material],
             'records' => $records,
         ];
     }
 
     private function createEntityManagerMock(): EntityManagerInterface
     {
-        $ids = [1, 2, 5, 3, null, 4];
+        $ids = [1, 2, 5, 3, null, 4, 6];
 
         $query = $this->createMock(Query::class);
         foreach (['setParameter', 'setMaxResults'] as $method) {

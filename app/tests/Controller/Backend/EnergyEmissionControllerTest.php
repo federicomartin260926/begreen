@@ -167,6 +167,9 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('Nota original', $content);
         self::assertStringContainsString('factura.pdf', $content);
         self::assertStringContainsString('/backend/emission/300/attachments/401/download', $content);
+        self::assertStringContainsString('data-energy-v1-form-preview-url-value="/backend/emission/energy/preview"', $content);
+        self::assertMatchesRegularExpression('/data-energy-v1-form-preview-token-value="[^"]+"/', $content);
+        $this->assertInitialPreviewContext($content);
     }
 
     public function testEditRecalculatesFromSubmittedInput(): void
@@ -209,6 +212,21 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('Duplicar nota', $content);
         self::assertStringNotContainsString('no-copiar.pdf', $content);
         self::assertStringContainsString('value="10"', $content);
+        $this->assertInitialPreviewContext($content);
+    }
+
+    public function testFrontendInitializesPreviewImmediatelyAfterReconstructingDependentFields(): void
+    {
+        $controller = file_get_contents(__DIR__.'/../../../assets/controllers/energy_v1_form_controller.js');
+
+        self::assertIsString($controller);
+        self::assertMatchesRegularExpression(
+            '/connect\(\)\s*\{\s*this\.populateFuels\(this\.initialValue\.fuel\);\s*this\.renderFields\(\);\s*this\.preview\(\);\s*\}/',
+            $controller,
+        );
+        self::assertStringContainsString('if (!this.commonContextComplete)', $controller);
+        self::assertStringContainsString("body.set('_preview_token', this.previewTokenValue)", $controller);
+        self::assertStringContainsString('fetch(this.previewUrlValue', $controller);
     }
 
     /** @return array{project: Project, category: Category, phase: ProjectPhaseDate, active: ActiveProjectService&MockObject, categories: CategoryRepository&MockObject, projects: ProjectRepository&MockObject} */
@@ -401,5 +419,18 @@ final class EnergyEmissionControllerTest extends KernelTestCase
     private function setEntityId(object $entity, int $id): void
     {
         (new \ReflectionClass($entity))->getProperty('id')->setValue($entity, $id);
+    }
+
+    private function assertInitialPreviewContext(string $content): void
+    {
+        self::assertSame(1, preg_match('/data-energy-v1-form-initial-value="([^"]+)"/', $content, $matches));
+        $initial = json_decode(
+            html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        self::assertSame('electricity', $initial['family']);
+        self::assertSame('ES', $initial['country']);
     }
 }

@@ -49,7 +49,7 @@
 
     <section class="card mb-4"><div class="card-body"><div class="row g-3">
       <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.material_v1.project'|trans }}</small><strong>{{ project.name }}</strong></div>
-      <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.material_v1.category'|trans }}</small><span class="badge text-bg-success">{{ category.name }}</span></div>
+      <div class="col-md-6"><small class="text-muted d-block">{{ 'backend.emission.material_v1.category'|trans }}</small><span class="badge text-bg-success">{{ 'backend.emission.material_v1.display_name'|trans }}</span></div>
       <div class="col-12"><small class="text-muted d-block mb-1">{{ 'backend.emission.material_v1.phases'|trans }}</small>{% for phaseDate in project.phaseDates %}<span class="badge text-bg-light border me-1">{{ project.getPhaseLabel(phaseDate.phase)|trans }} · {{ phaseDate.startDate|date('d/m/Y') }}–{{ phaseDate.endDate|date('d/m/Y') }}</span>{% else %}—{% endfor %}</div>
     </div></div></section>
 

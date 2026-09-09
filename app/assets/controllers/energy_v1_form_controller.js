@@ -19,7 +19,7 @@ export default class extends Controller {
   connect() {
     this.populateFuels(this.initialValue.fuel);
     this.renderFields();
-    this.queuePreview();
+    this.preview();
   }
 
   disconnect() {
