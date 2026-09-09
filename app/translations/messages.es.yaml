@@ -2532,6 +2532,7 @@ backend:
         error: "Completa los datos obligatorios para calcular."
         food: "Alimentos"
         tableware: "Vajilla"
+        proxy_lca: "Proxy LCA"
         total: "Total"
       flash:
         created: "Registro de Catering creado correctamente."

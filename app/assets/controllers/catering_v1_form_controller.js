@@ -85,6 +85,19 @@ export default class extends Controller {
     const lines = [];
     if (result.foodEmissionKgCo2e !== null) lines.push(`${this.i18nValue.food}: ${this.formatDecimal(result.foodEmissionKgCo2e)} kg CO₂e`);
     if (result.tablewareEmissionKgCo2e !== null) lines.push(`${this.i18nValue.tableware}: ${this.formatDecimal(result.tablewareEmissionKgCo2e)} kg CO₂e`);
+
+    (result.factorTraces || [])
+      .filter((trace) => trace.temporalType === 'PROXY_LCA')
+      .forEach((trace) => {
+        const component = trace.component === 'tableware'
+          ? this.i18nValue.tableware
+          : trace.component;
+        const provenance = [trace.source, trace.sourceDetail, trace.factorVersion]
+          .filter(Boolean)
+          .join(' · ');
+        lines.push(`${component}: ${this.i18nValue.proxyLca}${provenance ? ` · ${provenance}` : ''}`);
+      });
+
     if (result.emissionKgCo2e !== null) lines.push(`${this.i18nValue.total}: ${this.formatDecimal(result.emissionKgCo2e)} kg CO₂e`);
     if (result.normalizedAmount !== null) lines.push(`${this.formatDecimal(result.normalizedAmount)} ${this.localizeUnit(result.normalizedUnit)}`.trim());
     this.previewTraceTarget.replaceChildren();

@@ -2480,6 +2480,7 @@ backend:
         error: "Complete all required fields to calculate."
         food: "Food"
         tableware: "Tableware"
+        proxy_lca: "LCA proxy"
         total: "Total"
       flash:
         created: "Catering record created successfully."
