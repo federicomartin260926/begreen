@@ -220,7 +220,7 @@ Antes de subir a producción:
 
 ## Fuera de alcance
 
-- Calculadora de emisiones.
+- Calculadora de emisiones. Esta exclusión corresponde a esta fase histórica; la arquitectura actual se documenta en [`emission-calculator.md`](emission-calculator.md).
 - Informe final.
 - Stripe Billing recurrente.
 - Cupones e impuestos complejos.
