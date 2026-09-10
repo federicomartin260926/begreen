@@ -56,6 +56,15 @@ final class WaterEmissionControllerTest extends KernelTestCase
         self::assertSame('0.517', $data['emissionKgCo2e']);
         self::assertCount(1, $data['factorTraces']);
         self::assertSame('OCCC', $data['factorTraces'][0]['source']);
+        self::assertSame('AGU_AAB6F0C556EADF', $data['factorTraces'][0]['factorId']);
+        self::assertSame(2024, $data['factorTraces'][0]['activityYear']);
+        self::assertSame(2024, $data['factorTraces'][0]['factorYear']);
+        self::assertSame('VERSIONED', $data['factorTraces'][0]['temporalType']);
+        self::assertSame('2025', $data['factorTraces'][0]['sourceEdition']);
+        self::assertSame('2025', $data['factorTraces'][0]['factorVersion']);
+        self::assertSame('España/ES', $data['factorTraces'][0]['targetGeography']);
+        self::assertSame('Cataluña', $data['factorTraces'][0]['sourceGeography']);
+        self::assertTrue($data['factorTraces'][0]['geographicProxy']);
     }
 
     public function testPreviewUnitedKingdomSewerReturnsTwoComponents(): void
@@ -125,6 +134,17 @@ final class WaterEmissionControllerTest extends KernelTestCase
         }
     }
 
+    public function testFrontendShowsRealFactorIdAndEditionOnlyWhenPresent(): void
+    {
+        $source = file_get_contents(__DIR__.'/../../../assets/controllers/water_v1_form_controller.js');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('if (trace.factorId)', $source);
+        self::assertStringContainsString('trace.sourceEdition || trace.factorVersion', $source);
+        self::assertStringContainsString('if (editionOrVersion)', $source);
+        self::assertStringNotContainsString('water-v1', $source);
+    }
+
     public function testCreatePersistsAuthoritativeModernWaterRecord(): void
     {
         $context = $this->context();
@@ -144,6 +164,7 @@ final class WaterEmissionControllerTest extends KernelTestCase
         self::assertSame('Lectura contador', $persisted->getNotes());
         self::assertStringContainsString('"version":"water-v1"', (string) $persisted->getCalculationDetails());
         self::assertStringContainsString('"factorTraces"', (string) $persisted->getCalculationDetails());
+        self::assertStringNotContainsString('"factorVersion":"water-v1"', (string) $persisted->getCalculationDetails());
         self::assertStringNotContainsString('999', (string) $persisted->getCalculationDetails());
     }
 

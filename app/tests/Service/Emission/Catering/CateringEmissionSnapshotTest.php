@@ -8,6 +8,7 @@ use App\Entity\EmissionRecord;
 use App\Service\Emission\Catering\CateringEmissionInput;
 use App\Service\Emission\Catering\CateringEmissionResult;
 use App\Service\Emission\Catering\CateringEmissionSnapshot;
+use App\Service\Emission\Catering\CateringFactorTrace;
 use App\Service\Emission\Catering\CateringMenuLine;
 use PHPUnit\Framework\TestCase;
 
@@ -26,14 +27,46 @@ final class CateringEmissionSnapshotTest extends TestCase
             ],
             tablewareType: 'compostable',
         );
-        $result = new CateringEmissionResult(EmissionRecord::STATUS_CALCULATED, '156.975', '120', 'prepared_menu', 2025);
+        $trace = new CateringFactorTrace(
+            component: 'food',
+            factorId: 'MENU_VEGAN',
+            menuVariant: 'vegan',
+            tablewareType: null,
+            temporalType: 'VERSIONED',
+            activityYear: null,
+            factorYear: null,
+            factorValue: '0.519728395',
+            factorUnit: 'kgCO2e/menú preparado',
+            source: 'ADEME AGRIBALYSE',
+            sourceDetail: 'Detalle de fuente',
+            factorVersion: 'AGRIBALYSE 3.2',
+            isTemporalFallback: false,
+            fallbackReason: null,
+            isGeographicProxy: false,
+            proxyGeography: null,
+            qualityStatus: 'VERIFICADO',
+            criteria: ['component' => 'food'],
+            metadata: ['sourceWorkbook' => 'Catering_Base_Maestra_y_Contrato_v11_4.xlsx'],
+            normalizedAmount: '100',
+            normalizedUnit: 'prepared_menu',
+            emissionKgCo2e: '51.9728395',
+        );
+        $result = new CateringEmissionResult(EmissionRecord::STATUS_CALCULATED, '156.975', '120', 'prepared_menu', 2025, [$trace]);
         $snapshot = new CateringEmissionSnapshot();
         $encoded = $snapshot->encode($input, $result, ['label' => 'Catering principal']);
         $data = json_decode($encoded, true, 512, JSON_THROW_ON_ERROR);
         $decoded = $snapshot->decodeInput($encoded);
 
         self::assertSame('catering-v1', $data['version']);
+        self::assertSame('catering-v1', $data['calculatorVersion']);
         self::assertSame('156.975', $data['calculation']['emissionKgCo2e']);
+        self::assertSame('MENU_VEGAN', $data['calculation']['factorTraces'][0]['factorId']);
+        self::assertNull($data['calculation']['factorTraces'][0]['activityYear']);
+        self::assertNull($data['calculation']['factorTraces'][0]['factorYear']);
+        self::assertSame('VERSIONED', $data['calculation']['factorTraces'][0]['temporalType']);
+        self::assertSame('AGRIBALYSE 3.2', $data['calculation']['factorTraces'][0]['factorVersion']);
+        self::assertFalse($data['calculation']['factorTraces'][0]['isTemporalFallback']);
+        self::assertFalse($data['calculation']['factorTraces'][0]['isGeographicProxy']);
         self::assertSame('Catering principal', $snapshot->decodePresentation($encoded)['label']);
         self::assertSame('2025-12-31', $decoded->startDate->format('Y-m-d'));
         self::assertSame('2026-01-01', $decoded->endDate->format('Y-m-d'));

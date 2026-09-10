@@ -8,6 +8,7 @@ use App\Service\Emission\EmissionFactorResolver;
 final readonly class TransportEmissionCalculator
 {
     public const DECIMAL_SCALE = 18;
+    public const CROSS_YEAR_ERROR = 'Transport activity cannot cross calendar years.';
     private const TRANSPORT_CATEGORY_KEY = 'transport';
 
     public function __construct(
@@ -21,9 +22,8 @@ final readonly class TransportEmissionCalculator
     {
         $year = (int) $input->startDate->format('Y');
         $this->positiveInteger($input->repetitions, 'repetitions');
-
-        if (!$this->mapper->supportsUiCombination($input)) {
-            return $this->directResult(TransportEmissionResult::STATUS_UNSUPPORTED, $year);
+        if ($year !== (int) $input->endDate->format('Y')) {
+            throw new \InvalidArgumentException(self::CROSS_YEAR_ERROR);
         }
 
         if ('distance_consumption' === $input->method) {
@@ -32,6 +32,10 @@ final readonly class TransportEmissionCalculator
 
         if (in_array($input->method, ['electricity', 'fuel_and_electricity'], true)) {
             return $this->directResult(TransportEmissionResult::STATUS_EXTERNAL_FACTOR_REQUIRED, $year);
+        }
+
+        if (!$this->mapper->supportsUiCombination($input)) {
+            return $this->directResult(TransportEmissionResult::STATUS_UNSUPPORTED, $year);
         }
 
         if ('fuel' === $input->method && in_array($input->activityUnit, ['m3', 'm³'], true)) {
@@ -94,6 +98,7 @@ final readonly class TransportEmissionCalculator
         }
 
         $factor = $resolution->factor;
+        $metadata = $factor?->getMetadata() ?? [];
         if (null === $factor?->getValue()) {
             return new TransportEmissionResult(
                 TransportEmissionResult::STATUS_EXPLICIT_NULL_FACTOR,
@@ -110,6 +115,14 @@ final readonly class TransportEmissionCalculator
                 $factor?->getSourceDetail(),
                 $resolution->isFallback,
                 $resolution->fallbackReason,
+                factorId: $factor?->getFactorId(),
+                factorActivityYear: $resolution->activityYear,
+                temporalType: $resolution->temporalType,
+                factorVersion: is_string($metadata['factorVersion'] ?? null) ? $metadata['factorVersion'] : null,
+                isGeographicProxy: true === ($metadata['isGeographicProxy'] ?? false),
+                proxyGeography: is_string($metadata['proxyGeography'] ?? null) ? $metadata['proxyGeography'] : null,
+                qualityStatus: is_string($metadata['qualityStatus'] ?? null) ? $metadata['qualityStatus'] : null,
+                factorMetadata: $metadata,
             );
         }
 
@@ -128,6 +141,14 @@ final readonly class TransportEmissionCalculator
             $factor->getSourceDetail(),
             $resolution->isFallback,
             $resolution->fallbackReason,
+            factorId: $factor->getFactorId(),
+            factorActivityYear: $resolution->activityYear,
+            temporalType: $resolution->temporalType,
+            factorVersion: is_string($metadata['factorVersion'] ?? null) ? $metadata['factorVersion'] : null,
+            isGeographicProxy: true === ($metadata['isGeographicProxy'] ?? false),
+            proxyGeography: is_string($metadata['proxyGeography'] ?? null) ? $metadata['proxyGeography'] : null,
+            qualityStatus: is_string($metadata['qualityStatus'] ?? null) ? $metadata['qualityStatus'] : null,
+            factorMetadata: $metadata,
         );
     }
 

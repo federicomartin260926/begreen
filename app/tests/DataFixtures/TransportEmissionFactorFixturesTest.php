@@ -42,7 +42,9 @@ final class TransportEmissionFactorFixturesTest extends TestCase
 
         $functionalKeys = [];
         $exactKeys = [];
+        $factorIds = [];
         $years = [];
+        $geographicProxyCount = 0;
         $zeroCount = 0;
 
         foreach ($this->factors as $factor) {
@@ -51,6 +53,13 @@ final class TransportEmissionFactorFixturesTest extends TestCase
                 $this->keyGenerator->generate($factor->getCriteria()),
                 $factor->getFunctionalKey(),
             );
+            self::assertNotNull($factor->getFactorId());
+            self::assertArrayNotHasKey($factor->getFactorId(), $factorIds);
+            $factorIds[$factor->getFactorId()] = true;
+            self::assertSame($factor->getYear(), $factor->getActivityYear());
+            self::assertSame(EmissionFactor::TEMPORAL_TYPE_ANNUAL, $factor->getTemporalType());
+            self::assertSame('Transporte_Base_Maestra_y_Contrato_V2_CORREGIDA.xlsx', $factor->getMetadata()['sourceWorkbook']);
+            self::assertSame('Factores', $factor->getMetadata()['sourceSheet']);
 
             $functionalKeys[$factor->getFunctionalKey()] = true;
             $exactKey = implode('|', [
@@ -61,12 +70,15 @@ final class TransportEmissionFactorFixturesTest extends TestCase
             self::assertArrayNotHasKey($exactKey, $exactKeys);
             $exactKeys[$exactKey] = true;
             $years[$factor->getYear()] = ($years[$factor->getYear()] ?? 0) + 1;
+            $geographicProxyCount += true === $factor->getMetadata()['isGeographicProxy'] ? 1 : 0;
             $zeroCount += '0' === $factor->getValue() ? 1 : 0;
         }
 
         self::assertCount(259, $functionalKeys);
         self::assertCount(1193, $exactKeys);
+        self::assertCount(1193, $factorIds);
         self::assertSame([2022 => 256, 2023 => 258, 2024 => 259, 2025 => 259, 2026 => 161], $years);
+        self::assertSame(676, $geographicProxyCount);
         self::assertSame(15, $zeroCount);
     }
 
@@ -167,7 +179,7 @@ final class TransportEmissionFactorFixturesTest extends TestCase
         ];
         $resolution = $this->resolve($criteria, 2026, $this->factor($criteria, 2025));
 
-        self::assertSame(2026, $resolution->activityYear);
+        self::assertSame(2025, $resolution->activityYear);
         self::assertSame(2025, $resolution->factorYear);
         self::assertTrue($resolution->isFallback);
         self::assertSame(EmissionFactorResolution::FALLBACK_REASON_EXACT_YEAR_MISSING, $resolution->fallbackReason);

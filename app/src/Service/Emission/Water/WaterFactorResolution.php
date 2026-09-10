@@ -14,8 +14,10 @@ final readonly class WaterFactorResolution
 
     private function __construct(
         private bool $factorFound,
+        public ?string $factorId,
         public string $component,
         public string $factorType,
+        public string $temporalType,
         public int $activityYear,
         public ?int $factorYear,
         public ?string $factorValue,
@@ -23,12 +25,15 @@ final readonly class WaterFactorResolution
         public ?string $source,
         public ?string $sourceDetail,
         public ?string $sourceEdition,
+        public ?string $factorVersion,
         public string $sourceGeography,
         public string $targetGeography,
         public bool $isFallback,
         public ?string $fallbackReason,
         public bool $isGeographicProxy,
+        public ?string $proxyGeography,
         public string $dataQuality,
+        public ?string $qualityStatus,
         public array $criteria,
         public array $metadata,
     ) {
@@ -48,21 +53,26 @@ final readonly class WaterFactorResolution
 
         return new self(
             $resolution->hasFactor(),
+            $factor?->getFactorId(),
             $component,
             $factorType,
+            $resolution->temporalType,
             $resolution->activityYear,
             $resolution->factorYear,
             $factor?->getValue(),
             $factor?->getUnit(),
             $factor?->getSource(),
             $factor?->getSourceDetail(),
-            is_string($metadata['sourceEdition'] ?? null) ? $metadata['sourceEdition'] : null,
+            self::methodologicalVersion($metadata, 'sourceEdition'),
+            self::methodologicalVersion($metadata, 'factorVersion'),
             $sourceGeography,
             $targetGeography,
             $resolution->isFallback,
             $resolution->fallbackReason,
-            $isGeographicProxy,
+            $isGeographicProxy || true === ($metadata['isGeographicProxy'] ?? false),
+            $isGeographicProxy ? $sourceGeography : (is_string($metadata['proxyGeography'] ?? null) ? $metadata['proxyGeography'] : null),
             $dataQuality,
+            is_string($metadata['qualityStatus'] ?? null) ? $metadata['qualityStatus'] : null,
             $factor?->getCriteria() ?? [],
             $metadata,
         );
@@ -76,5 +86,16 @@ final readonly class WaterFactorResolution
     public function isCalculable(): bool
     {
         return $this->factorFound && null !== $this->factorValue;
+    }
+
+    /** @param array<string, mixed> $metadata */
+    private static function methodologicalVersion(array $metadata, string $key): ?string
+    {
+        $value = $metadata[$key] ?? null;
+        if (!is_string($value) || '' === trim($value) || WaterEmissionSnapshot::VERSION === $value) {
+            return null;
+        }
+
+        return $value;
     }
 }

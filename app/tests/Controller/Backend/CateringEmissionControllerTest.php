@@ -47,6 +47,29 @@ final class CateringEmissionControllerTest extends KernelTestCase
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertSame('62.2355395', $data['emissionKgCo2e']);
+        self::assertSame('MENU_VEGAN', $data['factorTraces'][0]['factorId']);
+        self::assertSame('VERSIONED', $data['factorTraces'][0]['temporalType']);
+        self::assertSame('AGRIBALYSE 3.2', $data['factorTraces'][0]['factorVersion']);
+        self::assertNull($data['factorTraces'][0]['factorYear']);
+        self::assertSame('TABLEWARE_COMPOSTABLE_MENU_PACK', $data['factorTraces'][1]['factorId']);
+        self::assertSame('COMPOSITE', $data['factorTraces'][1]['temporalType']);
+        self::assertNull($data['factorTraces'][1]['factorYear']);
+    }
+
+    public function testPreviewExposesReusableProxyLcaTrace(): void
+    {
+        $context = $this->context();
+        $request = $this->request('POST', $this->mealPost('reusable'));
+        $request->request->set('_preview_token', $this->csrfToken('catering_emission_v1_preview'));
+
+        $response = $this->controller()->preview($request, $context['active'], new CateringEmissionRequestMapper(), $this->calculator());
+        $data = json_decode((string) $response->getContent(), true, flags: JSON_THROW_ON_ERROR);
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertSame('TABLEWARE_REUSABLE_MENU_SERVICE', $data['factorTraces'][1]['factorId']);
+        self::assertSame('PROXY_LCA', $data['factorTraces'][1]['temporalType']);
+        self::assertNull($data['factorTraces'][1]['activityYear'] ?? null);
+        self::assertNull($data['factorTraces'][1]['factorYear']);
     }
 
     public function testCreatePersistsModernBackendCalculation(): void
@@ -123,6 +146,14 @@ final class CateringEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('value="vegan" selected', $content);
         self::assertStringContainsString('Duplicar catering', $content);
         self::assertStringNotContainsString('no-copiar.pdf', $content);
+        foreach (['breakfast', 'coffeebreak', 'snack', 'meal', 'sandwich', 'water', 'drink', 'coffee', 'gas'] as $activityType) {
+            self::assertStringContainsString(sprintf('value="%s"', $activityType), $content);
+        }
+        foreach (['people', 'menuVariant[]', 'preparedCount[]', 'consumedCount[]', 'tablewareType', 'sandwichType', 'containerVolumeLiters', 'description', 'serviceCount', 'gasType'] as $field) {
+            self::assertStringContainsString(sprintf('name="%s"', $field), $content);
+        }
+        self::assertStringNotContainsString('name="department"', $content);
+        self::assertStringNotContainsString('name="person_role"', $content);
     }
 
     /** @return array{project: Project, category: Category, phase: ProjectPhaseDate, active: ActiveProjectService&MockObject, categories: CategoryRepository&MockObject, projects: ProjectRepository&MockObject} */

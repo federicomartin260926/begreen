@@ -10,10 +10,11 @@ final readonly class CateringFactorResolution
 {
     private function __construct(
         private bool $factorFound,
+        public ?string $factorId,
         public string $component,
         public string $variant,
         public string $temporalType,
-        public int $activityYear,
+        public ?int $activityYear,
         public ?int $factorYear,
         public ?string $factorValue,
         public ?string $factorUnit,
@@ -30,10 +31,11 @@ final readonly class CateringFactorResolution
 
         return new self(
             $resolution->hasFactor(),
+            $factor?->getFactorId(),
             $component,
             $variant,
             $resolution->temporalType,
-            $resolution->activityYear,
+            $factor?->getActivityYear(),
             $resolution->factorYear,
             $factor?->getValue(),
             $factor?->getUnit(),

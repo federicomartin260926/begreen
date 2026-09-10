@@ -30,6 +30,14 @@ final readonly class TransportEmissionResult
         public ?string $sourceDetail = null,
         public bool $isFallback = false,
         public ?string $fallbackReason = null,
+        public ?string $factorId = null,
+        public ?int $factorActivityYear = null,
+        public string $temporalType = 'ANNUAL',
+        public ?string $factorVersion = null,
+        public bool $isGeographicProxy = false,
+        public ?string $proxyGeography = null,
+        public ?string $qualityStatus = null,
+        public array $factorMetadata = [],
     ) {
     }
 }

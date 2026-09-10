@@ -90,7 +90,9 @@ final class TransportEmissionRecordFixturesTest extends TestCase
         self::assertSame(6.0, $records[0]->getEmission());
         self::assertSame(10.0, $records[1]->getEmission());
         self::assertStringContainsString('"fallback":true', (string) $records[1]->getCalculationDetails());
-        self::assertSame(0.0, $records[2]->getEmission());
+        self::assertSame(3.0, $records[2]->getEmission());
+        self::assertStringContainsString('"source":"operator"', (string) $records[2]->getCalculationDetails());
+        self::assertStringContainsString('"factorId":null', (string) $records[2]->getCalculationDetails());
         self::assertSame(
             [TransportEmissionFactorFixtures::class],
             array_values(array_filter(

@@ -15,9 +15,10 @@ final class CateringEmissionFactorFixtures extends Fixture implements FixtureGro
     private const CATEGORY_KEY = 'catering';
     private const FILE = __DIR__.'/data/emission/catering_factors_v1.csv';
     private const HEADERS = [
-        'factor_id', 'activity_type', 'variant', 'factor_value', 'factor_unit',
-        'temporal_type', 'factor_version', 'scope', 'source', 'source_url',
-        'confidence', 'notes',
+        'factor_id', 'activity_type', 'variant', 'activity_year', 'activity_year_scope',
+        'factor_year', 'factor_value', 'factor_unit', 'temporal_type', 'factor_version',
+        'source', 'source_detail', 'source_url', 'is_temporal_fallback',
+        'is_geographic_proxy', 'quality_status', 'notes', 'source_workbook', 'source_sheet',
     ];
     private const MENU_VARIANTS = [
         'Vacuno' => 'beef',
@@ -66,7 +67,7 @@ final class CateringEmissionFactorFixtures extends Fixture implements FixtureGro
             [$criteria, $temporalType, $activityUnit, $variant] = $this->mapRow($row, $file->key() + 1);
             $this->assertRequiredValues($row, $file->key() + 1);
             $functionalKey = $this->keyGenerator->generate($criteria);
-            $identity = $functionalKey.'|'.$temporalType;
+            $identity = $row['factor_id'];
             if (isset($identities[$identity])) {
                 throw new \RuntimeException(sprintf('Duplicate catering factor identity in CSV row %d.', $file->key() + 1));
             }
@@ -76,21 +77,27 @@ final class CateringEmissionFactorFixtures extends Fixture implements FixtureGro
                 ->setCategoryKey(self::CATEGORY_KEY)
                 ->setFunctionalKey($functionalKey)
                 ->setCriteria($criteria)
-                ->setYear(null)
+                ->setFactorId($row['factor_id'])
+                ->setActivityYear('' === $row['activity_year'] ? null : (int) $row['activity_year'])
+                ->setYear('' === $row['factor_year'] ? null : (int) $row['factor_year'])
                 ->setTemporalType($temporalType)
                 ->setValue($row['factor_value'])
                 ->setUnit($row['factor_unit'])
                 ->setSource($row['source'])
-                ->setSourceDetail(null)
+                ->setSourceDetail('' === $row['source_detail'] ? null : $row['source_detail'])
                 ->setMetadata([
-                    'factorId' => $row['factor_id'],
                     'activityType' => 'meal',
                     'variant' => $variant,
                     'factorVersion' => $row['factor_version'],
-                    'scope' => $row['scope'],
+                    'activityYearScope' => $row['activity_year_scope'],
                     'sourceUrl' => $row['source_url'],
-                    'confidence' => $row['confidence'],
+                    'isTemporalFallback' => '1' === $row['is_temporal_fallback'],
+                    'isGeographicProxy' => '1' === $row['is_geographic_proxy'],
+                    'proxyGeography' => null,
+                    'qualityStatus' => $row['quality_status'],
                     'notes' => $row['notes'],
+                    'sourceWorkbook' => $row['source_workbook'],
+                    'sourceSheet' => $row['source_sheet'],
                     'activityUnit' => $activityUnit,
                 ]));
             ++$count;
@@ -143,7 +150,7 @@ final class CateringEmissionFactorFixtures extends Fixture implements FixtureGro
     /** @param array<string, string> $row */
     private function assertRequiredValues(array $row, int $line): void
     {
-        foreach (self::HEADERS as $field) {
+        foreach (array_diff(self::HEADERS, ['activity_year', 'factor_year']) as $field) {
             if ('' === trim($row[$field])) {
                 throw new \RuntimeException(sprintf('Missing catering factor field %s in CSV row %d.', $field, $line));
             }

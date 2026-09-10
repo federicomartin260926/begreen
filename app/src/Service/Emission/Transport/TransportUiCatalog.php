@@ -6,48 +6,39 @@ final class TransportUiCatalog
 {
     /** @var array<string, list<string>> */
     private const CATEGORY_MODES = [
-        'local' => ['car', 'taxi', 'passenger_van', 'minibus', 'urban_bus', 'metro', 'tram', 'commuter_train', 'motorcycle', 'bicycle', 'scooter', 'walk'],
-        'travel' => ['plane', 'long_distance_train', 'coach', 'passenger_ferry'],
-        'freight' => ['freight_van', 'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship', 'courier', 'cargo_bike'],
+        'local' => ['car', 'taxi', 'urban_bus', 'metro', 'tram', 'commuter_train'],
+        'travel' => ['plane', 'long_distance_train', 'passenger_ferry'],
+        'freight' => ['freight_van', 'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship'],
     ];
 
     /** @var array<string, list<string>> */
     private const MODE_METHODS = [
-        'car' => ['fuel', 'electricity', 'distance', 'distance_consumption', 'fuel_and_electricity'],
+        'car' => ['fuel', 'distance'],
         'taxi' => ['distance', 'operator', 'route'],
-        'passenger_van' => ['fuel', 'electricity', 'distance', 'distance_consumption'],
-        'minibus' => ['fuel', 'electricity', 'distance', 'distance_consumption'],
         'urban_bus' => ['distance', 'route', 'route_stops', 'operator'],
-        'metro' => ['route', 'route_stops', 'passenger_distance', 'operator'],
-        'tram' => ['route', 'route_stops', 'passenger_distance', 'operator'],
-        'commuter_train' => ['route', 'passenger_distance', 'operator'],
-        'motorcycle' => ['fuel', 'electricity', 'distance'],
-        'bicycle' => ['distance', 'electricity'],
-        'scooter' => ['distance', 'electricity'],
-        'walk' => ['distance'],
-        'plane' => ['route', 'passenger_distance', 'operator'],
-        'long_distance_train' => ['route', 'passenger_distance', 'operator'],
-        'coach' => ['route', 'distance', 'operator'],
-        'passenger_ferry' => ['route', 'passenger_distance', 'operator'],
-        'freight_van' => ['fuel', 'electricity', 'distance', 'weight_distance'],
-        'rigid_truck' => ['fuel', 'distance', 'weight_distance', 'tonne_km'],
-        'articulated_truck' => ['fuel', 'distance', 'weight_distance', 'tonne_km'],
-        'freight_train' => ['weight_distance', 'tonne_km', 'route'],
-        'air_freight' => ['route_weight', 'weight_distance', 'tonne_km'],
-        'freight_ship' => ['weight_distance', 'tonne_km', 'route'],
-        'courier' => ['weight_distance', 'operator'],
-        'cargo_bike' => ['weight_distance', 'electricity'],
+        'metro' => ['passenger_distance', 'operator'],
+        'tram' => ['passenger_distance', 'operator'],
+        'commuter_train' => ['passenger_distance', 'operator'],
+        'plane' => ['passenger_distance', 'operator'],
+        'long_distance_train' => ['passenger_distance', 'operator'],
+        'passenger_ferry' => ['passenger_distance', 'operator'],
+        'freight_van' => ['distance', 'weight_distance', 'tonne_km'],
+        'rigid_truck' => ['distance', 'weight_distance', 'tonne_km'],
+        'articulated_truck' => ['distance', 'weight_distance', 'tonne_km'],
+        'freight_train' => ['weight_distance', 'tonne_km'],
+        'air_freight' => ['weight_distance', 'tonne_km'],
+        'freight_ship' => ['weight_distance', 'tonne_km'],
     ];
 
     /** @var array<string, list<string>> */
     private const CAR_TYPE_METHODS = [
-        'petrol' => ['distance', 'fuel', 'distance_consumption'],
-        'diesel' => ['distance', 'fuel', 'distance_consumption'],
-        'lpg' => ['distance', 'fuel', 'distance_consumption'],
-        'cng' => ['distance', 'fuel', 'distance_consumption'],
-        'hev' => ['distance', 'fuel', 'distance_consumption'],
-        'bev' => ['distance', 'electricity', 'distance_consumption'],
-        'phev' => ['distance', 'fuel', 'electricity', 'fuel_and_electricity', 'distance_consumption'],
+        'petrol' => ['distance', 'fuel'],
+        'diesel' => ['distance', 'fuel'],
+        'lpg' => ['distance', 'fuel'],
+        'cng' => ['distance', 'fuel'],
+        'hev' => ['distance', 'fuel'],
+        'bev' => ['distance'],
+        'phev' => ['distance'],
         'unknown' => ['distance'],
     ];
 
@@ -60,17 +51,24 @@ final class TransportUiCatalog
         'cng',
     ];
 
+    /** @var list<string> */
+    private const CAR_SPAIN_VEHICLE_TYPES = [
+        'petrol',
+        'diesel',
+        'hev',
+        'lpg',
+        'cng',
+    ];
+
     /** @var array<string, list<string>> */
     private const UNITS_BY_METHOD = [
         'distance' => ['km', 'mi'],
         'fuel' => ['L', 'us_gal', 'imp_gal', 'kg'],
-        'electricity' => ['kWh', 'MWh'],
         'route' => ['km'],
         'route_stops' => ['km'],
         'passenger_distance' => ['passenger-km', 'passenger-mi'],
         'weight_distance' => ['km', 'mi'],
         'tonne_km' => ['t-km', 't-mi'],
-        'route_weight' => ['km'],
         'operator' => ['kg_co2e', 't_co2e'],
     ];
 
@@ -86,21 +84,28 @@ final class TransportUiCatalog
     /** @var array<string, list<string>> */
     private const FUELS_BY_MODE = [
         'car' => ['petrol', 'diesel', 'lpg', 'cng'],
-        'passenger_van' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng'],
-        'minibus' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng', 'lng'],
-        'motorcycle' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol'],
-        'freight_van' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng', 'lng'],
-        'rigid_truck' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng', 'lng'],
-        'articulated_truck' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng', 'lng'],
     ];
 
     /** @var list<string> */
     private const PASSENGERS_BY_DISTANCE_MODES = [
-        'urban_bus', 'metro', 'tram', 'commuter_train', 'plane', 'long_distance_train', 'coach', 'passenger_ferry',
+        'urban_bus',
     ];
 
     /** @var list<string> */
-    private const ORS_ROAD_MODES = ['taxi', 'urban_bus', 'coach'];
+    private const ORS_ROAD_MODES = ['taxi', 'urban_bus'];
+
+    /** @var array<string, list<string>> */
+    private const SPAIN_ONLY_METHODS_BY_MODE = [
+        'taxi' => ['route'],
+        'urban_bus' => ['route', 'route_stops'],
+    ];
+
+    /** @var array<string, list<string>> */
+    private const OUTSIDE_SPAIN_ONLY_METHODS_BY_MODE = [
+        'freight_van' => ['weight_distance', 'tonne_km'],
+        'rigid_truck' => ['weight_distance', 'tonne_km'],
+        'articulated_truck' => ['weight_distance', 'tonne_km'],
+    ];
 
     /** @return array<string, list<string>> */
     public function categories(): array
@@ -136,24 +141,16 @@ final class TransportUiCatalog
             'unitsByMethod' => self::UNITS_BY_METHOD,
             'weightUnits' => self::WEIGHT_UNITS,
             'vehicleTypes' => self::VEHICLE_TYPES,
+            'carSpainVehicleTypes' => self::CAR_SPAIN_VEHICLE_TYPES,
             'taxiSpainVehicleTypes' => self::TAXI_SPAIN_VEHICLE_TYPES,
             'carSizes' => self::CAR_SIZES,
             'fuelsByMode' => self::FUELS_BY_MODE,
             'thermalFuels' => ['petrol', 'diesel'],
-            'travelClasses' => ['average', 'economy', 'premium_economy', 'business', 'first'],
-            'routeClassifications' => ['domestic', 'international'],
             'tripTypes' => ['one_way', 'round_trip', 'multiple'],
             'passengersByDistanceModes' => self::PASSENGERS_BY_DISTANCE_MODES,
             'orsRoadModes' => self::ORS_ROAD_MODES,
-            'unavailableMethods' => [
-                'electricity' => 'external_factor_required',
-                'fuel_and_electricity' => 'external_factor_required',
-                'distance_consumption' => 'unsupported',
-            ],
-            'secondaryUnits' => [
-                'fuel_and_electricity' => ['kWh', 'MWh'],
-                'distance_consumption' => ['L/100_km', 'mpg_us', 'mpg_imp', 'kWh/100_km', 'kWh/100_mi'],
-            ],
+            'spainOnlyMethodsByMode' => self::SPAIN_ONLY_METHODS_BY_MODE,
+            'outsideSpainOnlyMethodsByMode' => self::OUTSIDE_SPAIN_ONLY_METHODS_BY_MODE,
         ];
     }
 
@@ -166,7 +163,21 @@ final class TransportUiCatalog
         }
 
         if ('car' === $input->mode) {
+            if ('ES' === strtoupper(trim($input->country))
+                && !in_array($input->vehicleType, self::CAR_SPAIN_VEHICLE_TYPES, true)
+            ) {
+                return false;
+            }
+
             return in_array($input->method, self::CAR_TYPE_METHODS[$input->vehicleType] ?? [], true);
+        }
+
+        $isSpain = 'ES' === strtoupper(trim($input->country));
+        if (!$isSpain && in_array($input->method, self::SPAIN_ONLY_METHODS_BY_MODE[$input->mode] ?? [], true)) {
+            return false;
+        }
+        if ($isSpain && in_array($input->method, self::OUTSIDE_SPAIN_ONLY_METHODS_BY_MODE[$input->mode] ?? [], true)) {
+            return false;
         }
 
         if ('taxi' === $input->mode

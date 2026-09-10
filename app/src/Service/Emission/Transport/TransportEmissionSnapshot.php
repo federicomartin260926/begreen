@@ -13,6 +13,7 @@ final class TransportEmissionSnapshot
     {
         $snapshot = [
             'version' => self::VERSION,
+            'calculatorVersion' => self::VERSION,
             'input' => $this->inputToArray($input),
             'calculation' => [
                 'status' => $result->status,
@@ -21,15 +22,23 @@ final class TransportEmissionSnapshot
                 'generatedKgCo2e' => $result->generatedKgCo2e,
             ],
             'factor' => [
+                'factorId' => $result->factorId,
                 'functionalKey' => $result->functionalKey,
-                'activityYear' => $result->activityYear,
+                'activityYear' => $result->factorActivityYear ?? $result->activityYear,
                 'factorYear' => $result->factorYear,
+                'temporalType' => $result->temporalType,
+                'factorVersion' => $result->factorVersion,
                 'value' => $result->factorValue,
                 'unit' => $result->factorUnit,
                 'source' => $result->source,
                 'sourceDetail' => $result->sourceDetail,
                 'fallback' => $result->isFallback,
+                'isTemporalFallback' => $result->isFallback,
                 'fallbackReason' => $result->fallbackReason,
+                'isGeographicProxy' => $result->isGeographicProxy,
+                'proxyGeography' => $result->proxyGeography,
+                'qualityStatus' => $result->qualityStatus,
+                'metadata' => $result->factorMetadata,
             ],
         ];
         if ([] !== $presentation) {

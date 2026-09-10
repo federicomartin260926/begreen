@@ -22,13 +22,18 @@ class EmissionFactorRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('factor')
             ->andWhere('factor.categoryKey = :categoryKey')
             ->andWhere('factor.functionalKey = :functionalKey')
-            ->andWhere('factor.temporalType = :temporalType')
+            ->andWhere('factor.temporalType IN (:temporalTypes)')
+            ->andWhere('(factor.activityYear IS NULL OR factor.activityYear <= :activityYear)')
             ->andWhere('factor.year <= :activityYear')
             ->setParameter('categoryKey', $categoryKey)
             ->setParameter('functionalKey', $functionalKey)
-            ->setParameter('temporalType', EmissionFactor::TEMPORAL_TYPE_ANNUAL)
+            ->setParameter('temporalTypes', [
+                EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+                EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+            ])
             ->setParameter('activityYear', $activityYear)
-            ->orderBy('factor.year', 'DESC')
+            ->orderBy('factor.activityYear', 'DESC')
+            ->addOrderBy('factor.year', 'DESC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

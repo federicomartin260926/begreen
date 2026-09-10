@@ -29,18 +29,25 @@ final class WaterEmissionFactorFixturesTest extends TestCase
         (new WaterEmissionFactorFixtures($this->keyGenerator))->load($manager);
     }
 
-    public function testLoadsTheTwelveCanonicalAnnualFactorsWithoutIdentityCollisions(): void
+    public function testLoadsTheTwelveCanonicalFactorsWithoutIdentityCollisions(): void
     {
         self::assertCount(12, $this->factors);
         $identities = [];
+        $factorIds = [];
         $geographies = [];
         $years = [];
+        $temporalTypes = [];
 
         foreach ($this->factors as $factor) {
             self::assertSame('water', $factor->getCategoryKey());
-            self::assertSame(EmissionFactor::TEMPORAL_TYPE_ANNUAL, $factor->getTemporalType());
             self::assertSame($this->keyGenerator->generate($factor->getCriteria()), $factor->getFunctionalKey());
             self::assertSame('kgCO2e/m3', $factor->getUnit());
+            self::assertNotNull($factor->getFactorId());
+            self::assertArrayNotHasKey($factor->getFactorId(), $factorIds);
+            $factorIds[$factor->getFactorId()] = true;
+            self::assertSame($factor->getYear(), $factor->getActivityYear());
+            self::assertSame('Agua_Base_Maestra_y_Contrato_FINAL.xlsx', $factor->getMetadata()['sourceWorkbook']);
+            self::assertSame('Factores', $factor->getMetadata()['sourceSheet']);
 
             $identity = $factor->getFunctionalKey().'|'.$factor->getYear();
             self::assertArrayNotHasKey($identity, $identities);
@@ -48,10 +55,16 @@ final class WaterEmissionFactorFixturesTest extends TestCase
             $geography = $factor->getCriteria()['geography'];
             $geographies[$geography] = ($geographies[$geography] ?? 0) + 1;
             $years[] = $factor->getYear();
+            $temporalTypes[$factor->getTemporalType()] = ($temporalTypes[$factor->getTemporalType()] ?? 0) + 1;
         }
 
         self::assertCount(12, $identities);
+        self::assertCount(12, $factorIds);
         self::assertSame(['Reino Unido' => 10, 'Cataluña' => 2], $geographies);
+        self::assertSame([
+            EmissionFactor::TEMPORAL_TYPE_ANNUAL => 10,
+            EmissionFactor::TEMPORAL_TYPE_VERSIONED => 2,
+        ], $temporalTypes);
         sort($years);
         self::assertSame([2022, 2022, 2023, 2023, 2024, 2024, 2024, 2025, 2025, 2025, 2026, 2026], $years);
     }
@@ -75,8 +88,10 @@ final class WaterEmissionFactorFixturesTest extends TestCase
         self::assertSame('0.517', $occc2025->getValue());
         self::assertSame('OCCC', $occc2024->getSource());
         self::assertSame('2025', $occc2024->getMetadata()['sourceEdition']);
-        self::assertSame('REAL_VERIFICADO_PROYECTO', $occc2024->getMetadata()['sourceStatus']);
-        self::assertSame('water-v1', $occc2024->getMetadata()['factorVersion']);
+        self::assertSame('2025', $occc2024->getMetadata()['factorVersion']);
+        self::assertSame('2026', $occc2025->getMetadata()['factorVersion']);
+        self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $occc2024->getTemporalType());
+        self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $occc2025->getTemporalType());
         self::assertSame('Cataluña', $occc2024->getMetadata()['sourceGeography']);
         self::assertSame('urban_water_cycle', $occc2024->getMetadata()['factorType']);
         self::assertSame('m3', $occc2024->getMetadata()['activityUnit']);

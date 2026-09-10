@@ -86,17 +86,20 @@ export default class extends Controller {
     if (result.foodEmissionKgCo2e !== null) lines.push(`${this.i18nValue.food}: ${this.formatDecimal(result.foodEmissionKgCo2e)} kg CO₂e`);
     if (result.tablewareEmissionKgCo2e !== null) lines.push(`${this.i18nValue.tableware}: ${this.formatDecimal(result.tablewareEmissionKgCo2e)} kg CO₂e`);
 
-    (result.factorTraces || [])
-      .filter((trace) => trace.temporalType === 'PROXY_LCA')
-      .forEach((trace) => {
-        const component = trace.component === 'tableware'
-          ? this.i18nValue.tableware
-          : trace.component;
-        const provenance = [trace.source, trace.sourceDetail, trace.factorVersion]
-          .filter(Boolean)
-          .join(' · ');
-        lines.push(`${component}: ${this.i18nValue.proxyLca}${provenance ? ` · ${provenance}` : ''}`);
-      });
+    (result.factorTraces || []).forEach((trace) => {
+      const component = trace.component === 'tableware' ? this.i18nValue.tableware : this.i18nValue.food;
+      const parts = [component];
+      if (trace.factorId) parts.push(`${this.i18nValue.factorId}: ${trace.factorId}`);
+      if (trace.temporalType) parts.push(`${this.i18nValue.temporalType}: ${trace.temporalType}`);
+      if (trace.factorVersion) parts.push(`${this.i18nValue.factorVersion}: ${trace.factorVersion}`);
+      if (trace.factorValue !== null) {
+        parts.push(`${this.i18nValue.factor}: ${this.formatDecimal(trace.factorValue)} ${trace.factorUnit || ''}`.trim());
+      }
+      if (trace.source) parts.push(trace.source);
+      if (trace.sourceDetail) parts.push(trace.sourceDetail);
+      if (trace.temporalType === 'PROXY_LCA') parts.push(this.i18nValue.proxyLca);
+      lines.push(parts.join(' · '));
+    });
 
     if (result.emissionKgCo2e !== null) lines.push(`${this.i18nValue.total}: ${this.formatDecimal(result.emissionKgCo2e)} kg CO₂e`);
     if (result.normalizedAmount !== null) lines.push(`${this.formatDecimal(result.normalizedAmount)} ${this.localizeUnit(result.normalizedUnit)}`.trim());

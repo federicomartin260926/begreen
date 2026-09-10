@@ -21,7 +21,9 @@ final class WaterEmissionSnapshotTest extends TestCase
         $input = $this->input();
         $trace = new WaterFactorTrace(
             component: 'urban_water_cycle',
+            factorId: 'AGU_AAB6F0C556EADF',
             factorType: 'urban_water_cycle',
+            temporalType: EmissionFactor::TEMPORAL_TYPE_VERSIONED,
             activityYear: 2024,
             factorYear: 2024,
             factorValue: '0.517',
@@ -29,12 +31,15 @@ final class WaterEmissionSnapshotTest extends TestCase
             source: 'OCCC',
             sourceDetail: null,
             sourceEdition: '2025',
+            factorVersion: '2025',
             sourceGeography: 'Cataluña',
             targetGeography: 'España/ES',
             isFallback: false,
             fallbackReason: null,
             isGeographicProxy: true,
+            proxyGeography: 'Cataluña',
             dataQuality: WaterFactorResolution::QUALITY_MEDIUM,
+            qualityStatus: 'REAL_VERIFICADO_PROYECTO',
             normalizedAmount: '1',
             normalizedUnit: 'm3',
             componentEmissionKgCo2e: '0.517',
@@ -59,6 +64,10 @@ final class WaterEmissionSnapshotTest extends TestCase
         self::assertSame('water-v1', $data['calculatorVersion']);
         self::assertSame('0.517', $data['calculation']['emissionKgCo2e']);
         self::assertSame('Cataluña', $data['calculation']['factorTraces'][0]['sourceGeography']);
+        self::assertSame('AGU_AAB6F0C556EADF', $data['calculation']['factorTraces'][0]['factorId']);
+        self::assertSame('2025', $data['calculation']['factorTraces'][0]['sourceEdition']);
+        self::assertSame('2025', $data['calculation']['factorTraces'][0]['factorVersion']);
+        self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $data['calculation']['factorTraces'][0]['temporalType']);
         self::assertSame('0.517', $data['calculation']['factorTraces'][0]['componentEmissionKgCo2e']);
         self::assertSame('Limpieza plató', $snapshot->decodePresentation($encoded)['label']);
         self::assertSame('2024-01-01', $decoded->startDate->format('Y-m-d'));

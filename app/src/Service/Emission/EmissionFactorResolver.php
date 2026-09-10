@@ -37,11 +37,15 @@ final readonly class EmissionFactorResolver
         if (null === $factorYear) {
             throw new \UnexpectedValueException('Annual emission factors must define a year.');
         }
-        $isFallback = $factorYear < $activityYear;
+        if ($factorYear > $activityYear) {
+            return new EmissionFactorResolution(null, $activityYear, null, false, null);
+        }
+        $metadata = $factor->getMetadata() ?? [];
+        $isFallback = $factorYear < $activityYear || true === ($metadata['isTemporalFallback'] ?? false);
 
         return new EmissionFactorResolution(
             $factor,
-            $activityYear,
+            $factor->getActivityYear() ?? $activityYear,
             $factorYear,
             $isFallback,
             $isFallback ? EmissionFactorResolution::FALLBACK_REASON_EXACT_YEAR_MISSING : null,

@@ -2,14 +2,13 @@ import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
   static targets = [
-    'form', 'mode', 'method', 'carSizeFields', 'carSize', 'vehicleTypeFields', 'vehicleType', 'planeFields',
-    'routeClassification', 'travelClass', 'fuelFields', 'fuel', 'thermalFuelFields', 'thermalFuel',
+    'form', 'mode', 'method', 'carSizeFields', 'carSize', 'vehicleTypeFields', 'vehicleType',
+    'fuelFields', 'fuel', 'thermalFuelFields', 'thermalFuel',
     'routeFields', 'origin', 'destination', 'originSuggestions', 'destinationSuggestions', 'originLatitude', 'originLongitude',
     'destinationLatitude', 'destinationLongitude', 'tripTypeFields', 'tripType', 'stopsFields', 'stopsNotice',
     'routeButton', 'routeMessage', 'activityFields', 'activityLabel', 'activityValue', 'activityUnit',
-    'weightFields', 'weightValue', 'weightUnit', 'secondaryFields', 'secondaryLabel',
-    'secondaryValue', 'secondaryUnit', 'passengerFields', 'passengers', 'operatorFields',
-    'operatorReference', 'availabilityNotice', 'submit', 'startDate', 'endDate',
+    'weightFields', 'weightValue', 'weightUnit', 'passengerFields', 'passengers', 'operatorFields',
+    'operatorReference', 'submit', 'startDate', 'endDate',
     'previewStatus', 'previewEmission', 'previewTrace', 'previewMessages',
   ];
 
@@ -71,7 +70,7 @@ export default class extends Controller {
       if (!response.ok || result.error) throw new Error(result.error || 'preview_failed');
       this.renderPreview(result);
     } catch (error) {
-      if (error.name !== 'AbortError') this.clearPreview();
+      if (error.name !== 'AbortError') this.renderPreviewError(error.message);
     }
   }
 
@@ -85,13 +84,24 @@ export default class extends Controller {
     if (result.normalizedActivityValue !== null) {
       lines.push(`${this.i18nValue.previewNormalized}: ${this.formatDecimal(result.normalizedActivityValue)} ${result.normalizedActivityUnit || ''}`.trim());
     }
+    lines.push(`${this.i18nValue.previewActivityYear}: ${result.activityYear}`);
     if (result.factorValue !== null) {
       const factor = `${this.i18nValue.previewFactor}: ${this.formatDecimal(result.factorValue)} ${result.factorUnit || ''}`.trim();
       const provenance = [result.source, result.sourceDetail].filter(Boolean).join(' · ');
       lines.push(provenance ? `${factor} · ${provenance}` : factor);
+    } else if (result.source) {
+      lines.push(result.source);
     }
     if (result.factorYear !== null) {
       lines.push(`${this.i18nValue.previewFactorYear}: ${result.factorYear}${result.fallback ? ` · ${this.i18nValue.previewFallback}` : ''}`);
+    }
+    if (result.fallbackReason) {
+      lines.push(this.i18nValue.fallbackReasonLabels[result.fallbackReason] || result.fallbackReason);
+    }
+    if (result.factorId) lines.push(`${this.i18nValue.previewFactorId}: ${result.factorId}`);
+    if (result.factorVersion) lines.push(`${this.i18nValue.previewFactorVersion}: ${result.factorVersion}`);
+    if (result.isGeographicProxy) {
+      lines.push(`${this.i18nValue.previewGeographicProxy}${result.proxyGeography ? `: ${result.proxyGeography}` : ''}`);
     }
     this.previewTraceTarget.replaceChildren();
     lines.forEach((line) => {
@@ -114,6 +124,15 @@ export default class extends Controller {
     this.previewEmissionTarget.textContent = '—';
     this.previewTraceTarget.replaceChildren();
     this.previewMessagesTarget.replaceChildren();
+  }
+
+  renderPreviewError(errorKey) {
+    this.clearPreview();
+    const message = this.i18nValue.errorLabels[errorKey];
+    if (!message) return;
+    const item = document.createElement('li');
+    item.textContent = message;
+    this.previewMessagesTarget.append(item);
   }
 
   formatDecimal(value) {
@@ -155,6 +174,8 @@ export default class extends Controller {
   countryChanged(event) {
     if (event?.target?.name === 'country') {
       this.renderFields(false);
+      this.refreshMethods(this.methodTarget.value);
+      this.renderFields(false);
       return;
     }
 
@@ -182,13 +203,6 @@ export default class extends Controller {
 
   validate(event) {
     this.syncCoordinates();
-    const unavailable = this.configValue.unavailableMethods[this.methodTarget.value];
-    if (unavailable) {
-      event.preventDefault();
-      this.showAvailability(unavailable);
-      return;
-    }
-
     if (!this.formTarget.checkValidity()) {
       event.preventDefault();
       this.formTarget.classList.add('was-validated');
@@ -310,8 +324,6 @@ export default class extends Controller {
     this.fillSelect(this.carSizeTarget, this.configValue.carSizes, initial.carSize);
     this.fillSelect(this.vehicleTypeTarget, this.configValue.vehicleTypes, initial.vehicleType);
     this.fillSelect(this.thermalFuelTarget, this.configValue.thermalFuels, initial.thermalFuel);
-    this.fillSelect(this.routeClassificationTarget, this.configValue.routeClassifications, initial.routeClassification);
-    this.fillSelect(this.travelClassTarget, this.configValue.travelClasses, initial.travelClass);
     this.fillSelect(this.tripTypeTarget, this.configValue.tripTypes, initial.tripType || 'one_way');
     this.fillSelect(this.weightUnitTarget, this.configValue.weightUnits, initial.weightUnit);
   }
@@ -326,6 +338,10 @@ export default class extends Controller {
     if (this.modeTarget.value === 'car' && this.vehicleTypeTarget.value) {
       methods = this.configValue.carTypeMethods[this.vehicleTypeTarget.value] || [];
     }
+    const geographicExclusions = this.isSpain
+      ? this.configValue.outsideSpainOnlyMethodsByMode
+      : this.configValue.spainOnlyMethodsByMode;
+    methods = methods.filter((method) => !(geographicExclusions[this.modeTarget.value] || []).includes(method));
     this.fillSelect(this.methodTarget, methods, methods.includes(preferred) ? preferred : methods[0], false, true);
   }
 
@@ -339,7 +355,7 @@ export default class extends Controller {
 
     const vehicleTypeOptions = taxiSpainNeedsVehicleType
       ? this.configValue.taxiSpainVehicleTypes
-      : this.configValue.vehicleTypes;
+      : (isCar && this.isSpain ? this.configValue.carSpainVehicleTypes : this.configValue.vehicleTypes);
     const preferredVehicleType = this.vehicleTypeTarget.value || this.initialValue.vehicleType;
     this.fillSelect(
       this.vehicleTypeTarget,
@@ -348,19 +364,14 @@ export default class extends Controller {
     );
 
     const vehicleType = this.vehicleTypeTarget.value;
-    const isPlane = mode === 'plane';
     const isRoute = ['route', 'route_stops', 'route_weight'].includes(method);
     const hasTripType = method === 'route';
     const hasWeight = ['weight_distance', 'route_weight'].includes(method);
-    const hasSecondary = ['fuel_and_electricity', 'distance_consumption'].includes(method);
     const needsPassengers = ['distance', 'route', 'route_stops'].includes(method)
       && this.configValue.passengersByDistanceModes.includes(mode);
 
-    this.toggle(this.carSizeFieldsTarget, isCar, clearInactive);
+    this.toggle(this.carSizeFieldsTarget, isCar && !this.isSpain && method === 'distance', clearInactive);
     this.toggle(this.vehicleTypeFieldsTarget, isCar || taxiSpainNeedsVehicleType, clearInactive);
-    this.toggle(this.planeFieldsTarget, isPlane, clearInactive);
-    this.routeClassificationTarget.required = isPlane && method === 'route';
-    this.travelClassTarget.required = isPlane;
 
     const showFuelChoice = method === 'fuel' && !isCar;
     this.toggle(this.fuelFieldsTarget, showFuelChoice, clearInactive);
@@ -376,8 +387,8 @@ export default class extends Controller {
     }
 
     const showThermalFuel = isCar
-      && ['hev', 'phev'].includes(vehicleType)
-      && ['fuel', 'fuel_and_electricity', 'distance_consumption'].includes(method);
+      && vehicleType === 'hev'
+      && method === 'fuel';
     this.toggle(this.thermalFuelFieldsTarget, showThermalFuel, clearInactive);
     this.thermalFuelTarget.required = showThermalFuel;
 
@@ -393,27 +404,17 @@ export default class extends Controller {
     this.toggle(this.weightFieldsTarget, hasWeight, clearInactive);
     this.weightValueTarget.required = hasWeight;
     this.weightUnitTarget.required = hasWeight;
-    this.toggle(this.secondaryFieldsTarget, hasSecondary, clearInactive);
-    this.secondaryValueTarget.required = hasSecondary;
-    this.secondaryUnitTarget.required = hasSecondary;
     this.toggle(this.passengerFieldsTarget, needsPassengers, clearInactive);
     this.passengersTarget.required = needsPassengers;
     this.toggle(this.operatorFieldsTarget, method === 'operator', clearInactive);
     this.operatorReferenceTarget.required = method === 'operator';
 
     this.activityLabelTarget.textContent = this.i18nValue.activityLabels[method] || '';
-    this.secondaryLabelTarget.textContent = method === 'fuel_and_electricity'
-      ? this.i18nValue.activityLabels.electricity
-      : this.i18nValue.secondaryConsumption;
     this.refreshActivityUnits(method, clearInactive ? null : this.initialValue.activityUnit);
-    this.fillSelect(this.secondaryUnitTarget, this.configValue.secondaryUnits[method] || [], clearInactive ? null : this.initialValue.secondaryActivityUnit, false);
-    this.showAvailability(this.configValue.unavailableMethods[method]);
   }
 
   refreshActivityUnits(method, preferred) {
     let units = this.configValue.unitsByMethod[method] || [];
-    if (method === 'fuel_and_electricity') units = this.fuelUnits();
-    if (method === 'distance_consumption') units = this.configValue.unitsByMethod.distance;
     if (method === 'fuel') units = this.fuelUnits();
     this.fillSelect(this.activityUnitTarget, units, units.includes(preferred) ? preferred : units[0], false);
   }
@@ -449,12 +450,6 @@ export default class extends Controller {
     }
   }
 
-  showAvailability(status) {
-    this.availabilityNoticeTarget.hidden = !status;
-    this.availabilityNoticeTarget.textContent = status ? this.i18nValue[status] : '';
-    this.submitTarget.disabled = Boolean(status);
-  }
-
   toggle(container, visible, clear) {
     container.hidden = !visible;
     container.querySelectorAll('[name]').forEach((field) => {
@@ -480,12 +475,10 @@ export default class extends Controller {
 
   labelMap(select) {
     if (select === this.modeTarget) return this.i18nValue.modeLabels;
-    if ([this.activityUnitTarget, this.secondaryUnitTarget, this.weightUnitTarget].includes(select)) return this.i18nValue.unitLabels;
+    if ([this.activityUnitTarget, this.weightUnitTarget].includes(select)) return this.i18nValue.unitLabels;
     if (select === this.vehicleTypeTarget) return this.i18nValue.vehicleTypeLabels;
     if (select === this.carSizeTarget) return this.i18nValue.carSizeLabels;
     if ([this.fuelTarget, this.thermalFuelTarget].includes(select)) return this.i18nValue.fuelLabels;
-    if (select === this.travelClassTarget) return this.i18nValue.travelClassLabels;
-    if (select === this.routeClassificationTarget) return this.i18nValue.routeClassificationLabels;
     return this.i18nValue.tripTypeLabels;
   }
 

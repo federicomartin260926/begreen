@@ -44,19 +44,16 @@ final class TransportEmissionRecordServiceTest extends TestCase
         self::assertArrayNotHasKey('startedAt', $snapshotData['input']);
     }
 
-    public function testDirectZeroAndOperatorArePersistedIncludingZero(): void
+    public function testOperatorEmissionIsPersistedWithoutBaseFactor(): void
     {
-        [$zeroService] = $this->service(null, persistCalls: 1);
-        $zeroInput = new TransportEmissionInput('local', 'walk', 'distance', 'ES', new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '3', 'km');
-        $zero = $zeroService->write(...$this->writeArguments($zeroInput));
-        self::assertSame(TransportEmissionResult::STATUS_DIRECT_ZERO, $zero->calculation->status);
-        self::assertSame(0.0, $zero->record?->getEmission());
-
         [$operatorService] = $this->service(null, persistCalls: 1);
         $operatorInput = new TransportEmissionInput('local', 'taxi', 'operator', 'ES', new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-06-01'), '2', 'kg_co2e', '3');
         $operator = $operatorService->write(...$this->writeArguments($operatorInput));
         self::assertSame(TransportEmissionResult::STATUS_DIRECT_OPERATOR_EMISSION, $operator->calculation->status);
         self::assertSame(6.0, $operator->record?->getEmission());
+        $snapshot = json_decode((string) $operator->record?->getCalculationDetails(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertNull($snapshot['factor']['factorId']);
+        self::assertSame('operator', $snapshot['factor']['source']);
     }
 
     public function testFactorNotAvailableIsNotPersisted(): void
@@ -124,25 +121,25 @@ final class TransportEmissionRecordServiceTest extends TestCase
         self::assertArrayNotHasKey('factorValue', $data['input']);
     }
 
-    public function testRequestMapperAcceptsSameDayAndCrossYearRanges(): void
+    public function testRequestMapperAcceptsSameDayAndRejectsCrossYearRanges(): void
     {
         $mapper = new TransportEmissionRequestMapper();
         $base = [
-            'category' => 'local', 'mode' => 'walk', 'method' => 'distance', 'country' => 'ES',
+            'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'ES',
             'activityValue' => '2', 'activityUnit' => 'km',
         ];
 
         $sameDay = $mapper->map(Request::create('/', 'POST', $base + [
             'startDate' => '2026-06-01', 'endDate' => '2026-06-01',
         ]));
-        $crossYear = $mapper->map(Request::create('/', 'POST', $base + [
-            'startDate' => '2026-12-30', 'endDate' => '2027-01-02',
-        ]));
-
         self::assertSame('2026-06-01', $sameDay->startDate->format('Y-m-d'));
         self::assertSame('2026-06-01', $sameDay->endDate->format('Y-m-d'));
-        self::assertSame('2026-12-30', $crossYear->startDate->format('Y-m-d'));
-        self::assertSame('2027-01-02', $crossYear->endDate->format('Y-m-d'));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(TransportEmissionCalculator::CROSS_YEAR_ERROR);
+        $mapper->map(Request::create('/', 'POST', $base + [
+            'startDate' => '2026-12-30', 'endDate' => '2027-01-02',
+        ]));
     }
 
     public function testEditingRecalculatesWithCurrentResolverInsteadOfStoredFactor(): void

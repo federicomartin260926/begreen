@@ -33,6 +33,9 @@ final class CateringEmissionCalculatorTest extends TestCase
         self::assertSame('100', $compostable->factorTraces[0]->normalizedAmount);
         self::assertSame('10.2627', $compostable->factorTraces[1]->emissionKgCo2e);
         self::assertSame('90', $compostable->factorTraces[1]->normalizedAmount);
+        self::assertNull($compostable->factorTraces[0]->factorYear);
+        self::assertSame('MENU_VEGAN', $compostable->factorTraces[0]->factorId);
+        self::assertSame('AGRIBALYSE 3.2', $compostable->factorTraces[0]->factorVersion);
 
         $reusable = $this->calculator->calculate($this->meal('reusable'));
         self::assertSame('53.9348395', $reusable->emissionKgCo2e);
@@ -93,7 +96,7 @@ final class CateringEmissionCalculatorTest extends TestCase
 
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $result->status);
         self::assertSame(2025, $result->activityYear);
-        self::assertSame(2025, $result->factorTraces[0]->activityYear);
+        self::assertNull($result->factorTraces[0]->activityYear);
         self::assertNull($result->factorTraces[0]->factorYear);
     }
 
@@ -145,7 +148,7 @@ final class CateringEmissionCalculatorTest extends TestCase
     {
         $keyGenerator = new EmissionFactorKeyGenerator();
         $factors = [
-            $this->factor($keyGenerator, ['component' => 'food', 'menuVariant' => 'vegan', 'unit' => 'prepared_menu'], EmissionFactor::TEMPORAL_TYPE_VERSIONED, '0.519728395'),
+            $this->factor($keyGenerator, ['component' => 'food', 'menuVariant' => 'vegan', 'unit' => 'prepared_menu'], EmissionFactor::TEMPORAL_TYPE_VERSIONED, '0.519728395', 'MENU_VEGAN', 'AGRIBALYSE 3.2'),
             $this->factor($keyGenerator, ['component' => 'food', 'menuVariant' => 'beef', 'unit' => 'prepared_menu'], EmissionFactor::TEMPORAL_TYPE_VERSIONED, '4.723889235'),
             $this->factor($keyGenerator, ['component' => 'tableware', 'tablewareType' => 'compostable', 'unit' => 'consumed_menu'], EmissionFactor::TEMPORAL_TYPE_COMPOSITE, '0.11403'),
             $this->factor($keyGenerator, ['component' => 'tableware', 'tablewareType' => 'reusable', 'unit' => 'consumed_menu'], EmissionFactor::TEMPORAL_TYPE_PROXY_LCA, '0.0218'),
@@ -167,17 +170,18 @@ final class CateringEmissionCalculatorTest extends TestCase
     }
 
     /** @param array<string, string> $criteria */
-    private function factor(EmissionFactorKeyGenerator $keyGenerator, array $criteria, string $temporalType, string $value): EmissionFactor
+    private function factor(EmissionFactorKeyGenerator $keyGenerator, array $criteria, string $temporalType, string $value, ?string $factorId = null, string $factorVersion = 'v1'): EmissionFactor
     {
         return (new EmissionFactor())
             ->setCategoryKey('catering')
             ->setFunctionalKey($keyGenerator->generate($criteria))
             ->setCriteria($criteria)
+            ->setFactorId($factorId)
             ->setYear(null)
             ->setTemporalType($temporalType)
             ->setValue($value)
             ->setUnit('kgCO2e/menu')
             ->setSource('Official source')
-            ->setMetadata(['factorVersion' => 'v1']);
+            ->setMetadata(['factorVersion' => $factorVersion]);
     }
 }

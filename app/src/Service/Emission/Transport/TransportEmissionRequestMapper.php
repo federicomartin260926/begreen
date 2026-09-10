@@ -14,6 +14,9 @@ final class TransportEmissionRequestMapper
         if ($endDate < $startDate) {
             throw new \InvalidArgumentException('endDate must be greater than or equal to startDate.');
         }
+        if ($startDate->format('Y') !== $endDate->format('Y')) {
+            throw new \InvalidArgumentException(TransportEmissionCalculator::CROSS_YEAR_ERROR);
+        }
 
         $country = strtoupper($this->requiredString($request, 'country'));
         if (

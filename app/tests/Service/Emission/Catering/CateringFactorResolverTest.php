@@ -24,8 +24,9 @@ final class CateringFactorResolverTest extends TestCase
 
         self::assertSame('0.519728395', $food->factorValue);
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $food->temporalType);
-        self::assertSame(2022, $food->activityYear);
+        self::assertNull($food->activityYear);
         self::assertNull($food->factorYear);
+        self::assertSame('MENU_VEGAN', $food->factorId);
         self::assertSame('0.11403', $compostable->factorValue);
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_COMPOSITE, $compostable->temporalType);
         self::assertNull($compostable->factorYear);

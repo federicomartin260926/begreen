@@ -15,15 +15,24 @@ final class WaterEmissionFactorFixtures extends Fixture implements FixtureGroupI
     private const CATEGORY_KEY = 'water';
     private const DATA_FILE = __DIR__.'/data/emission/water_factors_v1.csv';
     private const HEADERS = [
+        'factor_id',
         'geography',
         'factor_type',
+        'activity_year',
         'factor_year',
         'factor_value',
         'unit',
+        'temporal_type',
+        'factor_version',
         'source',
-        'source_edition',
-        'status',
+        'source_detail',
         'source_url',
+        'is_temporal_fallback',
+        'is_geographic_proxy',
+        'quality_status',
+        'notes',
+        'source_workbook',
+        'source_sheet',
     ];
 
     public function __construct(private readonly EmissionFactorKeyGenerator $keyGenerator)
@@ -43,7 +52,8 @@ final class WaterEmissionFactorFixtures extends Fixture implements FixtureGroupI
             throw new \RuntimeException('Unexpected water emission factor CSV headers.');
         }
 
-        $identities = [];
+        $factorIds = [];
+        $count = 0;
         while (!$file->eof()) {
             $values = $file->fgetcsv();
             if (false === $values || [null] === $values) {
@@ -61,35 +71,45 @@ final class WaterEmissionFactorFixtures extends Fixture implements FixtureGroupI
                 'unit' => 'm3',
             ]);
             $functionalKey = $this->keyGenerator->generate($criteria);
-            $identity = $functionalKey.'|'.$row['factor_year'];
-            if (isset($identities[$identity])) {
-                throw new \RuntimeException(sprintf('Duplicate water factor source identity in CSV row %d.', $file->key() + 1));
+            if ('' === $row['factor_id'] || isset($factorIds[$row['factor_id']])) {
+                throw new \RuntimeException(sprintf('Missing or duplicate water factor_id in CSV row %d.', $file->key() + 1));
             }
-            $identities[$identity] = true;
+            $factorIds[$row['factor_id']] = true;
 
             $factor = (new EmissionFactor())
                 ->setCategoryKey(self::CATEGORY_KEY)
                 ->setFunctionalKey($functionalKey)
                 ->setCriteria($criteria)
-                ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_ANNUAL)
+                ->setFactorId($row['factor_id'])
+                ->setActivityYear((int) $row['activity_year'])
+                ->setTemporalType($row['temporal_type'])
                 ->setYear((int) $row['factor_year'])
                 ->setValue($row['factor_value'])
                 ->setUnit($row['unit'])
                 ->setSource($row['source'])
-                ->setSourceDetail(null)
+                ->setSourceDetail('' === $row['source_detail'] ? null : $row['source_detail'])
                 ->setMetadata([
-                    'sourceEdition' => $row['source_edition'],
-                    'sourceUrl' => $row['source_url'],
-                    'sourceStatus' => $row['status'],
-                    'factorVersion' => 'water-v1',
+                    'sourceEdition' => '' === $row['factor_version'] ? null : $row['factor_version'],
+                    'factorVersion' => '' === $row['factor_version'] ? null : $row['factor_version'],
+                    'sourceUrl' => '' === $row['source_url'] ? null : $row['source_url'],
+                    'isTemporalFallback' => '1' === $row['is_temporal_fallback'],
+                    'isGeographicProxy' => '1' === $row['is_geographic_proxy'],
+                    'qualityStatus' => '' === $row['quality_status'] ? null : $row['quality_status'],
+                    'notes' => '' === $row['notes'] ? null : $row['notes'],
+                    'sourceWorkbook' => $row['source_workbook'],
+                    'sourceSheet' => $row['source_sheet'],
                     'sourceGeography' => $row['geography'],
                     'factorType' => $row['factor_type'],
                     'activityUnit' => 'm3',
                 ]);
 
             $manager->persist($factor);
+            ++$count;
         }
 
+        if (12 !== $count) {
+            throw new \RuntimeException(sprintf('Expected 12 water emission factors, got %d.', $count));
+        }
         $manager->flush();
     }
 }

@@ -37,7 +37,7 @@ final class TransportEmissionController extends AbstractController
         'passengers', 'weightValue', 'weightUnit', 'vehicleType', 'carSize', 'fuel', 'thermalFuel',
         'routeClassification', 'travelClass', 'notes',
         'origin', 'destination', 'originLatitude', 'originLongitude', 'destinationLatitude', 'destinationLongitude',
-        'tripType', 'stops', 'operatorReference', 'secondaryActivityValue', 'secondaryActivityUnit',
+        'tripType', 'stops', 'operatorReference',
     ];
 
     #[Route('/transport/preview', name: 'backend_emission_transport_v20_preview', methods: ['POST'])]
@@ -67,16 +67,23 @@ final class TransportEmissionController extends AbstractController
                 'normalizedActivityUnit' => $result->normalizedActivityUnit,
                 'generatedKgCo2e' => $result->generatedKgCo2e,
                 'activityYear' => $result->activityYear,
+                'factorActivityYear' => $result->factorActivityYear,
                 'factorYear' => $result->factorYear,
+                'factorId' => $result->factorId,
+                'temporalType' => $result->temporalType,
+                'factorVersion' => $result->factorVersion,
                 'factorValue' => $result->factorValue,
                 'factorUnit' => $result->factorUnit,
                 'source' => $result->source,
                 'sourceDetail' => $result->sourceDetail,
                 'fallback' => $result->isFallback,
                 'fallbackReason' => $result->fallbackReason,
+                'isGeographicProxy' => $result->isGeographicProxy,
+                'proxyGeography' => $result->proxyGeography,
+                'qualityStatus' => $result->qualityStatus,
             ]);
-        } catch (\InvalidArgumentException) {
-            return $this->json(['error' => 'invalid_input'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['error' => $this->inputErrorKey($exception)], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -125,8 +132,8 @@ final class TransportEmissionController extends AbstractController
             }
 
             $writeResult = $recordService->write($project, $category, $phase, $input, $this->notes($request), presentation: $presentation);
-        } catch (\InvalidArgumentException) {
-            return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, ['invalid_input'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, [$this->inputErrorKey($exception)], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         if (!$writeResult->isPersisted()) {
@@ -253,8 +260,8 @@ final class TransportEmissionController extends AbstractController
             }
 
             $writeResult = $recordService->write($project, $category, $phase, $input, $this->notes($request), $record, $presentation);
-        } catch (\InvalidArgumentException) {
-            return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, ['invalid_input'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->renderForm($request, $project, $category, $uiCatalog, $values, true, $record, [$this->inputErrorKey($exception)], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         if (!$writeResult->isPersisted()) {
@@ -347,8 +354,6 @@ final class TransportEmissionController extends AbstractController
             'tripType' => null,
             'stops' => null,
             'operatorReference' => null,
-            'secondaryActivityValue' => null,
-            'secondaryActivityUnit' => null,
         ];
     }
 
@@ -377,6 +382,13 @@ final class TransportEmissionController extends AbstractController
         }
 
         return $category;
+    }
+
+    private function inputErrorKey(\InvalidArgumentException $exception): string
+    {
+        return TransportEmissionCalculator::CROSS_YEAR_ERROR === $exception->getMessage()
+            ? 'split_by_year'
+            : 'invalid_input';
     }
 
     private function hasValidCsrfToken(Request $request, string $tokenId): bool

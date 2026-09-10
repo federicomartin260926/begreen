@@ -81,6 +81,12 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('name="startedAt"', $content);
         self::assertStringContainsString('value="ES"', $content);
         self::assertStringContainsString('España', $content);
+        foreach (['distance_consumption', 'fuel_and_electricity', 'passenger_van', 'minibus', 'motorcycle', 'bicycle', 'scooter', 'walk', 'courier', 'cargo_bike'] as $unsupportedOption) {
+            self::assertStringNotContainsString($unsupportedOption, $content);
+        }
+        self::assertStringNotContainsString('name="secondaryActivityValue"', $content);
+        self::assertStringNotContainsString('name="routeClassification"', $content);
+        self::assertStringNotContainsString('name="travelClass"', $content);
         foreach (['factor', 'factorValue', 'factorYear', 'source', 'functionalKey', 'amount', 'emission', 'generatedKgCo2e'] as $field) {
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
         }
@@ -215,6 +221,9 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame('5', $data['generatedKgCo2e']);
         self::assertSame('0.5', $data['factorValue']);
         self::assertSame(2026, $data['factorYear']);
+        self::assertSame('TRA_TEST', $data['factorId']);
+        self::assertSame(2026, $data['factorActivityYear']);
+        self::assertSame('ANNUAL', $data['temporalType']);
         self::assertSame('MITECO', $data['source']);
         self::assertFalse($data['fallback']);
     }
@@ -239,6 +248,27 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame('exact_year_missing', $data['fallbackReason']);
     }
 
+    public function testOperatorPreviewIsDirectAndHasNoBaseFactorId(): void
+    {
+        $context = $this->context();
+        $post = $this->validPost();
+        $post['mode'] = 'taxi';
+        $post['method'] = 'operator';
+        $post['activityValue'] = '2';
+        $post['activityUnit'] = 'kg_co2e';
+        unset($post['vehicleType']);
+        $request = $this->request('POST', $post);
+        $request->request->set('_preview_token', $this->csrfToken('transport_emission_v20_preview'));
+
+        $data = json_decode((string) $this->preview($request, $context, null)->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(TransportEmissionResult::STATUS_DIRECT_OPERATOR_EMISSION, $data['status']);
+        self::assertSame('2', $data['generatedKgCo2e']);
+        self::assertSame('operator', $data['source']);
+        self::assertNull($data['factorId']);
+        self::assertNull($data['factorYear']);
+    }
+
     public function testPreviewRejectsInvalidInput(): void
     {
         $context = $this->context();
@@ -251,6 +281,25 @@ final class TransportEmissionControllerTest extends KernelTestCase
 
         self::assertSame(422, $response->getStatusCode());
         self::assertSame(['error' => 'invalid_input'], json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    public function testPreviewAndCreateRequireCrossYearActivityToBeSplit(): void
+    {
+        $context = $this->context();
+        $post = $this->validPost();
+        $post['endDate'] = '2027-01-01';
+        $previewRequest = $this->request('POST', $post);
+        $previewRequest->request->set('_preview_token', $this->csrfToken('transport_emission_v20_preview'));
+
+        $preview = $this->preview($previewRequest, $context, $this->factor());
+        self::assertSame(422, $preview->getStatusCode());
+        self::assertSame(['error' => 'split_by_year'], json_decode((string) $preview->getContent(), true, 512, JSON_THROW_ON_ERROR));
+
+        $createRequest = $this->request('POST', $post);
+        $createRequest->request->set('_token', $this->csrfToken('transport_emission_v20_create'));
+        $create = $this->create($createRequest, $context, persistCalls: 0, factor: $this->factor());
+        self::assertSame(422, $create->getStatusCode());
+        self::assertStringContainsString('Divide la actividad en registros separados por año.', (string) $create->getContent());
     }
 
     public function testInvalidCountryReturns422BeforeCreatingRecord(): void
@@ -372,7 +421,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame(422, $response->getStatusCode());
         self::assertStringContainsString('value="44.5"', $content);
         self::assertStringContainsString('Valor del usuario', $content);
-        self::assertStringContainsString('value="7.2"', $content);
+        self::assertStringNotContainsString('name="secondaryActivityValue"', $content);
         self::assertStringContainsString('todavía no está soportada', $content);
     }
 
@@ -580,7 +629,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
     private function factor(): EmissionFactor
     {
         return (new EmissionFactor())->setCategoryKey('transport')->setFunctionalKey('server-key')->setCriteria([])
-            ->setYear(2026)->setValue('0.5')->setUnit('km')->setSource('MITECO')->setSourceDetail('Backend');
+            ->setFactorId('TRA_TEST')->setActivityYear(2026)->setYear(2026)->setValue('0.5')->setUnit('km')->setSource('MITECO')->setSourceDetail('Backend');
     }
 
     private function setAdminToken(): void

@@ -30,17 +30,25 @@ final class CateringEmissionFactorFixturesTest extends TestCase
         self::assertCount(1, array_filter($factors, static fn (EmissionFactor $factor): bool => EmissionFactor::TEMPORAL_TYPE_PROXY_LCA === $factor->getTemporalType()));
 
         $keyGenerator = new EmissionFactorKeyGenerator();
+        $factorIds = [];
         foreach ($factors as $factor) {
             self::assertSame('catering', $factor->getCategoryKey());
+            self::assertNull($factor->getActivityYear());
             self::assertNull($factor->getYear());
             self::assertSame($keyGenerator->generate($factor->getCriteria()), $factor->getFunctionalKey());
+            self::assertNotNull($factor->getFactorId());
+            self::assertArrayNotHasKey($factor->getFactorId(), $factorIds);
+            $factorIds[$factor->getFactorId()] = true;
             self::assertNotEmpty($factor->getMetadata()['factorVersion']);
             self::assertNotEmpty($factor->getMetadata()['sourceUrl']);
+            self::assertSame('Catering_Base_Maestra_y_Contrato_v11_4.xlsx', $factor->getMetadata()['sourceWorkbook']);
+            self::assertSame('Factores_Catering', $factor->getMetadata()['sourceSheet']);
         }
+        self::assertCount(9, $factorIds);
 
         $byId = [];
         foreach ($factors as $factor) {
-            $byId[$factor->getMetadata()['factorId']] = $factor;
+            $byId[$factor->getFactorId()] = $factor;
         }
         self::assertSame('0.519728395', $byId['MENU_VEGAN']->getValue());
         self::assertSame('kgCO2e/menú preparado', $byId['MENU_VEGAN']->getUnit());

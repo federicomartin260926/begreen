@@ -31,6 +31,14 @@ final class TransportEmissionSnapshotTest extends TestCase
             'Detalle',
             true,
             'exact_year_missing',
+            factorId: 'TRA_TEST',
+            factorActivityYear: 2025,
+            temporalType: 'ANNUAL',
+            factorVersion: '2025.1',
+            isGeographicProxy: true,
+            proxyGeography: 'ESPAÑA',
+            qualityStatus: 'verified',
+            factorMetadata: ['sourceWorkbook' => 'master.xlsx'],
         );
         $snapshot = new TransportEmissionSnapshot();
 
@@ -39,11 +47,21 @@ final class TransportEmissionSnapshotTest extends TestCase
         $decoded = $snapshot->decode($encoded);
 
         self::assertSame('transport-v20', $data['version']);
+        self::assertSame('transport-v20', $data['calculatorVersion']);
         self::assertSame('12.3400', $data['input']['activityValue']);
         self::assertSame('24.6800', $data['calculation']['normalizedActivityValue']);
         self::assertSame('5.678900', $data['calculation']['generatedKgCo2e']);
         self::assertSame('0.230101', $data['factor']['value']);
         self::assertSame(2025, $data['factor']['factorYear']);
+        self::assertSame(2025, $data['factor']['activityYear']);
+        self::assertSame('TRA_TEST', $data['factor']['factorId']);
+        self::assertSame('ANNUAL', $data['factor']['temporalType']);
+        self::assertSame('2025.1', $data['factor']['factorVersion']);
+        self::assertTrue($data['factor']['isTemporalFallback']);
+        self::assertTrue($data['factor']['isGeographicProxy']);
+        self::assertSame('ESPAÑA', $data['factor']['proxyGeography']);
+        self::assertSame('verified', $data['factor']['qualityStatus']);
+        self::assertSame(['sourceWorkbook' => 'master.xlsx'], $data['factor']['metadata']);
         self::assertSame('MITECO', $data['factor']['source']);
         self::assertTrue($data['factor']['fallback']);
         self::assertSame('exact_year_missing', $data['factor']['fallbackReason']);

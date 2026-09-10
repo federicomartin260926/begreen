@@ -78,8 +78,8 @@ final class TransportFactorCriteriaMapperTest extends TestCase
 
     public function testCriticalApprovedMappingsUseTheExactCatalogRows(): void
     {
-        self::assertSame('Metro', $this->map('ES', 'metro', 'route')['activity']);
-        self::assertSame('Metro', $this->map('DE', 'metro', 'route')['activity']);
+        self::assertSame('Metro', $this->map('ES', 'metro', 'passenger_distance')['activity']);
+        self::assertSame('Metro', $this->map('DE', 'metro', 'passenger_distance')['activity']);
         self::assertSame('Eléctrico', $this->map('ES', 'freight_train', 'tonne_km')['fuel']);
         self::assertSame('Vuelo (internacional)', $this->map('ES', 'air_freight', 'tonne_km')['activity']);
         self::assertSame('Buque (carga general diversa)', $this->map('US', 'freight_ship', 'tonne_km')['activity']);
@@ -88,7 +88,7 @@ final class TransportFactorCriteriaMapperTest extends TestCase
             array_values(array_intersect_key($this->map('FR', 'car', 'distance', 'petrol', 'small'), array_flip(['activity', 'fuel']))),
         );
         self::assertNull($this->mapper->map($this->input('FR', 'car', 'distance', vehicleType: 'lpg', carSize: 'small')));
-        self::assertSame('Moto promedio', $this->map('FR', 'motorcycle', 'fuel', fuel: 'petrol')['activity']);
+        self::assertNull($this->mapper->map($this->input('FR', 'motorcycle', 'fuel', fuel: 'petrol')));
     }
 
     public function testMapperRejectsCategoryModeAndModeMethodOutsideTheUiContract(): void

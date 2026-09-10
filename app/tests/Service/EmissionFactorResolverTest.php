@@ -115,6 +115,17 @@ final class EmissionFactorResolverTest extends TestCase
         self::assertNull($result->fallbackReason);
     }
 
+    public function testDefensivelyRejectsFutureFactorReturnedByRepository(): void
+    {
+        $factor = $this->factor(2027, '0.15', 'test')->setActivityYear(2027);
+        $resolver = $this->resolverReturning($factor, 2026);
+
+        $result = $resolver->resolveByFunctionalKey('transport', 'future-key', 2026);
+
+        self::assertFalse($result->hasFactor());
+        self::assertNull($result->factorYear);
+    }
+
     public function testCombinationStartingIn2023IsUnavailableIn2022AndExactIn2023(): void
     {
         $factor2023 = $this->factor(2023, '0.13292', 'DEFRA');

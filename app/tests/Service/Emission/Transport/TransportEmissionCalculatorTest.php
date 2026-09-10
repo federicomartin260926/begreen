@@ -32,13 +32,13 @@ final class TransportEmissionCalculatorTest extends TestCase
 
     public function testMetroUsesRealV20FactorsAndPassengerDistanceFormula(): void
     {
-        $spain = $this->calculate('metro', 'route', 'ES', '10', 'km', passengers: '2', repetitions: '3');
+        $spain = $this->calculate('metro', 'passenger_distance', 'ES', '20', 'passenger-km', repetitions: '3');
         self::assertSame('0.03828', $spain->factorValue);
         self::assertNotSame('0.07956', $spain->factorValue);
         self::assertSame('60', $spain->normalizedActivityValue);
         self::assertSame('2.2968', $spain->generatedKgCo2e);
 
-        $outside = $this->calculate('metro', 'route', 'FR', '10', 'km', passengers: '2');
+        $outside = $this->calculate('metro', 'passenger_distance', 'FR', '20', 'passenger-km');
         self::assertSame('0.01549', $outside->factorValue);
         self::assertNotSame('0.12552', $outside->factorValue);
     }
@@ -96,11 +96,11 @@ final class TransportEmissionCalculatorTest extends TestCase
             $this->calculate('car', 'fuel', 'ES', '10', 'm³', vehicleType: 'petrol', fuel: 'petrol')->status,
         );
         self::assertSame(
-            TransportEmissionResult::STATUS_DIRECT_ZERO,
+            TransportEmissionResult::STATUS_UNSUPPORTED,
             $this->calculate('walk', 'distance', 'ES', '5', 'km')->status,
         );
         self::assertSame(
-            TransportEmissionResult::STATUS_FACTOR_NOT_AVAILABLE,
+            TransportEmissionResult::STATUS_UNSUPPORTED,
             $this->calculate('minibus', 'distance', 'ES', '5', 'km')->status,
         );
     }
@@ -123,19 +123,22 @@ final class TransportEmissionCalculatorTest extends TestCase
 
     public function testTemporalResolutionFallsBackButNeverUsesTheFuture(): void
     {
-        $fallback = $this->calculate('metro', 'route', 'ES', '10', 'km', passengers: '1', date: '2026-01-01');
+        $fallback = $this->calculate('metro', 'passenger_distance', 'ES', '10', 'passenger-km', date: '2026-01-01');
         self::assertSame(2025, $fallback->factorYear);
         self::assertTrue($fallback->isFallback);
         self::assertSame('exact_year_missing', $fallback->fallbackReason);
 
-        $futureOnly = $this->calculate('metro', 'route', 'ES', '10', 'km', passengers: '1', date: '2021-01-01');
+        $futureOnly = $this->calculate('metro', 'passenger_distance', 'ES', '10', 'passenger-km', date: '2021-01-01');
         self::assertSame(TransportEmissionResult::STATUS_FACTOR_NOT_AVAILABLE, $futureOnly->status);
         self::assertNull($futureOnly->factorYear);
     }
 
-    public function testCrossYearRangeUsesStartDateActivityYear(): void
+    public function testCrossYearRangeIsRejected(): void
     {
-        $result = $this->calculate(
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Transport activity cannot cross calendar years.');
+
+        $this->calculate(
             'taxi',
             'route',
             'FR',
@@ -145,9 +148,6 @@ final class TransportEmissionCalculatorTest extends TestCase
             endDate: '2027-01-02',
         );
 
-        self::assertSame(2026, $result->activityYear);
-        self::assertSame(2026, $result->factorYear);
-        self::assertFalse($result->isFallback);
     }
 
     public function testUiContractSeparatesUnsupportedFromUnavailableAndExternalPaths(): void
@@ -156,17 +156,17 @@ final class TransportEmissionCalculatorTest extends TestCase
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('car', 'route_stops', 'ES', '10', 'km')->status);
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('passenger_van', 'route', 'ES', '10', 'km')->status);
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('car', 'operator', 'ES', '10', 'kg_co2e')->status);
-        self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('metro', 'electricity', 'ES', '10', 'kWh')->status);
+        self::assertSame(TransportEmissionResult::STATUS_EXTERNAL_FACTOR_REQUIRED, $this->calculate('metro', 'electricity', 'ES', '10', 'kWh')->status);
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('car', 'distance_consumption', 'ES', '10', 'km', vehicleType: 'petrol')->status);
-        self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('car', 'fuel_and_electricity', 'ES', '10', 'l', vehicleType: 'petrol')->status);
-        self::assertSame(TransportEmissionResult::STATUS_FACTOR_NOT_AVAILABLE, $this->calculate('minibus', 'distance', 'ES', '10', 'km')->status);
+        self::assertSame(TransportEmissionResult::STATUS_EXTERNAL_FACTOR_REQUIRED, $this->calculate('car', 'fuel_and_electricity', 'ES', '10', 'l', vehicleType: 'petrol')->status);
+        self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('minibus', 'distance', 'ES', '10', 'km')->status);
         self::assertSame(TransportEmissionResult::STATUS_EXTERNAL_FACTOR_REQUIRED, $this->calculate('minibus', 'electricity', 'ES', '10', 'kWh')->status);
     }
 
     public function testPlaneRouteRequiresClassificationButAggregatedPassengerDistanceDoesNot(): void
     {
         self::assertSame(
-            TransportEmissionResult::STATUS_FACTOR_NOT_AVAILABLE,
+            TransportEmissionResult::STATUS_UNSUPPORTED,
             $this->calculate('plane', 'route', 'ES', '100', 'km', passengers: '1')->status,
         );
 
@@ -175,17 +175,17 @@ final class TransportEmissionCalculatorTest extends TestCase
         self::assertSame('Vuelo (Nacional pasajero promedio)', $aggregated->criteria['activity']);
 
         $domestic = $this->calculate('plane', 'route', 'ES', '100', 'km', passengers: '1', routeClassification: 'domestic');
-        self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $domestic->status);
+        self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $domestic->status);
     }
 
     public function testMotorcycleFuelUsesOnlyAnUnambiguousCatalogMapping(): void
     {
         $outside = $this->calculate('motorcycle', 'fuel', 'FR', '2', 'l', fuel: 'petrol');
-        self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $outside->status);
-        self::assertSame('Moto promedio', $outside->criteria['activity']);
+        self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $outside->status);
+        self::assertNull($outside->criteria);
 
         self::assertSame(
-            TransportEmissionResult::STATUS_FACTOR_NOT_AVAILABLE,
+            TransportEmissionResult::STATUS_UNSUPPORTED,
             $this->calculate('motorcycle', 'fuel', 'ES', '2', 'l', fuel: 'petrol')->status,
         );
     }
@@ -206,7 +206,7 @@ final class TransportEmissionCalculatorTest extends TestCase
     {
         foreach (['0', '2.5'] as $passengers) {
             try {
-                $this->calculate('metro', 'route', 'ES', '10', 'km', passengers: $passengers);
+                $this->calculate('urban_bus', 'distance', 'ES', '10', 'km', passengers: $passengers);
                 self::fail('Invalid passengers must be rejected.');
             } catch (\InvalidArgumentException $exception) {
                 self::assertSame('passengers must be a positive integer.', $exception->getMessage());
@@ -216,7 +216,7 @@ final class TransportEmissionCalculatorTest extends TestCase
 
     public function testCarMethodsRespectTheV20MotorizationMatrix(): void
     {
-        self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('car', 'electricity', 'ES', '10', 'kWh', vehicleType: 'petrol')->status);
+        self::assertSame(TransportEmissionResult::STATUS_EXTERNAL_FACTOR_REQUIRED, $this->calculate('car', 'electricity', 'ES', '10', 'kWh', vehicleType: 'petrol')->status);
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('car', 'fuel', 'ES', '10', 'l', vehicleType: 'bev', fuel: 'petrol')->status);
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('car', 'fuel', 'ES', '10', 'l', vehicleType: 'unknown', fuel: 'petrol')->status);
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $this->calculate('car', 'fuel', 'ES', '10', 'l', fuel: 'petrol')->status);
@@ -228,10 +228,9 @@ final class TransportEmissionCalculatorTest extends TestCase
     {
         $invalidInputs = [
             ['car', 'distance', 'passenger-km', ['vehicleType' => 'petrol']],
-            ['metro', 'route', 'passenger-km', ['passengers' => '1']],
+            ['urban_bus', 'distance', 'passenger-km', ['passengers' => '1']],
             ['metro', 'passenger_distance', 'km', []],
-            ['freight_van', 'weight_distance', 'passenger-mi', ['weightValue' => '1', 'weightUnit' => 't']],
-            ['walk', 'distance', 'passenger-km', []],
+            ['freight_train', 'weight_distance', 'passenger-mi', ['weightValue' => '1', 'weightUnit' => 't']],
         ];
 
         foreach ($invalidInputs as [$mode, $method, $unit, $arguments]) {

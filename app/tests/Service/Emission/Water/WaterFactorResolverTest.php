@@ -8,6 +8,7 @@ use App\DataFixtures\WaterEmissionFactorFixtures;
 use App\Entity\EmissionFactor;
 use App\Repository\EmissionFactorRepository;
 use App\Service\Emission\EmissionFactorKeyGenerator;
+use App\Service\Emission\EmissionFactorResolution;
 use App\Service\Emission\EmissionFactorResolver;
 use App\Service\Emission\Water\WaterEmissionInput;
 use App\Service\Emission\Water\WaterFactorResolution;
@@ -66,6 +67,60 @@ final class WaterFactorResolverTest extends TestCase
         self::assertTrue($result[0]->isGeographicProxy);
         self::assertFalse($result[0]->isFallback);
         self::assertSame(WaterFactorResolution::QUALITY_MEDIUM, $result[0]->dataQuality);
+        self::assertSame('AGU_AAB6F0C556EADF', $result[0]->factorId);
+        self::assertSame('2025', $result[0]->sourceEdition);
+        self::assertSame('2025', $result[0]->factorVersion);
+    }
+
+    public function testTechnicalCalculatorVersionIsNeverExposedAsFactorVersion(): void
+    {
+        $factor = (new EmissionFactor())
+            ->setFactorId('AGU_LEGACY')
+            ->setValue('0.517')
+            ->setUnit('kgCO2e/m3')
+            ->setSource('OCCC')
+            ->setMetadata([
+                'sourceEdition' => '2025',
+                'factorVersion' => 'water-v1',
+            ]);
+        $annual = new EmissionFactorResolution($factor, 2024, 2024, false, null);
+
+        $resolution = WaterFactorResolution::fromAnnual(
+            $annual,
+            'urban_water_cycle',
+            'urban_water_cycle',
+            'Cataluña',
+            'España/ES',
+            true,
+            WaterFactorResolution::QUALITY_MEDIUM,
+        );
+
+        self::assertSame('AGU_LEGACY', $resolution->factorId);
+        self::assertSame('2025', $resolution->sourceEdition);
+        self::assertNull($resolution->factorVersion);
+    }
+
+    public function testMissingEditionAndFactorVersionRemainAbsent(): void
+    {
+        $factor = (new EmissionFactor())
+            ->setValue('0.149')
+            ->setUnit('kgCO2e/m3')
+            ->setSource('Test')
+            ->setMetadata([]);
+        $annual = new EmissionFactorResolution($factor, 2024, 2024, false, null);
+
+        $resolution = WaterFactorResolution::fromAnnual(
+            $annual,
+            'water_supply',
+            'water_supply',
+            'Reino Unido',
+            'Reino Unido/GB',
+            false,
+            WaterFactorResolution::QUALITY_HIGH,
+        );
+
+        self::assertNull($resolution->sourceEdition);
+        self::assertNull($resolution->factorVersion);
     }
 
     public function testSpain2026FallsBackToOccc2025AtLowQuality(): void

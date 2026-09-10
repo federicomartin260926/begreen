@@ -7,11 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[ORM\Entity(repositoryClass: EmissionFactorRepository::class)]
-#[ORM\UniqueConstraint(
-    name: 'uniq_emission_factor_category_functional_year',
-    columns: ['category_key', 'functional_key', 'year'],
-)]
-#[UniqueEntity(fields: ['categoryKey', 'functionalKey', 'year'])]
+#[UniqueEntity(fields: ['factorId'])]
 class EmissionFactor
 {
     public const TEMPORAL_TYPE_ANNUAL = 'ANNUAL';
@@ -31,12 +27,18 @@ class EmissionFactor
     #[ORM\Column(length: 64)]
     private string $functionalKey;
 
+    #[ORM\Column(length: 64, unique: true, nullable: true)]
+    private ?string $factorId = null;
+
     /** @var array<string, mixed> */
     #[ORM\Column(type: 'json')]
     private array $criteria = [];
 
     #[ORM\Column(type: 'smallint', nullable: true)]
     private ?int $year = null;
+
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $activityYear = null;
 
     #[ORM\Column(length: 20, options: ['default' => self::TEMPORAL_TYPE_ANNUAL])]
     private string $temporalType = self::TEMPORAL_TYPE_ANNUAL;
@@ -86,6 +88,18 @@ class EmissionFactor
         return $this;
     }
 
+    public function getFactorId(): ?string
+    {
+        return $this->factorId;
+    }
+
+    public function setFactorId(?string $factorId): self
+    {
+        $this->factorId = $factorId;
+
+        return $this;
+    }
+
     /** @return array<string, mixed> */
     public function getCriteria(): array
     {
@@ -108,6 +122,18 @@ class EmissionFactor
     public function setYear(?int $year): self
     {
         $this->year = $year;
+
+        return $this;
+    }
+
+    public function getActivityYear(): ?int
+    {
+        return $this->activityYear;
+    }
+
+    public function setActivityYear(?int $activityYear): self
+    {
+        $this->activityYear = $activityYear;
 
         return $this;
     }

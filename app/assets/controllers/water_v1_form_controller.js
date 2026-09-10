@@ -68,16 +68,25 @@ export default class extends Controller {
     if (result.normalizedAmount !== null) {
       lines.push(`${this.formatDecimal(result.normalizedAmount)} ${result.normalizedUnit || ''}`.trim());
     }
+    if (result.activityYear !== null) lines.push(`${this.i18nValue.activityYear}: ${result.activityYear}`);
     (result.factorTraces || []).forEach((trace) => {
       const component = this.i18nValue.componentLabels[trace.component] || trace.component;
-      const parts = [component, trace.source, trace.sourceGeography];
+      const parts = [component];
+      if (trace.factorId) parts.push(`${this.i18nValue.factorId}: ${trace.factorId}`);
+      if (trace.factorYear !== null) parts.push(`${this.i18nValue.factorYear}: ${trace.factorYear}`);
+      const editionOrVersion = trace.sourceEdition || trace.factorVersion;
+      if (editionOrVersion) parts.push(`${this.i18nValue.factorVersion}: ${editionOrVersion}`);
       if (trace.factorValue !== null) {
         parts.push(`${this.formatDecimal(trace.factorValue)} ${trace.factorUnit || ''}`.trim());
       }
-      if (trace.factorYear) parts.push(String(trace.factorYear));
+      if (trace.source) parts.push(trace.source);
+      if (trace.sourceDetail) parts.push(trace.sourceDetail);
+      if (trace.targetGeography) parts.push(`${this.i18nValue.requestedGeography}: ${trace.targetGeography}`);
+      if (trace.sourceGeography) parts.push(`${this.i18nValue.sourceGeography}: ${trace.sourceGeography}`);
       if (trace.fallback) parts.push(this.i18nValue.fallback);
       if (trace.geographicProxy) parts.push(this.i18nValue.geographicProxy);
       if (trace.dataQuality) parts.push(`${this.i18nValue.dataQuality}: ${trace.dataQuality}`);
+      if (trace.qualityStatus) parts.push(trace.qualityStatus);
       lines.push(parts.filter(Boolean).join(' · '));
     });
     this.previewTraceTarget.replaceChildren();

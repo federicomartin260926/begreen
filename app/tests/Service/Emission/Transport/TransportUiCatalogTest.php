@@ -14,9 +14,9 @@ final class TransportUiCatalogTest extends TestCase
         $catalog = new TransportUiCatalog();
 
         self::assertSame([
-            'local' => ['car', 'taxi', 'passenger_van', 'minibus', 'urban_bus', 'metro', 'tram', 'commuter_train', 'motorcycle', 'bicycle', 'scooter', 'walk'],
-            'travel' => ['plane', 'long_distance_train', 'coach', 'passenger_ferry'],
-            'freight' => ['freight_van', 'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship', 'courier', 'cargo_bike'],
+            'local' => ['car', 'taxi', 'urban_bus', 'metro', 'tram', 'commuter_train'],
+            'travel' => ['plane', 'long_distance_train', 'passenger_ferry'],
+            'freight' => ['freight_van', 'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship'],
         ], $catalog->categories());
 
         $catalogValues = [$catalog->categories(), $catalog->methodsByMode()];
@@ -30,8 +30,9 @@ final class TransportUiCatalogTest extends TestCase
         self::assertSame(['passenger-km', 'passenger-mi'], $configuration['unitsByMethod']['passenger_distance']);
         self::assertSame(['kg', 't', 'lb', 'short_ton', 'long_ton'], $configuration['weightUnits']);
         self::assertSame(['L', 'us_gal', 'imp_gal', 'kg'], $configuration['unitsByMethod']['fuel']);
-        self::assertSame('external_factor_required', $configuration['unavailableMethods']['electricity']);
-        self::assertSame('unsupported', $configuration['unavailableMethods']['distance_consumption']);
+        self::assertNotContains('distance_consumption', $catalog->methods());
+        self::assertNotContains('fuel_and_electricity', $catalog->methods());
+        self::assertNotContains('electricity', $catalog->methods());
 
         array_walk_recursive($configuration, static fn (mixed $value) => self::assertIsString($value));
     }
@@ -44,16 +45,15 @@ final class TransportUiCatalogTest extends TestCase
         foreach ($catalog->categories() as $category => $modes) {
             foreach ($modes as $mode) {
                 foreach ($catalog->methodsByMode()[$mode] as $method) {
-                    $vehicleType = match ($method) {
-                        'electricity' => 'bev',
-                        'fuel_and_electricity' => 'phev',
-                        default => 'petrol',
-                    };
+                    $vehicleType = 'petrol';
+                    $country = in_array($method, $catalog->configuration()['outsideSpainOnlyMethodsByMode'][$mode] ?? [], true)
+                        ? 'FR'
+                        : 'ES';
                     $input = new TransportEmissionInput(
                         $category,
                         $mode,
                         $method,
-                        'ES',
+                        $country,
                         new \DateTimeImmutable('2026-01-15'),
                         new \DateTimeImmutable('2026-01-15'),
                         '1',
@@ -70,17 +70,38 @@ final class TransportUiCatalogTest extends TestCase
         }
     }
 
-    public function testCarPowertrainMatrixRemainsIntact(): void
+    public function testCarPowertrainMatrixOnlyOffersBaseBackedMethods(): void
     {
         self::assertSame([
-            'petrol' => ['distance', 'fuel', 'distance_consumption'],
-            'diesel' => ['distance', 'fuel', 'distance_consumption'],
-            'lpg' => ['distance', 'fuel', 'distance_consumption'],
-            'cng' => ['distance', 'fuel', 'distance_consumption'],
-            'hev' => ['distance', 'fuel', 'distance_consumption'],
-            'bev' => ['distance', 'electricity', 'distance_consumption'],
-            'phev' => ['distance', 'fuel', 'electricity', 'fuel_and_electricity', 'distance_consumption'],
+            'petrol' => ['distance', 'fuel'],
+            'diesel' => ['distance', 'fuel'],
+            'lpg' => ['distance', 'fuel'],
+            'cng' => ['distance', 'fuel'],
+            'hev' => ['distance', 'fuel'],
+            'bev' => ['distance'],
+            'phev' => ['distance'],
             'unknown' => ['distance'],
         ], (new TransportUiCatalog())->carTypeMethods());
+    }
+
+    public function testCountrySpecificOptionsAreRejectedByTheBackendContract(): void
+    {
+        $catalog = new TransportUiCatalog();
+
+        self::assertFalse($catalog->supports($this->input('freight', 'freight_van', 'tonne_km', 'ES')));
+        self::assertTrue($catalog->supports($this->input('freight', 'freight_van', 'tonne_km', 'FR')));
+        self::assertTrue($catalog->supports($this->input('local', 'taxi', 'route', 'ES', 'petrol')));
+        self::assertFalse($catalog->supports($this->input('local', 'taxi', 'route', 'FR')));
+        self::assertFalse($catalog->supports($this->input('local', 'car', 'distance', 'ES', 'bev')));
+        self::assertTrue($catalog->supports($this->input('local', 'car', 'distance', 'FR', 'bev')));
+    }
+
+    private function input(string $category, string $mode, string $method, string $country, ?string $vehicleType = null): TransportEmissionInput
+    {
+        return new TransportEmissionInput(
+            $category, $mode, $method, $country,
+            new \DateTimeImmutable('2026-01-15'), new \DateTimeImmutable('2026-01-15'), '1', 'km',
+            vehicleType: $vehicleType,
+        );
     }
 }
