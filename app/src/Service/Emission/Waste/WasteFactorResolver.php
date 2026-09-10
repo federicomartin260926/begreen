@@ -52,30 +52,21 @@ final readonly class WasteFactorResolver
             'sourceFamily' => $route['source_family'],
         ];
 
-        $resolution = match ($route['temporal_type']) {
-            EmissionFactor::TEMPORAL_TYPE_ANNUAL => $this->factorResolver->resolve(self::CATEGORY_KEY, $criteria, $activityYear),
-            EmissionFactor::TEMPORAL_TYPE_VERSIONED => $this->factorResolver->resolveMethodological(
-                self::CATEGORY_KEY,
-                $criteria,
-                $activityYear,
-                EmissionFactor::TEMPORAL_TYPE_VERSIONED,
-            ),
-            default => throw new \UnexpectedValueException(sprintf('Unsupported waste factor temporal type "%s".', $route['temporal_type'])),
-        };
-
-        if (EmissionFactor::TEMPORAL_TYPE_VERSIONED === $route['temporal_type']) {
-            $scope = $resolution->factor?->getMetadata()['activityYearScope'] ?? null;
-            if (null !== $resolution->factor && !$this->yearIsInScope($activityYear, $scope)) {
-                $resolution = new EmissionFactorResolution(
-                    null,
-                    $activityYear,
-                    null,
-                    false,
-                    null,
-                    EmissionFactor::TEMPORAL_TYPE_VERSIONED,
-                );
-            }
+        if (!in_array($route['temporal_type'], [
+            EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+        ], true)) {
+            throw new \UnexpectedValueException(sprintf(
+                'Unsupported waste factor temporal type "%s".',
+                $route['temporal_type'],
+            ));
         }
+
+        $resolution = $this->factorResolver->resolveByApplicability(
+            self::CATEGORY_KEY,
+            $criteria,
+            $activityYear,
+        );
 
         return WasteFactorResolution::fromResolution($resolution, $country, $route);
     }
@@ -83,9 +74,29 @@ final readonly class WasteFactorResolver
     /** @param array<string, string> $route */
     private function resolveZeroRule(string $country, array $route, int $activityYear): WasteFactorResolution
     {
-        $resolution = $this->factorResolver->resolveMethodological(
-            self::CATEGORY_KEY,
-            [
+        return new WasteFactorResolution(
+            factorFound: true,
+            requestedCountry: $country,
+            regionScope: $route['region_scope'],
+            wasteType: $route['waste_type'],
+            wasteActivity: $route['waste_activity'],
+            requestedTreatment: $route['treatment'],
+            resolvedTreatment: $route['treatment'],
+            ruleType: WasteUiCatalog::ROUTE_NON_WASTE_ZERO,
+            temporalType: EmissionFactor::TEMPORAL_TYPE_RULE,
+            activityYear: $activityYear,
+            factorYear: null,
+            isFallback: false,
+            fallbackReason: null,
+            factorValue: '0',
+            factorUnit: 'kgCO2e/kg',
+            source: 'BGMF Residuos specification',
+            sourceDetail: 'Regla metodológica; no FE anual',
+            functionalKey: null,
+            sourceGeography: null,
+            isGeographicProxy: false,
+            geographicProxyReason: null,
+            criteria: [
                 'regionScope' => $route['region_scope'],
                 'wasteType' => $route['waste_type'],
                 'wasteActivity' => $route['waste_activity'],
@@ -93,15 +104,10 @@ final readonly class WasteFactorResolver
                 'unit' => 'kg',
                 'ruleType' => WasteUiCatalog::ROUTE_NON_WASTE_ZERO,
             ],
-            $activityYear,
-            EmissionFactor::TEMPORAL_TYPE_RULE,
-        );
-
-        return WasteFactorResolution::fromResolution(
-            $resolution,
-            $country,
-            $route,
-            WasteUiCatalog::ROUTE_NON_WASTE_ZERO,
+            metadata: [
+                'ruleType' => WasteUiCatalog::ROUTE_NON_WASTE_ZERO,
+                'activityUnit' => 'kg',
+            ],
         );
     }
 
@@ -135,12 +141,4 @@ final readonly class WasteFactorResolver
         return $best->asDerivedUnknown($candidateEvaluations);
     }
 
-    private function yearIsInScope(int $year, mixed $scope): bool
-    {
-        if (!is_string($scope) || !preg_match('/^(\d{4})-(\d{4})$/', $scope, $matches)) {
-            return false;
-        }
-
-        return $year >= (int) $matches[1] && $year <= (int) $matches[2];
-    }
 }

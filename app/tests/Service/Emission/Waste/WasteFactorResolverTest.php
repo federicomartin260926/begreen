@@ -130,7 +130,7 @@ final class WasteFactorResolverTest extends TestCase
         self::assertNull($before->factorYear);
     }
 
-    public function testOcccVersionDoesNotLeakOutsideItsDeclaredActivityYearScope(): void
+    public function testOcccVersionedFallsBackToLatestPriorApplicabilityYear(): void
     {
         $resolution = $this->resolver->resolve(
             'ESP',
@@ -140,9 +140,12 @@ final class WasteFactorResolverTest extends TestCase
             2027,
         );
 
-        self::assertFalse($resolution->hasFactor());
-        self::assertNull($resolution->factorValue);
+        self::assertTrue($resolution->hasFactor());
+        self::assertSame('0.24542', $resolution->factorValue);
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $resolution->temporalType);
+        self::assertNull($resolution->factorYear);
+        self::assertTrue($resolution->isFallback);
+        self::assertSame('exact_year_missing', $resolution->fallbackReason);
     }
 
     private function resolver(): WasteFactorResolver
@@ -157,15 +160,23 @@ final class WasteFactorResolverTest extends TestCase
         (new WasteEmissionFactorFixtures($keyGenerator))->load($manager);
 
         $repository = $this->createMock(EmissionFactorRepository::class);
-        $repository->method('findForActivityYear')->willReturnCallback(
+        $repository->method('findForApplicabilityYear')->willReturnCallback(
             static function (string $categoryKey, string $functionalKey, int $activityYear) use (&$factors): ?EmissionFactor {
                 self::assertSame('waste', $categoryKey);
-                $candidates = array_filter($factors, static fn (EmissionFactor $factor): bool =>
-                    EmissionFactor::TEMPORAL_TYPE_ANNUAL === $factor->getTemporalType()
-                    && $factor->getFunctionalKey() === $functionalKey
-                    && $factor->getYear() <= $activityYear
+                $candidates = array_filter(
+                    $factors,
+                    static fn (EmissionFactor $factor): bool =>
+                        $factor->getFunctionalKey() === $functionalKey
+                        && null !== $factor->getActivityYear()
+                        && $factor->getActivityYear() <= $activityYear
+                        && (null === $factor->getYear() || $factor->getYear() <= $activityYear),
                 );
-                usort($candidates, static fn (EmissionFactor $left, EmissionFactor $right): int => $right->getYear() <=> $left->getYear());
+                usort(
+                    $candidates,
+                    static fn (EmissionFactor $left, EmissionFactor $right): int =>
+                        $right->getActivityYear() <=> $left->getActivityYear()
+                        ?: strcmp((string) $left->getFactorId(), (string) $right->getFactorId()),
+                );
 
                 return $candidates[0] ?? null;
             },

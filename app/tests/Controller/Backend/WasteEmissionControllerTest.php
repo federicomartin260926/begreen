@@ -323,24 +323,22 @@ final class WasteEmissionControllerTest extends KernelTestCase
         (new WasteEmissionFactorFixtures($keyGenerator))->load($manager);
 
         $repository = $this->createMock(EmissionFactorRepository::class);
-        $repository->method('findForActivityYear')->willReturnCallback(
-            static function (
-                string $categoryKey,
-                string $functionalKey,
-                int $activityYear,
-            ) use (&$factors): ?EmissionFactor {
+        $repository->method('findForApplicabilityYear')->willReturnCallback(
+            static function (string $categoryKey, string $functionalKey, int $activityYear) use (&$factors): ?EmissionFactor {
                 $candidates = array_filter(
                     $factors,
                     static fn (EmissionFactor $factor): bool =>
                         'waste' === $categoryKey
-                        && EmissionFactor::TEMPORAL_TYPE_ANNUAL === $factor->getTemporalType()
                         && $factor->getFunctionalKey() === $functionalKey
-                        && $factor->getYear() <= $activityYear,
+                        && null !== $factor->getActivityYear()
+                        && $factor->getActivityYear() <= $activityYear
+                        && (null === $factor->getYear() || $factor->getYear() <= $activityYear),
                 );
                 usort(
                     $candidates,
                     static fn (EmissionFactor $left, EmissionFactor $right): int =>
-                        $right->getYear() <=> $left->getYear(),
+                        $right->getActivityYear() <=> $left->getActivityYear()
+                        ?: strcmp((string) $left->getFactorId(), (string) $right->getFactorId()),
                 );
 
                 return $candidates[0] ?? null;
