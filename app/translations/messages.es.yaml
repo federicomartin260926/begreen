@@ -2175,6 +2175,7 @@ backend:
         electricity: "Electricidad"
         equipment: "Generadores y equipos"
         battery: "Baterías y acumuladores"
+        digital: "Tecnología digital"
       statuses:
         CALCULATED: "Calculado"
         PENDING_DATA: "Pendiente"

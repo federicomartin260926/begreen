@@ -2161,7 +2161,7 @@ backend:
       section_context_help: "Indicate when the activity took place and the country it corresponds to."
       section_family_help: "Select the consumption type that best represents the activity you want to record."
       sections: { context: "Record details", family: "Consumption type" }
-      families: { electricity: "Electricity", equipment: "Generators and equipment", battery: "Batteries and accumulators" }
+      families: { electricity: "Electricity", equipment: "Generators and equipment", battery: "Batteries and accumulators", digital: "Digital technology" }
       statuses: { CALCULATED: "Calculated", PENDING_DATA: "Pending", NOT_AUTOMATICALLY_CALCULABLE: "Not automatically calculable" }
       fallbacks:
         exact_year_missing: "Using the latest available factor"
