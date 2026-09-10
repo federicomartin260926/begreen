@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service\Emission\Material;
 
-use App\Entity\EmissionFactor;
 use App\Service\Emission\EmissionFactorResolver;
 
 final readonly class MaterialFactorResolver
@@ -35,17 +34,11 @@ final readonly class MaterialFactorResolver
             'origin' => $route['origin'],
             'unit' => $route['unit'],
         ];
-        $resolution = match ($route['temporal_type']) {
-            EmissionFactor::TEMPORAL_TYPE_ANNUAL => $this->factorResolver->resolve(self::CATEGORY_KEY, $criteria, $activityYear),
-            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
-            EmissionFactor::TEMPORAL_TYPE_RULE => $this->factorResolver->resolveMethodological(
-                self::CATEGORY_KEY,
-                $criteria,
-                $activityYear,
-                $route['temporal_type'],
-            ),
-            default => throw new \UnexpectedValueException(sprintf('Unsupported material temporal type "%s".', $route['temporal_type'])),
-        };
+        $resolution = $this->factorResolver->resolveByApplicability(
+            self::CATEGORY_KEY,
+            $criteria,
+            $activityYear,
+        );
 
         return MaterialFactorResolution::fromResolution($resolution, $route);
     }

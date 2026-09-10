@@ -11,6 +11,7 @@ final readonly class MaterialFactorTrace
         public string $normalizedAmount,
         public string $normalizedUnit,
         public ?string $emissionKgCo2e,
+        public string $component = 'generated',
     ) {
     }
 
@@ -18,6 +19,7 @@ final readonly class MaterialFactorTrace
     public function toArray(): array
     {
         return [
+            'component' => $this->component,
             ...$this->resolution->toArray(),
             'normalizedAmount' => $this->normalizedAmount,
             'normalizedUnit' => $this->normalizedUnit,

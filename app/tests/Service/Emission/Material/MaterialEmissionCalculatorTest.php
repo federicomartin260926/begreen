@@ -13,6 +13,7 @@ use App\Service\Emission\EmissionFactorResolver;
 use App\Service\Emission\Material\MaterialAmountNormalizer;
 use App\Service\Emission\Material\MaterialEmissionCalculator;
 use App\Service\Emission\Material\MaterialEmissionInput;
+use App\Service\Emission\Material\MaterialEmissionSnapshot;
 use App\Service\Emission\Material\MaterialFactorResolver;
 use App\Service\Emission\Material\MaterialUiCatalog;
 use Doctrine\Persistence\ObjectManager;
@@ -40,6 +41,8 @@ final class MaterialEmissionCalculatorTest extends TestCase
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $direct->status);
         self::assertSame('100', $direct->normalizedAmount);
         self::assertSame('31.261', $direct->emissionKgCo2e);
+        self::assertSame('MAT_CF55F41AFDD94F', $direct->factorTraces[0]->resolution->factorId);
+        self::assertSame(2022, $direct->factorTraces[0]->resolution->factorActivityYear);
 
         $board = $this->calculator->calculate(new MaterialEmissionInput(
             startDate: new \DateTimeImmutable('2026-01-01'),
@@ -88,9 +91,12 @@ final class MaterialEmissionCalculatorTest extends TestCase
         self::assertSame('0', $metal->emissionKgCo2e);
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_RULE, $metal->factorTraces[0]->resolution->temporalType);
         self::assertNull($metal->factorTraces[0]->resolution->factorYear);
+        self::assertNotNull($metal->avoidedEmissionKgCo2e);
+        self::assertCount(1, $metal->avoidedFactorTraces);
+        self::assertSame('counterfactual', $metal->avoidedFactorTraces[0]->component);
     }
 
-    public function testValidatedBatteryUnitsAndAmbiguousBatteryWeight(): void
+    public function testValidatedBatteryUnitsAndAuxiliaryBatteryWeights(): void
     {
         $battery = $this->calculator->calculate(new MaterialEmissionInput(
             startDate: new \DateTimeImmutable('2024-01-01'),
@@ -107,9 +113,9 @@ final class MaterialEmissionCalculatorTest extends TestCase
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $battery->status);
         self::assertSame('0.145', $battery->normalizedAmount);
         self::assertSame('0.91466', $battery->emissionKgCo2e);
-        self::assertNull($battery->factorTraces[0]->resolution->factorYear);
+        self::assertSame(2024, $battery->factorTraces[0]->resolution->factorYear);
 
-        $ambiguous = $this->calculator->calculate(new MaterialEmissionInput(
+        $nineVolt = $this->calculator->calculate(new MaterialEmissionInput(
             startDate: new \DateTimeImmutable('2024-01-01'),
             endDate: new \DateTimeImmutable('2024-01-02'),
             country: 'ESP',
@@ -121,8 +127,11 @@ final class MaterialEmissionCalculatorTest extends TestCase
             batteryChemistry: 'Litio-Ion',
             batterySize: '9V',
         ));
-        self::assertSame(EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE, $ambiguous->status);
-        self::assertSame(['battery_unique_weight_unavailable'], $ambiguous->messages);
+        self::assertSame(EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE, $nineVolt->status);
+        self::assertNull($nineVolt->normalizedAmount);
+        self::assertSame('kg', $nineVolt->normalizedUnit);
+        self::assertNull($nineVolt->emissionKgCo2e);
+        self::assertSame(['battery_unique_weight_unavailable'], $nineVolt->messages);
     }
 
     public function testDocumentedLiquidConversions(): void
@@ -177,6 +186,7 @@ final class MaterialEmissionCalculatorTest extends TestCase
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $rule->status);
         self::assertSame('0', $rule->emissionKgCo2e);
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_RULE, $rule->factorTraces[0]->resolution->temporalType);
+        self::assertNotNull($rule->avoidedEmissionKgCo2e);
 
         $plastic = $this->calculate(
             year: 2026,
@@ -203,6 +213,44 @@ final class MaterialEmissionCalculatorTest extends TestCase
         self::assertSame(['carpet_weight_conversion_unavailable'], $carpet->messages);
     }
 
+    public function testUsesLatestPriorApplicabilityWithoutInventingFactorYearOrVersion(): void
+    {
+        $result = $this->calculator(excludedActivityYear: 2026)->calculate(new MaterialEmissionInput(
+            startDate: new \DateTimeImmutable('2026-01-01'),
+            endDate: new \DateTimeImmutable('2026-01-02'),
+            country: 'ESP',
+            activity: MaterialUiCatalog::ACTIVITY_PAPER,
+            origin: 'Reutilizado',
+            measurementMethod: MaterialEmissionInput::METHOD_WEIGHT,
+            inputQuantity: '10',
+            inputUnit: 'kg',
+        ));
+
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $result->status);
+        self::assertSame('0', $result->emissionKgCo2e);
+        self::assertSame(2025, $result->factorTraces[0]->resolution->factorActivityYear);
+        self::assertNull($result->factorTraces[0]->resolution->factorYear);
+        self::assertNull($result->factorTraces[0]->resolution->factorVersion);
+        self::assertTrue($result->factorTraces[0]->resolution->isFallback);
+
+        $snapshot = json_decode(
+            (new MaterialEmissionSnapshot())->encode(new MaterialEmissionInput(
+                startDate: new \DateTimeImmutable('2026-01-01'),
+                endDate: new \DateTimeImmutable('2026-01-02'),
+                country: 'ESP',
+                activity: MaterialUiCatalog::ACTIVITY_PAPER,
+                origin: 'Reutilizado',
+                measurementMethod: MaterialEmissionInput::METHOD_WEIGHT,
+                inputQuantity: '10',
+                inputUnit: 'kg',
+            ), $result),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        self::assertSame('material-v1', $snapshot['calculatorVersion']);
+        self::assertNull($snapshot['calculation']['factorTraces'][0]['factorVersion']);
+    }
+
     private function calculate(
         int $year,
         string $activity,
@@ -225,40 +273,34 @@ final class MaterialEmissionCalculatorTest extends TestCase
         ));
     }
 
-    private function calculator(): MaterialEmissionCalculator
+    private function calculator(?int $excludedActivityYear = null): MaterialEmissionCalculator
     {
         $keyGenerator = new EmissionFactorKeyGenerator();
         $factors = [];
         $manager = $this->createMock(ObjectManager::class);
-        $manager->method('persist')->willReturnCallback(static function (object $factor) use (&$factors): void {
+        $manager->method('persist')->willReturnCallback(static function (object $factor) use (&$factors, $excludedActivityYear): void {
             self::assertInstanceOf(EmissionFactor::class, $factor);
-            $factors[] = $factor;
+            if ($factor->getActivityYear() !== $excludedActivityYear) {
+                $factors[] = $factor;
+            }
         });
         (new MaterialEmissionFactorFixtures($keyGenerator))->load($manager);
 
         $repository = $this->createMock(EmissionFactorRepository::class);
-        $repository->method('findForActivityYear')->willReturnCallback(
+        $repository->method('findForApplicabilityYear')->willReturnCallback(
             static function (string $categoryKey, string $functionalKey, int $activityYear) use (&$factors): ?EmissionFactor {
                 $candidates = array_filter($factors, static fn (EmissionFactor $factor): bool =>
                     'material' === $categoryKey
-                    && EmissionFactor::TEMPORAL_TYPE_ANNUAL === $factor->getTemporalType()
                     && $factor->getFunctionalKey() === $functionalKey
-                    && (int) $factor->getYear() <= $activityYear
+                    && $factor->getActivityYear() <= $activityYear
+                    && (null === $factor->getYear() || $factor->getYear() <= $activityYear)
                 );
-                usort($candidates, static fn (EmissionFactor $left, EmissionFactor $right): int => (int) $right->getYear() <=> (int) $left->getYear());
+                usort($candidates, static fn (EmissionFactor $left, EmissionFactor $right): int =>
+                    $right->getActivityYear() <=> $left->getActivityYear()
+                    ?: strcmp((string) $left->getFactorId(), (string) $right->getFactorId())
+                );
 
                 return $candidates[0] ?? null;
-            },
-        );
-        $repository->method('findMethodological')->willReturnCallback(
-            static function (string $categoryKey, string $functionalKey, string $temporalType) use (&$factors): ?EmissionFactor {
-                foreach ($factors as $factor) {
-                    if ('material' === $categoryKey && $temporalType === $factor->getTemporalType() && $functionalKey === $factor->getFunctionalKey()) {
-                        return $factor;
-                    }
-                }
-
-                return null;
             },
         );
 

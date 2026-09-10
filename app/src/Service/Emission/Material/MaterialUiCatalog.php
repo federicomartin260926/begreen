@@ -23,10 +23,11 @@ final class MaterialUiCatalog
     public const ACTIVITY_CLOTHING = 'Ropa y accesorios';
 
     private const FACTOR_HEADERS = [
-        'activity', 'subproduct', 'origin', 'unit', 'factor_value', 'factor_year',
-        'factor_unit', 'source_file', 'source_sheet', 'factor_basis',
-        'is_temporal_fallback', 'fallback_reason', 'temporal_type', 'factor_version',
-        'source_row',
+        'category', 'factor_id', 'geography', 'iso3', 'subcategory', 'activity', 'variant',
+        'technology_fuel_material', 'destination_origin_supplier', 'input_unit', 'activity_year',
+        'activity_year_scope', 'factor_year', 'factor_value', 'factor_unit', 'temporal_type',
+        'factor_version', 'source', 'source_detail', 'source_url', 'is_temporal_fallback',
+        'is_geographic_proxy', 'quality_status', 'notes', 'source_workbook', 'source_sheet',
     ];
 
     /** @var list<array<string, string>> */
@@ -132,6 +133,27 @@ final class MaterialUiCatalog
                 && $unit === $route['unit']
             ) {
                 return $route;
+            }
+        }
+
+        return null;
+    }
+
+    public function counterfactualOrigin(string $activity, ?string $subproduct, string $origin, string $unit): ?string
+    {
+        if (!in_array($origin, [
+            'Reciclado (Circuito cerrado)',
+            'Materia prima reciclada',
+            'Reutilizado',
+            'Comprado de segunda mano',
+            'Alquilado',
+        ], true)) {
+            return null;
+        }
+
+        foreach (['Materia prima virgen', 'Producción de materia prima', ''] as $candidate) {
+            if (null !== $this->resolveRoute($activity, $subproduct, $candidate, $unit)) {
+                return $candidate;
             }
         }
 
@@ -335,16 +357,12 @@ final class MaterialUiCatalog
                 ], true)) {
                     throw new \RuntimeException(sprintf('Unsupported material temporal type "%s".', $row['temporal_type']));
                 }
-                $identity = implode("\x1f", [$row['activity'], $row['subproduct'], $row['origin'], $row['unit']]);
-                if (isset($routes[$identity]) && $routes[$identity]['temporal_type'] !== $row['temporal_type']) {
-                    throw new \RuntimeException('A material route declares incompatible temporal types.');
-                }
+                $identity = implode("\x1f", [$row['activity'], $row['variant'], $row['destination_origin_supplier'], $row['input_unit']]);
                 $routes[$identity] = [
                     'activity' => $row['activity'],
-                    'subproduct' => $row['subproduct'],
-                    'origin' => $row['origin'],
-                    'unit' => $row['unit'],
-                    'temporal_type' => $row['temporal_type'],
+                    'subproduct' => $row['variant'],
+                    'origin' => $row['destination_origin_supplier'],
+                    'unit' => $row['input_unit'],
                 ];
             }
         }

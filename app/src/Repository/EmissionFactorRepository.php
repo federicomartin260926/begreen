@@ -49,6 +49,29 @@ class EmissionFactorRepository extends ServiceEntityRepository
         );
     }
 
+    public function findForApplicabilityYear(string $categoryKey, string $functionalKey, int $activityYear): ?EmissionFactor
+    {
+        return $this->createQueryBuilder('factor')
+            ->andWhere('factor.categoryKey = :categoryKey')
+            ->andWhere('factor.functionalKey = :functionalKey')
+            ->andWhere('factor.temporalType IN (:temporalTypes)')
+            ->andWhere('factor.activityYear <= :activityYear')
+            ->andWhere('(factor.year IS NULL OR factor.year <= :activityYear)')
+            ->setParameter('categoryKey', $categoryKey)
+            ->setParameter('functionalKey', $functionalKey)
+            ->setParameter('temporalTypes', [
+                EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+                EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+                EmissionFactor::TEMPORAL_TYPE_RULE,
+            ])
+            ->setParameter('activityYear', $activityYear)
+            ->orderBy('factor.activityYear', 'DESC')
+            ->addOrderBy('factor.factorId', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function findMethodological(
         string $categoryKey,
         string $functionalKey,

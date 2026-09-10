@@ -98,6 +98,34 @@ final readonly class MaterialEmissionCalculator
         }
 
         $emission = $this->trimDecimal(bcmul($normalizedAmount, $resolution->factorValue, self::SCALE));
+        $avoidedEmission = null;
+        $avoidedFactorTraces = [];
+        $counterfactualOrigin = $this->catalog->counterfactualOrigin(
+            $activity,
+            '' === $subproduct ? null : $subproduct,
+            $origin,
+            $normalizedUnit,
+        );
+        if (null !== $counterfactualOrigin) {
+            $counterfactual = $this->factorResolver->resolve(
+                $activity,
+                '' === $subproduct ? null : $subproduct,
+                $counterfactualOrigin,
+                $normalizedUnit,
+                $activityYear,
+            );
+            if ($counterfactual->isCalculable() && null !== $counterfactual->factorValue) {
+                $counterfactualEmission = $this->trimDecimal(bcmul($normalizedAmount, $counterfactual->factorValue, self::SCALE));
+                $avoidedEmission = $this->trimDecimal(bcsub($counterfactualEmission, $emission, self::SCALE));
+                $avoidedFactorTraces[] = new MaterialFactorTrace(
+                    $counterfactual,
+                    $normalizedAmount,
+                    $normalizedUnit,
+                    $counterfactualEmission,
+                    'counterfactual',
+                );
+            }
+        }
 
         return new MaterialEmissionResult(
             EmissionRecord::STATUS_CALCULATED,
@@ -106,6 +134,8 @@ final readonly class MaterialEmissionCalculator
             $normalizedUnit,
             $activityYear,
             [new MaterialFactorTrace($resolution, $normalizedAmount, $normalizedUnit, $emission)],
+            avoidedEmissionKgCo2e: $avoidedEmission,
+            avoidedFactorTraces: $avoidedFactorTraces,
         );
     }
 

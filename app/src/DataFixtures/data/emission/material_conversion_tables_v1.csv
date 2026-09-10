@@ -1,22 +1,22 @@
 grupo,opción,valor_1,valor_2,nota,source_row
-"Cartón tipo caja","Caja para productos pequeños y ligeros (libros, ropa)",250,,"gramaje g/m²",2
-"Cartón tipo caja","Caja para electrónica media o cosmética",375,,"gramaje g/m²",3
-"Cartón tipo caja","Caja para productos frágiles (vidrio, cerámica, productos frágiles, etc.)",500,,"gramaje g/m²",4
-"Cartón tipo caja","Caja para productos de mayor peso y volumen y/o viajes largos (exportación)",700,,"gramaje g/m²",5
-"Cartón tipo caja",Desconocido,456.25,,"gramaje g/m²",6
-"Papel formato","A0 (841 x 1189)",200,99.9949,"gramaje g/m²; peso kg/paquete",7
-"Papel formato","A1 (549 x 841)",105,26.226585,"gramaje g/m²; peso kg/paquete",8
-"Papel formato","A2 (420 x 594)",135,16.8399,"gramaje g/m²; peso kg/paquete",9
-"Papel formato","A3 (297 x 420)",155,9.66735,"gramaje g/m²; peso kg/paquete",10
-"Papel formato","A4 (210 x 297)",95,2.962575,"gramaje g/m²; peso kg/paquete",11
-"Papel formato","A5 (148 x 210)",110,1.7094,"gramaje g/m²; peso kg/paquete",12
-"Papel formato",Desconocido,,26.23345167,"gramaje g/m²; peso kg/paquete",13
-"Papel gramaje","150 - 250 g/m²","A0 (841 x 1189)",99.9949,"formato asociado; peso kg/paquete",14
-"Papel gramaje","90 - 120 g/m²","A1 (549 x 841)",26.226585,"formato asociado; peso kg/paquete",15
-"Papel gramaje","120 - 150 g/m²","A2 (420 x 594)",16.8399,"formato asociado; peso kg/paquete",16
-"Papel gramaje","90 - 200 g/m²","A3 (297 x 420)",9.66735,"formato asociado; peso kg/paquete",17
-"Papel gramaje","70 - 120 g/m²","A4 (210 x 297)",2.962575,"formato asociado; peso kg/paquete",18
-"Papel gramaje","70 - 150 g/m²","A5 (148 x 210)",1.7094,"formato asociado; peso kg/paquete",19
-"Papel gramaje",Desconocido,,26.23345167,"formato asociado; peso kg/paquete",20
-Barniz,"densidad predeterminada",1.02,kg/l,"1 l ≈ 1,02 kg",21
-Pintura,"densidad predeterminada",1.6,kg/l,"1 l ≈ 1,60 kg",22
+Cartón tipo caja,"Caja para productos pequeños y ligeros (libros, ropa)",250,,gramaje g/m²,2
+Cartón tipo caja,Caja para electrónica media o cosmética,375,,gramaje g/m²,3
+Cartón tipo caja,"Caja para productos frágiles (vidrio, cerámica, productos frágiles, etc.)",500,,gramaje g/m²,4
+Cartón tipo caja,Caja para productos de mayor peso y volumen y/o viajes largos (exportación),700,,gramaje g/m²,5
+Cartón tipo caja,Desconocido,456.25,,gramaje g/m²,6
+Papel formato,A0 (841 x 1189),200,99.9949,gramaje g/m²; peso kg/paquete,7
+Papel formato,A1 (549 x 841),105,26.226585,gramaje g/m²; peso kg/paquete,8
+Papel formato,A2 (420 x 594),135,16.8399,gramaje g/m²; peso kg/paquete,9
+Papel formato,A3 (297 x 420),155,9.667350000000001,gramaje g/m²; peso kg/paquete,10
+Papel formato,A4 (210 x 297),95,2.962575,gramaje g/m²; peso kg/paquete,11
+Papel formato,A5 (148 x 210),110,1.7094,gramaje g/m²; peso kg/paquete,12
+Papel formato,Desconocido,,26.23345167,gramaje g/m²; peso kg/paquete,13
+Papel gramaje,150 - 250 g/m²,A0 (841 x 1189),99.9949,formato asociado; peso kg/paquete,14
+Papel gramaje,90 - 120 g/m²,A1 (549 x 841),26.226585,formato asociado; peso kg/paquete,15
+Papel gramaje,120 - 150 g/m²,A2 (420 x 594),16.8399,formato asociado; peso kg/paquete,16
+Papel gramaje,90 - 200 g/m²,A3 (297 x 420),9.667350000000001,formato asociado; peso kg/paquete,17
+Papel gramaje,70 - 120 g/m²,A4 (210 x 297),2.962575,formato asociado; peso kg/paquete,18
+Papel gramaje,70 - 150 g/m²,A5 (148 x 210),1.7094,formato asociado; peso kg/paquete,19
+Papel gramaje,Desconocido,,26.23345167,formato asociado; peso kg/paquete,20
+Barniz,densidad predeterminada,1.02,kg/l,"1 l ≈ 1,02 kg",21
+Pintura,densidad predeterminada,1.6,kg/l,"1 l ≈ 1,60 kg",22

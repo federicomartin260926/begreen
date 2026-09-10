@@ -68,6 +68,34 @@ final readonly class EmissionFactorResolver
     }
 
     /** @param array<string, mixed> $criteria */
+    public function resolveByApplicability(string $categoryKey, array $criteria, int $activityYear): EmissionFactorResolution
+    {
+        $factor = $this->repository->findForApplicabilityYear(
+            $categoryKey,
+            $this->keyGenerator->generate($criteria),
+            $activityYear,
+        );
+        if (null === $factor || null === $factor->getActivityYear() || $factor->getActivityYear() > $activityYear) {
+            return new EmissionFactorResolution(null, $activityYear, null, false, null);
+        }
+
+        $metadata = $factor->getMetadata() ?? [];
+        $isFallback = $factor->getActivityYear() < $activityYear || true === ($metadata['isTemporalFallback'] ?? false);
+        $fallbackReason = is_string($metadata['fallbackReason'] ?? null)
+            ? $metadata['fallbackReason']
+            : EmissionFactorResolution::FALLBACK_REASON_EXACT_YEAR_MISSING;
+
+        return new EmissionFactorResolution(
+            $factor,
+            $activityYear,
+            $factor->getYear(),
+            $isFallback,
+            $isFallback ? $fallbackReason : null,
+            $factor->getTemporalType(),
+        );
+    }
+
+    /** @param array<string, mixed> $criteria */
     public function resolveMethodological(
         string $categoryKey,
         array $criteria,

@@ -10,6 +10,7 @@ final readonly class MaterialEmissionResult
 {
     /** @param list<MaterialFactorTrace> $factorTraces
      *  @param list<string> $messages
+     *  @param list<MaterialFactorTrace> $avoidedFactorTraces
      */
     public function __construct(
         public string $status,
@@ -19,6 +20,8 @@ final readonly class MaterialEmissionResult
         public ?int $activityYear,
         public array $factorTraces = [],
         public array $messages = [],
+        public ?string $avoidedEmissionKgCo2e = null,
+        public array $avoidedFactorTraces = [],
     ) {
     }
 
@@ -36,10 +39,15 @@ final readonly class MaterialEmissionResult
             'normalizedAmount' => $this->normalizedAmount,
             'normalizedUnit' => $this->normalizedUnit,
             'activityYear' => $this->activityYear,
+            'avoidedEmissionKgCo2e' => $this->avoidedEmissionKgCo2e,
             'messages' => $this->messages,
             'factorTraces' => array_map(
                 static fn (MaterialFactorTrace $trace): array => $trace->toArray(),
                 $this->factorTraces,
+            ),
+            'avoidedFactorTraces' => array_map(
+                static fn (MaterialFactorTrace $trace): array => $trace->toArray(),
+                $this->avoidedFactorTraces,
             ),
         ];
     }
