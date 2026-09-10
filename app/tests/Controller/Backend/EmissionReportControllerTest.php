@@ -68,6 +68,7 @@ final class EmissionReportControllerTest extends KernelTestCase
             'annual',
         );
         $waterDetails = json_decode((new WaterEmissionSnapshot())->encode($input, $result), true, 512, JSON_THROW_ON_ERROR);
+        $longSource = 'Historical source with a deliberately extensive description to validate deterministic PDF truncation';
         $waterDetails['calculation']['factorTraces'] = [
             [
                 'factorId' => 'WAT-REPORT-1',
@@ -75,7 +76,7 @@ final class EmissionReportControllerTest extends KernelTestCase
                 'factorYear' => 2025,
                 'factorValue' => '0.5',
                 'factorUnit' => 'kg CO2e/m3',
-                'source' => 'Fuente histórica A',
+                'source' => $longSource,
                 'isFallback' => true,
                 'fallbackReason' => 'latest_available_before_activity_year',
                 'isGeographicProxy' => true,
@@ -161,21 +162,36 @@ final class EmissionReportControllerTest extends KernelTestCase
         self::assertCount(2, $traceabilities[0]);
         self::assertSame('WAT-REPORT-1', $traceabilities[0][0]['factorId']);
         self::assertSame(2025, $traceabilities[0][0]['factorYear']);
-        self::assertSame('Fuente histórica A', $traceabilities[0][0]['source']);
+        self::assertSame($longSource, $traceabilities[0][0]['source']);
         self::assertTrue($traceabilities[0][0]['isFallback']);
         self::assertTrue($traceabilities[0][0]['isGeographicProxy']);
         self::assertSame('WAT-REPORT-2', $traceabilities[0][1]['factorId']);
         self::assertSame([], $traceabilities[1]);
 
+        $rendered['backend/emission/report/detailed.html.twig']['recordPresentations'][0]['activity'] = str_repeat('A', 70);
+        $rendered['backend/emission/report/detailed.html.twig']['recordPresentations'][0]['unit'] = str_repeat('U', 40);
+        $detailedData = $rendered['backend/emission/report/detailed.html.twig'];
         $html = self::getContainer()->get('twig')->render(
             'backend/emission/report/detailed.html.twig',
-            $rendered['backend/emission/report/detailed.html.twig'],
+            $detailedData,
         );
+        self::assertStringContainsString('@page { size: A4 landscape;', $html);
+        self::assertSame(9, substr_count($html, '<th>'));
         self::assertStringContainsString('WAT-REPORT-1', $html);
         self::assertStringContainsString('WAT-REPORT-2', $html);
-        self::assertStringContainsString('Fuente histórica A', $html);
+        self::assertStringContainsString(substr($longSource, 0, 70).'…', $html);
+        self::assertStringNotContainsString($longSource, $html);
+        self::assertStringContainsString(str_repeat('A', 60).'…', $html);
+        self::assertStringNotContainsString(str_repeat('A', 70), $html);
+        self::assertStringContainsString(str_repeat('U', 32).'…', $html);
+        self::assertStringNotContainsString(str_repeat('U', 40), $html);
         self::assertStringContainsString('Fuente histórica B', $html);
         self::assertStringNotContainsString('water-v1', $html);
+        $detailedPdf = self::getContainer()->get(PdfService::class)->generatePdf(
+            'backend/emission/report/detailed.html.twig',
+            $detailedData,
+        );
+        self::assertStringStartsWith('%PDF-', $detailedPdf);
         self::assertSame(2.5, $rendered['backend/emission/report/by_activity.html.twig']['data'][$activityLabel]['actividad']);
         self::assertSame('Agua', $rendered['backend/emission/report/by_activity.html.twig']['activityCategories'][$activityLabel]);
         self::assertSame(4.2, $rendered['backend/emission/report/by_activity.html.twig']['data']['Tablero contrachapado']['actividad']);

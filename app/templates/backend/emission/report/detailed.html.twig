@@ -1,16 +1,44 @@
 {% extends 'pdf/base.html.twig' %}
 {% trans_default_domain 'messages' %}
 
+{% macro truncate(value, limit) %}
+  {%- set text = value is null ? '' : value ~ '' -%}
+  {{- text|length > limit ? text|slice(0, limit) ~ '…' : text -}}
+{% endmacro %}
+
+{% import _self as report %}
+
 {% block title %}{{ 'backend.emission.reports.detailed.title'|trans }}{% endblock %}
 
 {% block body %}
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    .detailed-report-table { table-layout: fixed; font-size: 8px; }
+    .detailed-report-table th,
+    .detailed-report-table td { padding: 3px; overflow-wrap: break-word; word-wrap: break-word; vertical-align: top; }
+    .detailed-report-table thead { display: table-header-group; }
+    .detailed-report-table tr { page-break-inside: avoid; }
+    .traceability-entry-separated { border-top: 1px solid #ddd; margin-top: 3px; padding-top: 3px; }
+  </style>
+
   <h1>{{ 'backend.emission.reports.detailed.h1'|trans }}</h1>
 
   <p><strong>{{ 'backend.emission.reports.detailed.project'|trans }}:</strong> {{ project.name }}</p>
   <p><strong>{{ 'backend.emission.reports.detailed.type'|trans }}:</strong> {{ project.type|capitalize }}</p>
   <p><strong>{{ 'backend.emission.reports.detailed.total_records'|trans }}:</strong> {{ records|length }}</p>
 
-  <table>
+  <table class="detailed-report-table">
+    <colgroup>
+      <col style="width: 3%">
+      <col style="width: 10%">
+      <col style="width: 8%">
+      <col style="width: 10%">
+      <col style="width: 17%">
+      <col style="width: 7%">
+      <col style="width: 9%">
+      <col style="width: 8%">
+      <col style="width: 28%">
+    </colgroup>
     <thead>
       <tr>
         <th>#</th>
@@ -33,26 +61,27 @@
           <td>{{ record.phase.getPhase(project.type) }}</td>
           <td>{{ record.createdAt|date('d/m/Y') }}</td>
           <td>{{ record.effectiveCategory ? record.effectiveCategory.name : ('backend.common.no_category'|trans) }}</td>
-          <td>{{ presentation.activity }}</td>
+          <td>{{ report.truncate(presentation.activity, 60) }}</td>
           <td class="text-right">{{ record.amount is null ? '—' : record.amount }}</td>
-          <td>{{ presentation.unit }}</td>
+          <td>{{ report.truncate(presentation.unit, 32) }}</td>
           <td class="text-right">{{ record.emission is null ? '—' : record.emission|number_format(2, '.', ',') }}</td>
           <td class="small">
             {% if traceabilities %}
               {% for trace in traceabilities %}
-                {% if not loop.first %}<br>{% endif %}
-                {% if trace.component %}<strong>{{ trace.component }}:</strong><br>{% endif %}
-                {% if trace.factorId %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_id'|trans }}:</strong> {{ trace.factorId }}<br>{% endif %}
+                <div class="traceability-entry{% if not loop.first %} traceability-entry-separated{% endif %}">
+                {% if trace.component %}<strong>{{ report.truncate(trace.component, 40) }}:</strong><br>{% endif %}
+                {% if trace.factorId %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_id'|trans }}:</strong> {{ report.truncate(trace.factorId, 48) }}<br>{% endif %}
                 {% if trace.factorActivityYear is not null %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_activity_year'|trans }}:</strong> {{ trace.factorActivityYear }}<br>{% endif %}
                 {% if trace.factorYear is not null %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_year'|trans }}:</strong> {{ trace.factorYear }}<br>{% endif %}
-                {% if trace.factorVersion or trace.sourceEdition %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_version'|trans }}:</strong> {{ trace.factorVersion ?: trace.sourceEdition }}<br>{% endif %}
-                {% if trace.temporalType %}<strong>{{ 'backend.emission.reports.detailed.trace.temporal_type'|trans }}:</strong> {{ trace.temporalType }}<br>{% endif %}
-                {% if trace.factorValue is not null %}<strong>{{ 'backend.emission.reports.detailed.trace.factor'|trans }}:</strong> {{ trace.factorValue }}{% if trace.factorUnit %} {{ trace.factorUnit }}{% endif %}<br>{% endif %}
-                {% if trace.source %}<strong>{{ 'backend.emission.reports.detailed.trace.source'|trans }}:</strong> {{ trace.source }}<br>{% endif %}
-                {% if trace.sourceDetail %}<strong>{{ 'backend.emission.reports.detailed.trace.source_detail'|trans }}:</strong> {{ trace.sourceDetail }}<br>{% endif %}
-                {% if trace.isFallback %}<strong>{{ 'backend.emission.reports.detailed.trace.fallback'|trans }}:</strong> {{ trace.fallbackReason ?: '—' }}<br>{% endif %}
-                {% if trace.isGeographicProxy %}<strong>{{ 'backend.emission.reports.detailed.trace.geographic_proxy'|trans }}:</strong> {{ trace.sourceGeography ?: '—' }} → {{ trace.targetGeography ?: '—' }}{% if trace.geographicProxyReason %} ({{ trace.geographicProxyReason }}){% endif %}<br>{% endif %}
-                {% if trace.dataQuality %}<strong>{{ 'backend.emission.reports.detailed.trace.quality'|trans }}:</strong> {{ trace.dataQuality }}{% endif %}
+                {% if trace.factorVersion or trace.sourceEdition %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_version'|trans }}:</strong> {{ report.truncate(trace.factorVersion ?: trace.sourceEdition, 40) }}<br>{% endif %}
+                {% if trace.temporalType %}<strong>{{ 'backend.emission.reports.detailed.trace.temporal_type'|trans }}:</strong> {{ report.truncate(trace.temporalType, 30) }}<br>{% endif %}
+                {% if trace.factorValue is not null %}<strong>{{ 'backend.emission.reports.detailed.trace.factor'|trans }}:</strong> {{ trace.factorValue }}{% if trace.factorUnit %} {{ report.truncate(trace.factorUnit, 35) }}{% endif %}<br>{% endif %}
+                {% if trace.source %}<strong>{{ 'backend.emission.reports.detailed.trace.source'|trans }}:</strong> {{ report.truncate(trace.source, 70) }}<br>{% endif %}
+                {% if trace.sourceDetail %}<strong>{{ 'backend.emission.reports.detailed.trace.source_detail'|trans }}:</strong> {{ report.truncate(trace.sourceDetail, 100) }}<br>{% endif %}
+                {% if trace.isFallback %}<strong>{{ 'backend.emission.reports.detailed.trace.fallback'|trans }}:</strong> {{ report.truncate(trace.fallbackReason ?: '—', 70) }}<br>{% endif %}
+                {% if trace.isGeographicProxy %}<strong>{{ 'backend.emission.reports.detailed.trace.geographic_proxy'|trans }}:</strong> {{ report.truncate(trace.sourceGeography ?: '—', 20) }} → {{ report.truncate(trace.targetGeography ?: '—', 20) }}{% if trace.geographicProxyReason %} ({{ report.truncate(trace.geographicProxyReason, 70) }}){% endif %}<br>{% endif %}
+                {% if trace.dataQuality %}<strong>{{ 'backend.emission.reports.detailed.trace.quality'|trans }}:</strong> {{ report.truncate(trace.dataQuality, 40) }}{% endif %}
+                </div>
               {% endfor %}
             {% else %}
               —
