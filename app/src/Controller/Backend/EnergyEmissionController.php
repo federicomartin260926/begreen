@@ -34,8 +34,7 @@ final class EnergyEmissionController extends AbstractController
     private const FORM_FIELDS = [
         'family', 'startDate', 'endDate', 'country', 'origin', 'inputMethod', 'amount', 'unit', 'initialReading', 'finalReading',
         'gridKwh', 'solarKwh', 'supplier', 'labeling', 'equipmentType', 'fuel', 'mode', 'bottleSizeKg',
-        'bottleCount', 'batteryType', 'chargeSource', 'chargedKwh', 'digitalType', 'digitalLocation',
-        'digitalCountry', 'knownKwh', 'hours', 'units', 'gpu', 'service', 'model', 'provider', 'ownership', 'notes',
+        'bottleCount', 'batteryType', 'chargeSource', 'chargedKwh', 'notes',
     ];
 
     #[Route('/energy/preview', name: 'backend_emission_energy_v1_preview', methods: ['POST'])]
@@ -137,7 +136,7 @@ final class EnergyEmissionController extends AbstractController
         }
 
         try {
-            $storedValues = $snapshot->inputToArray($snapshot->decodeInput((string) $record->getCalculationDetails()));
+            $storedValues = $this->supportedFormValues($snapshot->inputToArray($snapshot->decodeInput((string) $record->getCalculationDetails())));
         } catch (\JsonException|\UnexpectedValueException) {
             throw $this->createNotFoundException('Invalid energy v1 snapshot.');
         }
@@ -195,7 +194,7 @@ final class EnergyEmissionController extends AbstractController
         }
 
         try {
-            $values = $snapshot->inputToArray($snapshot->decodeInput((string) $record->getCalculationDetails()));
+            $values = $this->supportedFormValues($snapshot->inputToArray($snapshot->decodeInput((string) $record->getCalculationDetails())));
         } catch (\JsonException|\UnexpectedValueException) {
             throw $this->createNotFoundException('Invalid energy v1 snapshot.');
         }
@@ -267,6 +266,14 @@ final class EnergyEmissionController extends AbstractController
         }
 
         return $fallback;
+    }
+
+    /** @param array<string, mixed> $values
+     *  @return array<string, mixed>
+     */
+    private function supportedFormValues(array $values): array
+    {
+        return array_intersect_key($values, array_fill_keys(self::FORM_FIELDS, true));
     }
 
     private function activeProject(ActiveProjectService $service): Project

@@ -26,12 +26,17 @@ final readonly class StationaryCombustionFactorResolver
         ];
         $resolution = $this->factorResolver->resolve(self::CATEGORY_KEY, $criteria, $input->activityYear);
         $isUk = in_array($country, ['GB', 'GBR', 'UK', 'REINO UNIDO', 'UNITED KINGDOM'], true);
-        $isProxy = !$isSpain && !$isUk && $resolution->hasFactor();
+        $metadata = $resolution->factor?->getMetadata() ?? [];
+        $isCountryProxy = !$isSpain && !$isUk && $resolution->hasFactor();
+        $isProxy = $isCountryProxy || true === ($metadata['isGeographicProxy'] ?? false);
+        $proxyGeography = $isCountryProxy
+            ? 'Reino Unido'
+            : (is_string($metadata['proxyGeography'] ?? null) ? $metadata['proxyGeography'] : null);
 
         return new StationaryCombustionFactorResolution(
             $resolution,
             $isProxy,
-            $isProxy ? 'Reino Unido' : null,
+            $proxyGeography,
         );
     }
 }

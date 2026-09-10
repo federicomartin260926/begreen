@@ -22,8 +22,8 @@ export default class extends Controller {
   updateFields() {
     const type = this.typeTarget.value;
     this.toggleField(this.starsFieldTarget, type === 'hotel', type === 'hotel');
-    this.toggleField(this.roomsFieldTarget, type === 'hotel' || type === 'hostel', type === 'hotel');
-    this.toggleField(this.peopleFieldTarget, ['hotel', 'hostel', 'apartment'].includes(type), ['hostel', 'apartment'].includes(type));
+    this.toggleField(this.roomsFieldTarget, type === 'hotel', type === 'hotel');
+    this.toggleField(this.peopleFieldTarget, ['hostel', 'apartment'].includes(type), ['hostel', 'apartment'].includes(type));
     this.toggleField(this.nightsFieldTarget, ['hotel', 'hostel', 'apartment'].includes(type), ['hotel', 'hostel', 'apartment'].includes(type));
     this.queuePreview();
   }
@@ -85,22 +85,27 @@ export default class extends Controller {
     if (result.normalizedAmount !== null) {
       lines.push(`${this.formatDecimal(result.normalizedAmount)} ${this.localizeUnit(result.normalizedUnit)}`.trim());
     }
+    if (result.activityYear !== null) lines.push(`${this.i18nValue.activityYear}: ${result.activityYear}`);
     (result.factorTraces || []).forEach((trace) => {
       const parts = [this.i18nValue.typeLabels[trace.accommodationType] || trace.accommodationType, trace.source];
-      if (trace.metadata?.dataset) parts.push(trace.metadata.dataset);
+      if (trace.factorId) parts.push(`${this.i18nValue.factorId}: ${trace.factorId}`);
+      if (trace.activityYear !== null) parts.push(`${this.i18nValue.factorActivityYear}: ${trace.activityYear}`);
+      if (trace.factorYear !== null) parts.push(`${this.i18nValue.factorYear}: ${trace.factorYear}`);
+      if (trace.temporalType) parts.push(`${this.i18nValue.temporalType}: ${trace.temporalType}`);
+      if (trace.factorVersion) parts.push(`${this.i18nValue.factorVersion}: ${trace.factorVersion}`);
       if (trace.effectiveFactorValue !== null) {
-        parts.push(`${this.formatDecimal(trace.effectiveFactorValue)} ${this.localizeUnit(trace.effectiveFactorUnit)}`.trim());
+        parts.push(`${this.i18nValue.factor}: ${this.formatDecimal(trace.effectiveFactorValue)} ${this.localizeUnit(trace.effectiveFactorUnit)}`.trim());
       }
-      if (trace.accommodationType === 'hostel' && trace.baseFactorValue !== null) {
-        parts.push(`${this.i18nValue.hotelBase}: ${this.formatDecimal(trace.baseFactorValue)}`);
-      }
-      if (trace.factorYear) parts.push(String(trace.factorYear));
-      if (trace.temporalType === 'VERSIONED') parts.push('VERSIONED');
-      if (trace.fallback) parts.push(this.i18nValue.fallback);
-      if (trace.geographicProxy) parts.push(this.i18nValue.geographicProxy);
+      if (trace.sourceDetail) parts.push(`${this.i18nValue.sourceDetail}: ${trace.sourceDetail}`);
+      if (trace.fallback) parts.push(`${this.i18nValue.fallback}${trace.fallbackReason ? `: ${trace.fallbackReason}` : ''}`);
+      if (trace.geographicProxy) parts.push(`${this.i18nValue.geographicProxy}${trace.proxyGeography ? `: ${trace.proxyGeography}` : ''}`);
       if (trace.proxyReason) {
         parts.push(this.i18nValue.proxyReasonLabels[trace.proxyReason] || trace.proxyReason);
       }
+      if (trace.qualityStatus) parts.push(`${this.i18nValue.quality}: ${trace.qualityStatus}`);
+      ['sourceWorkbook', 'sourceSheet', 'dataset'].forEach((key) => {
+        if (trace.metadata?.[key]) parts.push(trace.metadata[key]);
+      });
       lines.push(parts.filter(Boolean).join(' · '));
     });
     this.previewTraceTarget.replaceChildren();

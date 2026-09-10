@@ -18,7 +18,7 @@ final class AccommodationEmissionFactorFixturesTest extends TestCase
     protected function setUp(): void
     {
         $manager = $this->createMock(ObjectManager::class);
-        $manager->expects(self::exactly(3256))->method('persist')->willReturnCallback(function (object $factor): void {
+        $manager->expects(self::exactly(5426))->method('persist')->willReturnCallback(function (object $factor): void {
             self::assertInstanceOf(EmissionFactor::class, $factor);
             $this->factors[] = $factor;
         });
@@ -27,30 +27,37 @@ final class AccommodationEmissionFactorFixturesTest extends TestCase
         (new AccommodationEmissionFactorFixtures(new EmissionFactorKeyGenerator()))->load($manager);
     }
 
-    public function testLoadsOnlyCanonicalHotelAndApartmentFactorsWithoutDuplicateTemporalIdentities(): void
+    public function testLoadsLiteralHotelApplicabilityRowsAndApartmentWithUniqueFactorIds(): void
     {
-        self::assertCount(3256, $this->factors);
+        self::assertCount(5426, $this->factors);
         $hotel = array_values(array_filter($this->factors, static fn (EmissionFactor $factor): bool => 'hotel' === $factor->getCriteria()['accommodationType']));
         $apartments = array_values(array_filter($this->factors, static fn (EmissionFactor $factor): bool => 'apartment' === $factor->getCriteria()['accommodationType']));
 
-        self::assertCount(3255, $hotel);
+        self::assertCount(5425, $hotel);
         self::assertCount(1, $apartments);
-        self::assertCount(0, array_filter($hotel, static fn (EmissionFactor $factor): bool => in_array($factor->getYear(), [2025, 2026], true)));
+        self::assertSame([2022, 2023, 2024, 2025, 2026], array_values(array_unique(array_map(static fn (EmissionFactor $factor): int => $factor->getActivityYear(), $hotel))));
         self::assertSame([2022, 2023, 2024], array_values(array_unique(array_map(static fn (EmissionFactor $factor): int => $factor->getYear(), $hotel))));
+        self::assertSame([2022 => 1085, 2023 => 1085, 2024 => 1085, 2025 => 1085, 2026 => 1085], array_count_values(array_map(static fn (EmissionFactor $factor): int => $factor->getActivityYear(), $hotel)));
+        self::assertSame([2022 => 1085, 2023 => 1085, 2024 => 3255], array_count_values(array_map(static fn (EmissionFactor $factor): int => $factor->getYear(), $hotel)));
+        self::assertCount(2170, array_filter($hotel, static fn (EmissionFactor $factor): bool => true === $factor->getMetadata()['isTemporalFallback']));
+        self::assertCount(1865, array_filter($this->factors, static fn (EmissionFactor $factor): bool => true === $factor->getMetadata()['isGeographicProxy']));
 
         $keyGenerator = new EmissionFactorKeyGenerator();
-        $identities = [];
+        $factorIds = [];
         foreach ($this->factors as $factor) {
             self::assertSame('accommodation', $factor->getCategoryKey());
             self::assertSame($keyGenerator->generate($factor->getCriteria()), $factor->getFunctionalKey());
-            $identity = $factor->getFunctionalKey().'|'.$factor->getTemporalType().'|'.$factor->getYear();
-            self::assertArrayNotHasKey($identity, $identities);
-            $identities[$identity] = true;
+            self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $factor->getTemporalType());
+            self::assertNotNull($factor->getFactorId());
+            self::assertArrayNotHasKey($factor->getFactorId(), $factorIds);
+            $factorIds[$factor->getFactorId()] = true;
         }
-        self::assertCount(3256, $identities);
+        self::assertCount(5426, $factorIds);
 
         $apartment = $apartments[0];
+        self::assertSame('ALO_OTH_FDBEE6C6DB3289', $apartment->getFactorId());
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $apartment->getTemporalType());
+        self::assertNull($apartment->getActivityYear());
         self::assertNull($apartment->getYear());
         self::assertSame('4.087', $apartment->getValue());
         self::assertSame('Land 2025 · factor contextual de apartamento turístico', $apartment->getMetadata()['factorVersion']);
@@ -61,8 +68,10 @@ final class AccommodationEmissionFactorFixturesTest extends TestCase
     {
         $spain2024 = $this->hotel('ESP', '4', 2024);
         $spain2023 = $this->hotel('ESP', '4', 2023);
+        $spain2025 = $this->hotel('ESP', '4', 2025);
 
         self::assertSame($spain2023->getFunctionalKey(), $spain2024->getFunctionalKey());
+        self::assertSame($spain2024->getFunctionalKey(), $spain2025->getFunctionalKey());
         self::assertSame([
             'accommodationType' => 'hotel',
             'iso3' => 'ESP',
@@ -70,21 +79,21 @@ final class AccommodationEmissionFactorFixturesTest extends TestCase
             'unit' => 'occupied room-night',
         ], $spain2024->getCriteria());
         self::assertSame('España', $spain2024->getMetadata()['country']);
-        self::assertSame('CHSB 2026', $spain2024->getMetadata()['dataset']);
-        self::assertSame(2024, $spain2024->getMetadata()['datasetCalendarYear']);
-        self::assertSame('Greenview HFT 2026v1.1', $spain2024->getMetadata()['toolVersion']);
-        self::assertSame('HFT_PUBLISHED_COEFFICIENT', $spain2024->getMetadata()['method']);
-        self::assertNull($spain2024->getMetadata()['sampleCount']);
-        self::assertFalse($spain2024->getMetadata()['sourceTemporalFallback']);
+        self::assertSame('ALO_HOT_DC051071C99507', $spain2024->getFactorId());
+        self::assertSame('CHSB 2026', $spain2024->getMetadata()['factorVersion']);
+        self::assertSame('HFT_PUBLISHED_COEFFICIENT', $spain2024->getSourceDetail());
         self::assertFalse($spain2024->getMetadata()['isGeographicProxy']);
         self::assertSame('https://greenview.sg/resources/hotel-footprinting-tool/', $spain2024->getMetadata()['sourceUrl']);
+        self::assertSame(2025, $spain2025->getActivityYear());
+        self::assertSame(2024, $spain2025->getYear());
+        self::assertTrue($spain2025->getMetadata()['isTemporalFallback']);
     }
 
-    private function hotel(string $iso3, string $stars, int $year): EmissionFactor
+    private function hotel(string $iso3, string $stars, int $activityYear): EmissionFactor
     {
         foreach ($this->factors as $factor) {
             $criteria = $factor->getCriteria();
-            if (($criteria['iso3'] ?? null) === $iso3 && ($criteria['stars'] ?? null) === $stars && $factor->getYear() === $year) {
+            if (($criteria['iso3'] ?? null) === $iso3 && ($criteria['stars'] ?? null) === $stars && $factor->getActivityYear() === $activityYear) {
                 return $factor;
             }
         }

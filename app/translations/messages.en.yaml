@@ -2161,7 +2161,7 @@ backend:
       section_context_help: "Indicate when the activity took place and the country it corresponds to."
       section_family_help: "Select the consumption type that best represents the activity you want to record."
       sections: { context: "Record details", family: "Consumption type" }
-      families: { electricity: "Electricity", equipment: "Generators and equipment", battery: "Batteries and accumulators", digital: "Digital technology" }
+      families: { electricity: "Electricity", equipment: "Generators and equipment", battery: "Batteries and accumulators" }
       statuses: { CALCULATED: "Calculated", PENDING_DATA: "Pending", NOT_AUTOMATICALLY_CALCULABLE: "Not automatically calculable" }
       fallbacks:
         exact_year_missing: "Using the latest available factor"
@@ -2170,8 +2170,6 @@ backend:
       modes: { direct: "Direct amount", cylinders: "Cylinders" }
       equipment_types: { generator: "Generator", heating: "Heating", cooking: "Cooking", boiler: "Boiler", climate: "Climate control", other: "Other equipment" }
       battery_types: { portable_station: "Portable power station", battery: "Battery / accumulator", fixed_battery: "Fixed battery system", ups: "UPS", other: "Other" }
-      digital_types: { computer: "Computer / workstation", server: "Own server", cloud: "Cloud", render: "Render farm", ai: "Artificial intelligence", storage: "Storage", other: "Other" }
-      ownership: { own: "Owned", rented: "Rented", external_cloud: "External service / cloud" }
       fields:
         start_date: "Start date"
         end_date: "End date"
@@ -2194,19 +2192,23 @@ backend:
         battery_type: "Battery type"
         charge_source: "Charging source"
         charged_kwh: "Charged energy (kWh)"
-        digital_type: "Technology"
-        digital_location: "Region / datacenter"
-        digital_country: "Country where electricity is consumed"
-        use_general_country: "Use general country"
-        known_kwh: "Known consumption (kWh)"
-        hours: "Usage hours"
-        units_gpu: "Equipment / units"
-        service: "Service"
-        model: "Model"
-        provider: "Provider"
-        ownership: "Ownership / use"
         notes: "Notes"
-      preview: { title: "Live calculation", calculating: "Calculating…", error: "Complete dates, country and family to calculate.", complete_data: "Complete the activity data." }
+      preview:
+        title: "Live calculation"
+        calculating: "Calculating…"
+        error: "Complete dates, country and family to calculate."
+        complete_data: "Complete the activity data."
+        activity_year: "Activity year"
+        factor_id: "Factor ID"
+        factor_activity_year: "Applicability year"
+        factor_year: "Factor year"
+        temporal_type: "Temporal type"
+        factor_version: "Edition / version"
+        factor: "Applied factor"
+        source_detail: "Source detail"
+        fallback: "Temporal fallback"
+        geographic_proxy: "Geographic proxy"
+        quality: "Quality"
       flash: { created: "Energy record created successfully.", updated: "Energy record updated successfully." }
       errors:
         attachment_invalid: "The supporting document is invalid or cannot be read."
@@ -2238,10 +2240,6 @@ backend:
         invalid_cylinder_count: "Enter a positive whole number of cylinders."
         battery_type_required: "Enter the battery type."
         charged_kwh_required: "Enter charged energy."
-        digital_type_required: "Enter the digital technology."
-        known_kwh_invalid: "Known consumption must be a valid decimal."
-        digital_activity_data_required: "Add known consumption or other usage data."
-        digital_estimation_methodology_unavailable: "There is no defensible method to estimate this usage without known kWh."
         emission_factor_unavailable: "No applicable prior factor is available."
         emission_factor_not_calculable: "The factor exists but does not support automatic calculation."
     water_v1:
@@ -2383,8 +2381,15 @@ backend:
         error: "Complete all required fields to calculate."
         fallback: "Latest prior factor available"
         geographic_proxy: "Geographic proxy"
-        hotel_base: "Underlying 4-star Hotel factor"
-        hostel_proxy_reason: "Travel & Climate v5.1 proxy derived from the Greenview Hotel 4-star factor"
+        activity_year: "Activity year"
+        factor_id: "Factor ID"
+        factor_activity_year: "Applicability year"
+        factor_year: "Factor year"
+        temporal_type: "Temporal type"
+        factor_version: "Edition / version"
+        factor: "Applied factor"
+        source_detail: "Source detail"
+        quality: "Quality"
         apartment_proxy_reason: "Land 2025 contextual apartment factor for all countries"
       flash:
         created: "Accommodation record created successfully."
@@ -2399,7 +2404,7 @@ backend:
         invalid_input: "Review the dates, country and submitted values. Periods crossing a year must be split."
         phase_not_available: "The start date does not belong to any project phase."
       messages:
-        emission_factor_unavailable: "No applicable prior factor is available."
+        emission_factor_unavailable: "No separate applicable numeric factor is available."
         emission_factor_not_calculable: "The factor exists but does not support automatic calculation."
         automatic_factor_unavailable: "This accommodation type has no automatic calculation."
     catering_v1:

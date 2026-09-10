@@ -42,13 +42,16 @@ final readonly class EmissionFactorResolver
         }
         $metadata = $factor->getMetadata() ?? [];
         $isFallback = $factorYear < $activityYear || true === ($metadata['isTemporalFallback'] ?? false);
+        $fallbackReason = is_string($metadata['fallbackReason'] ?? null)
+            ? $metadata['fallbackReason']
+            : EmissionFactorResolution::FALLBACK_REASON_EXACT_YEAR_MISSING;
 
         return new EmissionFactorResolution(
             $factor,
             $factor->getActivityYear() ?? $activityYear,
             $factorYear,
             $isFallback,
-            $isFallback ? EmissionFactorResolution::FALLBACK_REASON_EXACT_YEAR_MISSING : null,
+            $isFallback ? $fallbackReason : null,
             $factor->getTemporalType(),
         );
     }

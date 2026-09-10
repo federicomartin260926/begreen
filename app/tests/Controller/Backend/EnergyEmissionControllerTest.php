@@ -54,6 +54,15 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $data['status']);
         self::assertSame('2.58', $data['emissionKgCo2e']);
+        self::assertSame(2025, $data['activityYear']);
+        self::assertSame('ENE-TEST-001', $data['factorTraces'][0]['factorId']);
+        self::assertSame(2025, $data['factorTraces'][0]['activityYear']);
+        self::assertSame(2025, $data['factorTraces'][0]['factorActivityYear']);
+        self::assertSame(2025, $data['factorTraces'][0]['factorYear']);
+        self::assertNull($data['factorTraces'][0]['factorVersion']);
+        self::assertSame('0.258', $data['factorTraces'][0]['factorValue']);
+        self::assertSame('kgCO2e/kWh', $data['factorTraces'][0]['factorUnit']);
+        self::assertSame('MITECO', $data['factorTraces'][0]['source']);
     }
 
     public function testPreviewReturnsCompositeMixedCalculation(): void
@@ -70,9 +79,14 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertSame('COMPOSITE', $data['temporalType']);
         self::assertCount(2, $data['factorTraces']);
         self::assertSame('1.548', $data['emissionKgCo2e']);
+        self::assertSame('ENE-TEST-001', $data['factorTraces'][0]['factorId']);
+        self::assertNull($data['factorTraces'][1]['factorId']);
+        self::assertNull($data['factorTraces'][1]['factorActivityYear']);
+        self::assertNull($data['factorTraces'][1]['factorYear']);
+        self::assertNull($data['factorTraces'][1]['factorVersion']);
     }
 
-    public function testPreviewDigitalWithoutKnownKwhReturnsFunctionalStatus(): void
+    public function testPreviewRejectsRetiredDigitalFamily(): void
     {
         $context = $this->context();
         $post = $this->validPost();
@@ -87,9 +101,8 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         $response = $this->controller()->preview($request, $context['active'], new EnergyEmissionRequestMapper(), $this->calculator());
         $data = json_decode((string) $response->getContent(), true, flags: JSON_THROW_ON_ERROR);
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame(EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE, $data['status']);
-        self::assertNull($data['emissionKgCo2e']);
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertSame(['error' => 'invalid_input'], $data);
     }
 
     public function testGetCreateRendersModernFormWithoutAuthoritativeFields(): void
@@ -101,7 +114,9 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('data-controller="energy-v1-form"', $content);
         self::assertStringContainsString('name="attachments[]"', $content);
-        self::assertStringContainsString('name="digitalCountry"', $content);
+        foreach (['digital', 'digitalType', 'digitalLocation', 'digitalCountry', 'knownKwh', 'hours', 'units', 'gpu', 'service', 'model', 'provider', 'ownership'] as $field) {
+            self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
+        }
         self::assertStringContainsString('GDO COGENERACIÓN ALTA EFICIENCIA', $content);
         foreach (['factor', 'factorValue', 'factorYear', 'source', 'normalizedAmount', 'emission'] as $field) {
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
@@ -127,9 +142,12 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertSame('2025-06-01', $persisted->getRegisteredAt()->format('Y-m-d'));
         self::assertStringContainsString('"version":"energy-v1"', (string) $persisted->getCalculationDetails());
         self::assertStringNotContainsString('999999', (string) $persisted->getCalculationDetails());
+        $snapshot = json_decode((string) $persisted->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('energy-v1', $snapshot['calculatorVersion']);
+        self::assertNull($snapshot['calculation']['factorTraces'][0]['factorVersion']);
     }
 
-    public function testCreatePersistsNotAutomaticallyCalculableWithNullEmission(): void
+    public function testCreateRejectsRetiredDigitalFamilyWithoutPersistence(): void
     {
         $context = $this->context();
         $post = $this->validPost();
@@ -143,12 +161,10 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         $request->request->set('_token', $this->csrfToken('energy_emission_v1_create'));
         $persisted = null;
 
-        $response = $this->create($request, $context, 1, $persisted);
+        $response = $this->create($request, $context, 0, $persisted);
 
-        self::assertSame(302, $response->getStatusCode());
-        self::assertSame(EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE, $persisted->getStatus());
-        self::assertNull($persisted->getAmount());
-        self::assertNull($persisted->getEmission());
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertNull($persisted);
     }
 
     public function testGetEditReconstructsFunctionalInputAndListsAttachment(): void
@@ -170,6 +186,25 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('data-energy-v1-form-preview-url-value="/backend/emission/energy/preview"', $content);
         self::assertMatchesRegularExpression('/data-energy-v1-form-preview-token-value="[^"]+"/', $content);
         $this->assertInitialPreviewContext($content);
+    }
+
+    public function testRetiredDigitalFieldsFromSnapshotDoNotReappearInEdit(): void
+    {
+        $context = $this->context();
+        $record = $this->record($context);
+        $snapshot = json_decode((string) $record->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
+        $snapshot['family'] = 'digital';
+        $snapshot['input']['family'] = 'digital';
+        $snapshot['input']['digitalType'] = 'ai';
+        $snapshot['input']['knownKwh'] = '10';
+        $record->setCalculationDetails(json_encode($snapshot, JSON_THROW_ON_ERROR));
+
+        $content = (string) $this->edit($record, $this->request('GET'), $context, 0)->getContent();
+
+        self::assertStringNotContainsString('value="digital"', $content);
+        self::assertStringNotContainsString('name="digitalType"', $content);
+        self::assertStringNotContainsString('name="knownKwh"', $content);
+        self::assertStringNotContainsString('value="ai"', $content);
     }
 
     public function testEditRecalculatesFromSubmittedInput(): void
@@ -227,6 +262,8 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('if (!this.commonContextComplete)', $controller);
         self::assertStringContainsString("body.set('_preview_token', this.previewTokenValue)", $controller);
         self::assertStringContainsString('fetch(this.previewUrlValue', $controller);
+        self::assertStringContainsString('trace.factorId', $controller);
+        self::assertStringNotContainsString('digitalPanel', $controller);
     }
 
     /** @return array{project: Project, category: Category, phase: ProjectPhaseDate, active: ActiveProjectService&MockObject, categories: CategoryRepository&MockObject, projects: ProjectRepository&MockObject} */
@@ -400,11 +437,15 @@ final class EnergyEmissionControllerTest extends KernelTestCase
             ->setCategoryKey('energy')
             ->setFunctionalKey('server-key')
             ->setCriteria([])
+            ->setFactorId('ENE-TEST-001')
+            ->setActivityYear(2025)
             ->setYear(2025)
+            ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_ANNUAL)
             ->setValue('0.258')
             ->setUnit('kgCO2e/kWh')
             ->setSource('MITECO')
-            ->setSourceDetail('Backend');
+            ->setSourceDetail('Backend')
+            ->setMetadata(['factorVersion' => null, 'qualityStatus' => 'official']);
     }
 
     private function setAdminToken(): void

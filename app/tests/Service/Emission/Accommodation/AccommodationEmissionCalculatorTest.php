@@ -45,7 +45,7 @@ final class AccommodationEmissionCalculatorTest extends TestCase
         self::assertSame('GLOBAL_STAR_FALLBACK', $proxy->factorTraces[0]->metadata['method']);
     }
 
-    public function testHostelDerivesTravelAndClimateProxyFromHotelFourStarsAndInheritsFallback(): void
+    public function testHostelIsNotAutomaticallyCalculatedWithoutNumericBaseFactor(): void
     {
         $result = $this->calculator->calculate($this->input(
             year: 2025,
@@ -55,20 +55,12 @@ final class AccommodationEmissionCalculatorTest extends TestCase
             nights: '3',
         ));
 
-        self::assertSame(EmissionRecord::STATUS_CALCULATED, $result->status);
+        self::assertSame(EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE, $result->status);
         self::assertSame('6', $result->normalizedAmount);
         self::assertSame('guest-night', $result->normalizedUnit);
-        self::assertSame('9.5505', $result->emissionKgCo2e);
-        $trace = $result->factorTraces[0];
-        self::assertSame('9.5505', $trace->baseFactorValue);
-        self::assertSame('1.59175', $trace->effectiveFactorValue);
-        self::assertSame('1.5', $trace->averageOccupancy);
-        self::assertSame('0.25', $trace->hostelReductionFactor);
-        self::assertSame(2024, $trace->factorYear);
-        self::assertTrue($trace->isFallback);
-        self::assertSame('exact_year_missing', $trace->fallbackReason);
-        self::assertStringContainsString('Travel & Climate v5.1', $trace->proxyReason);
-        self::assertStringContainsString('Greenview', $trace->source);
+        self::assertNull($result->emissionKgCo2e);
+        self::assertSame([], $result->factorTraces);
+        self::assertSame(['emission_factor_unavailable'], $result->messages);
     }
 
     public function testApartmentUsesSingleVersionedLandFactorAndOtherHasNoAutomaticEmission(): void
@@ -182,8 +174,9 @@ final class AccommodationEmissionCalculatorTest extends TestCase
             static function (string $categoryKey, string $functionalKey, int $activityYear) use ($factors): ?EmissionFactor {
                 $candidates = array_filter($factors, static fn (EmissionFactor $factor): bool =>
                     'accommodation' === $categoryKey
-                    && EmissionFactor::TEMPORAL_TYPE_ANNUAL === $factor->getTemporalType()
+                    && EmissionFactor::TEMPORAL_TYPE_VERSIONED === $factor->getTemporalType()
                     && $factor->getFunctionalKey() === $functionalKey
+                    && $factor->getActivityYear() <= $activityYear
                     && $factor->getYear() <= $activityYear
                 );
                 usort($candidates, static fn (EmissionFactor $left, EmissionFactor $right): int => $right->getYear() <=> $left->getYear());
@@ -227,8 +220,9 @@ final class AccommodationEmissionCalculatorTest extends TestCase
             ->setCategoryKey('accommodation')
             ->setFunctionalKey($keyGenerator->generate($criteria))
             ->setCriteria($criteria)
+            ->setActivityYear($year)
             ->setYear($year)
-            ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_ANNUAL)
+            ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_VERSIONED)
             ->setValue($value)
             ->setUnit('kgCO2e/occupied room-night')
             ->setSource('Greenview Hotel Footprinting Tool')

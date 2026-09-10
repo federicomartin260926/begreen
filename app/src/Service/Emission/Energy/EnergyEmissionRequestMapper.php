@@ -9,8 +9,17 @@ final class EnergyEmissionRequestMapper
 {
     public function map(Request $request): EnergyEmissionInput
     {
+        $family = $this->requiredString($request, 'family');
+        if (!in_array($family, [
+            EnergyEmissionInput::FAMILY_ELECTRICITY,
+            EnergyEmissionInput::FAMILY_EQUIPMENT,
+            EnergyEmissionInput::FAMILY_BATTERY,
+        ], true)) {
+            throw new \InvalidArgumentException('Unsupported energy family.');
+        }
+
         return new EnergyEmissionInput(
-            family: $this->requiredString($request, 'family'),
+            family: $family,
             startDate: $this->date($request, 'startDate'),
             endDate: $this->date($request, 'endDate'),
             country: $this->country($request, 'country'),
@@ -31,17 +40,6 @@ final class EnergyEmissionRequestMapper
             batteryType: $this->optionalString($request, 'batteryType'),
             chargeSource: $this->optionalString($request, 'chargeSource'),
             chargedKwh: $this->optionalString($request, 'chargedKwh'),
-            digitalType: $this->optionalString($request, 'digitalType'),
-            digitalLocation: $this->optionalString($request, 'digitalLocation'),
-            digitalCountry: $this->optionalCountry($request, 'digitalCountry'),
-            knownKwh: $this->optionalString($request, 'knownKwh'),
-            hours: $this->optionalString($request, 'hours'),
-            units: $this->optionalString($request, 'units'),
-            gpu: $this->optionalString($request, 'gpu'),
-            service: $this->optionalString($request, 'service'),
-            model: $this->optionalString($request, 'model'),
-            provider: $this->optionalString($request, 'provider'),
-            ownership: $this->optionalString($request, 'ownership'),
         );
     }
 
@@ -65,11 +63,6 @@ final class EnergyEmissionRequestMapper
         }
 
         return $country;
-    }
-
-    private function optionalCountry(Request $request, string $field): ?string
-    {
-        return null === $this->optionalString($request, $field) ? null : $this->country($request, $field);
     }
 
     private function requiredString(Request $request, string $field): string

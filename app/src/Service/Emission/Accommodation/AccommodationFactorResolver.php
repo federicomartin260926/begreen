@@ -27,6 +27,7 @@ final readonly class AccommodationFactorResolver
         return AccommodationFactorResolution::fromResolution(
             $this->factorResolver->resolve(self::CATEGORY_KEY, $this->hotelCriteria($iso3, $stars), $activityYear),
             AccommodationEmissionInput::TYPE_HOTEL,
+            requestedActivityYear: $activityYear,
         );
     }
 
@@ -54,6 +55,7 @@ final readonly class AccommodationFactorResolver
             $resolution,
             AccommodationEmissionInput::TYPE_APARTMENT,
             'Land 2025 contextual apartment factor for all countries',
+            $activityYear,
         );
     }
 

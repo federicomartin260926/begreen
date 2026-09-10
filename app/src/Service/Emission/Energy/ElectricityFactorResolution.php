@@ -12,7 +12,9 @@ final readonly class ElectricityFactorResolution
      */
     private function __construct(
         private bool $factorFound,
+        public ?string $factorId,
         public int $activityYear,
+        public ?int $factorActivityYear,
         public ?int $factorYear,
         public bool $isFallback,
         public ?string $fallbackReason,
@@ -21,6 +23,8 @@ final readonly class ElectricityFactorResolution
         public ?string $unit,
         public ?string $source,
         public ?string $sourceDetail,
+        public ?string $factorVersion,
+        public ?string $qualityStatus,
         public array $criteria,
         public array $metadata,
         public bool $isGeographicProxy,
@@ -36,10 +40,15 @@ final readonly class ElectricityFactorResolution
         array $extraMetadata = [],
     ): self {
         $factor = $resolution->factor;
+        $metadata = $factor?->getMetadata() ?? [];
+        $isGeographicProxy = $isGeographicProxy || true === ($metadata['isGeographicProxy'] ?? false);
+        $proxyGeography ??= is_string($metadata['proxyGeography'] ?? null) ? $metadata['proxyGeography'] : null;
 
         return new self(
             $resolution->hasFactor(),
+            $factor?->getFactorId(),
             $resolution->activityYear,
+            $factor?->getActivityYear(),
             $resolution->factorYear,
             $resolution->isFallback,
             $resolution->fallbackReason,
@@ -48,8 +57,10 @@ final readonly class ElectricityFactorResolution
             $factor?->getUnit(),
             $factor?->getSource(),
             $factor?->getSourceDetail(),
+            is_string($metadata['factorVersion'] ?? null) ? $metadata['factorVersion'] : null,
+            is_string($metadata['qualityStatus'] ?? null) ? $metadata['qualityStatus'] : null,
             $factor?->getCriteria() ?? [],
-            array_replace($factor?->getMetadata() ?? [], $extraMetadata),
+            array_replace($metadata, $extraMetadata),
             $isGeographicProxy,
             $proxyGeography,
         );
@@ -69,7 +80,9 @@ final readonly class ElectricityFactorResolution
     ): self {
         return new self(
             true,
+            null,
             $activityYear,
+            null,
             null,
             false,
             null,
@@ -78,6 +91,8 @@ final readonly class ElectricityFactorResolution
             $unit,
             $source,
             $sourceDetail,
+            null,
+            null,
             $criteria,
             $metadata,
             false,
@@ -87,7 +102,7 @@ final readonly class ElectricityFactorResolution
 
     public static function unavailable(int $activityYear, string $temporalType): self
     {
-        return new self(false, $activityYear, null, false, null, $temporalType, null, null, null, null, [], [], false, null);
+        return new self(false, null, $activityYear, null, null, false, null, $temporalType, null, null, null, null, null, null, [], [], false, null);
     }
 
     public function hasFactor(): bool

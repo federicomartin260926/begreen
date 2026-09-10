@@ -26,10 +26,12 @@ final class AccommodationFactorResolverTest extends TestCase
         $beforeFirstSourceYear = $resolver->resolveHotel('ESP', '4', 2021);
 
         self::assertSame('9.5505', $exact->factorValue);
+        self::assertSame('ALO_HOT_DC051071C99507', $exact->factorId);
         self::assertSame(2024, $exact->factorYear);
         self::assertFalse($exact->isFallback);
-        foreach ([$fallback2025, $fallback2026] as $fallback) {
+        foreach ([2025 => $fallback2025, 2026 => $fallback2026] as $activityYear => $fallback) {
             self::assertSame('9.5505', $fallback->factorValue);
+            self::assertSame($activityYear, $fallback->factorActivityYear);
             self::assertSame(2024, $fallback->factorYear);
             self::assertTrue($fallback->isFallback);
             self::assertSame('exact_year_missing', $fallback->fallbackReason);
@@ -73,11 +75,16 @@ final class AccommodationFactorResolverTest extends TestCase
             static function (string $categoryKey, string $functionalKey, int $activityYear) use (&$factors): ?EmissionFactor {
                 self::assertSame('accommodation', $categoryKey);
                 $candidates = array_filter($factors, static fn (EmissionFactor $factor): bool =>
-                    EmissionFactor::TEMPORAL_TYPE_ANNUAL === $factor->getTemporalType()
+                    EmissionFactor::TEMPORAL_TYPE_VERSIONED === $factor->getTemporalType()
                     && $factor->getFunctionalKey() === $functionalKey
+                    && $factor->getActivityYear() <= $activityYear
                     && $factor->getYear() <= $activityYear
                 );
-                usort($candidates, static fn (EmissionFactor $left, EmissionFactor $right): int => $right->getYear() <=> $left->getYear());
+                usort($candidates, static fn (EmissionFactor $left, EmissionFactor $right): int =>
+                    ($right->getActivityYear() <=> $left->getActivityYear())
+                    ?: ($right->getYear() <=> $left->getYear())
+                    ?: ($left->getFactorId() <=> $right->getFactorId())
+                );
 
                 return $candidates[0] ?? null;
             },

@@ -34,6 +34,7 @@ class EmissionFactorRepository extends ServiceEntityRepository
             ->setParameter('activityYear', $activityYear)
             ->orderBy('factor.activityYear', 'DESC')
             ->addOrderBy('factor.year', 'DESC')
+            ->addOrderBy('factor.factorId', 'ASC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -61,6 +62,7 @@ class EmissionFactorRepository extends ServiceEntityRepository
             ->setParameter('categoryKey', $categoryKey)
             ->setParameter('functionalKey', $functionalKey)
             ->setParameter('temporalType', $temporalType)
+            ->orderBy('factor.factorId', 'ASC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

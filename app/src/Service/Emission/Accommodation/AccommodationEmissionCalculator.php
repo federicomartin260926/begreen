@@ -13,8 +13,6 @@ final readonly class AccommodationEmissionCalculator
     private const HOTEL_UNIT = 'occupied room-night';
     private const GUEST_UNIT = 'guest-night';
     private const PERSON_UNIT = 'persona-noche';
-    private const AVERAGE_OCCUPANCY = '1.5';
-    private const HOSTEL_REDUCTION_FACTOR = '0.25';
 
     public function __construct(private AccommodationFactorResolver $factorResolver)
     {
@@ -44,7 +42,7 @@ final readonly class AccommodationEmissionCalculator
 
         return match ($input->accommodationType) {
             AccommodationEmissionInput::TYPE_HOTEL => $this->calculateHotel($input, $iso3, $activityYear),
-            AccommodationEmissionInput::TYPE_HOSTEL => $this->calculateHostel($input, $iso3, $activityYear),
+            AccommodationEmissionInput::TYPE_HOSTEL => $this->calculateHostel($input, $activityYear),
             AccommodationEmissionInput::TYPE_APARTMENT => $this->calculateApartment($input, $activityYear),
             AccommodationEmissionInput::TYPE_OTHER => $this->notAutomaticallyCalculable(
                 $activityYear,
@@ -87,7 +85,7 @@ final readonly class AccommodationEmissionCalculator
         );
     }
 
-    private function calculateHostel(AccommodationEmissionInput $input, string $iso3, int $activityYear): AccommodationEmissionResult
+    private function calculateHostel(AccommodationEmissionInput $input, int $activityYear): AccommodationEmissionResult
     {
         $people = $this->positiveDecimal($input->people);
         if (null === $people) {
@@ -99,24 +97,13 @@ final readonly class AccommodationEmissionCalculator
         }
 
         $amount = $this->multiply($people, $nights);
-        $resolution = $this->factorResolver->resolveHotel($iso3, '4', $activityYear);
-        $effectiveFactor = null === $resolution->factorValue
-            ? null
-            : $this->multiply(
-                $this->divide($resolution->factorValue, self::AVERAGE_OCCUPANCY),
-                self::HOSTEL_REDUCTION_FACTOR,
-            );
-
-        return $this->calculatedFromResolution(
-            $resolution,
-            AccommodationEmissionInput::TYPE_HOSTEL,
+        return $this->notAutomaticallyCalculable(
+            $activityYear,
             $amount,
             self::GUEST_UNIT,
-            $effectiveFactor,
-            'kgCO2e/guest-night',
-            self::AVERAGE_OCCUPANCY,
-            self::HOSTEL_REDUCTION_FACTOR,
-            'Travel & Climate v5.1 proxy derived from the Greenview hotel 4-star factor',
+            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+            [],
+            ['emission_factor_unavailable'],
         );
     }
 
@@ -237,11 +224,6 @@ final readonly class AccommodationEmissionCalculator
     private function multiply(string $left, string $right): string
     {
         return $this->trimDecimal(bcmul($left, $right, self::SCALE));
-    }
-
-    private function divide(string $left, string $right): string
-    {
-        return $this->trimDecimal(bcdiv($left, $right, self::SCALE));
     }
 
     private function trimDecimal(string $value): string

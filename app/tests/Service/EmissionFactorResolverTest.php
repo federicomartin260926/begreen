@@ -101,6 +101,26 @@ final class EmissionFactorResolverTest extends TestCase
         );
     }
 
+    public function testMaterializedFallbackPreservesFactorApplicabilityAndLiteralReason(): void
+    {
+        $factor = $this->factor(2025, '0.258', 'MITECO')
+            ->setFactorId('ENE_BEA7F2F5AED385')
+            ->setActivityYear(2026)
+            ->setMetadata([
+                'isTemporalFallback' => true,
+                'fallbackReason' => 'Último factor MITECO anterior disponible',
+            ]);
+        $resolver = $this->resolverReturning($factor, 2026);
+
+        $result = $resolver->resolveByFunctionalKey('transport', 'energy-key', 2026);
+
+        self::assertSame(2026, $result->activityYear);
+        self::assertSame(2025, $result->factorYear);
+        self::assertSame('ENE_BEA7F2F5AED385', $result->factor?->getFactorId());
+        self::assertTrue($result->isFallback);
+        self::assertSame('Último factor MITECO anterior disponible', $result->fallbackReason);
+    }
+
     public function testNeverUsesFutureFactor(): void
     {
         $resolver = $this->resolverReturning(null, 2023);

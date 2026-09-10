@@ -129,8 +129,7 @@
   'final_reading_before_initial', 'mixed_energy_breakdown_required', 'mixed_energy_total_mismatch',
   'equipment_type_required', 'fuel_required', 'fuel_amount_and_unit_required', 'equipment_mode_unknown',
   'incompatible_fuel_unit', 'invalid_cylinder_size', 'invalid_cylinder_count', 'battery_type_required',
-  'charged_kwh_required', 'digital_type_required', 'known_kwh_invalid', 'digital_activity_data_required',
-  'digital_estimation_methodology_unavailable', 'emission_factor_unavailable', 'emission_factor_not_calculable'
+  'charged_kwh_required', 'emission_factor_unavailable', 'emission_factor_not_calculable'
 ] %}
 {% set messageLabels = {} %}
 {% for key in messageKeys %}{% set messageLabels = messageLabels|merge({(key): ('backend.emission.energy_v1.messages.' ~ key)|trans}) %}{% endfor %}
@@ -145,6 +144,17 @@
   fallbackLabels: {
     exact_year_missing: 'backend.emission.energy_v1.fallbacks.exact_year_missing'|trans
   },
+  activityYear: 'backend.emission.energy_v1.preview.activity_year'|trans,
+  factorId: 'backend.emission.energy_v1.preview.factor_id'|trans,
+  factorActivityYear: 'backend.emission.energy_v1.preview.factor_activity_year'|trans,
+  factorYear: 'backend.emission.energy_v1.preview.factor_year'|trans,
+  temporalType: 'backend.emission.energy_v1.preview.temporal_type'|trans,
+  factorVersion: 'backend.emission.energy_v1.preview.factor_version'|trans,
+  factor: 'backend.emission.energy_v1.preview.factor'|trans,
+  sourceDetail: 'backend.emission.energy_v1.preview.source_detail'|trans,
+  fallback: 'backend.emission.energy_v1.preview.fallback'|trans,
+  geographicProxy: 'backend.emission.energy_v1.preview.geographic_proxy'|trans,
+  quality: 'backend.emission.energy_v1.preview.quality'|trans,
   messageLabels: messageLabels,
   select: 'backend.common.select'|trans
 } %}
@@ -266,8 +276,8 @@
         </div>
         <div class="energy-v1-section__body">
           <div class="row g-2 energy-v1-type-grid">
-            {% for family in ['electricity', 'equipment', 'battery', 'digital'] %}
-              <div class="col-md-3">
+            {% for family in ['electricity', 'equipment', 'battery'] %}
+              <div class="col-md-4">
                 <input class="btn-check" id="energy-family-{{ family }}" type="radio" name="family" value="{{ family }}" {% if values.family|default('electricity') == family %}checked{% endif %} required>
                 <label class="btn btn-outline-primary w-100" for="energy-family-{{ family }}">{{ ('backend.emission.energy_v1.families.' ~ family)|trans }}</label>
               </div>
@@ -328,23 +338,6 @@
         <div class="row g-3 mt-0 bg-light rounded p-2" data-energy-v1-form-target="batteryMixedFields" hidden>
           <div class="col-md-6"><label class="form-label">{{ 'backend.emission.energy_v1.fields.grid_kwh'|trans }}</label><input class="form-control" name="gridKwh" value="{{ values.gridKwh|default('') }}" inputmode="decimal"></div>
           <div class="col-md-6"><label class="form-label">{{ 'backend.emission.energy_v1.fields.solar_kwh'|trans }}</label><input class="form-control" name="solarKwh" value="{{ values.solarKwh|default('') }}" inputmode="decimal"></div>
-        </div>
-      </div></section>
-
-      <section class="card mb-4" data-energy-v1-form-target="digitalPanel" hidden><div class="card-body">
-        <h3 class="h5 mb-3">{{ 'backend.emission.energy_v1.families.digital'|trans }}</h3>
-        <div class="row g-3">
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.digital_type'|trans }}</label><select class="form-select" name="digitalType"><option value="">{{ 'backend.common.select'|trans }}</option>{% for value in ['computer', 'server', 'cloud', 'render', 'ai', 'storage', 'other'] %}<option value="{{ value }}" {% if values.digitalType|default('') == value %}selected{% endif %}>{{ ('backend.emission.energy_v1.digital_types.' ~ value)|trans }}</option>{% endfor %}</select></div>
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.digital_location'|trans }}</label><input class="form-control" name="digitalLocation" value="{{ values.digitalLocation|default('') }}"></div>
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.digital_country'|trans }}</label><select class="form-select" name="digitalCountry"><option value="">{{ 'backend.emission.energy_v1.fields.use_general_country'|trans }}</option>{% for code, name in countries %}<option value="{{ code }}" {% if values.digitalCountry|default('') == code %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.known_kwh'|trans }}</label><input class="form-control" name="knownKwh" value="{{ values.knownKwh|default('') }}" inputmode="decimal"></div>
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.hours'|trans }}</label><input class="form-control" name="hours" value="{{ values.hours|default('') }}" inputmode="decimal"></div>
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.units_gpu'|trans }}</label><input class="form-control" name="units" value="{{ values.units|default('') }}"></div>
-          <div class="col-md-4"><label class="form-label">GPU</label><input class="form-control" name="gpu" value="{{ values.gpu|default('') }}"></div>
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.service'|trans }}</label><input class="form-control" name="service" value="{{ values.service|default('') }}"></div>
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.model'|trans }}</label><input class="form-control" name="model" value="{{ values.model|default('') }}"></div>
-          <div class="col-md-6"><label class="form-label">{{ 'backend.emission.energy_v1.fields.provider'|trans }}</label><input class="form-control" name="provider" value="{{ values.provider|default('') }}"></div>
-          <div class="col-md-6"><label class="form-label">{{ 'backend.emission.energy_v1.fields.ownership'|trans }}</label><select class="form-select" name="ownership"><option value="">{{ 'backend.common.select'|trans }}</option>{% for value in ['own', 'rented', 'external_cloud'] %}<option value="{{ value }}" {% if values.ownership|default('') == value %}selected{% endif %}>{{ ('backend.emission.energy_v1.ownership.' ~ value)|trans }}</option>{% endfor %}</select></div>
         </div>
       </div></section>
 

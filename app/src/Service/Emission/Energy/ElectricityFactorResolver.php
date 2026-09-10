@@ -27,7 +27,6 @@ final readonly class ElectricityFactorResolver
                 [
                     'scope' => 'ALCANCE 2',
                     'boundary' => 'Operational electricity only; lifecycle emissions are not zero.',
-                    'factorVersion' => 'Energia FINAL v10 · 2026-09-04',
                     'country' => $country,
                 ],
             );

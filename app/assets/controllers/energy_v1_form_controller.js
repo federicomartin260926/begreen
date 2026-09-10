@@ -2,7 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
   static targets = [
-    'form', 'electricityPanel', 'equipmentPanel', 'batteryPanel', 'digitalPanel', 'origin', 'inputMethod',
+    'form', 'electricityPanel', 'equipmentPanel', 'batteryPanel', 'origin', 'inputMethod',
     'totalFields', 'meterFields', 'mixedFields', 'fuel', 'fuelUnit', 'equipmentMode', 'equipmentDirectFields',
     'cylinderFields', 'bottleSize', 'chargeSource', 'batteryMixedFields', 'previewStatus', 'previewEmission',
     'previewTrace', 'previewMessages',
@@ -38,7 +38,6 @@ export default class extends Controller {
     this.toggle(this.electricityPanelTarget, family === 'electricity');
     this.toggle(this.equipmentPanelTarget, family === 'equipment');
     this.toggle(this.batteryPanelTarget, family === 'battery');
-    this.toggle(this.digitalPanelTarget, family === 'digital');
 
     const meter = family === 'electricity' && this.inputMethodTarget.value === 'meter';
     this.toggle(this.totalFieldsTarget, family === 'electricity' && !meter);
@@ -147,13 +146,27 @@ export default class extends Controller {
 
     const traceParts = [];
     if (result.normalizedAmount !== null) traceParts.push(`${result.normalizedAmount} ${result.normalizedUnit || ''}`.trim());
+    if (result.activityYear !== null) traceParts.push(`${this.i18nValue.activityYear}: ${result.activityYear}`);
     (result.factorTraces || []).forEach((trace) => {
-      const parts = [trace.source, trace.factorYear ? String(trace.factorYear) : trace.temporalType];
-      if (trace.factorValue !== null) parts.push(`${this.formatDecimal(trace.factorValue)} ${trace.factorUnit || ''}`.trim());
+      const parts = [trace.component];
+      if (trace.factorId) parts.push(`${this.i18nValue.factorId}: ${trace.factorId}`);
+      if (trace.activityYear !== null) parts.push(`${this.i18nValue.activityYear}: ${trace.activityYear}`);
+      if (trace.factorActivityYear !== null) parts.push(`${this.i18nValue.factorActivityYear}: ${trace.factorActivityYear}`);
+      if (trace.factorYear !== null) parts.push(`${this.i18nValue.factorYear}: ${trace.factorYear}`);
+      if (trace.temporalType) parts.push(`${this.i18nValue.temporalType}: ${trace.temporalType}`);
+      if (trace.factorVersion) parts.push(`${this.i18nValue.factorVersion}: ${trace.factorVersion}`);
+      if (trace.factorValue !== null) parts.push(`${this.i18nValue.factor}: ${this.formatDecimal(trace.factorValue)} ${trace.factorUnit || ''}`.trim());
+      if (trace.source) parts.push(trace.source);
+      if (trace.sourceDetail) parts.push(`${this.i18nValue.sourceDetail}: ${trace.sourceDetail}`);
       if (trace.fallback) {
-        parts.push(this.i18nValue.fallbackLabels?.[trace.fallbackReason] || trace.fallbackReason);
+        const reason = this.i18nValue.fallbackLabels?.[trace.fallbackReason] || trace.fallbackReason;
+        parts.push(reason ? `${this.i18nValue.fallback}: ${reason}` : this.i18nValue.fallback);
       }
-      if (trace.geographicProxy) parts.push(`${trace.proxyGeography}`);
+      if (trace.geographicProxy) parts.push(`${this.i18nValue.geographicProxy}: ${trace.proxyGeography}`);
+      if (trace.qualityStatus) parts.push(`${this.i18nValue.quality}: ${trace.qualityStatus}`);
+      ['sourceWorkbook', 'sourceSheet', 'dataset', 'scope'].forEach((key) => {
+        if (trace.metadata?.[key]) parts.push(trace.metadata[key]);
+      });
       traceParts.push(parts.filter(Boolean).join(' · '));
     });
     this.previewTraceTarget.textContent = traceParts.join(' | ');

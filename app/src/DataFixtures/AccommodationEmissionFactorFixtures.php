@@ -15,15 +15,13 @@ final class AccommodationEmissionFactorFixtures extends Fixture implements Fixtu
     private const CATEGORY_KEY = 'accommodation';
     private const HOTEL_FILE = __DIR__.'/data/emission/accommodation_hotel_factors_v1.csv';
     private const CONTEXTUAL_FILE = __DIR__.'/data/emission/accommodation_contextual_factors_v1.csv';
-    private const HOTEL_HEADERS = [
-        'activity_year', 'country', 'iso3', 'stars', 'dataset', 'dataset_calendar_year',
-        'tool_version', 'factor_value', 'factor_unit', 'method', 'sample_count',
-        'is_temporal_fallback', 'is_geographic_proxy', 'source', 'source_url',
-    ];
-    private const CONTEXTUAL_HEADERS = [
-        'accommodation_type', 'country_scope', 'activity_year_scope', 'factor_value',
-        'factor_unit', 'temporal_type', 'factor_version', 'is_temporal_fallback',
-        'is_geographic_proxy', 'source', 'source_url',
+    private const HEADERS = [
+        'factor_id', 'geography', 'iso3', 'subcategory', 'activity', 'variant',
+        'technology_fuel_material', 'destination_origin_supplier', 'input_unit',
+        'activity_year', 'activity_year_scope', 'factor_year', 'factor_value',
+        'factor_unit', 'temporal_type', 'factor_version', 'source', 'source_detail',
+        'source_url', 'is_temporal_fallback', 'is_geographic_proxy', 'quality_status',
+        'notes', 'source_workbook', 'source_sheet',
     ];
 
     public function __construct(private readonly EmissionFactorKeyGenerator $keyGenerator)
@@ -37,83 +35,94 @@ final class AccommodationEmissionFactorFixtures extends Fixture implements Fixtu
 
     public function load(ObjectManager $manager): void
     {
-        $identities = [];
-        $this->loadHotelFactors($manager, $identities);
-        $this->loadContextualFactors($manager, $identities);
+        $factorIds = [];
+        $this->loadHotelFactors($manager, $factorIds);
+        $this->loadContextualFactors($manager, $factorIds);
         $manager->flush();
     }
 
-    /** @param array<string, true> $identities */
-    private function loadHotelFactors(ObjectManager $manager, array &$identities): void
+    /** @param array<string, true> $factorIds */
+    private function loadHotelFactors(ObjectManager $manager, array &$factorIds): void
     {
-        $file = $this->csv(self::HOTEL_FILE, self::HOTEL_HEADERS, 'hotel');
+        $file = $this->csv(self::HOTEL_FILE, self::HEADERS, 'hotel');
         while (!$file->eof()) {
-            $row = $this->row($file, self::HOTEL_HEADERS, 'hotel');
+            $row = $this->row($file, self::HEADERS, 'hotel');
             if (null === $row) {
                 continue;
             }
+            if ('Hotel' !== $row['activity'] || EmissionFactor::TEMPORAL_TYPE_VERSIONED !== $row['temporal_type']) {
+                throw new \RuntimeException('Unexpected hotel factor contract.');
+            }
+            if ('' === $row['factor_id'] || '' === $row['activity_year'] || '' === $row['factor_year'] || '' === $row['factor_value']) {
+                throw new \RuntimeException('Incomplete hotel factor row.');
+            }
 
+            $stars = str_replace(' estrellas', '', $row['variant']);
             $criteria = $this->keyGenerator->normalize([
                 'accommodationType' => 'hotel',
                 'iso3' => $row['iso3'],
-                'stars' => $row['stars'],
+                'stars' => $stars,
                 'unit' => 'occupied room-night',
             ]);
             $functionalKey = $this->keyGenerator->generate($criteria);
-            $this->assertUnique($identities, $functionalKey, $row['activity_year'], 'hotel', $file->key() + 1);
+            $this->assertUniqueFactorId($factorIds, $row['factor_id'], 'hotel', $file->key() + 1);
 
             $manager->persist((new EmissionFactor())
                 ->setCategoryKey(self::CATEGORY_KEY)
                 ->setFunctionalKey($functionalKey)
                 ->setCriteria($criteria)
-                ->setYear((int) $row['activity_year'])
-                ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_ANNUAL)
+                ->setFactorId($row['factor_id'])
+                ->setActivityYear((int) $row['activity_year'])
+                ->setYear((int) $row['factor_year'])
+                ->setTemporalType($row['temporal_type'])
                 ->setValue($row['factor_value'])
                 ->setUnit($row['factor_unit'])
                 ->setSource($row['source'])
-                ->setSourceDetail(null)
+                ->setSourceDetail('' === $row['source_detail'] ? null : $row['source_detail'])
                 ->setMetadata([
-                    'country' => $row['country'],
+                    'country' => $row['geography'],
                     'iso3' => $row['iso3'],
-                    'stars' => $row['stars'],
-                    'dataset' => $row['dataset'],
-                    'datasetCalendarYear' => (int) $row['dataset_calendar_year'],
-                    'toolVersion' => $row['tool_version'],
-                    'method' => $row['method'],
-                    'sampleCount' => '' === $row['sample_count'] ? null : (int) $row['sample_count'],
-                    'sourceTemporalFallback' => $this->boolean($row['is_temporal_fallback'], 'is_temporal_fallback'),
+                    'stars' => $stars,
+                    'factorVersion' => $row['factor_version'],
+                    'isTemporalFallback' => $this->boolean($row['is_temporal_fallback'], 'is_temporal_fallback'),
                     'isGeographicProxy' => $this->boolean($row['is_geographic_proxy'], 'is_geographic_proxy'),
-                    'sourceUrl' => $row['source_url'],
-                    'activityUnit' => 'occupied room-night',
+                    'qualityStatus' => '' === $row['quality_status'] ? null : $row['quality_status'],
+                    'notes' => '' === $row['notes'] ? null : $row['notes'],
+                    'sourceUrl' => '' === $row['source_url'] ? null : $row['source_url'],
+                    'sourceWorkbook' => $row['source_workbook'],
+                    'sourceSheet' => $row['source_sheet'],
+                    'activityUnit' => $row['input_unit'],
                 ]));
         }
     }
 
-    /** @param array<string, true> $identities */
-    private function loadContextualFactors(ObjectManager $manager, array &$identities): void
+    /** @param array<string, true> $factorIds */
+    private function loadContextualFactors(ObjectManager $manager, array &$factorIds): void
     {
-        $file = $this->csv(self::CONTEXTUAL_FILE, self::CONTEXTUAL_HEADERS, 'contextual accommodation');
+        $file = $this->csv(self::CONTEXTUAL_FILE, self::HEADERS, 'contextual accommodation');
         while (!$file->eof()) {
-            $row = $this->row($file, self::CONTEXTUAL_HEADERS, 'contextual accommodation');
+            $row = $this->row($file, self::HEADERS, 'contextual accommodation');
             if (null === $row) {
                 continue;
             }
-            if ('VERSIONED' !== $row['temporal_type']) {
+            if ('Apartamento / vivienda' !== $row['activity'] || 'VERSIONED' !== $row['temporal_type']) {
                 throw new \RuntimeException('Unexpected contextual accommodation temporal type.');
             }
 
             $criteria = $this->keyGenerator->normalize([
                 'accommodationType' => 'apartment',
-                'countryScope' => $row['country_scope'],
+                'countryScope' => $row['geography'],
                 'unit' => 'persona-noche',
             ]);
             $functionalKey = $this->keyGenerator->generate($criteria);
-            $this->assertUnique($identities, $functionalKey, 'VERSIONED', 'contextual accommodation', $file->key() + 1);
+            $this->assertUniqueFactorId($factorIds, $row['factor_id'], 'contextual accommodation', $file->key() + 1);
 
             $manager->persist((new EmissionFactor())
                 ->setCategoryKey(self::CATEGORY_KEY)
                 ->setFunctionalKey($functionalKey)
                 ->setCriteria($criteria)
+                ->setFactorId($row['factor_id'])
+                ->setActivityYear(null)
                 ->setYear(null)
                 ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_VERSIONED)
                 ->setValue($row['factor_value'])
@@ -121,14 +130,18 @@ final class AccommodationEmissionFactorFixtures extends Fixture implements Fixtu
                 ->setSource($row['source'])
                 ->setSourceDetail(null)
                 ->setMetadata([
-                    'accommodationTypeLabel' => $row['accommodation_type'],
-                    'countryScope' => $row['country_scope'],
+                    'accommodationTypeLabel' => $row['activity'],
+                    'countryScope' => $row['geography'],
                     'activityYearScope' => $row['activity_year_scope'],
                     'factorVersion' => $row['factor_version'],
-                    'sourceTemporalFallback' => $this->boolean($row['is_temporal_fallback'], 'is_temporal_fallback'),
+                    'isTemporalFallback' => $this->boolean($row['is_temporal_fallback'], 'is_temporal_fallback'),
                     'isGeographicProxy' => $this->boolean($row['is_geographic_proxy'], 'is_geographic_proxy'),
-                    'sourceUrl' => $row['source_url'],
-                    'activityUnit' => 'persona-noche',
+                    'qualityStatus' => '' === $row['quality_status'] ? null : $row['quality_status'],
+                    'notes' => '' === $row['notes'] ? null : $row['notes'],
+                    'sourceUrl' => '' === $row['source_url'] ? null : $row['source_url'],
+                    'sourceWorkbook' => $row['source_workbook'],
+                    'sourceSheet' => $row['source_sheet'],
+                    'activityUnit' => $row['input_unit'],
                 ]));
         }
     }
@@ -164,21 +177,20 @@ final class AccommodationEmissionFactorFixtures extends Fixture implements Fixtu
         return $row;
     }
 
-    /** @param array<string, true> $identities */
-    private function assertUnique(array &$identities, string $functionalKey, string $temporalIdentity, string $label, int $row): void
+    /** @param array<string, true> $factorIds */
+    private function assertUniqueFactorId(array &$factorIds, string $factorId, string $label, int $row): void
     {
-        $identity = $functionalKey.'|'.$temporalIdentity;
-        if (isset($identities[$identity])) {
-            throw new \RuntimeException(sprintf('Duplicate %s factor source identity in CSV row %d.', $label, $row));
+        if ('' === $factorId || isset($factorIds[$factorId])) {
+            throw new \RuntimeException(sprintf('Missing or duplicate %s factor ID in CSV row %d.', $label, $row));
         }
-        $identities[$identity] = true;
+        $factorIds[$factorId] = true;
     }
 
     private function boolean(string $value, string $field): bool
     {
-        return match (strtolower($value)) {
-            'true' => true,
-            'false' => false,
+        return match ($value) {
+            '1' => true,
+            '0' => false,
             default => throw new \RuntimeException(sprintf('Invalid boolean value for %s.', $field)),
         };
     }

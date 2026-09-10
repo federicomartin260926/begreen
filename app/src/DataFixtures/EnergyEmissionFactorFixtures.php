@@ -8,17 +8,17 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 
-/**
- * Source: Energia.xlsx, FINAL v10 delivery, received 2026-09-04.
- * Materialized activity-year fallback rows are excluded from the normalized CSV.
- */
 final class EnergyEmissionFactorFixtures extends Fixture implements FixtureGroupInterface
 {
     private const CATEGORY_KEY = 'energy';
     private const DATA_FILE = __DIR__.'/data/emission/energy_factors_v1.csv';
     private const HEADERS = [
-        'geography', 'category', 'activity', 'labeling', 'supplier', 'unit', 'factor_year',
-        'factor_value', 'factor_unit', 'source', 'source_detail', 'scope',
+        'factor_id', 'geography', 'iso3', 'subcategory', 'activity', 'variant',
+        'technology_fuel_material', 'destination_origin_supplier', 'input_unit',
+        'activity_year', 'activity_year_scope', 'factor_year', 'factor_value',
+        'factor_unit', 'temporal_type', 'factor_version', 'source', 'source_detail',
+        'source_url', 'is_temporal_fallback', 'is_geographic_proxy', 'quality_status',
+        'notes', 'source_workbook', 'source_sheet',
     ];
 
     public function __construct(private readonly EmissionFactorKeyGenerator $keyGenerator)
@@ -38,7 +38,7 @@ final class EnergyEmissionFactorFixtures extends Fixture implements FixtureGroup
             throw new \RuntimeException('Unexpected energy emission factor CSV headers.');
         }
 
-        $identities = [];
+        $factorIds = [];
         while (!$file->eof()) {
             $values = $file->fgetcsv();
             if (false === $values || [null] === $values) {
@@ -50,36 +50,50 @@ final class EnergyEmissionFactorFixtures extends Fixture implements FixtureGroup
 
             /** @var array<string, string> $row */
             $row = array_combine(self::HEADERS, $values);
+            if (EmissionFactor::TEMPORAL_TYPE_ANNUAL !== $row['temporal_type'] || '' !== $row['factor_version']) {
+                throw new \RuntimeException(sprintf('Unexpected energy temporal contract in CSV row %d.', $file->key() + 1));
+            }
+            if ('' === $row['activity_year'] || '' === $row['factor_year'] || '' === $row['factor_value']) {
+                throw new \RuntimeException(sprintf('Incomplete energy factor row %d.', $file->key() + 1));
+            }
             $criteria = $this->keyGenerator->normalize([
                 'geography' => $row['geography'],
-                'category' => $row['category'],
+                'category' => $row['subcategory'],
                 'activity' => $row['activity'],
-                'labeling' => $row['labeling'],
-                'supplier' => $row['supplier'],
-                'unit' => $row['unit'],
+                'labeling' => $row['variant'],
+                'supplier' => $row['destination_origin_supplier'],
+                'unit' => $row['input_unit'],
             ]);
             $functionalKey = $this->keyGenerator->generate($criteria);
-            $identity = $functionalKey.'|'.$row['factor_year'];
-            if (isset($identities[$identity])) {
-                throw new \RuntimeException(sprintf('Duplicate energy factor source identity in CSV row %d.', $file->key() + 1));
+            if ('' === $row['factor_id'] || isset($factorIds[$row['factor_id']])) {
+                throw new \RuntimeException(sprintf('Missing or duplicate energy factor ID in CSV row %d.', $file->key() + 1));
             }
-            $identities[$identity] = true;
+            $factorIds[$row['factor_id']] = true;
 
             $factor = (new EmissionFactor())
                 ->setCategoryKey(self::CATEGORY_KEY)
                 ->setFunctionalKey($functionalKey)
                 ->setCriteria($criteria)
-                ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_ANNUAL)
+                ->setFactorId($row['factor_id'])
+                ->setActivityYear((int) $row['activity_year'])
+                ->setTemporalType($row['temporal_type'])
                 ->setYear((int) $row['factor_year'])
-                ->setValue('' === $row['factor_value'] ? null : $row['factor_value'])
+                ->setValue($row['factor_value'])
                 ->setUnit($row['factor_unit'])
                 ->setSource($row['source'])
                 ->setSourceDetail('' === $row['source_detail'] ? null : $row['source_detail'])
                 ->setMetadata([
-                    'activityUnit' => $row['unit'],
-                    'scope' => $row['scope'],
-                    'sourceUrl' => $this->sourceUrl($row['source']),
-                    'factorVersion' => 'Energia FINAL v10 · 2026-09-04',
+                    'activityUnit' => $row['input_unit'],
+                    'factorVersion' => '' === $row['factor_version'] ? null : $row['factor_version'],
+                    'isTemporalFallback' => '1' === $row['is_temporal_fallback'],
+                    'isGeographicProxy' => '1' === $row['is_geographic_proxy'],
+                    'proxyGeography' => $this->noteValue($row['notes'], 'proxy_geography'),
+                    'fallbackReason' => $this->noteValue($row['notes'], 'fallback_reason'),
+                    'qualityStatus' => '' === $row['quality_status'] ? null : $row['quality_status'],
+                    'sourceUrl' => '' === $row['source_url'] ? null : $row['source_url'],
+                    'notes' => '' === $row['notes'] ? null : $row['notes'],
+                    'sourceWorkbook' => $row['source_workbook'],
+                    'sourceSheet' => $row['source_sheet'],
                 ]);
             $manager->persist($factor);
         }
@@ -87,12 +101,12 @@ final class EnergyEmissionFactorFixtures extends Fixture implements FixtureGroup
         $manager->flush();
     }
 
-    private function sourceUrl(string $source): ?string
+    private function noteValue(string $notes, string $key): ?string
     {
-        return match ($source) {
-            'MITECO' => 'https://www.miteco.gob.es/',
-            'DEFRA' => 'https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2026',
-            default => null,
-        };
+        if (!preg_match('/(?:^|; )'.preg_quote($key, '/').'=([^;]+)/', $notes, $matches)) {
+            return null;
+        }
+
+        return 'None' === $matches[1] ? null : $matches[1];
     }
 }

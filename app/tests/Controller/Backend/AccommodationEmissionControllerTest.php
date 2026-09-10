@@ -53,7 +53,15 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
         self::assertSame(Response::HTTP_OK, $preview->getStatusCode());
         self::assertSame('6', $data['normalizedAmount']);
         self::assertSame('57.303', $data['emissionKgCo2e']);
+        self::assertSame(2024, $data['activityYear']);
+        self::assertNotEmpty($data['factorTraces'][0]['factorId']);
+        self::assertSame(2024, $data['factorTraces'][0]['activityYear']);
         self::assertSame(2024, $data['factorTraces'][0]['factorYear']);
+        self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $data['factorTraces'][0]['temporalType']);
+        self::assertNotSame('accommodation-v1', $data['factorTraces'][0]['factorVersion']);
+        self::assertNotNull($data['factorTraces'][0]['effectiveFactorValue']);
+        self::assertNotNull($data['factorTraces'][0]['effectiveFactorUnit']);
+        self::assertNotNull($data['factorTraces'][0]['source']);
 
         $context = $this->context();
         $request = $this->request('POST', $post + ['notes' => '  Hotel equipo  ']);
@@ -69,12 +77,15 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
         self::assertSame('Hotel equipo', $persisted->getNotes());
         self::assertStringContainsString('"version":"accommodation-v1"', (string) $persisted->getCalculationDetails());
         self::assertStringNotContainsString('999', (string) $persisted->getCalculationDetails());
+        $snapshot = json_decode((string) $persisted->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('accommodation-v1', $snapshot['calculatorVersion']);
+        self::assertNotSame('accommodation-v1', $snapshot['calculation']['factorTraces'][0]['factorVersion']);
     }
 
     public function testCreateSupportsHostelApartmentAndOtherContracts(): void
     {
         foreach ([
-            [$this->hostelPost(), 6.0, 9.5505, EmissionRecord::STATUS_CALCULATED],
+            [$this->hostelPost(), 6.0, null, EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE],
             [$this->apartmentPost(), 6.0, 24.522, EmissionRecord::STATUS_CALCULATED],
             [$this->otherPost(), null, null, EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE],
         ] as [$post, $amount, $emission, $status]) {
@@ -108,6 +119,10 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
         self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
         self::assertNull($persisted);
         self::assertStringContainsString('deben dividirse', (string) $response->getContent());
+
+        $preview = $this->preview($post);
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $preview->getStatusCode());
+        self::assertSame(['error' => 'invalid_input'], json_decode((string) $preview->getContent(), true, flags: JSON_THROW_ON_ERROR));
     }
 
     public function testEditRecalculatesAndReplacesSnapshotAuthority(): void
@@ -294,7 +309,7 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
             static function (string $categoryKey, string $functionalKey, int $activityYear) use (&$factors): ?EmissionFactor {
                 self::assertSame('accommodation', $categoryKey);
                 $candidates = array_filter($factors, static fn (EmissionFactor $factor): bool =>
-                    EmissionFactor::TEMPORAL_TYPE_ANNUAL === $factor->getTemporalType()
+                    EmissionFactor::TEMPORAL_TYPE_VERSIONED === $factor->getTemporalType()
                     && $factor->getFunctionalKey() === $functionalKey
                     && $factor->getYear() <= $activityYear
                 );

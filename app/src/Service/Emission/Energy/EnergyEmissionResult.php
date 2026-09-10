@@ -5,6 +5,10 @@ namespace App\Service\Emission\Energy;
 final readonly class EnergyEmissionResult
 {
     public ?int $factorYear;
+    public ?string $factorId;
+    public ?int $factorActivityYear;
+    public ?string $factorVersion;
+    public ?string $qualityStatus;
     public ?string $factorValue;
     public ?string $factorUnit;
     public ?string $source;
@@ -29,6 +33,10 @@ final readonly class EnergyEmissionResult
     ) {
         $primary = 1 === count($factorTraces) ? $factorTraces[0] : null;
         $this->factorYear = $primary?->factorYear;
+        $this->factorId = $primary?->factorId;
+        $this->factorActivityYear = $primary?->factorActivityYear;
+        $this->factorVersion = $primary?->factorVersion;
+        $this->qualityStatus = $primary?->qualityStatus;
         $this->factorValue = $primary?->factorValue;
         $this->factorUnit = $primary?->factorUnit;
         $this->source = $primary?->source;
@@ -54,7 +62,11 @@ final readonly class EnergyEmissionResult
             'normalizedUnit' => $this->normalizedUnit,
             'activityYear' => $this->activityYear,
             'temporalType' => $this->temporalType,
+            'factorId' => $this->factorId,
+            'factorActivityYear' => $this->factorActivityYear,
             'factorYear' => $this->factorYear,
+            'factorVersion' => $this->factorVersion,
+            'qualityStatus' => $this->qualityStatus,
             'factorValue' => $this->factorValue,
             'factorUnit' => $this->factorUnit,
             'source' => $this->source,
