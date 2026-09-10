@@ -26,11 +26,13 @@ La arquitectura legacy basada en `EmissionActivity` ha sido retirada. `EmissionR
 
 Campos funcionales principales:
 
+- `factorId`, identidad estable obligatoria y única;
 - `categoryKey`
 - `functionalKey`
 - `criteria`
 - `temporalType`
-- `year`
+- `activityYear`, año de aplicabilidad del factor, nullable cuando la metodología no depende de un año de actividad;
+- `factorYear`, año o edición temporal de la fuente, independiente de `activityYear`;
 - `value`
 - `unit`
 - `source`
@@ -62,20 +64,20 @@ No existe relación con `EmissionActivity`.
 
 ### ANNUAL
 
-- `year` obligatorio.
+- `activityYear` obligatorio.
 - Año exacto; si no existe, último anterior permitido.
 - Nunca se selecciona un factor futuro.
 - `activityYear` conserva el año real de actividad.
 
 ### VERSIONED
 
-- `year` puede ser `NULL`.
+- `activityYear` puede ser `NULL`.
 - `factorYear` puede ser `NULL`.
 - `activityYear` conserva el año de actividad.
 
 ### COMPOSITE
 
-Permite cálculos compuestos por más de un componente. `year` y `factorYear` pueden ser `NULL`.
+Permite cálculos compuestos por más de un componente. `activityYear` y `factorYear` pueden ser `NULL`.
 
 ### PROXY_LCA
 
@@ -93,6 +95,10 @@ Los fallbacks pertenecen al backend. Nunca deben:
 - seleccionar un `ANNUAL` futuro;
 - convertir silenciosamente `NULL` en cero;
 - ser decididos por JavaScript.
+
+Cuando más de un factor cumple los mismos criterios, la resolución común aplica este orden determinista:
+
+`activityYear DESC` → `factorYear DESC` → `factorId ASC`.
 
 ## Autoridad del backend
 
@@ -142,11 +148,11 @@ En la base reconstruida desde fixtures se han comprobado 738 registros y todos u
 
 ### Energía
 
-Incluye electricidad, generadores, baterías y tecnología digital.
+Incluye electricidad, generadores y baterías.
 
 Puede existir `NULL` cuando no hay base metodológica suficiente.
 
-- 1.036 factores;
+- 1.414 factores;
 - snapshot `energy-v1`.
 
 ### Agua
@@ -164,7 +170,7 @@ Incluye sanitarios, duchas, limpieza y otros usos contemplados.
 - hostal/pensión;
 - apartamento/vivienda;
 - factores versionados y proxies;
-- 3.256 factores;
+- 5.426 factores;
 - snapshot `accommodation-v1`.
 
 ### Catering
@@ -184,7 +190,7 @@ Utiliza `ANNUAL`, `VERSIONED` y `RULE`.
 
 Incluye proxy UK, casos `Desconocido` y `NON_WASTE_ROUTE_ZERO`.
 
-- 551 factores;
+- 1.270 factores;
 - snapshot `waste-v1`.
 
 ### Materiales y Productos
@@ -193,7 +199,7 @@ Incluye proxy UK, casos `Desconocido` y `NON_WASTE_ROUTE_ZERO`.
 - conversiones;
 - `ANNUAL`, `VERSIONED` y `RULE`;
 - casos `NULL` cuando no existe cálculo válido;
-- 508 factores;
+- 2.000 factores;
 - snapshot `material-v1`.
 
 ## Inventario de factores
@@ -201,28 +207,21 @@ Incluye proxy UK, casos `Desconocido` y `NON_WASTE_ROUTE_ZERO`.
 | Categoría | Factores |
 | --- | ---: |
 | Transporte | 1.193 |
-| Energía | 1.036 |
+| Energía | 1.414 |
 | Agua | 12 |
-| Alojamientos | 3.256 |
+| Alojamientos | 5.426 |
 | Catering | 9 |
-| Residuos | 551 |
-| Materiales y Productos | 508 |
-| **Total** | **6.565** |
-
-Por `temporalType`:
-
-| Tipo | Factores |
-| --- | ---: |
-| `ANNUAL` | 5.971 |
-| `VERSIONED` | 381 |
-| `RULE` | 211 |
-| `COMPOSITE` | 1 |
-| `PROXY_LCA` | 1 |
-| **Total** | **6.565** |
+| Residuos | 1.270 |
+| Materiales y Productos | 2.000 |
+| **Total** | **11.324** |
 
 ## Fixtures
 
 Durante el desarrollo actual, los fixtures son la fuente de verdad para factores, registros de ejemplo, snapshots y datos maestros necesarios para reproducir la Calculadora.
+
+Tras #52–#55, los factores de las siete categorías están alineados con la Base Maestra vigente.
+
+El fichero maestro `countries_v1.csv` conserva sus 217 filas. El catálogo operativo expone 215 países: `ANT` y `XKX` quedan excluidos porque Symfony Intl no puede convertirlos correctamente a ISO2.
 
 No se mantienen backfills legacy.
 
@@ -274,6 +273,10 @@ Reglas:
 - descripciones desde snapshot moderno;
 - agrupaciones/sumatorios toleran `amount` y `emission` nullable;
 - informe PDF «Detalle completo de registros» compatible con las siete categorías modernas.
+
+`EmissionTraceabilityPresenter` normaliza la trazabilidad de las siete categorías exclusivamente desde el snapshot histórico almacenado. No recalcula registros con factores actuales. `factorId` forma parte del contrato estable cuando existe un `EmissionFactor` real; las reglas metodológicas sintéticas pueden conservar `factorId = NULL`.
+
+La infraestructura de trazabilidad del PDF está disponible. El diseño y contenido definitivos quedan pendientes de la especificación de Franc y no constituyen una incidencia del cierre técnico.
 
 `getEffectiveCategory()` puede utilizarse como alias de la categoría moderna.
 
@@ -366,18 +369,22 @@ Comprobar:
 
 ### Dump limpio de fixtures preparado
 
-Artefacto local generado tras reconstrucción limpia de schema + fixtures:
+Artefacto local de predeploy generado desde la base local basada en fixtures:
 
-`backups/begreen_clean_fixtures_20260909_101347.sql`
+`backups/begreen_clean_fixtures_20260910_193412.sql`
 
-- tamaño: `7.175.747 bytes`;
-- SHA-256: `77f96aa144910b0d64cd61ab392dae7e1a0485093187bf6ee896598995b69e6c`;
-- factores `EmissionFactor`: `6.565`;
+- tamaño: `12.713.546 bytes`;
+- SHA-256: `af1e055ae9253c05b9e597b3f00da5a07c79f1b3c56a3ff8401f700e1b115c56`;
+- factores `EmissionFactor`: `11.324`;
 - registros `EmissionRecord`: `738`;
 - snapshots modernos desconocidos: `0`;
 - dependencias funcionales legacy: `0`.
 
 Este es el dump de referencia preparado para la futura carga conjunta cuando se autorice el despliegue.
+
+### Cierre y predeploy #56
+
+#56 actualiza la documentación al contrato final de #52–#55 y prepara el dump local reproducible `begreen_clean_fixtures_20260910_193412.sql`. La carga en producción, el cambio de schema productivo y el QA funcional productivo requieren autorización separada.
 
 ### Producción
 
