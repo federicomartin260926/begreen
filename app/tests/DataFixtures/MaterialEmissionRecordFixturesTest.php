@@ -103,7 +103,7 @@ final class MaterialEmissionRecordFixturesTest extends TestCase
             'direct_weight',
             'wood_dimensions',
             'paper_packages',
-            'battery_versioned',
+            'battery_annual',
             'paint_volume',
             'reuse_rule_zero',
             'reused_plastic_not_calculable',
@@ -117,11 +117,12 @@ final class MaterialEmissionRecordFixturesTest extends TestCase
         self::assertSame(16.0, $cases['paint_volume'][0]->getAmount());
 
         self::assertSame(
-            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
-            $cases['battery_versioned'][1]['calculation']['factorTraces'][0]['temporalType'],
+            EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+            $cases['battery_annual'][1]['calculation']['factorTraces'][0]['temporalType'],
         );
-        self::assertNull(
-            $cases['battery_versioned'][1]['calculation']['factorTraces'][0]['factorYear'],
+        self::assertSame(
+            2024,
+            $cases['battery_annual'][1]['calculation']['factorTraces'][0]['factorYear'],
         );
 
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $cases['reuse_rule_zero'][0]->getStatus());
@@ -170,31 +171,33 @@ final class MaterialEmissionRecordFixturesTest extends TestCase
 
         $repository = $this->createMock(EmissionFactorRepository::class);
 
-        $repository->method('findForActivityYear')->willReturnCallback(
-            static function (
-                string $categoryKey,
-                string $functionalKey,
-                int $activityYear,
-            ) use (&$factors): ?EmissionFactor {
+        $repository->method('findForApplicabilityYear')->willReturnCallback(
+            static function (string $categoryKey, string $functionalKey, int $activityYear) use (&$factors): ?EmissionFactor {
                 $candidates = array_filter(
                     $factors,
                     static fn (EmissionFactor $factor): bool =>
                         'material' === $categoryKey
-                        && EmissionFactor::TEMPORAL_TYPE_ANNUAL === $factor->getTemporalType()
                         && $factor->getFunctionalKey() === $functionalKey
-                        && (int) $factor->getYear() <= $activityYear,
+                        && null !== $factor->getActivityYear()
+                        && $factor->getActivityYear() <= $activityYear
+                        && (null === $factor->getYear() || $factor->getYear() <= $activityYear)
+                        && in_array($factor->getTemporalType(), [
+                            EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+                            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+                            EmissionFactor::TEMPORAL_TYPE_RULE,
+                        ], true),
                 );
 
                 usort(
                     $candidates,
                     static fn (EmissionFactor $left, EmissionFactor $right): int =>
-                        (int) $right->getYear() <=> (int) $left->getYear(),
+                        $right->getActivityYear() <=> $left->getActivityYear()
+                        ?: strcmp((string) $left->getFactorId(), (string) $right->getFactorId()),
                 );
 
                 return $candidates[0] ?? null;
             },
         );
-
         $repository->method('findMethodological')->willReturnCallback(
             static function (
                 string $categoryKey,

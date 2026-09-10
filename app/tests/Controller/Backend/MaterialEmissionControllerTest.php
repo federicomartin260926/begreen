@@ -263,15 +263,29 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         (new MaterialEmissionFactorFixtures($keyGenerator))->load($manager);
 
         $repository = $this->createMock(EmissionFactorRepository::class);
-        $repository->method('findForActivityYear')->willReturnCallback(
+        $repository->method('findForApplicabilityYear')->willReturnCallback(
             static function (string $categoryKey, string $functionalKey, int $activityYear) use (&$factors): ?EmissionFactor {
-                $candidates = array_filter($factors, static fn (EmissionFactor $factor): bool =>
-                    'material' === $categoryKey
-                    && EmissionFactor::TEMPORAL_TYPE_ANNUAL === $factor->getTemporalType()
-                    && $factor->getFunctionalKey() === $functionalKey
-                    && (int) $factor->getYear() <= $activityYear
+                $candidates = array_filter(
+                    $factors,
+                    static fn (EmissionFactor $factor): bool =>
+                        'material' === $categoryKey
+                        && $factor->getFunctionalKey() === $functionalKey
+                        && null !== $factor->getActivityYear()
+                        && $factor->getActivityYear() <= $activityYear
+                        && (null === $factor->getYear() || $factor->getYear() <= $activityYear)
+                        && in_array($factor->getTemporalType(), [
+                            EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+                            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
+                            EmissionFactor::TEMPORAL_TYPE_RULE,
+                        ], true),
                 );
-                usort($candidates, static fn (EmissionFactor $left, EmissionFactor $right): int => (int) $right->getYear() <=> (int) $left->getYear());
+
+                usort(
+                    $candidates,
+                    static fn (EmissionFactor $left, EmissionFactor $right): int =>
+                        $right->getActivityYear() <=> $left->getActivityYear()
+                        ?: strcmp((string) $left->getFactorId(), (string) $right->getFactorId()),
+                );
 
                 return $candidates[0] ?? null;
             },

@@ -143,7 +143,7 @@ final class MaterialEmissionRecordFixtures extends Fixture implements DependentF
                 ),
             ],
             [
-                'key' => 'battery_versioned',
+                'key' => 'battery_annual',
                 'notes' => 'Fixture Material V1 · batería por unidades',
                 'input' => new MaterialEmissionInput(
                     startDate: new \DateTimeImmutable('2024-01-01'),
