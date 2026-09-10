@@ -11,6 +11,7 @@ use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\EmissionCountryCatalog;
 use App\Service\Emission\EmissionRecordAttachmentValidationException;
 use App\Service\Emission\Energy\EnergyEmissionCalculator;
 use App\Service\Emission\Energy\EnergyEmissionRecordService;
@@ -23,7 +24,6 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Intl\Countries;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -31,6 +31,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 final class EnergyEmissionController extends AbstractController
 {
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
+    {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+    }
+
     private const FORM_FIELDS = [
         'family', 'startDate', 'endDate', 'country', 'origin', 'inputMethod', 'amount', 'unit', 'initialReading', 'finalReading',
         'gridKwh', 'solarKwh', 'supplier', 'labeling', 'equipmentType', 'fuel', 'mode', 'bottleSizeKg',
@@ -219,6 +226,9 @@ final class EnergyEmissionController extends AbstractController
         bool $duplicate = false,
     ): Response {
         $backQuery = $this->indexQuery($request, (int) $category->getId());
+        if (is_string($values['country'] ?? null) && '' !== $values['country']) {
+            $values['country'] = $this->countryCatalog->iso3ForForm($values['country']);
+        }
         if (empty($values['inputMethod'])) {
             $values['inputMethod'] = !empty($values['initialReading']) || !empty($values['finalReading']) ? 'meter' : 'total';
         }
@@ -235,7 +245,7 @@ final class EnergyEmissionController extends AbstractController
             'values' => $values,
             'formAction' => $formAction,
             'energyUiConfig' => $uiCatalog->configuration(),
-            'countries' => Countries::getNames($request->getLocale()),
+            'countries' => $this->countryCatalog->choices($request->getLocale()),
             'csrfTokenId' => $edit ? 'energy_emission_v1_edit_'.$record?->getId() : 'energy_emission_v1_create',
             'errors' => $errors,
             'backQuery' => $backQuery,

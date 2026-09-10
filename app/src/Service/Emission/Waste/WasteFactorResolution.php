@@ -33,6 +33,10 @@ final readonly class WasteFactorResolution
         public array $criteria,
         public array $metadata,
         public array $candidateEvaluations = [],
+        public ?string $factorId = null,
+        public ?int $factorActivityYear = null,
+        public ?string $factorVersion = null,
+        public ?string $qualityStatus = null,
     ) {
     }
 
@@ -79,6 +83,10 @@ final readonly class WasteFactorResolution
             $factor?->getCriteria() ?? [],
             $factor?->getMetadata() ?? [],
             $candidateEvaluations,
+            $factor?->getFactorId(),
+            $factor?->getActivityYear(),
+            is_string($factor?->getMetadata()['factorVersion'] ?? null) ? $factor->getMetadata()['factorVersion'] : null,
+            is_string($factor?->getMetadata()['qualityStatus'] ?? null) ? $factor->getMetadata()['qualityStatus'] : null,
         );
     }
 
@@ -147,6 +155,10 @@ final readonly class WasteFactorResolution
             $this->criteria,
             $this->metadata,
             $candidateEvaluations,
+            $this->factorId,
+            $this->factorActivityYear,
+            $this->factorVersion,
+            $this->qualityStatus,
         );
     }
 
@@ -171,9 +183,13 @@ final readonly class WasteFactorResolution
             'requestedTreatment' => $this->requestedTreatment,
             'resolvedTreatment' => $this->resolvedTreatment,
             'ruleType' => $this->ruleType,
+            'factorId' => $this->factorId,
             'temporalType' => $this->temporalType,
             'activityYear' => $this->activityYear,
+            'factorActivityYear' => $this->factorActivityYear,
             'factorYear' => $this->factorYear,
+            'factorVersion' => $this->factorVersion,
+            'qualityStatus' => $this->qualityStatus,
             'isFallback' => $this->isFallback,
             'fallbackReason' => $this->fallbackReason,
             'factorValue' => $this->factorValue,

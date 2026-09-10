@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Emission\Waste;
 
+use App\Service\Emission\EmissionCountryCatalog;
+
 final class WasteUiCatalog
 {
     public const REGION_SPAIN = 'spain';
@@ -20,27 +22,26 @@ final class WasteUiCatalog
 
     /** @var list<array<string, string>> */
     private array $routes;
+    private readonly EmissionCountryCatalog $countryCatalog;
 
-    public function __construct(?string $catalogFile = null)
+    public function __construct(?string $catalogFile = null, ?EmissionCountryCatalog $countryCatalog = null)
     {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
         $this->routes = $this->load($catalogFile ?? __DIR__.'/data/waste_catalog_v1.csv');
     }
 
     public function regionScopeForCountry(string $iso3): string
     {
-        $iso3 = $this->normalizeCountry($iso3);
-
-        return 'ESP' === $iso3 ? self::REGION_SPAIN : self::REGION_OUTSIDE_SPAIN;
+        return match ($this->countryCatalog->wasteRegion($iso3)) {
+            'España' => self::REGION_SPAIN,
+            'Fuera de España' => self::REGION_OUTSIDE_SPAIN,
+            default => throw new \UnexpectedValueException('Unsupported waste region in emission country catalog.'),
+        };
     }
 
     public function normalizeCountry(string $iso3): string
     {
-        $iso3 = strtoupper(trim($iso3));
-        if (!preg_match('/^[A-Z]{3}$/', $iso3)) {
-            throw new \InvalidArgumentException(sprintf('Unsupported waste country ISO3 "%s".', $iso3));
-        }
-
-        return $iso3;
+        return $this->countryCatalog->normalizeIso3($iso3);
     }
 
     /** @return list<array{value: string, label: string, hasSubactivity: bool}> */

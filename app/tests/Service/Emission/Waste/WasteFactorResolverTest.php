@@ -33,6 +33,8 @@ final class WasteFactorResolverTest extends TestCase
             2025,
         );
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_VERSIONED, $occc->temporalType);
+        self::assertNotNull($occc->factorId);
+        self::assertSame($occc->factorId, $occc->toArray()['factorId']);
         self::assertSame('0.24542', $occc->factorValue);
         self::assertNull($occc->factorYear);
         self::assertSame('ESP', $occc->sourceGeography);
@@ -106,6 +108,8 @@ final class WasteFactorResolverTest extends TestCase
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_RULE, $zero->temporalType);
         self::assertSame('NON_WASTE_ROUTE_ZERO', $zero->ruleType);
         self::assertSame('0', $zero->factorValue);
+        self::assertNull($zero->factorId);
+        self::assertNull($zero->toArray()['factorId']);
         self::assertNull($zero->factorYear);
 
         $fallback = $this->resolver->resolve(

@@ -9,6 +9,7 @@ use App\Service\Emission\Accommodation\AccommodationEmissionSnapshot;
 use App\Service\Emission\Water\WaterEmissionSnapshot;
 use App\Service\Emission\Catering\CateringEmissionSnapshot;
 use App\Service\Emission\Energy\EnergyEmissionSnapshot;
+use App\Service\Emission\EmissionTraceabilityPresenter;
 use App\Service\Emission\Material\MaterialEmissionSnapshot;
 use App\Service\Emission\Transport\TransportEmissionSnapshot;
 use App\Service\Emission\Waste\WasteEmissionSnapshot;
@@ -22,6 +23,13 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[Route('/backend/emission/reports')]
 class EmissionReportController extends AbstractController
 {
+    private readonly EmissionTraceabilityPresenter $traceabilityPresenter;
+
+    public function __construct(?EmissionTraceabilityPresenter $traceabilityPresenter = null)
+    {
+        $this->traceabilityPresenter = $traceabilityPresenter ?? new EmissionTraceabilityPresenter();
+    }
+
     #[Route('/overview', name: 'report_emission_overview_pdf')]
     public function overview(
         ActiveProjectService $activeProjectService,
@@ -106,6 +114,10 @@ class EmissionReportController extends AbstractController
                     $materialSnapshot,
                     $t,
                 ),
+                $records,
+            ),
+            'recordTraceabilities' => array_map(
+                fn (EmissionRecord $record): array => $this->recordTraceability($record),
                 $records,
             ),
         ], $filename);
@@ -318,5 +330,22 @@ class EmissionReportController extends AbstractController
             'activity' => $translator->trans('backend.common.no_activity'),
             'unit' => '—',
         ];
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function recordTraceability(EmissionRecord $record): array
+    {
+        $details = $record->getCalculationDetails();
+        if (!is_string($details) || '' === $details) {
+            return [];
+        }
+
+        try {
+            $snapshot = json_decode($details, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return [];
+        }
+
+        return is_array($snapshot) ? $this->traceabilityPresenter->extract($snapshot) : [];
     }
 }

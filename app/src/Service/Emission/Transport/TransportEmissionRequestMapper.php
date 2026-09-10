@@ -2,11 +2,18 @@
 
 namespace App\Service\Emission\Transport;
 
+use App\Service\Emission\EmissionCountryCatalog;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Intl\Countries;
 
 final class TransportEmissionRequestMapper
 {
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
+    {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+    }
+
     public function map(Request $request): TransportEmissionInput
     {
         $startDate = $this->requiredDate($request, 'startDate');
@@ -18,13 +25,7 @@ final class TransportEmissionRequestMapper
             throw new \InvalidArgumentException(TransportEmissionCalculator::CROSS_YEAR_ERROR);
         }
 
-        $country = strtoupper($this->requiredString($request, 'country'));
-        if (
-            1 !== preg_match('/^[A-Z]{2}$/', $country)
-            || !Countries::exists($country)
-        ) {
-            throw new \InvalidArgumentException('country must be a valid ISO-2 country code.');
-        }
+        $country = $this->countryCatalog->iso2FromIso3($this->requiredString($request, 'country'));
 
         return new TransportEmissionInput(
             $this->requiredString($request, 'category'),

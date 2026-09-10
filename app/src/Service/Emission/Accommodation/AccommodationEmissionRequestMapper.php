@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace App\Service\Emission\Accommodation;
 
+use App\Service\Emission\EmissionCountryCatalog;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Intl\Countries;
 
 final class AccommodationEmissionRequestMapper
 {
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
+    {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+    }
+
     public function map(Request $request): AccommodationEmissionInput
     {
         $startDate = $this->date($request, 'startDate');
@@ -46,12 +53,7 @@ final class AccommodationEmissionRequestMapper
 
     private function country(Request $request): string
     {
-        $iso3 = mb_strtoupper($this->requiredString($request, 'country'), 'UTF-8');
-        if (!Countries::alpha3CodeExists($iso3)) {
-            throw new \InvalidArgumentException('country must be a valid ISO-3 country code.');
-        }
-
-        return $iso3;
+        return $this->countryCatalog->normalizeIso3($this->requiredString($request, 'country'));
     }
 
     private function requiredString(Request $request, string $field): string

@@ -7,7 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[ORM\Entity(repositoryClass: EmissionFactorRepository::class)]
-#[UniqueEntity(fields: ['factorId'])]
+#[UniqueEntity(fields: ['factorId'], message: 'backend.admin.emission_factor.validation.duplicate_factor_id')]
 class EmissionFactor
 {
     public const TEMPORAL_TYPE_ANNUAL = 'ANNUAL';
@@ -27,7 +27,7 @@ class EmissionFactor
     #[ORM\Column(length: 64)]
     private string $functionalKey;
 
-    #[ORM\Column(length: 64, unique: true, nullable: true)]
+    #[ORM\Column(length: 64, unique: true)]
     private ?string $factorId = null;
 
     /** @var array<string, mixed> */

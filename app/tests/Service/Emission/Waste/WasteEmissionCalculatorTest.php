@@ -12,6 +12,7 @@ use App\Service\Emission\EmissionFactorKeyGenerator;
 use App\Service\Emission\EmissionFactorResolver;
 use App\Service\Emission\Waste\WasteEmissionCalculator;
 use App\Service\Emission\Waste\WasteEmissionInput;
+use App\Service\Emission\Waste\WasteEmissionSnapshot;
 use App\Service\Emission\Waste\WasteFactorResolver;
 use App\Service\Emission\Waste\WasteUiCatalog;
 use Doctrine\Persistence\ObjectManager;
@@ -28,7 +29,7 @@ final class WasteEmissionCalculatorTest extends TestCase
 
     public function testTonnesAreNormalizedBeforeApplyingFactor(): void
     {
-        $result = $this->calculator->calculate(new WasteEmissionInput(
+        $input = new WasteEmissionInput(
             new \DateTimeImmutable('2025-05-01'),
             new \DateTimeImmutable('2025-05-02'),
             'ESP',
@@ -37,13 +38,20 @@ final class WasteEmissionCalculatorTest extends TestCase
             'Compostaje',
             '1.5',
             't',
-        ));
+        );
+        $result = $this->calculator->calculate($input);
 
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $result->status);
         self::assertSame('1500', $result->normalizedAmount);
         self::assertSame('kg', $result->normalizedUnit);
         self::assertSame('368.13', $result->emissionKgCo2e);
         self::assertSame('Orgánico (residuos de jardín)', $result->resolvedWasteActivity);
+        self::assertNotNull($result->factorTraces[0]->toArray()['factorId']);
+        $snapshot = json_decode((new WasteEmissionSnapshot())->encode($input, $result), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(
+            $result->factorTraces[0]->toArray()['factorId'],
+            $snapshot['calculation']['factorTraces'][0]['factorId'],
+        );
     }
 
     public function testUnknownAndNonWasteZeroKeepDifferentMethodologicalSemantics(): void
@@ -62,7 +70,7 @@ final class WasteEmissionCalculatorTest extends TestCase
         self::assertSame('Compostaje', $unknown->resolvedTreatment);
         self::assertSame('DERIVED_MAX_VALID_TREATMENTS', $unknown->factorTraces[0]->resolution->ruleType);
 
-        $zero = $this->calculator->calculate(new WasteEmissionInput(
+        $zeroInput = new WasteEmissionInput(
             new \DateTimeImmutable('2025-05-01'),
             new \DateTimeImmutable('2025-05-02'),
             'ESP',
@@ -71,11 +79,15 @@ final class WasteEmissionCalculatorTest extends TestCase
             'Reutilización / Donación',
             '100',
             'kg',
-        ));
+        );
+        $zero = $this->calculator->calculate($zeroInput);
         self::assertSame(EmissionRecord::STATUS_CALCULATED, $zero->status);
         self::assertSame('0', $zero->emissionKgCo2e);
         self::assertSame('NON_WASTE_ROUTE_ZERO', $zero->factorTraces[0]->resolution->ruleType);
         self::assertSame(EmissionFactor::TEMPORAL_TYPE_RULE, $zero->factorTraces[0]->resolution->temporalType);
+        self::assertNull($zero->factorTraces[0]->toArray()['factorId']);
+        $zeroSnapshot = json_decode((new WasteEmissionSnapshot())->encode($zeroInput, $zero), true, 512, JSON_THROW_ON_ERROR);
+        self::assertNull($zeroSnapshot['calculation']['factorTraces'][0]['factorId']);
     }
 
     public function testCrossYearInvalidCombinationAndMissingRequiredSubactivityRemainPending(): void

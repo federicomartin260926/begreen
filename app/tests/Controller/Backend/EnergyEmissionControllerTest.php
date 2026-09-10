@@ -424,7 +424,7 @@ final class EnergyEmissionControllerTest extends KernelTestCase
             'family' => 'electricity',
             'startDate' => '2025-06-01',
             'endDate' => '2025-06-30',
-            'country' => 'ES',
+            'country' => 'ESP',
             'origin' => 'grid',
             'amount' => '10',
             'unit' => 'kWh',
@@ -472,6 +472,6 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         );
 
         self::assertSame('electricity', $initial['family']);
-        self::assertSame('ES', $initial['country']);
+        self::assertSame('ESP', $initial['country']);
     }
 }

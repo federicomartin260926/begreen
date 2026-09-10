@@ -39,6 +39,10 @@ final class EmissionFactorType extends AbstractType
                 'choice_translation_domain' => false,
                 'constraints' => [new NotBlank(), new Length(max: 50)],
             ])
+            ->add('factorId', TextType::class, [
+                'label' => 'backend.admin.emission_factor.fields.factor_id',
+                'constraints' => [new NotBlank(), new Length(max: 64)],
+            ])
             ->add('criteria', TextareaType::class, [
                 'label' => 'backend.admin.emission_factor.fields.criteria',
                 'attr' => ['rows' => 9, 'class' => 'font-monospace'],
@@ -54,6 +58,10 @@ final class EmissionFactorType extends AbstractType
                     EmissionFactor::TEMPORAL_TYPE_PROXY_LCA => EmissionFactor::TEMPORAL_TYPE_PROXY_LCA,
                 ],
                 'choice_translation_domain' => false,
+            ])
+            ->add('activityYear', IntegerType::class, [
+                'label' => 'backend.admin.emission_factor.fields.activity_year',
+                'required' => false,
             ])
             ->add('year', IntegerType::class, [
                 'label' => 'backend.admin.emission_factor.fields.year',

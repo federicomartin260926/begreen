@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace App\Service\Emission\Water;
 
+use App\Service\Emission\EmissionCountryCatalog;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Intl\Countries;
 
 final class WaterEmissionRequestMapper
 {
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
+    {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+    }
+
     public function map(Request $request): WaterEmissionInput
     {
         return new WaterEmissionInput(
@@ -36,12 +43,7 @@ final class WaterEmissionRequestMapper
 
     private function country(Request $request, string $field): string
     {
-        $country = mb_strtoupper($this->requiredString($request, $field), 'UTF-8');
-        if (1 !== preg_match('/^[A-Z]{2}$/', $country) || !Countries::exists($country)) {
-            throw new \InvalidArgumentException(sprintf('%s must be a valid ISO-2 country code.', $field));
-        }
-
-        return $country;
+        return $this->countryCatalog->iso2FromIso3($this->requiredString($request, $field));
     }
 
     private function requiredString(Request $request, string $field): string

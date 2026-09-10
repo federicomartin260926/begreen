@@ -13,6 +13,7 @@ use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\EmissionCountryCatalog;
 use App\Service\Emission\EmissionRecordAttachmentValidationException;
 use App\Service\Emission\Water\WaterEmissionCalculator;
 use App\Service\Emission\Water\WaterEmissionInput;
@@ -25,7 +26,6 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Intl\Countries;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -33,6 +33,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 final class WaterEmissionController extends AbstractController
 {
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
+    {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+    }
+
     private const FORM_FIELDS = [
         'startDate',
         'endDate',
@@ -220,6 +227,9 @@ final class WaterEmissionController extends AbstractController
         bool $duplicate = false,
     ): Response {
         $backQuery = $this->indexQuery($request, (int) $category->getId());
+        if (is_string($values['country'] ?? null) && '' !== $values['country']) {
+            $values['country'] = $this->countryCatalog->iso3ForForm($values['country']);
+        }
         $formAction = $edit && null !== $record
             ? $this->generateUrl('backend_emission_edit_water_v1', array_merge(['id' => $record->getId()], $backQuery))
             : $this->generateUrl('backend_emission_new_water_v1', $backQuery);
@@ -232,7 +242,7 @@ final class WaterEmissionController extends AbstractController
             'record' => $record,
             'values' => $values,
             'formAction' => $formAction,
-            'countries' => Countries::getNames($request->getLocale()),
+            'countries' => $this->countryCatalog->choices($request->getLocale()),
             'waterUseTypes' => WaterEmissionInput::waterUseTypes(),
             'destinations' => WaterEmissionInput::destinations(),
             'csrfTokenId' => $edit ? 'water_emission_v1_edit_'.$record?->getId() : 'water_emission_v1_create',

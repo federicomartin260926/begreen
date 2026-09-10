@@ -18,6 +18,7 @@ use App\Service\Emission\Catering\CateringEmissionRecordService;
 use App\Service\Emission\Catering\CateringEmissionRequestMapper;
 use App\Service\Emission\Catering\CateringEmissionSnapshot;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\EmissionCountryCatalog;
 use App\Service\Emission\EmissionRecordAttachmentValidationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,7 +26,6 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Intl\Countries;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -33,6 +33,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 final class CateringEmissionController extends AbstractController
 {
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
+    {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+    }
+
     private const FORM_FIELDS = [
         'startDate', 'endDate', 'country', 'activityType', 'people', 'tablewareType',
         'sandwichType', 'preparedCountSingle', 'consumedCountSingle',
@@ -215,7 +222,7 @@ final class CateringEmissionController extends AbstractController
             'record' => $record,
             'values' => $values,
             'formAction' => $formAction,
-            'countries' => Countries::getAlpha3Names($request->getLocale()),
+            'countries' => $this->countryCatalog->choices($request->getLocale()),
             'activityTypes' => CateringEmissionInput::activityTypes(),
             'menuVariants' => CateringEmissionInput::menuVariants(),
             'tablewareTypes' => CateringEmissionInput::tablewareTypes(),

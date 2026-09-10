@@ -83,7 +83,9 @@ final class EmissionFactorControllerTest extends KernelTestCase
         $this->persistFactor('admin-form', ['seed' => true], EmissionFactor::TEMPORAL_TYPE_VERSIONED, null, '1', 'SEED');
         $createRequest = $this->formRequest('/admin/emission-factors/new', 'admin_emission_factor_new', [
             'categoryKey' => 'admin-form',
+            'factorId' => 'ADMIN_CREATE_001',
             'criteria' => '{"unknown":{"nested":true},"amount":0}',
+            'activityYear' => '2026',
             'temporalType' => EmissionFactor::TEMPORAL_TYPE_VERSIONED,
             'year' => '',
             'value' => '',
@@ -98,6 +100,8 @@ final class EmissionFactorControllerTest extends KernelTestCase
         $created = $this->repository->findOneBy(['source' => 'ADMIN CREATE']);
         self::assertInstanceOf(EmissionFactor::class, $created);
         self::assertSame($this->keyGenerator->generate($created->getCriteria()), $created->getFunctionalKey());
+        self::assertSame('ADMIN_CREATE_001', $created->getFactorId());
+        self::assertSame(2026, $created->getActivityYear());
         self::assertSame(['unknown' => ['nested' => true], 'amount' => 0], $created->getCriteria());
         self::assertSame(['publication' => ['year' => 2026]], $created->getMetadata());
         self::assertNull($created->getValue());
@@ -105,7 +109,9 @@ final class EmissionFactorControllerTest extends KernelTestCase
 
         $editRequest = $this->formRequest('/admin/emission-factors/'.$created->getId().'/edit', 'admin_emission_factor_edit', [
             'categoryKey' => 'admin-form',
+            'factorId' => 'ADMIN_CREATE_001',
             'criteria' => '{"amount":0,"unknown":{"nested":true}}',
+            'activityYear' => '2026',
             'temporalType' => EmissionFactor::TEMPORAL_TYPE_VERSIONED,
             'year' => '',
             'value' => '0',
@@ -114,7 +120,7 @@ final class EmissionFactorControllerTest extends KernelTestCase
             'sourceDetail' => '',
             'metadata' => '',
         ]);
-        $response = $this->invoke($editRequest, fn (): Response => $this->controller()->edit($editRequest, $created, $this->repository, $this->entityManager, self::getContainer()->get('translator')));
+        $response = $this->invoke($editRequest, fn (): Response => $this->controller()->edit($editRequest, $created, $this->repository, $this->entityManager));
 
         self::assertTrue($response->isRedirect());
         self::assertNotNull($created->getValue());
@@ -137,7 +143,9 @@ final class EmissionFactorControllerTest extends KernelTestCase
         ]);
         $form->submit([
             'categoryKey' => 'admin-invalid',
+            'factorId' => 'ADMIN_INVALID_001',
             'criteria' => '{invalid',
+            'activityYear' => '2026',
             'temporalType' => EmissionFactor::TEMPORAL_TYPE_ANNUAL,
             'year' => '',
             'value' => '1.25',
@@ -161,7 +169,9 @@ final class EmissionFactorControllerTest extends KernelTestCase
         ]);
         $form->submit([
             'categoryKey' => 'admin-invalid',
+            'factorId' => 'ADMIN_INVALID_002',
             'criteria' => '{"kind":"annual"}',
+            'activityYear' => '2026',
             'temporalType' => EmissionFactor::TEMPORAL_TYPE_ANNUAL,
             'year' => '',
             'value' => '1.25',
@@ -173,6 +183,51 @@ final class EmissionFactorControllerTest extends KernelTestCase
         self::assertFalse($form->isValid());
         $errors = (string) $form->getErrors(true);
         self::assertStringContainsString('Los factores ANNUAL necesitan un año.', $errors);
+    }
+
+    public function testApplicabilityResolutionPrefersLatestFactorYearBeforeFactorId(): void
+    {
+        $criteria = ['kind' => 'applicability-order'];
+        $functionalKey = $this->keyGenerator->generate($criteria);
+
+        $older = (new EmissionFactor())
+            ->setFactorId('TEST_A_2022')
+            ->setCategoryKey('admin-applicability-order')
+            ->setFunctionalKey($functionalKey)
+            ->setCriteria($criteria)
+            ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_ANNUAL)
+            ->setActivityYear(2026)
+            ->setYear(2022)
+            ->setValue('0.128')
+            ->setUnit('kgCO2e/unit')
+            ->setSource('TEST');
+
+        $newer = (new EmissionFactor())
+            ->setFactorId('TEST_Z_2025')
+            ->setCategoryKey('admin-applicability-order')
+            ->setFunctionalKey($functionalKey)
+            ->setCriteria($criteria)
+            ->setTemporalType(EmissionFactor::TEMPORAL_TYPE_ANNUAL)
+            ->setActivityYear(2026)
+            ->setYear(2025)
+            ->setValue('0.046')
+            ->setUnit('kgCO2e/unit')
+            ->setSource('TEST');
+
+        $this->entityManager->persist($older);
+        $this->entityManager->persist($newer);
+        $this->entityManager->flush();
+
+        $resolved = $this->repository->findForApplicabilityYear(
+            'admin-applicability-order',
+            $functionalKey,
+            2026,
+        );
+
+        self::assertInstanceOf(EmissionFactor::class, $resolved);
+        self::assertSame('TEST_Z_2025', $resolved->getFactorId());
+        self::assertSame(2025, $resolved->getYear());
+        self::assertSame('0.046', $resolved->getValue());
     }
 
     public function testDeleteRequiresCsrfAndNavigationPointsToTheModernCatalogue(): void
@@ -200,31 +255,118 @@ final class EmissionFactorControllerTest extends KernelTestCase
         self::assertStringNotContainsString('admin_emission_activity', $navigation);
     }
 
-    public function testEditRejectsCriteriaThatCollideWithAnotherFactorIdentity(): void
+    public function testEditAllowsApplicabilityCollisionWhenFactorIdsDiffer(): void
     {
-        $existing = $this->persistFactor('admin-collision', ['kind' => 'existing'], EmissionFactor::TEMPORAL_TYPE_ANNUAL, 2026, '1', 'COLLISION TARGET');
-        $edited = $this->persistFactor('admin-collision', ['kind' => 'edited'], EmissionFactor::TEMPORAL_TYPE_ANNUAL, 2026, '2', 'COLLISION EDIT');
-        $originalKey = $edited->getFunctionalKey();
-        $request = $this->formRequest('/admin/emission-factors/'.$edited->getId().'/edit', 'admin_emission_factor_edit', [
-            'categoryKey' => 'admin-collision',
-            'criteria' => '{"kind":"existing"}',
-            'temporalType' => EmissionFactor::TEMPORAL_TYPE_ANNUAL,
-            'year' => '2026',
-            'value' => '2',
-            'unit' => 'kgCO2e/unit',
-            'source' => 'COLLISION EDIT',
-            'sourceDetail' => '',
-            'metadata' => '',
-        ]);
+        $existing = $this->persistFactor(
+            'admin-collision',
+            ['kind' => 'existing'],
+            EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+            2026,
+            '1',
+            'COLLISION TARGET',
+        );
+        $edited = $this->persistFactor(
+            'admin-collision',
+            ['kind' => 'edited'],
+            EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+            2026,
+            '2',
+            'COLLISION EDIT',
+        );
+
+        $request = $this->formRequest(
+            '/admin/emission-factors/'.$edited->getId().'/edit',
+            'admin_emission_factor_edit',
+            [
+                'categoryKey' => 'admin-collision',
+                'factorId' => $edited->getFactorId(),
+                'criteria' => '{"kind":"existing"}',
+                'activityYear' => '2026',
+                'temporalType' => EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+                'year' => '2026',
+                'value' => '2',
+                'unit' => 'kgCO2e/unit',
+                'source' => 'COLLISION EDIT',
+                'sourceDetail' => '',
+                'metadata' => '',
+            ],
+        );
         $request->attributes->set('_route_params', ['id' => $edited->getId()]);
 
-        $response = $this->invoke($request, fn (): Response => $this->controller()->edit($request, $edited, $this->repository, $this->entityManager, self::getContainer()->get('translator')));
+        $response = $this->invoke(
+            $request,
+            fn (): Response => $this->controller()->edit(
+                $request,
+                $edited,
+                $this->repository,
+                $this->entityManager,
+            ),
+        );
+
+        self::assertTrue($response->isRedirect());
+        self::assertSame($existing->getFunctionalKey(), $edited->getFunctionalKey());
+    }
+
+    public function testEditRejectsDuplicateFactorId(): void
+    {
+        $existing = $this->persistFactor(
+            'admin-factor-id',
+            ['kind' => 'existing'],
+            EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+            2026,
+            '1',
+            'FACTOR ID TARGET',
+        );
+        $edited = $this->persistFactor(
+            'admin-factor-id',
+            ['kind' => 'edited'],
+            EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+            2026,
+            '2',
+            'FACTOR ID EDIT',
+        );
+        $originalFactorId = $edited->getFactorId();
+
+        $request = $this->formRequest(
+            '/admin/emission-factors/'.$edited->getId().'/edit',
+            'admin_emission_factor_edit',
+            [
+                'categoryKey' => 'admin-factor-id',
+                'factorId' => $existing->getFactorId(),
+                'criteria' => '{"kind":"edited"}',
+                'activityYear' => '2026',
+                'temporalType' => EmissionFactor::TEMPORAL_TYPE_ANNUAL,
+                'year' => '2026',
+                'value' => '2',
+                'unit' => 'kgCO2e/unit',
+                'source' => 'FACTOR ID EDIT',
+                'sourceDetail' => '',
+                'metadata' => '',
+            ],
+        );
+        $request->attributes->set('_route_params', ['id' => $edited->getId()]);
+
+        $response = $this->invoke(
+            $request,
+            fn (): Response => $this->controller()->edit(
+                $request,
+                $edited,
+                $this->repository,
+                $this->entityManager,
+            ),
+        );
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('Ya existe un factor de emisión con estos criterios para esta categoría y año.', (string) $response->getContent());
-        self::assertSame($existing->getFunctionalKey(), $edited->getFunctionalKey());
-        $storedKey = $this->connection->fetchOne('SELECT functional_key FROM emission_factor WHERE id = ?', [$edited->getId()]);
-        self::assertSame($originalKey, $storedKey);
+        self::assertStringContainsString(
+            'Ya existe otro factor de emisión con este Factor ID.',
+            (string) $response->getContent(),
+        );
+
+        $storedFactorId = $this->connection->fetchOne(
+            'SELECT factor_id FROM emission_factor WHERE id = ?',
+            [$edited->getId()],
+        );
+        self::assertSame($originalFactorId, $storedFactorId);
     }
 
     /** @param array<string, string> $data */
@@ -275,11 +417,19 @@ final class EmissionFactorControllerTest extends KernelTestCase
     /** @param array<string, mixed> $criteria */
     private function persistFactor(string $categoryKey, array $criteria, string $temporalType, ?int $year, ?string $value, string $source): EmissionFactor
     {
+        $factorId = 'TEST_'.substr(
+            hash('sha256', $categoryKey.'|'.json_encode($criteria, JSON_THROW_ON_ERROR).'|'.$source),
+            0,
+            20,
+        );
+
         $factor = (new EmissionFactor())
+            ->setFactorId($factorId)
             ->setCategoryKey($categoryKey)
             ->setFunctionalKey($this->keyGenerator->generate($criteria))
             ->setCriteria($criteria)
             ->setTemporalType($temporalType)
+            ->setActivityYear($year)
             ->setYear($year)
             ->setValue($value)
             ->setUnit('kgCO2e/unit')

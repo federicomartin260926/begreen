@@ -26,8 +26,8 @@
     </thead>
     <tbody>
       {% for record in records %}
-        {% set details = record.calculationDetails ? record.calculationDetails|json_decode : {} %}
         {% set presentation = recordPresentations[loop.index0] %}
+        {% set traceabilities = recordTraceabilities[loop.index0]|default([]) %}
         <tr>
           <td>{{ loop.index }}</td>
           <td>{{ record.phase.getPhase(project.type) }}</td>
@@ -38,16 +38,24 @@
           <td>{{ presentation.unit }}</td>
           <td class="text-right">{{ record.emission is null ? '—' : record.emission|number_format(2, '.', ',') }}</td>
           <td class="small">
-            {% if details.version is defined %}
-              <strong>Version:</strong> {{ details.version }}
-            {% elseif details %}
-              {% for key, value in details %}
-                {% if value is not iterable %}
-                  <strong>{{ key|replace({'_': ' '})|capitalize }}:</strong> {{ value }}<br>
-                {% endif %}
+            {% if traceabilities %}
+              {% for trace in traceabilities %}
+                {% if not loop.first %}<br>{% endif %}
+                {% if trace.component %}<strong>{{ trace.component }}:</strong><br>{% endif %}
+                {% if trace.factorId %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_id'|trans }}:</strong> {{ trace.factorId }}<br>{% endif %}
+                {% if trace.factorActivityYear is not null %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_activity_year'|trans }}:</strong> {{ trace.factorActivityYear }}<br>{% endif %}
+                {% if trace.factorYear is not null %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_year'|trans }}:</strong> {{ trace.factorYear }}<br>{% endif %}
+                {% if trace.factorVersion or trace.sourceEdition %}<strong>{{ 'backend.emission.reports.detailed.trace.factor_version'|trans }}:</strong> {{ trace.factorVersion ?: trace.sourceEdition }}<br>{% endif %}
+                {% if trace.temporalType %}<strong>{{ 'backend.emission.reports.detailed.trace.temporal_type'|trans }}:</strong> {{ trace.temporalType }}<br>{% endif %}
+                {% if trace.factorValue is not null %}<strong>{{ 'backend.emission.reports.detailed.trace.factor'|trans }}:</strong> {{ trace.factorValue }}{% if trace.factorUnit %} {{ trace.factorUnit }}{% endif %}<br>{% endif %}
+                {% if trace.source %}<strong>{{ 'backend.emission.reports.detailed.trace.source'|trans }}:</strong> {{ trace.source }}<br>{% endif %}
+                {% if trace.sourceDetail %}<strong>{{ 'backend.emission.reports.detailed.trace.source_detail'|trans }}:</strong> {{ trace.sourceDetail }}<br>{% endif %}
+                {% if trace.isFallback %}<strong>{{ 'backend.emission.reports.detailed.trace.fallback'|trans }}:</strong> {{ trace.fallbackReason ?: '—' }}<br>{% endif %}
+                {% if trace.isGeographicProxy %}<strong>{{ 'backend.emission.reports.detailed.trace.geographic_proxy'|trans }}:</strong> {{ trace.sourceGeography ?: '—' }} → {{ trace.targetGeography ?: '—' }}{% if trace.geographicProxyReason %} ({{ trace.geographicProxyReason }}){% endif %}<br>{% endif %}
+                {% if trace.dataQuality %}<strong>{{ 'backend.emission.reports.detailed.trace.quality'|trans }}:</strong> {{ trace.dataQuality }}{% endif %}
               {% endfor %}
             {% else %}
-              –
+              —
             {% endif %}
           </td>
         </tr>

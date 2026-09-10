@@ -2717,6 +2717,18 @@ backend:
           unit: "Unit"
           emission: "Emission (kg CO₂e)"
           details: "Calculation details"
+        trace:
+          factor_id: "Factor ID"
+          factor_activity_year: "Applicability"
+          factor_year: "Factor year"
+          factor_version: "Edition / version"
+          temporal_type: "Temporal type"
+          factor: "Factor"
+          source: "Source"
+          source_detail: "Source detail"
+          fallback: "Temporal fallback"
+          geographic_proxy: "Geographic proxy"
+          quality: "Quality"
     subcat:
       carretera: Road
       ferroviario: Rail
@@ -3055,10 +3067,12 @@ backend:
         heading_edit: "Edit emission factor"
       fields:
         category_key: "Category"
+        factor_id: "Factor ID"
         functional_key: "Functional key"
         criteria: "Criteria (JSON)"
         temporal_type: "Temporal type"
-        year: "Year"
+        activity_year: "Activity year"
+        year: "Factor year"
         value: "Value"
         unit: "Unit"
         source: "Source"
@@ -3077,7 +3091,6 @@ backend:
         invalid_json_object: "Enter a valid JSON object."
         invalid_decimal: "Enter a valid decimal number using a point."
         annual_year_required: "ANNUAL factors require a year."
-        duplicate_identity: "An emission factor already exists with these criteria for this category and year."
       flash:
         created: "Emission factor created successfully."
         updated: "Emission factor updated successfully."

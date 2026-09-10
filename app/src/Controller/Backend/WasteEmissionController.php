@@ -13,6 +13,7 @@ use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\EmissionCountryCatalog;
 use App\Service\Emission\EmissionRecordAttachmentValidationException;
 use App\Service\Emission\Waste\WasteEmissionCalculator;
 use App\Service\Emission\Waste\WasteEmissionRecordService;
@@ -25,7 +26,6 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Intl\Countries;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -33,6 +33,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 final class WasteEmissionController extends AbstractController
 {
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
+    {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+    }
+
     private const FORM_FIELDS = [
         'startDate', 'endDate', 'country', 'wasteType', 'wasteActivity',
         'treatment', 'weight', 'weightUnit', 'notes',
@@ -268,7 +275,7 @@ final class WasteEmissionController extends AbstractController
             'record' => $record,
             'values' => $values,
             'formAction' => $formAction,
-            'countries' => Countries::getAlpha3Names($request->getLocale()),
+            'countries' => $this->countryCatalog->choices($request->getLocale()),
             'wasteCatalog' => $catalog->frontendCatalog(),
             'csrfTokenId' => $edit
                 ? 'waste_emission_v1_edit_'.$record?->getId()

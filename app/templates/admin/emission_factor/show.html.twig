@@ -16,10 +16,12 @@
     </div>
     <dl class="row">
         <dt class="col-sm-3">ID</dt><dd class="col-sm-9">{{ factor.id }}</dd>
+        <dt class="col-sm-3">{{ 'backend.admin.emission_factor.fields.factor_id'|trans }}</dt><dd class="col-sm-9"><code>{{ factor.factorId }}</code></dd>
         <dt class="col-sm-3">{{ 'backend.admin.emission_factor.fields.category_key'|trans }}</dt><dd class="col-sm-9"><code>{{ factor.categoryKey }}</code></dd>
         <dt class="col-sm-3 text-muted small">{{ 'backend.admin.emission_factor.fields.functional_key'|trans }}</dt><dd class="col-sm-9 text-muted small"><code>{{ factor.functionalKey }}</code></dd>
         <dt class="col-sm-3">{{ 'backend.admin.emission_factor.fields.criteria'|trans }}</dt><dd class="col-sm-9"><pre class="bg-light border rounded p-3">{{ factor.criteria|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES') b-or constant('JSON_UNESCAPED_UNICODE')) }}</pre></dd>
         <dt class="col-sm-3">{{ 'backend.admin.emission_factor.fields.temporal_type'|trans }}</dt><dd class="col-sm-9">{{ factor.temporalType }}</dd>
+        <dt class="col-sm-3">{{ 'backend.admin.emission_factor.fields.activity_year'|trans }}</dt><dd class="col-sm-9">{{ factor.activityYear is null ? 'NULL' : factor.activityYear }}</dd>
         <dt class="col-sm-3">{{ 'backend.admin.emission_factor.fields.year'|trans }}</dt><dd class="col-sm-9">{{ factor.year is null ? 'NULL' : factor.year }}</dd>
         <dt class="col-sm-3">{{ 'backend.admin.emission_factor.fields.value'|trans }}</dt><dd class="col-sm-9">{{ factor.value is null ? 'NULL' : factor.value }}</dd>
         <dt class="col-sm-3">{{ 'backend.admin.emission_factor.fields.unit'|trans }}</dt><dd class="col-sm-9">{{ factor.unit }}</dd>

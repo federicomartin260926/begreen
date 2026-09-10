@@ -67,13 +67,35 @@ final class EmissionReportControllerTest extends KernelTestCase
             2026,
             'annual',
         );
+        $waterDetails = json_decode((new WaterEmissionSnapshot())->encode($input, $result), true, 512, JSON_THROW_ON_ERROR);
+        $waterDetails['calculation']['factorTraces'] = [
+            [
+                'factorId' => 'WAT-REPORT-1',
+                'factorActivityYear' => 2026,
+                'factorYear' => 2025,
+                'factorValue' => '0.5',
+                'factorUnit' => 'kg CO2e/m3',
+                'source' => 'Fuente histórica A',
+                'isFallback' => true,
+                'fallbackReason' => 'latest_available_before_activity_year',
+                'isGeographicProxy' => true,
+                'sourceGeography' => 'GBR',
+                'targetGeography' => 'ESP',
+            ],
+            [
+                'factorId' => 'WAT-REPORT-2',
+                'factorYear' => 2024,
+                'factorValue' => '0.4',
+                'source' => 'Fuente histórica B',
+            ],
+        ];
         $record = (new EmissionRecord())
             ->setProject($project)
             ->setPhase($phase)
             ->setCategory($category)
             ->setAmount(5)
             ->setEmission(2.5)
-            ->setCalculationDetails((new WaterEmissionSnapshot())->encode($input, $result))
+            ->setCalculationDetails(json_encode($waterDetails, JSON_THROW_ON_ERROR))
             ->setRegisteredAt(new \DateTimeImmutable('2026-01-15'));
 
         $activeProject = $this->createMock(ActiveProjectService::class);
@@ -135,6 +157,25 @@ final class EmissionReportControllerTest extends KernelTestCase
         self::assertSame('backend.emission.water_v1.units.m3', $rendered['backend/emission/report/detailed.html.twig']['recordPresentations'][0]['unit']);
         self::assertSame('Tablero contrachapado', $rendered['backend/emission/report/detailed.html.twig']['recordPresentations'][1]['activity']);
         self::assertSame('kg', $rendered['backend/emission/report/detailed.html.twig']['recordPresentations'][1]['unit']);
+        $traceabilities = $rendered['backend/emission/report/detailed.html.twig']['recordTraceabilities'];
+        self::assertCount(2, $traceabilities[0]);
+        self::assertSame('WAT-REPORT-1', $traceabilities[0][0]['factorId']);
+        self::assertSame(2025, $traceabilities[0][0]['factorYear']);
+        self::assertSame('Fuente histórica A', $traceabilities[0][0]['source']);
+        self::assertTrue($traceabilities[0][0]['isFallback']);
+        self::assertTrue($traceabilities[0][0]['isGeographicProxy']);
+        self::assertSame('WAT-REPORT-2', $traceabilities[0][1]['factorId']);
+        self::assertSame([], $traceabilities[1]);
+
+        $html = self::getContainer()->get('twig')->render(
+            'backend/emission/report/detailed.html.twig',
+            $rendered['backend/emission/report/detailed.html.twig'],
+        );
+        self::assertStringContainsString('WAT-REPORT-1', $html);
+        self::assertStringContainsString('WAT-REPORT-2', $html);
+        self::assertStringContainsString('Fuente histórica A', $html);
+        self::assertStringContainsString('Fuente histórica B', $html);
+        self::assertStringNotContainsString('water-v1', $html);
         self::assertSame(2.5, $rendered['backend/emission/report/by_activity.html.twig']['data'][$activityLabel]['actividad']);
         self::assertSame('Agua', $rendered['backend/emission/report/by_activity.html.twig']['activityCategories'][$activityLabel]);
         self::assertSame(4.2, $rendered['backend/emission/report/by_activity.html.twig']['data']['Tablero contrachapado']['actividad']);

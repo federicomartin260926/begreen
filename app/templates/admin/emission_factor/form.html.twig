@@ -14,12 +14,14 @@
     {{ form_start(form) }}
         {{ form_errors(form) }}
         <div class="row">
+            <div class="col-md-4 mb-3">{{ form_row(form.factorId) }}</div>
             <div class="col-md-4 mb-3">{{ form_row(form.categoryKey) }}</div>
             <div class="col-12 mb-3">{{ form_row(form.criteria) }}</div>
             <div class="col-md-4 mb-3">{{ form_row(form.temporalType) }}</div>
+            <div class="col-md-2 mb-3">{{ form_row(form.activityYear) }}</div>
             <div class="col-md-2 mb-3">{{ form_row(form.year) }}</div>
-            <div class="col-md-3 mb-3">{{ form_row(form.value) }}</div>
-            <div class="col-md-3 mb-3">{{ form_row(form.unit) }}</div>
+            <div class="col-md-2 mb-3">{{ form_row(form.value) }}</div>
+            <div class="col-md-2 mb-3">{{ form_row(form.unit) }}</div>
             <div class="col-md-5 mb-3">{{ form_row(form.source) }}</div>
             <div class="col-md-7 mb-3">{{ form_row(form.sourceDetail) }}</div>
             <div class="col-12 mb-3">{{ form_row(form.metadata) }}</div>

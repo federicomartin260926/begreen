@@ -70,7 +70,7 @@ final class WaterEmissionControllerTest extends KernelTestCase
     public function testPreviewUnitedKingdomSewerReturnsTwoComponents(): void
     {
         $post = $this->validPost();
-        $post['country'] = 'GB';
+        $post['country'] = 'GBR';
         $response = $this->preview($post);
         $data = json_decode((string) $response->getContent(), true, flags: JSON_THROW_ON_ERROR);
 
@@ -468,7 +468,7 @@ final class WaterEmissionControllerTest extends KernelTestCase
         return [
             'startDate' => '2024-06-01',
             'endDate' => '2024-06-30',
-            'country' => 'ES',
+            'country' => 'ESP',
             'waterUseType' => 'limpieza',
             'volumeInput' => '1',
             'volumeInputUnit' => 'm3',

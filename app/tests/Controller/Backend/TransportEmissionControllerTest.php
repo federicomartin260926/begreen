@@ -79,7 +79,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('name="startDate"', $content);
         self::assertStringContainsString('name="endDate"', $content);
         self::assertStringNotContainsString('name="startedAt"', $content);
-        self::assertStringContainsString('value="ES"', $content);
+        self::assertStringContainsString('value="ESP"', $content);
         self::assertStringContainsString('España', $content);
         foreach (['distance_consumption', 'fuel_and_electricity', 'passenger_van', 'minibus', 'motorcycle', 'bicycle', 'scooter', 'walk', 'courier', 'cargo_bike'] as $unsupportedOption) {
             self::assertStringNotContainsString($unsupportedOption, $content);
@@ -620,7 +620,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
     private function validPost(): array
     {
         return [
-            'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'ES',
+            'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'ESP',
             'startDate' => '2026-06-01', 'endDate' => '2026-06-02', 'activityValue' => '10', 'activityUnit' => 'km',
             'repetitions' => '1', 'vehicleType' => 'petrol', 'notes' => 'Nota nueva',
         ];

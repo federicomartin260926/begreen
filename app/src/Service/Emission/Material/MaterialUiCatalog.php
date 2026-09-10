@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Emission\Material;
 
 use App\Entity\EmissionFactor;
+use App\Service\Emission\EmissionCountryCatalog;
 
 final class MaterialUiCatalog
 {
@@ -44,9 +45,11 @@ final class MaterialUiCatalog
     private array $cardboardGrammages;
     /** @var array<string, string> */
     private array $densities;
+    private readonly EmissionCountryCatalog $countryCatalog;
 
-    public function __construct(?string $dataDirectory = null)
+    public function __construct(?string $dataDirectory = null, ?EmissionCountryCatalog $countryCatalog = null)
     {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
         $directory = $dataDirectory ?? dirname(__DIR__, 3).'/DataFixtures/data/emission';
         $this->routes = $this->loadRoutes(
             $directory.'/material_factors_v1.csv',
@@ -62,12 +65,7 @@ final class MaterialUiCatalog
 
     public function normalizeCountry(string $country): string
     {
-        $country = strtoupper(trim($country));
-        if (!preg_match('/^[A-Z]{3}$/', $country)) {
-            throw new \InvalidArgumentException(sprintf('Unsupported material country ISO3 "%s".', $country));
-        }
-
-        return $country;
+        return $this->countryCatalog->normalizeIso3($country);
     }
 
     public function hasActivity(string $activity): bool

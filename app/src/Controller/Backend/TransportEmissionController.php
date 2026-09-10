@@ -11,6 +11,7 @@ use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\EmissionCountryCatalog;
 use App\Service\Emission\EmissionRecordAttachmentValidationException;
 use App\Service\Emission\Transport\TransportEmissionCalculator;
 use App\Service\Emission\Transport\TransportEmissionRecordService;
@@ -24,7 +25,6 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Intl\Countries;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -32,6 +32,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 final class TransportEmissionController extends AbstractController
 {
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
+    {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+    }
+
     private const FORM_FIELDS = [
         'category', 'mode', 'method', 'country', 'startDate', 'endDate', 'activityValue', 'activityUnit', 'repetitions',
         'passengers', 'weightValue', 'weightUnit', 'vehicleType', 'carSize', 'fuel', 'thermalFuel',
@@ -296,6 +303,9 @@ final class TransportEmissionController extends AbstractController
     ): Response {
         $tokenId = $edit ? 'transport_emission_v20_edit_'.$record?->getId() : 'transport_emission_v20_create';
         $backQuery = $this->indexQuery($request, (int) $category->getId());
+        if (is_string($values['country'] ?? null) && '' !== $values['country']) {
+            $values['country'] = $this->countryCatalog->iso3ForForm($values['country']);
+        }
 
         $formAction = $edit && null !== $record
             ? $this->generateUrl(
@@ -315,7 +325,7 @@ final class TransportEmissionController extends AbstractController
             'transportCategories' => $uiCatalog->categories(),
             'transportMethods' => $uiCatalog->methods(),
             'transportUiConfig' => $uiCatalog->configuration(),
-            'transportCountries' => Countries::getNames($request->getLocale()),
+            'transportCountries' => $this->countryCatalog->choices($request->getLocale()),
             'csrfTokenId' => $tokenId,
             'errors' => $errors,
             'backQuery' => $backQuery,

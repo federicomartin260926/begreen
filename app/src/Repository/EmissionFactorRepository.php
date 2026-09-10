@@ -66,6 +66,7 @@ class EmissionFactorRepository extends ServiceEntityRepository
             ])
             ->setParameter('activityYear', $activityYear)
             ->orderBy('factor.activityYear', 'DESC')
+            ->addOrderBy('factor.year', 'DESC')
             ->addOrderBy('factor.factorId', 'ASC')
             ->setMaxResults(1)
             ->getQuery()
@@ -156,33 +157,5 @@ class EmissionFactorRepository extends ServiceEntityRepository
             ->getArrayResult();
 
         return array_column($rows, 'categoryKey');
-    }
-
-    public function findIdentityCollision(
-        string $categoryKey,
-        string $functionalKey,
-        ?int $year,
-        ?int $excludedId = null,
-    ): ?EmissionFactor {
-        if (null === $year) {
-            return null;
-        }
-
-        $queryBuilder = $this->createQueryBuilder('factor')
-            ->andWhere('factor.categoryKey = :collisionCategoryKey')
-            ->andWhere('factor.functionalKey = :collisionFunctionalKey')
-            ->andWhere('factor.year = :collisionYear')
-            ->setParameter('collisionCategoryKey', $categoryKey)
-            ->setParameter('collisionFunctionalKey', $functionalKey)
-            ->setParameter('collisionYear', $year)
-            ->setMaxResults(1);
-
-        if (null !== $excludedId) {
-            $queryBuilder
-                ->andWhere('factor.id != :collisionExcludedId')
-                ->setParameter('collisionExcludedId', $excludedId);
-        }
-
-        return $queryBuilder->getQuery()->getOneOrNullResult();
     }
 }

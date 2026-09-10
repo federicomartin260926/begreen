@@ -53,8 +53,10 @@
     <div class="table-responsive">
         <table class="table table-hover align-middle green_table_1">
             <thead><tr>
+                <th>{{ 'backend.admin.emission_factor.fields.factor_id'|trans }}</th>
                 <th>{{ 'backend.admin.emission_factor.fields.category_key'|trans }}</th>
                 <th>{{ 'backend.admin.emission_factor.fields.temporal_type'|trans }}</th>
+                <th>{{ 'backend.admin.emission_factor.fields.activity_year'|trans }}</th>
                 <th>{{ 'backend.admin.emission_factor.fields.year'|trans }}</th>
                 <th>{{ 'backend.admin.emission_factor.fields.value'|trans }}</th>
                 <th>{{ 'backend.admin.emission_factor.fields.unit'|trans }}</th>
@@ -64,8 +66,10 @@
             <tbody>
             {% for factor in factors %}
                 <tr>
+                    <td><code class="small">{{ factor.factorId }}</code></td>
                     <td><code>{{ factor.categoryKey }}</code></td>
                     <td>{{ factor.temporalType }}</td>
+                    <td>{{ factor.activityYear is null ? 'NULL' : factor.activityYear }}</td>
                     <td>{{ factor.year is null ? 'NULL' : factor.year }}</td>
                     <td>{{ factor.value is null ? 'NULL' : factor.value }}</td>
                     <td>{{ factor.unit }}</td>
@@ -76,7 +80,7 @@
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="7" class="text-center text-muted">{{ 'backend.admin.emission_factor.index.empty'|trans }}</td></tr>
+                <tr><td colspan="9" class="text-center text-muted">{{ 'backend.admin.emission_factor.index.empty'|trans }}</td></tr>
             {% endfor %}
             </tbody>
         </table>

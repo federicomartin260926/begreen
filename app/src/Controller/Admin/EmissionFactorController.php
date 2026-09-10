@@ -7,11 +7,9 @@ use App\Form\EmissionFactorType;
 use App\Repository\EmissionFactorRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/admin/emission-factors', name: 'admin_emission_factor_')]
 final class EmissionFactorController extends AbstractController
@@ -40,7 +38,7 @@ final class EmissionFactorController extends AbstractController
     }
 
     #[Route('/new', name: 'new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EmissionFactorRepository $repository, EntityManagerInterface $entityManager, TranslatorInterface $translator): Response
+    public function new(Request $request, EmissionFactorRepository $repository, EntityManagerInterface $entityManager): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
@@ -56,19 +54,11 @@ final class EmissionFactorController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            if (null !== $repository->findIdentityCollision(
-                $factor->getCategoryKey(),
-                $factor->getFunctionalKey(),
-                $factor->getYear(),
-            )) {
-                $form->addError(new FormError($translator->trans('backend.admin.emission_factor.validation.duplicate_identity')));
-            } else {
-                $entityManager->persist($factor);
-                $entityManager->flush();
-                $this->addFlash('success', 'backend.admin.emission_factor.flash.created');
+            $entityManager->persist($factor);
+            $entityManager->flush();
+            $this->addFlash('success', 'backend.admin.emission_factor.flash.created');
 
-                return $this->redirectToRoute('admin_emission_factor_show', ['id' => $factor->getId()]);
-            }
+            return $this->redirectToRoute('admin_emission_factor_show', ['id' => $factor->getId()]);
         }
 
         return $this->render('admin/emission_factor/form.html.twig', [
@@ -87,7 +77,7 @@ final class EmissionFactorController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'edit', methods: ['GET', 'POST'], requirements: ['id' => '\\d+'])]
-    public function edit(Request $request, EmissionFactor $factor, EmissionFactorRepository $repository, EntityManagerInterface $entityManager, TranslatorInterface $translator): Response
+    public function edit(Request $request, EmissionFactor $factor, EmissionFactorRepository $repository, EntityManagerInterface $entityManager): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
@@ -100,19 +90,10 @@ final class EmissionFactorController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            if (null !== $repository->findIdentityCollision(
-                $factor->getCategoryKey(),
-                $factor->getFunctionalKey(),
-                $factor->getYear(),
-                $factor->getId(),
-            )) {
-                $form->addError(new FormError($translator->trans('backend.admin.emission_factor.validation.duplicate_identity')));
-            } else {
-                $entityManager->flush();
-                $this->addFlash('success', 'backend.admin.emission_factor.flash.updated');
+            $entityManager->flush();
+            $this->addFlash('success', 'backend.admin.emission_factor.flash.updated');
 
-                return $this->redirectToRoute('admin_emission_factor_show', ['id' => $factor->getId()]);
-            }
+            return $this->redirectToRoute('admin_emission_factor_show', ['id' => $factor->getId()]);
         }
 
         return $this->render('admin/emission_factor/form.html.twig', [

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Emission\Material;
 
+use App\Service\Emission\EmissionCountryCatalog;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Intl\Countries;
 
 final class MaterialEmissionRequestMapper
 {
@@ -17,8 +17,11 @@ final class MaterialEmissionRequestMapper
         'batteryChemistry', 'batterySize',
     ];
 
-    public function __construct(private readonly MaterialUiCatalog $catalog)
+    private readonly EmissionCountryCatalog $countryCatalog;
+
+    public function __construct(private readonly MaterialUiCatalog $catalog, ?EmissionCountryCatalog $countryCatalog = null)
     {
+        $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
     }
 
     public function map(Request $request): MaterialEmissionInput
@@ -82,12 +85,7 @@ final class MaterialEmissionRequestMapper
 
     private function country(Request $request): string
     {
-        $country = mb_strtoupper($this->requiredString($request, 'country'), 'UTF-8');
-        if (!Countries::alpha3CodeExists($country)) {
-            throw new \InvalidArgumentException('country must be a valid ISO-3 country code.');
-        }
-
-        return $country;
+        return $this->countryCatalog->normalizeIso3($this->requiredString($request, 'country'));
     }
 
     private function requiredString(Request $request, string $field): string
