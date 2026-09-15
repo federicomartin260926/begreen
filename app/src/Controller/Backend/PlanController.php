@@ -2315,8 +2315,7 @@ HTML;
 
         $pdfDepartmentSummary = $this->buildPdfDepartmentSummary(
             $filteredPlanMeasures,
-            $noDeptLabel,
-            $translator->trans('backend.plan.pdf_visual.analytics.departments.other')
+            $noDeptLabel
         );
 
         $pdfQuickRead = [
@@ -2479,8 +2478,7 @@ HTML;
      */
     private function buildPdfDepartmentSummary(
         array $planMeasures,
-        string $noDepartmentLabel,
-        string $otherLabel
+        string $noDepartmentLabel
     ): array {
         $rows = [];
 
@@ -2549,28 +2547,7 @@ HTML;
             }
         );
 
-        if (count($rows) <= 6) {
-            return $rows;
-        }
-
-        $visibleRows = array_slice($rows, 0, 5);
-        $other = [
-            'name' => $otherLabel,
-            'total' => 0,
-            'applicable' => 0,
-            'selected' => 0,
-            'critical' => 0,
-        ];
-
-        foreach (array_slice($rows, 5) as $row) {
-            foreach (['total', 'applicable', 'selected', 'critical'] as $key) {
-                $other[$key] += $row[$key];
-            }
-        }
-
-        $visibleRows[] = $other;
-
-        return $visibleRows;
+        return $rows;
     }
 
     /**

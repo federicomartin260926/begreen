@@ -3,6 +3,7 @@
 namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\PlanController;
+use App\Entity\Department;
 use App\Entity\Measure;
 use App\Entity\MeasureVerificationSource;
 use App\Entity\MeasureBlock;
@@ -148,12 +149,58 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $summary = $summaryMethod->invoke(
             $controller,
             $planMeasures,
-            'Sin departamento',
-            'Otros'
+            'Sin departamento'
         );
 
         self::assertSame(3, $summary[0]['total']);
         self::assertSame(1, $summary[0]['selected']);
+    }
+
+    public function testPdfDepartmentSummaryKeepsAllDepartmentsWithoutOtherBucket(): void
+    {
+        $controller = $this->getController();
+        $planMeasures = [];
+
+        for ($index = 1; $index <= 7; $index++) {
+            $department = (new Department())
+                ->setName(sprintf('Departamento %d', $index));
+
+            $measure = (new Measure())
+                ->setName(sprintf('Medida %d', $index));
+            $measure->addDepartment($department);
+
+            $planMeasures[] = (new PlanMeasure())
+                ->setMeasure($measure)
+                ->setIsApplicable(true)
+                ->setWillImplement(true);
+        }
+
+        $summaryMethod = new \ReflectionMethod(
+            $controller,
+            'buildPdfDepartmentSummary'
+        );
+        $summaryMethod->setAccessible(true);
+
+        $summary = $summaryMethod->invoke(
+            $controller,
+            $planMeasures,
+            'Sin departamento'
+        );
+
+        self::assertCount(7, $summary);
+        self::assertSame(
+            [
+                'Departamento 1',
+                'Departamento 2',
+                'Departamento 3',
+                'Departamento 4',
+                'Departamento 5',
+                'Departamento 6',
+                'Departamento 7',
+            ],
+            array_column($summary, 'name')
+        );
+        self::assertNotContains('Otros', array_column($summary, 'name'));
     }
 
     public function testReviewInlineFieldsUseImplementationPhase(): void
