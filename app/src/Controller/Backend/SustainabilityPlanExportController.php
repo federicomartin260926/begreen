@@ -119,6 +119,7 @@ final class SustainabilityPlanExportController extends AbstractController
             $grouping
         );
         $visualMetrics = $this->buildGroupedVisualMetrics($groups);
+        $detailGroups = $this->buildGroupedDetailGroups($groups);
         $commitmentSummary = $this->commitmentLevelService->buildSummary(
             $plan,
             $project
@@ -139,15 +140,16 @@ final class SustainabilityPlanExportController extends AbstractController
                         ),
                     ]
                 ),
-                'groups' => $groups,
+                'groups' => $detailGroups,
                 'pdfGroupSummary' => $this->buildGroupedSummary(
                     $groups,
                     $this->translator->trans(
                         'pdf_grouped_visual.other'
-                    )
+                    ),
+                    $grouping
                 ),
                 'groupedDetailPages' => $this->buildGroupedDetailPages(
-                    $groups
+                    $detailGroups
                 ),
                 // Los PDFs del plan muestran siempre el tier comercial de Elaboración.
                 'projectTier' => $this->featureGate->getTier(
@@ -179,6 +181,18 @@ final class SustainabilityPlanExportController extends AbstractController
                     'logo' => $this->pdfAssetDataUri(
                         'assets/images/logo-white.svg',
                         'image/svg+xml'
+                    ),
+                    'poppinsRegular' => $this->pdfAssetDataUri(
+                        'public/fonts/poppins/Poppins-Regular.ttf',
+                        'font/ttf'
+                    ),
+                    'poppinsSemiBold' => $this->pdfAssetDataUri(
+                        'public/fonts/poppins/Poppins-SemiBold.ttf',
+                        'font/ttf'
+                    ),
+                    'poppinsBold' => $this->pdfAssetDataUri(
+                        'public/fonts/poppins/Poppins-Bold.ttf',
+                        'font/ttf'
                     ),
                     'vegetation' => $this->pdfAssetDataUri(
                         'public/images/commitment/'
@@ -406,7 +420,8 @@ final class SustainabilityPlanExportController extends AbstractController
      */
     private function buildGroupedSummary(
         array $groups,
-        string $otherLabel
+        string $otherLabel,
+        string $grouping
     ): array {
         $summary = [];
 
@@ -468,7 +483,7 @@ final class SustainabilityPlanExportController extends AbstractController
             }
         );
 
-        if (count($summary) <= 6) {
+        if (count($summary) <= 6 || in_array($grouping, ['department', 'ods'], true)) {
             return $summary;
         }
 
@@ -571,6 +586,29 @@ final class SustainabilityPlanExportController extends AbstractController
         }
 
         return $pages;
+    }
+
+    /**
+     * @param array<int, array{
+     *     label:string,
+     *     rows:array<int, array<string, mixed>>
+     * }> $groups
+     * @return array<int, array{
+     *     label:string,
+     *     rows:array<int, array<string, mixed>>
+     * }>
+     */
+    private function buildGroupedDetailGroups(array $groups): array
+    {
+        return array_map(static function (array $group): array {
+            $group['rows'] = array_values(array_filter(
+                $group['rows'] ?? [],
+                static fn (array $row): bool => ($row['measureId'] ?? null) === null
+                    || ($row['selected'] ?? null) === true
+            ));
+
+            return $group;
+        }, $groups);
     }
 
     private function percentage(int $value, int $total): int

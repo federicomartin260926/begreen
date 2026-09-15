@@ -80,6 +80,32 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
         self::assertSame(['Medida ODS'], array_column($this->findGroup($groups, '13')['rows'], 'displayName'));
     }
 
+    public function testGroupingKeepsTheCompletePlanRegardlessOfSelection(): void
+    {
+        $service = $this->createService();
+        [$plan, $project, $protocol] = $this->createPlanContext(ProjectSubscription::TIER_PRO);
+        $department = $this->createDepartment(23, 'prod', 'Producción');
+
+        $selected = $this->createCanonicalMeasure(202, 'Seleccionada', 5, $protocol);
+        $selected->addDepartment($department);
+        $plan->addPlanMeasure($this->createPlanMeasure($selected));
+
+        $discarded = $this->createCanonicalMeasure(203, 'Descartada', 5, $protocol);
+        $discarded->addDepartment($this->createDepartment(24, 'legal', 'Legal'));
+        $plan->addPlanMeasure($this->createPlanMeasure($discarded)->setWillImplement(false));
+
+        $notApplicable = $this->createCanonicalMeasure(204, 'No aplicable', 5, $protocol);
+        $notApplicable->addDepartment($this->createDepartment(25, 'sustainability', 'Sostenibilidad'));
+        $plan->addPlanMeasure($this->createPlanMeasure($notApplicable)->setIsApplicable(false));
+
+        $groups = $service->groupPlanMeasures($plan, $project, 'department');
+
+        self::assertCount(3, $groups);
+        self::assertSame(['Descartada'], array_column($this->findGroup($groups, 'Legal')['rows'], 'displayName'));
+        self::assertSame(['Seleccionada'], array_column($this->findGroup($groups, 'Producción')['rows'], 'displayName'));
+        self::assertSame(['No aplicable'], array_column($this->findGroup($groups, 'Sostenibilidad')['rows'], 'displayName'));
+    }
+
     public function testBasicTierFiltersOutNonAllowedScores(): void
     {
         $service = $this->createService();

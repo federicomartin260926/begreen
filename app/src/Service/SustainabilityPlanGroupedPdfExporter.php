@@ -4,12 +4,16 @@ namespace App\Service;
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Twig\Environment;
 
 final class SustainabilityPlanGroupedPdfExporter
 {
-    public function __construct(private readonly Environment $twig)
-    {
+    public function __construct(
+        private readonly Environment $twig,
+        #[Autowire('%kernel.project_dir%')]
+        private readonly string $projectDir,
+    ) {
     }
 
     /**
@@ -17,8 +21,29 @@ final class SustainabilityPlanGroupedPdfExporter
      */
     public function generate(string $template, array $context): string
     {
+        $fontCacheDir = $this->projectDir . '/var/cache/dompdf-fonts';
+        if (
+            !is_dir($fontCacheDir)
+            && !@mkdir($fontCacheDir, 0775, true)
+            && !is_dir($fontCacheDir)
+        ) {
+            throw new \RuntimeException(sprintf(
+                'Unable to create Dompdf font cache directory "%s".',
+                $fontCacheDir
+            ));
+        }
+
+        if (!is_writable($fontCacheDir)) {
+            throw new \RuntimeException(sprintf(
+                'Dompdf font cache directory "%s" is not writable.',
+                $fontCacheDir
+            ));
+        }
+
         $options = new Options();
-        $options->set('defaultFont', 'Helvetica');
+        $options->set('defaultFont', 'Poppins');
+        $options->set('fontDir', $fontCacheDir);
+        $options->set('fontCache', $fontCacheDir);
         $options->setIsHtml5ParserEnabled(true);
         $options->setIsRemoteEnabled(false);
 

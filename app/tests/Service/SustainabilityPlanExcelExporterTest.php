@@ -21,6 +21,7 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
         $spreadsheet = $exporter->buildSpreadsheet($plan, $project, 'department', [[
             'label' => 'Producción',
             'rows' => [[
+                'measureId' => 100,
                 'category' => 'Movilidad',
                 'block' => 'Bloque 1',
                 'displayName' => 'Medida A',
@@ -36,6 +37,7 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
                 'executionIncident' => 'Incidencia visible',
                 'description' => 'Descripción de prueba',
                 'statusLabel' => 'Implementada',
+                'selected' => true,
             ]],
         ]]);
 
@@ -52,6 +54,44 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
         self::assertSame('Incidencia visible', (string) $sheet->getCell('N2')->getValue());
         self::assertSame('Descripción de prueba', (string) $sheet->getCell('O2')->getValue());
         self::assertSame('Implementada', (string) $sheet->getCell('P2')->getValue());
+    }
+
+    public function testBuildSpreadsheetMergesASelectedMeasureFromMultipleDepartmentsIntoOneRow(): void
+    {
+        $exporter = new SustainabilityPlanExcelExporter($this->createTranslator());
+        $plan = (new Plan())->setProject($this->createProject(ProjectSubscription::TIER_PRO));
+        $row = [
+            'measureId' => 101,
+            'displayName' => 'Medida A',
+            'departments' => 'Producción, Postproducción',
+            'selected' => true,
+        ];
+
+        $spreadsheet = $exporter->buildSpreadsheet($plan, $plan->getProject(), 'department', [
+            ['label' => 'Producción', 'rows' => [$row, [
+                'measureId' => 102,
+                'displayName' => 'Descartada',
+                'selected' => false,
+            ]]],
+            ['label' => 'Postproducción', 'rows' => [$row, [
+                'measureId' => 103,
+                'displayName' => 'No aplicable',
+                'selected' => false,
+            ]]],
+            ['label' => 'Personalizadas', 'rows' => [[
+                'measureId' => null,
+                'displayName' => 'Medida personalizada',
+                'selected' => null,
+            ]]],
+        ]);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        self::assertSame(3, $sheet->getHighestDataRow());
+        self::assertSame('Producción, Postproducción', (string) $sheet->getCell('A2')->getValue());
+        self::assertSame('Medida A', (string) $sheet->getCell('D2')->getValue());
+        self::assertSame('Producción, Postproducción', (string) $sheet->getCell('F2')->getValue());
+        self::assertSame('Personalizadas', (string) $sheet->getCell('A3')->getValue());
+        self::assertSame('Medida personalizada', (string) $sheet->getCell('D3')->getValue());
     }
 
     private function createTranslator(): TranslatorInterface

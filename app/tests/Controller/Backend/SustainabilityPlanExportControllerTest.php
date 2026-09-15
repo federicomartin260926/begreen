@@ -84,6 +84,111 @@ final class SustainabilityPlanExportControllerTest extends TestCase
         self::assertFalse($this->invokeClosureExportAllowed($controller, $pro, 'category', 'excel'));
     }
 
+    public function testDepartmentAndOdsSummariesKeepAllGroupsWithoutOther(): void
+    {
+        $controller = $this->makeControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
+        $groups = [];
+
+        for ($index = 1; $index <= 7; $index++) {
+            $groups[] = [
+                'label' => 'Grupo ' . $index,
+                'rows' => [[
+                    'measureId' => $index,
+                    'applicable' => true,
+                    'selected' => true,
+                    'critical' => false,
+                ]],
+            ];
+        }
+
+        foreach (['department', 'ods'] as $grouping) {
+            $summary = $this->invokeGroupedSummary($controller, $groups, $grouping);
+
+            self::assertCount(7, $summary);
+            self::assertNotContains('Otros', array_column($summary, 'name'));
+        }
+
+        $categorySummary = $this->invokeGroupedSummary($controller, $groups, 'category');
+        self::assertCount(6, $categorySummary);
+        self::assertContains('Otros', array_column($categorySummary, 'name'));
+    }
+
+    public function testGroupedPdfUsesTheCompletePlanForMetricsAndOnlySelectedRowsForDetail(): void
+    {
+        $controller = $this->makeControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
+        $groups = [
+            ['label' => 'Seleccionadas', 'rows' => [[
+                'measureId' => 1,
+                'displayName' => 'Seleccionada',
+                'score' => 5,
+                'applicable' => true,
+                'selected' => true,
+                'critical' => false,
+            ]]],
+            ['label' => 'Descartadas', 'rows' => [[
+                'measureId' => 2,
+                'displayName' => 'Descartada',
+                'score' => 4,
+                'applicable' => true,
+                'selected' => false,
+                'critical' => false,
+            ]]],
+            ['label' => 'No aplicables', 'rows' => [[
+                'measureId' => 3,
+                'displayName' => 'No aplicable',
+                'score' => 3,
+                'applicable' => false,
+                'selected' => false,
+                'critical' => false,
+            ]]],
+            ['label' => 'Personalizadas', 'rows' => [[
+                'measureId' => null,
+                'displayName' => 'Medida personalizada',
+                'observations' => '',
+                'selected' => null,
+            ]]],
+        ];
+
+        $metricsMethod = new \ReflectionMethod($controller, 'buildGroupedVisualMetrics');
+        $metricsMethod->setAccessible(true);
+        $metrics = $metricsMethod->invoke($controller, $groups);
+
+        self::assertSame(3, $metrics['coverIndicators']['total']);
+        self::assertSame(2, $metrics['coverIndicators']['applicable']);
+        self::assertSame(1, $metrics['coverIndicators']['toImplement']);
+
+        $summary = $this->invokeGroupedSummary($controller, $groups, 'department');
+        self::assertCount(3, $summary);
+        self::assertEqualsCanonicalizing(
+            ['Seleccionadas', 'Descartadas', 'No aplicables'],
+            array_column($summary, 'name')
+        );
+
+        $detailGroupsMethod = new \ReflectionMethod($controller, 'buildGroupedDetailGroups');
+        $detailGroupsMethod->setAccessible(true);
+        $detailGroups = $detailGroupsMethod->invoke($controller, $groups);
+
+        $detailPagesMethod = new \ReflectionMethod($controller, 'buildGroupedDetailPages');
+        $detailPagesMethod->setAccessible(true);
+        $detailPages = $detailPagesMethod->invoke($controller, $detailGroups);
+
+        self::assertSame(
+            ['Seleccionadas', 'Personalizadas'],
+            array_column($detailPages, 'groupLabel')
+        );
+        self::assertSame(
+            ['Seleccionada', 'Medida personalizada'],
+            array_map(
+                static fn (array $page): string => $page['rows'][0]['displayName'],
+                $detailPages
+            )
+        );
+    }
+
     private function makeControllerWithFeatureGate(ProjectFeatureGate $featureGate): SustainabilityPlanExportController
     {
         $reflection = new \ReflectionClass(SustainabilityPlanExportController::class);
@@ -126,5 +231,20 @@ final class SustainabilityPlanExportControllerTest extends TestCase
             CommercialPhase::ELABORATION,
             true
         );
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $groups
+     * @return array<int, array<string, mixed>>
+     */
+    private function invokeGroupedSummary(
+        SustainabilityPlanExportController $controller,
+        array $groups,
+        string $grouping
+    ): array {
+        $reflection = new \ReflectionMethod($controller, 'buildGroupedSummary');
+        $reflection->setAccessible(true);
+
+        return $reflection->invoke($controller, $groups, 'Otros', $grouping);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Tests\Template;
 use App\Entity\Plan;
 use App\Entity\Project;
 use App\Entity\User;
+use App\Service\SustainabilityPlanGroupedPdfExporter;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -13,6 +14,85 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 
 final class PlanClosureTemplateTest extends KernelTestCase
 {
+    public function testGroupedPdfRendersWithItsVisualAssetContext(): void
+    {
+        self::bootKernel();
+
+        $project = (new Project())->setName('Proyecto agrupado');
+        $plan = (new Plan())->setProject($project)->setStatus('completo');
+        $projectDir = self::getContainer()->getParameter('kernel.project_dir');
+        $fontDataUri = static fn (string $filename): string => sprintf(
+            'data:font/ttf;base64,%s',
+            base64_encode((string) file_get_contents($projectDir . '/public/fonts/poppins/' . $filename))
+        );
+
+        $pdf = self::getContainer()->get(SustainabilityPlanGroupedPdfExporter::class)->generate(
+            'backend/plan/export/grouped_pdf_visual.html.twig',
+            [
+                'project' => $project,
+                'plan' => $plan,
+                'grouping' => 'department',
+                'groupingLabel' => 'Departamentos',
+                'groupingSummaryTitle' => 'Resumen por departamentos',
+                'groups' => [],
+                'pdfGroupSummary' => [[
+                    'name' => 'Producción',
+                    'total' => 1,
+                    'applicable' => 1,
+                    'selected' => 1,
+                    'critical' => 0,
+                ]],
+                'groupedDetailPages' => [[
+                    'groupLabel' => 'Producción',
+                    'groupTotal' => 1,
+                    'rows' => [[
+                        'measureTitle' => 'Medida seleccionada',
+                        'displayName' => 'Medida seleccionada',
+                        'observations' => '',
+                    ]],
+                ]],
+                'projectTierLabel' => 'Pro',
+                'generatedAt' => new \DateTimeImmutable('2026-09-15 12:00:00'),
+                'hasWatermark' => false,
+                'commitmentSummary' => [
+                    'totalOfficialPoints' => 5,
+                    'planned' => [
+                        'points' => 5,
+                        'percentageRounded' => 100,
+                        'labelKey' => 'backend.plan.commitment.levels.jungle.label',
+                        'levelKey' => 'jungle',
+                        'pointsToNextLevel' => null,
+                    ],
+                ],
+                'currentUserLabel' => 'QA',
+                'scoreMax' => 5,
+                'scoreGained' => 5,
+                'scorePct' => 100,
+                'coverIndicators' => [
+                    'total' => 1,
+                    'applicable' => 1,
+                    'toImplement' => 1,
+                    'critical' => 0,
+                ],
+                'pdfQuickRead' => [[
+                    'key' => 'selection',
+                    'value' => 1,
+                    'total' => 1,
+                    'percentage' => 100,
+                ]],
+                'pdfVisualAssets' => [
+                    'logo' => '',
+                    'poppinsRegular' => $fontDataUri('Poppins-Regular.ttf'),
+                    'poppinsSemiBold' => $fontDataUri('Poppins-SemiBold.ttf'),
+                    'poppinsBold' => $fontDataUri('Poppins-Bold.ttf'),
+                    'vegetation' => '',
+                ],
+            ]
+        );
+
+        self::assertStringStartsWith('%PDF-', $pdf);
+    }
+
     public function testClosureShowsSummaryActionsCsrfAndDownloadStates(): void
     {
         self::bootKernel();

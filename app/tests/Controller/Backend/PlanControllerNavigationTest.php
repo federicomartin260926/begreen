@@ -115,6 +115,47 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame([1, 0], $result);
     }
 
+    public function testClosurePdfDetailUsesOnlySelectedMeasuresWithoutReducingSummaryTotals(): void
+    {
+        $controller = $this->getController();
+        $selected = (new PlanMeasure())
+            ->setMeasure((new Measure())->setName('Seleccionada'))
+            ->setIsApplicable(true)
+            ->setWillImplement(true);
+        $discarded = (new PlanMeasure())
+            ->setMeasure((new Measure())->setName('Descartada'))
+            ->setIsApplicable(true)
+            ->setWillImplement(false);
+        $notApplicable = (new PlanMeasure())
+            ->setMeasure((new Measure())->setName('No aplicable'))
+            ->setIsApplicable(false)
+            ->setWillImplement(false);
+        $planMeasures = [$selected, $discarded, $notApplicable];
+
+        $detailMethod = new \ReflectionMethod($controller, 'buildPdfMeasuresByDepartment');
+        $detailMethod->setAccessible(true);
+        $measuresByDepartment = $detailMethod->invoke(
+            $controller,
+            $planMeasures,
+            'Sin departamento',
+            true
+        );
+
+        self::assertSame([$selected], $measuresByDepartment['Sin departamento']);
+
+        $summaryMethod = new \ReflectionMethod($controller, 'buildPdfDepartmentSummary');
+        $summaryMethod->setAccessible(true);
+        $summary = $summaryMethod->invoke(
+            $controller,
+            $planMeasures,
+            'Sin departamento',
+            'Otros'
+        );
+
+        self::assertSame(3, $summary[0]['total']);
+        self::assertSame(1, $summary[0]['selected']);
+    }
+
     public function testReviewInlineFieldsUseImplementationPhase(): void
     {
         $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));

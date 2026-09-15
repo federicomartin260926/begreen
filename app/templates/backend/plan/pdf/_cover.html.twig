@@ -109,10 +109,13 @@
 
                 <td class="pdf-cover-approved__score">
                     <div class="pdf-score-ring">
-                        <img
-                            class="pdf-score-ring__image"
-                            src="{{ pdfVisualAssets.scoreRing }}"
-                            alt="">
+                        {% set scoreRing = pdfVisualAssets.scoreRing|default('') %}
+                        {% if scoreRing is not empty %}
+                            <img
+                                class="pdf-score-ring__image"
+                                src="{{ scoreRing }}"
+                                alt="">
+                        {% endif %}
                         <div class="pdf-score-circle__inner">
                             <div class="pdf-score-circle__value">{{ displayedScorePct }}%</div>
                             <div class="pdf-score-circle__label">
@@ -383,12 +386,15 @@
             </tr>
         </table>
 
-        <div class="pdf-cover-commitment__chart">
-            <img
-                class="pdf-cover-commitment__chart-image"
-                src="{{ pdfVisualAssets.commitmentChart }}"
-                alt="">
-        </div>
+        {% set commitmentChart = pdfVisualAssets.commitmentChart|default('') %}
+        {% if commitmentChart is not empty %}
+            <div class="pdf-cover-commitment__chart">
+                <img
+                    class="pdf-cover-commitment__chart-image"
+                    src="{{ commitmentChart }}"
+                    alt="">
+            </div>
+        {% endif %}
 
         <table class="pdf-cover-commitment__labels" role="presentation">
             <tr>

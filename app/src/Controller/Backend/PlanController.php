@@ -1888,7 +1888,8 @@ class PlanController extends AbstractController
                 filters:              $filters,
                 translator:           $translator,
                 locale:               $request->getLocale(),
-                phase:                $phase
+                phase:                $phase,
+                selectedDetailOnly:   $requireClosure
             );
         } catch (AiReportException $exception) {
             $this->logger->warning('Unified PDF AI report generation failed.', [
@@ -2097,7 +2098,8 @@ HTML;
             $translator,
             $locale,
             true,
-            $phase
+            $phase,
+            true
         );
         $html = $this->renderPdfHtml($ctx);
         return $this->pdfBytesFromHtml(
@@ -2202,7 +2204,8 @@ HTML;
         TranslatorInterface $translator,
         string $locale,
         bool $useDepartmentActionText = false,
-        CommercialPhase $phase = CommercialPhase::IMPLEMENTATION
+        CommercialPhase $phase = CommercialPhase::IMPLEMENTATION,
+        bool $selectedDetailOnly = false
     ): array {
         $project = $activeProjectService->getActiveProject();
         if (!$project) throw $this->createNotFoundException('backend.projects.flash.no_active');
@@ -2254,17 +2257,12 @@ HTML;
 
         $filteredPlanMeasures = $this->getFilteredPlanMeasures($plan, $project, $filtersArr);
 
-        $measuresByDpto = [];
         $noDeptLabel = $translator->trans('backend.plan.labels.no_department');
-        foreach ($filteredPlanMeasures as $pm) {
-            $m = $pm->getMeasure();
-            if (!$m) {
-                continue;
-            }
-
-            $dpto = $m->getPrimaryDepartment()?->getDisplayName() ?? $noDeptLabel;
-            $measuresByDpto[$dpto][] = $pm;
-        }
+        $measuresByDpto = $this->buildPdfMeasuresByDepartment(
+            $filteredPlanMeasures,
+            $noDeptLabel,
+            $selectedDetailOnly
+        );
 
         $measuresTotal = $this->countFilteredMeasures($plan, $project, $filtersArr);
 
@@ -2430,6 +2428,42 @@ HTML;
             'pdfPhase'       => $phase,
             'useDepartmentActionText' => $useDepartmentActionText,
         ];
+    }
+
+
+    /**
+     * @param array<int, PlanMeasure> $planMeasures
+     * @return array<string, list<PlanMeasure>>
+     */
+    private function buildPdfMeasuresByDepartment(
+        array $planMeasures,
+        string $noDepartmentLabel,
+        bool $selectedOnly
+    ): array {
+        $measuresByDepartment = [];
+
+        foreach ($planMeasures as $planMeasure) {
+            if (
+                $selectedOnly
+                && (
+                    $planMeasure->isApplicable() !== true
+                    || $planMeasure->willImplement() !== true
+                )
+            ) {
+                continue;
+            }
+
+            $measure = $planMeasure->getMeasure();
+            if (!$measure instanceof Measure) {
+                continue;
+            }
+
+            $department = $measure->getPrimaryDepartment()?->getDisplayName()
+                ?? $noDepartmentLabel;
+            $measuresByDepartment[$department][] = $planMeasure;
+        }
+
+        return $measuresByDepartment;
     }
 
 

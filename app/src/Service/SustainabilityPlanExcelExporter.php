@@ -44,33 +44,32 @@ final class SustainabilityPlanExcelExporter
         $sheet->setCellValue('P1', $this->translator->trans('backend.plan.exports.excel.status'));
 
         $rowIndex = 2;
-        foreach ($groups as $group) {
-            $label = (string) ($group['label'] ?? '');
-            foreach ($group['rows'] ?? [] as $row) {
-                $sheet->fromArray([
-                    $label,
-                    $row['category'] ?? '',
-                    $row['block'] ?? '',
-                    $row['displayName'] ?? '',
-                    $row['score'] ?? '',
-                    $row['departments'] ?? '',
-                    $row['ods'] ?? '',
-                    $row['impactAreas'] ?? '',
-                    $row['tripleBalanceAxes'] ?? '',
-                    $row['verificationSources'] ?? '',
-                    match ($row['implemented'] ?? null) {
-                        true => $this->translator->trans('backend.plan.review.execution_decision.executed'),
-                        false => $this->translator->trans('backend.plan.review.execution_decision.not_executable'),
-                        default => $this->translator->trans('backend.plan.review.execution_decision.undecided'),
-                    },
-                    !empty($row['verified']) ? $this->translator->trans('backend.common.yes') : $this->translator->trans('backend.common.no'),
-                    $row['responsibles'] ?? '',
-                    $row['executionIncident'] ?? '',
-                    $row['description'] ?? '',
-                    $row['statusLabel'] ?? '',
-                ], null, 'A' . $rowIndex);
-                $rowIndex++;
-            }
+        foreach ($this->mergeRowsAcrossGroups($groups) as $item) {
+            $label = $item['label'];
+            $row = $item['row'];
+            $sheet->fromArray([
+                $label,
+                $row['category'] ?? '',
+                $row['block'] ?? '',
+                $row['displayName'] ?? '',
+                $row['score'] ?? '',
+                $row['departments'] ?? '',
+                $row['ods'] ?? '',
+                $row['impactAreas'] ?? '',
+                $row['tripleBalanceAxes'] ?? '',
+                $row['verificationSources'] ?? '',
+                match ($row['implemented'] ?? null) {
+                    true => $this->translator->trans('backend.plan.review.execution_decision.executed'),
+                    false => $this->translator->trans('backend.plan.review.execution_decision.not_executable'),
+                    default => $this->translator->trans('backend.plan.review.execution_decision.undecided'),
+                },
+                !empty($row['verified']) ? $this->translator->trans('backend.common.yes') : $this->translator->trans('backend.common.no'),
+                $row['responsibles'] ?? '',
+                $row['executionIncident'] ?? '',
+                $row['description'] ?? '',
+                $row['statusLabel'] ?? '',
+            ], null, 'A' . $rowIndex);
+            $rowIndex++;
         }
 
         if ($rowIndex > 2) {
@@ -101,5 +100,45 @@ final class SustainabilityPlanExcelExporter
         $sheet->freezePane('A2');
 
         return $spreadsheet;
+    }
+
+    /**
+     * @param array<int, array{label:string, rows:array<int, array<string, mixed>>}> $groups
+     * @return list<array{label:string, row:array<string, mixed>}>
+     */
+    private function mergeRowsAcrossGroups(array $groups): array
+    {
+        $merged = [];
+
+        foreach ($groups as $groupIndex => $group) {
+            $label = (string) ($group['label'] ?? '');
+
+            foreach ($group['rows'] ?? [] as $rowIndex => $row) {
+                $measureId = $row['measureId'] ?? null;
+                if ($measureId !== null && ($row['selected'] ?? null) !== true) {
+                    continue;
+                }
+
+                $key = $measureId !== null
+                    ? 'measure_' . $measureId
+                    : sprintf('row_%d_%d', $groupIndex, $rowIndex);
+
+                if (!isset($merged[$key])) {
+                    $merged[$key] = [
+                        'labels' => [],
+                        'row' => $row,
+                    ];
+                }
+
+                if ($label !== '' && !in_array($label, $merged[$key]['labels'], true)) {
+                    $merged[$key]['labels'][] = $label;
+                }
+            }
+        }
+
+        return array_values(array_map(static fn (array $item): array => [
+            'label' => implode(', ', $item['labels']),
+            'row' => $item['row'],
+        ], $merged));
     }
 }
