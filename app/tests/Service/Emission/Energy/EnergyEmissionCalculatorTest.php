@@ -53,6 +53,27 @@ final class EnergyEmissionCalculatorTest extends TestCase
         self::assertFalse($result->isFallback);
     }
 
+    public function testDifferentSpainSuppliersProduceDifferentEmissions(): void
+    {
+        $supplierA = $this->calculator()->calculate($this->input(
+            EnergyEmissionInput::FAMILY_ELECTRICITY,
+            origin: EnergyEmissionInput::ORIGIN_GRID,
+            amount: '10',
+            unit: 'kWh',
+            supplier: 'Comercializadora A',
+        ));
+        $supplierB = $this->calculator()->calculate($this->input(
+            EnergyEmissionInput::FAMILY_ELECTRICITY,
+            origin: EnergyEmissionInput::ORIGIN_GRID,
+            amount: '10',
+            unit: 'kWh',
+            supplier: 'Comercializadora B',
+        ));
+
+        self::assertSame('1', $supplierA->emissionKgCo2e);
+        self::assertSame('3', $supplierB->emissionKgCo2e);
+    }
+
     public function testSpainGridElectricity2026FallsBackTo2025(): void
     {
         $result = $this->calculator()->calculate($this->electricity(
@@ -321,6 +342,8 @@ final class EnergyEmissionCalculatorTest extends TestCase
 
         $register($this->electricityCriteria('ESPAÑA', 'SIN GDO'), 2025, '0.258', 'kgCO2e/kWh', 'MITECO');
         $register($this->electricityCriteria('ESPAÑA', 'GDO RENOVABLE'), 2025, '0', 'kgCO2e/kWh', 'MITECO');
+        $register($this->electricityCriteria('ESPAÑA', 'SIN GDO', 'Comercializadora A'), 2025, '0.1', 'kgCO2e/kWh', 'MITECO');
+        $register($this->electricityCriteria('ESPAÑA', 'CON GDO', 'Comercializadora B'), 2025, '0.3', 'kgCO2e/kWh', 'MITECO');
         $register($this->electricityCriteria('FUERA DE ESPAÑA', ''), 2026, '0.13096', 'kgCO2e/kWh', 'DEFRA');
         $register($this->electricityCriteria('FUERA DE ESPAÑA', ''), 2025, '0.177', 'kgCO2e/kWh', 'DEFRA');
         $register($this->combustionCriteria('ESPAÑA', 'Diésel', 'litros'), 2025, '2.517', 'kgCO2e/litros', 'MITECO');
@@ -395,6 +418,7 @@ final class EnergyEmissionCalculatorTest extends TestCase
         ?string $finalReading = null,
         ?string $gridKwh = null,
         ?string $solarKwh = null,
+        ?string $supplier = null,
         ?string $labeling = null,
         ?string $equipmentType = null,
         ?string $fuel = null,
@@ -427,6 +451,7 @@ final class EnergyEmissionCalculatorTest extends TestCase
             finalReading: $finalReading,
             gridKwh: $gridKwh,
             solarKwh: $solarKwh,
+            supplier: $supplier,
             labeling: $labeling,
             equipmentType: $equipmentType,
             fuel: $fuel,
@@ -450,14 +475,14 @@ final class EnergyEmissionCalculatorTest extends TestCase
     }
 
     /** @return array<string, string> */
-    private function electricityCriteria(string $geography, string $labeling): array
+    private function electricityCriteria(string $geography, string $labeling, string $supplier = ''): array
     {
         return [
             'geography' => $geography,
             'category' => 'ELECTRICIDAD',
-            'activity' => 'PROMEDIO NACIONAL',
+            'activity' => '' === $supplier ? 'PROMEDIO NACIONAL' : 'SUMINISTRO COMERCIALIZADORA',
             'labeling' => $labeling,
-            'supplier' => '',
+            'supplier' => $supplier,
             'unit' => 'kWh',
         ];
     }

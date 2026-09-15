@@ -2,10 +2,11 @@ import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
   static targets = [
-    'form', 'electricityPanel', 'equipmentPanel', 'batteryPanel', 'origin', 'inputMethod',
+    'form', 'electricityPanel', 'equipmentPanel', 'batteryPanel', 'digitalPanel', 'origin', 'inputMethod',
     'totalFields', 'meterFields', 'mixedFields', 'fuel', 'fuelUnit', 'equipmentMode', 'equipmentDirectFields',
     'cylinderFields', 'bottleSize', 'chargeSource', 'batteryMixedFields', 'previewStatus', 'previewEmission',
-    'previewTrace', 'previewMessages',
+    'previewTrace', 'previewMessages', 'electricitySupplierFields', 'electricityLabelingFields',
+    'batterySupplierFields', 'batteryLabelingFields',
   ];
 
   static values = {
@@ -18,6 +19,7 @@ export default class extends Controller {
 
   connect() {
     this.populateFuels(this.initialValue.fuel);
+    this.populateEquipmentModes(this.initialValue.mode);
     this.renderFields();
     this.preview();
   }
@@ -29,23 +31,32 @@ export default class extends Controller {
 
   refresh() {
     this.populateFuels(this.fuelTarget.value || this.initialValue.fuel);
+    this.populateEquipmentModes(this.equipmentModeTarget.value || this.initialValue.mode);
     this.renderFields();
     this.queuePreview();
   }
 
   renderFields() {
     const family = this.family;
+    const hasCountry = Boolean(this.country);
     this.toggle(this.electricityPanelTarget, family === 'electricity');
     this.toggle(this.equipmentPanelTarget, family === 'equipment');
     this.toggle(this.batteryPanelTarget, family === 'battery');
+    this.toggle(this.digitalPanelTarget, family === 'digital');
 
+    this.toggle(this.electricitySupplierFieldsTarget, family === 'electricity' && this.isSpain);
+    this.toggle(this.electricityLabelingFieldsTarget, family === 'electricity' && hasCountry && !this.isSpain);
+    this.toggle(this.batterySupplierFieldsTarget, family === 'battery' && this.isSpain);
+    this.toggle(this.batteryLabelingFieldsTarget, family === 'battery' && hasCountry && !this.isSpain);
+
+    const total = family === 'electricity' && this.inputMethodTarget.value === 'total';
     const meter = family === 'electricity' && this.inputMethodTarget.value === 'meter';
-    this.toggle(this.totalFieldsTarget, family === 'electricity' && !meter);
+    this.toggle(this.totalFieldsTarget, total);
     this.toggle(this.meterFieldsTarget, meter);
     this.toggle(this.mixedFieldsTarget, family === 'electricity' && this.originTarget.value === 'mixed');
 
     const cylinders = family === 'equipment' && this.equipmentModeTarget.value === 'cylinders';
-    this.toggle(this.equipmentDirectFieldsTarget, family === 'equipment' && !cylinders);
+    this.toggle(this.equipmentDirectFieldsTarget, family === 'equipment' && this.equipmentModeTarget.value === 'direct');
     this.toggle(this.cylinderFieldsTarget, cylinders);
     this.populateBottleSizes();
 
@@ -54,15 +65,8 @@ export default class extends Controller {
 
   populateFuels(preferred) {
     if (!this.hasFuelTarget) return;
-    const geography = this.country === 'ES' ? 'ES' : 'OUTSIDE';
-    const allFuels = this.configValue.fuels?.[geography] || {};
-    const cylinderMode = this.hasEquipmentModeTarget && this.equipmentModeTarget.value === 'cylinders';
-
-    const fuels = cylinderMode
-      ? Object.fromEntries(
-        Object.entries(allFuels).filter(([fuel]) => ['Gas butano', 'Gas propano'].includes(fuel)),
-      )
-      : allFuels;
+    const geography = this.isSpain ? 'ES' : 'OUTSIDE';
+    const fuels = this.configValue.fuels?.[geography] || {};
 
     const fuelNames = Object.keys(fuels);
     const current = this.fuelTarget.value;
@@ -70,23 +74,28 @@ export default class extends Controller {
       ? preferred
       : (Object.prototype.hasOwnProperty.call(fuels, current) ? current : '');
 
-    if (cylinderMode && !selected && fuelNames.length) {
-      selected = fuelNames[0];
-    }
-
     this.fillSelect(this.fuelTarget, fuelNames, selected);
     this.populateFuelUnits(fuels);
   }
 
+  populateEquipmentModes(preferred) {
+    if (!this.hasEquipmentModeTarget) return;
+    const modes = ['direct'];
+    if (['Gas butano', 'Gas propano'].includes(this.fuelTarget.value)) modes.push('cylinders');
+    const selected = modes.includes(preferred) ? preferred : this.equipmentModeTarget.value;
+
+    this.fillSelect(this.equipmentModeTarget, modes, selected, true, this.i18nValue.modes);
+  }
+
   populateFuelUnits(fuels = null) {
     if (!this.hasFuelUnitTarget) return;
-    const geography = this.country === 'ES' ? 'ES' : 'OUTSIDE';
+    const geography = this.isSpain ? 'ES' : 'OUTSIDE';
     const available = fuels || this.configValue.fuels?.[geography] || {};
     const units = available[this.fuelTarget.value] || [];
     const selected = units.includes(this.fuelUnitTarget.value)
       ? this.fuelUnitTarget.value
       : this.initialValue.unit;
-    this.fillSelect(this.fuelUnitTarget, units, selected, false);
+    this.fillSelect(this.fuelUnitTarget, units, selected);
   }
 
   populateBottleSizes() {
@@ -199,19 +208,19 @@ export default class extends Controller {
 
   toggle(container, visible) {
     container.hidden = !visible;
+    if ('disabled' in container) container.disabled = !visible;
     container.querySelectorAll('[name]').forEach((field) => {
       field.disabled = !visible;
     });
   }
 
-  fillSelect(select, options, selected, placeholder = true) {
+  fillSelect(select, options, selected, placeholder = true, labels = {}) {
     const current = select.value;
     select.replaceChildren();
     if (placeholder) select.add(new Option(this.i18nValue.select, ''));
-    options.forEach((option) => select.add(new Option(option, option)));
+    options.forEach((option) => select.add(new Option(labels[option] || option, option)));
     const preferred = options.includes(selected) ? selected : current;
     if (options.includes(preferred)) select.value = preferred;
-    if (!placeholder && !select.value && options.length) select.value = options[0];
   }
 
   get family() {
@@ -220,6 +229,10 @@ export default class extends Controller {
 
   get country() {
     return this.formTarget.querySelector('[name="country"]')?.value || '';
+  }
+
+  get isSpain() {
+    return ['ES', 'ESP'].includes(this.country.toUpperCase());
   }
 
   get commonContextComplete() {

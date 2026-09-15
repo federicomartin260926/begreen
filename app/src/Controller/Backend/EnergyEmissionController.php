@@ -42,6 +42,8 @@ final class EnergyEmissionController extends AbstractController
         'family', 'startDate', 'endDate', 'country', 'origin', 'inputMethod', 'amount', 'unit', 'initialReading', 'finalReading',
         'gridKwh', 'solarKwh', 'supplier', 'labeling', 'equipmentType', 'fuel', 'mode', 'bottleSizeKg',
         'bottleCount', 'batteryType', 'chargeSource', 'chargedKwh', 'notes',
+        'electricitySupplier', 'electricityLabeling', 'batterySupplier', 'batteryLabeling',
+        'digitalType', 'digitalLocation', 'digitalCountry', 'knownKwh', 'hours', 'units', 'gpu', 'service', 'model', 'provider', 'ownership',
     ];
 
     #[Route('/energy/preview', name: 'backend_emission_energy_v1_preview', methods: ['POST'])]
@@ -147,6 +149,7 @@ final class EnergyEmissionController extends AbstractController
         } catch (\JsonException|\UnexpectedValueException) {
             throw $this->createNotFoundException('Invalid energy v1 snapshot.');
         }
+        $storedValues['inputMethod'] = $this->storedInputMethod($storedValues);
         $storedValues['notes'] = $record->getNotes();
         $values = $this->formValues($request, $storedValues);
         if ($request->isMethod('GET')) {
@@ -205,6 +208,7 @@ final class EnergyEmissionController extends AbstractController
         } catch (\JsonException|\UnexpectedValueException) {
             throw $this->createNotFoundException('Invalid energy v1 snapshot.');
         }
+        $values['inputMethod'] = $this->storedInputMethod($values);
         $values['notes'] = $record->getNotes();
 
         return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, [], duplicate: true);
@@ -229,8 +233,16 @@ final class EnergyEmissionController extends AbstractController
         if (is_string($values['country'] ?? null) && '' !== $values['country']) {
             $values['country'] = $this->countryCatalog->iso3ForForm($values['country']);
         }
-        if (empty($values['inputMethod'])) {
-            $values['inputMethod'] = !empty($values['initialReading']) || !empty($values['finalReading']) ? 'meter' : 'total';
+        if (is_string($values['digitalCountry'] ?? null) && '' !== $values['digitalCountry']) {
+            $values['digitalCountry'] = $this->countryCatalog->iso3ForForm($values['digitalCountry']);
+        }
+        foreach (['electricity', 'battery'] as $family) {
+            foreach (['Supplier' => 'supplier', 'Labeling' => 'labeling'] as $suffix => $legacyField) {
+                $field = $family.$suffix;
+                if (($values['family'] ?? null) === $family && empty($values[$field])) {
+                    $values[$field] = $values[$legacyField] ?? null;
+                }
+            }
         }
         $formAction = $edit && null !== $record
             ? $this->generateUrl('backend_emission_edit_energy_v1', array_merge(['id' => $record->getId()], $backQuery))
@@ -255,11 +267,7 @@ final class EnergyEmissionController extends AbstractController
     /** @return array<string, string|null> */
     private function createDefaults(): array
     {
-        return array_replace(array_fill_keys(self::FORM_FIELDS, null), [
-            'family' => 'electricity',
-            'mode' => 'direct',
-            'inputMethod' => 'total',
-        ]);
+        return array_fill_keys(self::FORM_FIELDS, null);
     }
 
     /** @param array<string, mixed> $fallback
@@ -284,6 +292,16 @@ final class EnergyEmissionController extends AbstractController
     private function supportedFormValues(array $values): array
     {
         return array_intersect_key($values, array_fill_keys(self::FORM_FIELDS, true));
+    }
+
+    /** @param array<string, mixed> $values */
+    private function storedInputMethod(array $values): ?string
+    {
+        if (($values['family'] ?? null) !== 'electricity') {
+            return null;
+        }
+
+        return !empty($values['initialReading']) || !empty($values['finalReading']) ? 'meter' : 'total';
     }
 
     private function activeProject(ActiveProjectService $service): Project

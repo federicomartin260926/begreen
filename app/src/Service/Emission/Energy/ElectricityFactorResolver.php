@@ -8,6 +8,7 @@ use App\Service\Emission\EmissionFactorResolver;
 final readonly class ElectricityFactorResolver
 {
     private const CATEGORY_KEY = 'energy';
+    private const SPAIN_SUPPLIER_LABELINGS = ['SIN GDO', 'CON GDO', 'GDO RENOVABLE'];
 
     public function __construct(private EmissionFactorResolver $factorResolver)
     {
@@ -58,10 +59,14 @@ final readonly class ElectricityFactorResolver
 
     private function resolveSpain(ElectricityFactorInput $input, string $country): ElectricityFactorResolution
     {
+        $supplier = trim((string) $input->supplier);
+        if ('' !== $supplier && (null === $input->labeling || '' === trim($input->labeling))) {
+            return $this->resolveSpainSupplier($input->activityYear, $supplier, $country);
+        }
+
         $labeling = null === $input->labeling || '' === trim($input->labeling)
             ? 'SIN GDO'
             : strtoupper(trim($input->labeling));
-        $supplier = trim((string) $input->supplier);
         $activity = '' === $supplier ? 'PROMEDIO NACIONAL' : 'SUMINISTRO COMERCIALIZADORA';
         $resolution = $this->factorResolver->resolve(
             self::CATEGORY_KEY,
@@ -78,6 +83,32 @@ final readonly class ElectricityFactorResolver
         }
 
         return ElectricityFactorResolution::fromAnnual($resolution, false, null, ['country' => $country]);
+    }
+
+    private function resolveSpainSupplier(int $activityYear, string $supplier, string $country): ElectricityFactorResolution
+    {
+        $best = null;
+        foreach (self::SPAIN_SUPPLIER_LABELINGS as $labeling) {
+            $candidate = $this->factorResolver->resolve(
+                self::CATEGORY_KEY,
+                $this->criteria('ESPAÑA', 'SUMINISTRO COMERCIALIZADORA', $labeling, $supplier),
+                $activityYear,
+            );
+            if ($candidate->hasFactor() && (null === $best || (null !== $candidate->factor->getValue()
+                && (null === $best->factor->getValue() || bccomp($candidate->factor->getValue(), $best->factor->getValue(), 12) > 0)))) {
+                $best = $candidate;
+            }
+        }
+
+        if (null === $best) {
+            $best = $this->factorResolver->resolve(
+                self::CATEGORY_KEY,
+                $this->criteria('ESPAÑA', 'PROMEDIO NACIONAL', 'SIN GDO', ''),
+                $activityYear,
+            );
+        }
+
+        return ElectricityFactorResolution::fromAnnual($best, false, null, ['country' => $country]);
     }
 
     /** @return array<string, string> */

@@ -86,23 +86,23 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertNull($data['factorTraces'][1]['factorVersion']);
     }
 
-    public function testPreviewRejectsRetiredDigitalFamily(): void
+    public function testPreviewCalculatesRestoredDigitalFamilyWithKnownKwh(): void
     {
         $context = $this->context();
         $post = $this->validPost();
         $post['family'] = 'digital';
         $post['digitalType'] = 'ai';
-        $post['knownKwh'] = '';
-        $post['hours'] = '3';
-        $post['gpu'] = 'A100';
+        $post['digitalCountry'] = 'ESP';
+        $post['knownKwh'] = '3';
         $request = $this->request('POST', $post);
         $request->request->set('_preview_token', $this->csrfToken('energy_emission_v1_preview'));
 
         $response = $this->controller()->preview($request, $context['active'], new EnergyEmissionRequestMapper(), $this->calculator());
         $data = json_decode((string) $response->getContent(), true, flags: JSON_THROW_ON_ERROR);
 
-        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
-        self::assertSame(['error' => 'invalid_input'], $data);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $data['status']);
+        self::assertSame('0.774', $data['emissionKgCo2e']);
     }
 
     public function testGetCreateRendersModernFormWithoutAuthoritativeFields(): void
@@ -114,9 +114,20 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('data-controller="energy-v1-form"', $content);
         self::assertStringContainsString('name="attachments[]"', $content);
-        foreach (['digital', 'digitalType', 'digitalLocation', 'digitalCountry', 'knownKwh', 'hours', 'units', 'gpu', 'service', 'model', 'provider', 'ownership'] as $field) {
-            self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
+        foreach (['digitalType', 'digitalLocation', 'digitalCountry', 'knownKwh', 'hours', 'units', 'gpu', 'service', 'model', 'provider', 'ownership'] as $field) {
+            self::assertStringContainsString(sprintf('name="%s"', $field), $content);
         }
+        self::assertStringContainsString('name="family" value="digital"', $content);
+        self::assertStringNotContainsString('name="family" value="electricity" checked', $content);
+        self::assertStringContainsString('data-energy-v1-form-target="electricityPanel" hidden disabled', $content);
+        self::assertStringContainsString('name="electricitySupplier"', $content);
+        self::assertStringContainsString('name="batterySupplier"', $content);
+        self::assertStringNotContainsString('name="supplier"', $content);
+        $initial = $this->initialValues($content);
+        self::assertNull($initial['family']);
+        self::assertNull($initial['inputMethod']);
+        self::assertNull($initial['unit']);
+        self::assertNull($initial['mode']);
         self::assertStringContainsString('GDO COGENERACIÓN ALTA EFICIENCIA', $content);
         foreach (['factor', 'factorValue', 'factorYear', 'source', 'normalizedAmount', 'emission'] as $field) {
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
@@ -147,24 +158,24 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertNull($snapshot['calculation']['factorTraces'][0]['factorVersion']);
     }
 
-    public function testCreateRejectsRetiredDigitalFamilyWithoutPersistence(): void
+    public function testCreatePersistsRestoredDigitalFamily(): void
     {
         $context = $this->context();
         $post = $this->validPost();
         $post['family'] = 'digital';
         $post['digitalType'] = 'ai';
-        $post['amount'] = '';
-        $post['origin'] = '';
-        $post['hours'] = '2';
-        $post['gpu'] = 'A100';
+        $post['digitalCountry'] = 'ESP';
+        $post['knownKwh'] = '2';
         $request = $this->request('POST', $post);
         $request->request->set('_token', $this->csrfToken('energy_emission_v1_create'));
         $persisted = null;
 
-        $response = $this->create($request, $context, 0, $persisted);
+        $response = $this->create($request, $context, 1, $persisted);
 
-        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
-        self::assertNull($persisted);
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        self::assertInstanceOf(EmissionRecord::class, $persisted);
+        self::assertStringContainsString('"family":"digital"', (string) $persisted->getCalculationDetails());
+        self::assertStringContainsString('"knownKwh":"2"', (string) $persisted->getCalculationDetails());
     }
 
     public function testGetEditReconstructsFunctionalInputAndListsAttachment(): void
@@ -188,7 +199,7 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         $this->assertInitialPreviewContext($content);
     }
 
-    public function testRetiredDigitalFieldsFromSnapshotDoNotReappearInEdit(): void
+    public function testDigitalFieldsFromSnapshotArePreservedInEdit(): void
     {
         $context = $this->context();
         $record = $this->record($context);
@@ -201,10 +212,10 @@ final class EnergyEmissionControllerTest extends KernelTestCase
 
         $content = (string) $this->edit($record, $this->request('GET'), $context, 0)->getContent();
 
-        self::assertStringNotContainsString('value="digital"', $content);
-        self::assertStringNotContainsString('name="digitalType"', $content);
-        self::assertStringNotContainsString('name="knownKwh"', $content);
-        self::assertStringNotContainsString('value="ai"', $content);
+        self::assertStringContainsString('name="family" value="digital" checked', $content);
+        self::assertStringContainsString('name="digitalType"', $content);
+        self::assertStringContainsString('name="knownKwh" value="10"', $content);
+        self::assertStringContainsString('value="ai" selected', $content);
     }
 
     public function testEditRecalculatesFromSubmittedInput(): void
@@ -256,14 +267,38 @@ final class EnergyEmissionControllerTest extends KernelTestCase
 
         self::assertIsString($controller);
         self::assertMatchesRegularExpression(
-            '/connect\(\)\s*\{\s*this\.populateFuels\(this\.initialValue\.fuel\);\s*this\.renderFields\(\);\s*this\.preview\(\);\s*\}/',
+            '/connect\(\)\s*\{\s*this\.populateFuels\(this\.initialValue\.fuel\);\s*this\.populateEquipmentModes\(this\.initialValue\.mode\);\s*this\.renderFields\(\);\s*this\.preview\(\);\s*\}/',
             $controller,
         );
         self::assertStringContainsString('if (!this.commonContextComplete)', $controller);
         self::assertStringContainsString("body.set('_preview_token', this.previewTokenValue)", $controller);
         self::assertStringContainsString('fetch(this.previewUrlValue', $controller);
         self::assertStringContainsString('trace.factorId', $controller);
-        self::assertStringNotContainsString('digitalPanel', $controller);
+        self::assertStringContainsString('digitalPanel', $controller);
+        self::assertStringContainsString("['Gas butano', 'Gas propano'].includes(this.fuelTarget.value)", $controller);
+        self::assertStringNotContainsString('fuelNames[0]', $controller);
+        self::assertStringContainsString("family === 'electricity' && this.isSpain", $controller);
+        self::assertStringContainsString("family === 'battery' && hasCountry && !this.isSpain", $controller);
+    }
+
+    public function testMapperKeepsInactiveBatterySupplierOutOfElectricityInput(): void
+    {
+        $post = $this->validPost() + [
+            'electricitySupplier' => 'Comercializadora A',
+            'electricityLabeling' => 'SIN GDO',
+            'batterySupplier' => 'Comercializadora B',
+            'batteryLabeling' => 'CON GDO',
+        ];
+
+        $input = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+
+        self::assertSame('Comercializadora A', $input->supplier);
+        self::assertNull($input->labeling);
+
+        $post['country'] = 'FRA';
+        $outsideInput = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+        self::assertNull($outsideInput->supplier);
+        self::assertSame('SIN GDO', $outsideInput->labeling);
     }
 
     /** @return array{project: Project, category: Category, phase: ProjectPhaseDate, active: ActiveProjectService&MockObject, categories: CategoryRepository&MockObject, projects: ProjectRepository&MockObject} */
@@ -464,14 +499,21 @@ final class EnergyEmissionControllerTest extends KernelTestCase
 
     private function assertInitialPreviewContext(string $content): void
     {
+        $initial = $this->initialValues($content);
+
+        self::assertSame('electricity', $initial['family']);
+        self::assertSame('ESP', $initial['country']);
+    }
+
+    /** @return array<string, mixed> */
+    private function initialValues(string $content): array
+    {
         self::assertSame(1, preg_match('/data-energy-v1-form-initial-value="([^"]+)"/', $content, $matches));
-        $initial = json_decode(
+
+        return json_decode(
             html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             true,
             flags: JSON_THROW_ON_ERROR,
         );
-
-        self::assertSame('electricity', $initial['family']);
-        self::assertSame('ESP', $initial['country']);
     }
 }

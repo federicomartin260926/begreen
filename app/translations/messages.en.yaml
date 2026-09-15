@@ -2170,6 +2170,8 @@ backend:
       modes: { direct: "Direct amount", cylinders: "Cylinders" }
       equipment_types: { generator: "Generator", heating: "Heating", cooking: "Cooking", boiler: "Boiler", climate: "Climate control", other: "Other equipment" }
       battery_types: { portable_station: "Portable power station", battery: "Battery / accumulator", fixed_battery: "Fixed battery system", ups: "UPS", other: "Other" }
+      digital_types: { computer: "Computer / workstation", server: "Own server", cloud: "Cloud", render: "Render farm", ai: "Artificial intelligence", storage: "Storage", other: "Other" }
+      ownership: { own: "Owned", rented: "Rented", external_cloud: "External service / cloud" }
       fields:
         start_date: "Start date"
         end_date: "End date"
@@ -2192,6 +2194,17 @@ backend:
         battery_type: "Battery type"
         charge_source: "Charging source"
         charged_kwh: "Charged energy (kWh)"
+        digital_type: "Technology"
+        digital_location: "Region / datacenter"
+        digital_country: "Country where electricity is consumed"
+        use_general_country: "Use general country"
+        known_kwh: "Known consumption (kWh)"
+        hours: "Usage hours"
+        units_gpu: "Equipment / units"
+        service: "Service"
+        model: "Model"
+        provider: "Provider"
+        ownership: "Ownership / use"
         notes: "Notes"
       preview:
         title: "Live calculation"
@@ -2240,6 +2253,10 @@ backend:
         invalid_cylinder_count: "Enter a positive whole number of cylinders."
         battery_type_required: "Enter the battery type."
         charged_kwh_required: "Enter charged energy."
+        digital_type_required: "Enter the digital technology."
+        known_kwh_invalid: "Known consumption must be a valid decimal."
+        digital_activity_data_required: "Add known consumption or other usage data."
+        digital_estimation_methodology_unavailable: "There is no defensible method to estimate this usage without known kWh."
         emission_factor_unavailable: "No applicable prior factor is available."
         emission_factor_not_calculable: "The factor exists but does not support automatic calculation."
     water_v1:

@@ -21,15 +21,19 @@ final class EnergyEmissionRequestMapper
             EnergyEmissionInput::FAMILY_ELECTRICITY,
             EnergyEmissionInput::FAMILY_EQUIPMENT,
             EnergyEmissionInput::FAMILY_BATTERY,
+            EnergyEmissionInput::FAMILY_DIGITAL,
         ], true)) {
             throw new \InvalidArgumentException('Unsupported energy family.');
         }
+        $country = $this->country($request, 'country');
+        $usesElectricitySource = in_array($family, [EnergyEmissionInput::FAMILY_ELECTRICITY, EnergyEmissionInput::FAMILY_BATTERY], true);
+        $isSpain = 'ES' === $country;
 
         return new EnergyEmissionInput(
             family: $family,
             startDate: $this->date($request, 'startDate'),
             endDate: $this->date($request, 'endDate'),
-            country: $this->country($request, 'country'),
+            country: $country,
             origin: $this->optionalString($request, 'origin'),
             amount: $this->optionalString($request, 'amount'),
             unit: $this->optionalString($request, 'unit'),
@@ -37,17 +41,44 @@ final class EnergyEmissionRequestMapper
             finalReading: $this->optionalString($request, 'finalReading'),
             gridKwh: $this->optionalString($request, 'gridKwh'),
             solarKwh: $this->optionalString($request, 'solarKwh'),
-            supplier: $this->optionalString($request, 'supplier'),
-            labeling: $this->optionalString($request, 'labeling'),
+            supplier: $usesElectricitySource && $isSpain ? $this->familyString($request, $family, 'Supplier') : null,
+            labeling: $usesElectricitySource && !$isSpain ? $this->familyString($request, $family, 'Labeling') : null,
             equipmentType: $this->optionalString($request, 'equipmentType'),
             fuel: $this->optionalString($request, 'fuel'),
-            mode: $this->optionalString($request, 'mode') ?? EnergyEmissionInput::EQUIPMENT_MODE_DIRECT,
+            mode: $this->optionalString($request, 'mode') ?? '',
             bottleSizeKg: $this->optionalString($request, 'bottleSizeKg'),
             bottleCount: $this->optionalString($request, 'bottleCount'),
             batteryType: $this->optionalString($request, 'batteryType'),
             chargeSource: $this->optionalString($request, 'chargeSource'),
             chargedKwh: $this->optionalString($request, 'chargedKwh'),
+            digitalType: $this->optionalString($request, 'digitalType'),
+            digitalLocation: $this->optionalString($request, 'digitalLocation'),
+            digitalCountry: $this->optionalCountry($request, 'digitalCountry'),
+            knownKwh: $this->optionalString($request, 'knownKwh'),
+            hours: $this->optionalString($request, 'hours'),
+            units: $this->optionalString($request, 'units'),
+            gpu: $this->optionalString($request, 'gpu'),
+            service: $this->optionalString($request, 'service'),
+            model: $this->optionalString($request, 'model'),
+            provider: $this->optionalString($request, 'provider'),
+            ownership: $this->optionalString($request, 'ownership'),
         );
+    }
+
+    private function familyString(Request $request, string $family, string $suffix): ?string
+    {
+        if (!in_array($family, [EnergyEmissionInput::FAMILY_ELECTRICITY, EnergyEmissionInput::FAMILY_BATTERY], true)) {
+            return null;
+        }
+
+        return $this->optionalString($request, $family.$suffix);
+    }
+
+    private function optionalCountry(Request $request, string $field): ?string
+    {
+        $value = $this->optionalString($request, $field);
+
+        return null === $value ? null : $this->countryCatalog->iso2FromIso3($value);
     }
 
     private function date(Request $request, string $field): \DateTimeImmutable
