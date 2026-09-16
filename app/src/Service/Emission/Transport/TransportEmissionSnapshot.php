@@ -205,6 +205,8 @@ final class TransportEmissionSnapshot
             'km*pasajero' => 'passenger-km',
             'km*tonelada' => 't-km',
             'litros' => 'L',
+            'kg CO2e' => 'kg_co2e',
+            't CO2e' => 't_co2e',
             default => $unit,
         };
 

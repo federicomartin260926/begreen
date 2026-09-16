@@ -108,297 +108,65 @@ class EmissionController extends AbstractController
 
         $records = $recordRepository->findByProjectOrderByPhaseAndDate($project);
         $allCategories = $categoryRepository->findEnabledInEmissionCalculator();
-        $categoryData = $this->buildEmissionCategoryData($records, $allCategories, $em, $waterSnapshot, $accommodationSnapshot, $cateringSnapshot, $wasteSnapshot, $wasteCatalog, $materialSnapshot, $t);
-        $categoriesVM = $categoryData['categoriesVM'];
-        $allChart = $categoryData['allChart'];
-        $categoriesNavigation = $categoryData['categoriesNavigation'];
-        $hasAnyEmissionRecords = $records !== [];
+        $categoryData = $this->buildEmissionCategoryData($records, $allCategories, $em);
+        $categories = $categoryData['categories'];
+        $requestedCategoryId = $request->query->getInt('categoryId');
+        $validCategoryIds = array_column($categories, 'id');
+        $activeCategoryId = in_array($requestedCategoryId, $validCategoryIds, true)
+            ? $requestedCategoryId
+            : ($categoryData['transportId'] ?? ($validCategoryIds[0] ?? 0));
+        $showAll = '1' === $request->query->get('showAll');
+        $visibleRecords = [];
+        $totalEmissionKg = null;
 
-        // IDs canónicos por nombre ES base (no depende del listener)
-        $energyId    = $categoryData['energyId'];
-        $transportId = $categoryData['transportId'];
-        $waterId     = $categoryData['waterId'];
-        $accommodationId = $categoryData['accommodationId'];
-        $cateringId = $categoryData['cateringId'];
-        $wasteId = $categoryData['wasteId'];
-        $materialId = $categoryData['materialId'];
-
-        if ($categoriesNavigation === []) {
-            return $this->render('backend/emission/index.html.twig', [
-                'project'             => $project,
-                'categoriesNavigation' => [],
-                'chartDataByCategory' => ['all' => $allChart],
-                'energyId'            => $energyId,
-                'transportId'         => $transportId,
-                'waterId'             => $waterId,
-                'accommodationId'     => $accommodationId,
-                'cateringId'          => $cateringId,
-                'wasteId'             => $wasteId,
-                'materialId'          => $materialId,
-                'selectedCategoryId'   => 0,
-                'selectedCategoryName' => '',
-                'selectedCategoryCount'=> 0,
-                'selectedCategoryChartKey' => 'all',
-                'selectedCategoryRecords' => [],
-                'selectedCategoryTotalEmission' => 0.0,
-                'currentPage'          => 1,
-                'totalPages'           => 1,
-                'paginationQuery'      => [],
-                'perPage'              => 10,
-                'newRecordUrl'         => '#',
-                'hasCategories'        => false,
-                'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
-                'transportV20RecordIds' => [],
-                'energyV1RecordIds' => [],
-                'energyV1Summaries' => [],
-                'waterV1RecordIds' => [],
-                'waterV1Summaries' => [],
-                'accommodationV1RecordIds' => [],
-                'accommodationV1Summaries' => [],
-                'cateringV1RecordIds' => [],
-                'cateringV1Summaries' => [],
-                'wasteV1RecordIds' => [],
-                'wasteV1Summaries' => [],
-                'materialV1RecordIds' => [],
-                'materialV1Summaries' => [],
-            ]);
-        }
-
-        $selectedCategoryId = $request->query->getInt('categoryId', 0);
-        if ($selectedCategoryId <= 0 || !isset($categoriesVM[$selectedCategoryId])) {
-            $defaultCategory = $categoriesNavigation[0];
-
-            return $this->redirectToRoute('backend_emission_index', [
-                'categoryId' => $defaultCategory['id'],
-            ]);
-        }
-
-        $selectedCategory = $categoriesVM[$selectedCategoryId];
-        $selectedCategoryName = $selectedCategory['name'];
-        $selectedCategoryRecordsAll = $selectedCategory['records'];
-        $selectedCategoryChartKey = $selectedCategory['name'];
-        $selectedCategoryCount = count($selectedCategoryRecordsAll);
-        $selectedCategoryTotalEmission = array_reduce(
-            $selectedCategoryRecordsAll,
-            static fn (float $carry, EmissionRecord $record): float => $carry + (float) $record->getEmission(),
-            0.0
-        );
-
-        $perPage = 10;
-        $currentPage = max(1, $request->query->getInt('page', 1));
-        $totalPages = max(1, (int) ceil($selectedCategoryCount / $perPage));
-        $currentPage = min($currentPage, $totalPages);
-        $offset = ($currentPage - 1) * $perPage;
-        $selectedCategoryRecords = array_slice($selectedCategoryRecordsAll, $offset, $perPage);
-        $transportV20RecordIds = [];
-        $transportV20Summaries = [];
-        $energyV1RecordIds = [];
-        $energyV1Summaries = [];
-        $waterV1RecordIds = [];
-        $waterV1Summaries = [];
-        $accommodationV1RecordIds = [];
-        $accommodationV1Summaries = [];
-        $cateringV1RecordIds = [];
-        $cateringV1Summaries = [];
-        $wasteV1RecordIds = [];
-        $wasteV1Summaries = [];
-        $materialV1RecordIds = [];
-        $materialV1Summaries = [];
-        if (null !== $transportId) {
-            foreach ($selectedCategoryRecords as $record) {
-                if (!$transportSnapshot->isTransportV20Record($record, $transportId)) {
-                    continue;
-                }
-
-                $transportV20RecordIds[] = $record->getId();
-
-                try {
-                    $transportV20Summaries[$record->getId()] = $transportSnapshot->decodeSummary(
-                        (string) $record->getCalculationDetails()
-                    );
-                } catch (\JsonException|\UnexpectedValueException) {
-                    // Keep the record visible/editable even if its presentation snapshot is malformed.
-                }
+        foreach ($categories as &$category) {
+            $category['active'] = $category['id'] === $activeCategoryId;
+            $showAllCategory = $showAll && $category['active'];
+            $category['records'] = $showAllCategory
+                ? $category['allRecords']
+                : array_slice($category['allRecords'], 0, 5);
+            $category['hasMore'] = !$showAllCategory && $category['count'] > 5;
+            $category['showAllUrl'] = $this->generateUrl('backend_emission_index', [
+                'categoryId' => $category['id'],
+                'showAll' => 1,
+            ]).'#emission-category-'.$category['id'];
+            $category['createUrl'] = $this->buildEmissionCreateUrl(
+                $category['id'],
+                $categoryData['energyId'],
+                $categoryData['transportId'],
+                $categoryData['waterId'],
+                $categoryData['accommodationId'],
+                $categoryData['cateringId'],
+                $categoryData['wasteId'],
+                $categoryData['materialId'],
+            );
+            array_push($visibleRecords, ...$category['records']);
+            if (null !== $category['totalEmissionKg']) {
+                $totalEmissionKg = ($totalEmissionKg ?? 0.0) + $category['totalEmissionKg'];
             }
-        }
-        if (null !== $energyId) {
-            foreach ($selectedCategoryRecords as $record) {
-                if (!$energySnapshot->isEnergyV1Record($record, $energyId)) {
-                    continue;
-                }
-
-                $energyV1RecordIds[] = $record->getId();
-                try {
-                    $energyV1Summaries[$record->getId()] = $energySnapshot->decodeSummary(
-                        (string) $record->getCalculationDetails()
-                    );
-                } catch (\JsonException|\UnexpectedValueException) {
-                    // Keep corrupt modern records visible without treating them as legacy.
-                }
-            }
-        }
-        if (null !== $waterId) {
-            foreach ($selectedCategoryRecords as $record) {
-                if (!$waterSnapshot->isWaterV1Record($record, $waterId)) {
-                    continue;
-                }
-
-                $waterV1RecordIds[] = $record->getId();
-                try {
-                    $input = $waterSnapshot->decodeInput((string) $record->getCalculationDetails());
-                    $waterV1Summaries[$record->getId()] = [
-                        'waterUseType' => $input->waterUseType,
-                        'normalizedUnit' => null === $record->getAmount() ? null : 'm3',
-                    ];
-                } catch (\JsonException|\UnexpectedValueException) {
-                    // Keep corrupt modern records visible without treating them as legacy.
-                }
-            }
-        }
-        if (null !== $accommodationId) {
-            foreach ($selectedCategoryRecords as $record) {
-                if (!$accommodationSnapshot->isAccommodationV1Record($record, $accommodationId)) {
-                    continue;
-                }
-
-                $accommodationV1RecordIds[] = $record->getId();
-                try {
-                    $input = $accommodationSnapshot->decodeInput((string) $record->getCalculationDetails());
-                    $accommodationV1Summaries[$record->getId()] = [
-                        'accommodationType' => $input->accommodationType,
-                        'normalizedUnitKey' => match ($input->accommodationType) {
-                            'hotel' => 'occupied_room_night',
-                            'hostel' => 'guest_night',
-                            'apartment' => 'person_night',
-                            default => null,
-                        },
-                    ];
-                } catch (\JsonException|\UnexpectedValueException) {
-                    // Keep corrupt modern records visible without treating them as legacy.
-                }
-            }
-        }
-        if (null !== $cateringId) {
-            foreach ($selectedCategoryRecords as $record) {
-                if (!$cateringSnapshot->isCateringV1Record($record, $cateringId)) {
-                    continue;
-                }
-
-                $cateringV1RecordIds[] = $record->getId();
-                try {
-                    $input = $cateringSnapshot->decodeInput((string) $record->getCalculationDetails());
-                    $calculation = $cateringSnapshot->decodeCalculation((string) $record->getCalculationDetails());
-                    $cateringV1Summaries[$record->getId()] = [
-                        'activityType' => $input->activityType,
-                        'normalizedUnitKey' => match ($calculation['normalizedUnit'] ?? null) {
-                            'people' => 'people',
-                            'prepared_menu' => 'prepared_menu',
-                            'prepared sandwich' => 'prepared_sandwich',
-                            'L' => 'liter',
-                            'service' => 'service',
-                            'kg' => 'kg',
-                            default => null,
-                        },
-                    ];
-                } catch (\JsonException|\UnexpectedValueException) {
-                    // Keep corrupt modern records visible without treating them as legacy.
-                }
-            }
-        }
-        if (null !== $wasteId) {
-            foreach ($selectedCategoryRecords as $record) {
-                if (!$wasteSnapshot->isWasteV1Record($record, $wasteId)) {
-                    continue;
-                }
-
-                $wasteV1RecordIds[] = $record->getId();
-                try {
-                    $input = $wasteSnapshot->decodeInput((string) $record->getCalculationDetails());
-                    $displayActivity = null;
-                    if (null !== $input->country && null !== $input->wasteType) {
-                        $displayActivity = null !== $input->wasteActivity && $input->wasteActivity !== $input->wasteType
-                            ? $input->wasteActivity
-                            : ($wasteCatalog->wasteTypeLabel($input->country, $input->wasteType) ?? $input->wasteType);
-                    }
-                    $wasteV1Summaries[$record->getId()] = [
-                        'displayActivity' => $displayActivity,
-                        'normalizedUnit' => null === $record->getAmount() ? null : 'kg',
-                    ];
-                } catch (\JsonException|\UnexpectedValueException) {
-                    // Keep corrupt modern records visible without treating them as legacy.
-                }
-            }
-        }
-        if (null !== $materialId) {
-            foreach ($selectedCategoryRecords as $record) {
-                if (!$materialSnapshot->isMaterialV1Record($record, $materialId)) {
-                    continue;
-                }
-
-                $materialV1RecordIds[] = $record->getId();
-                try {
-                    $input = $materialSnapshot->decodeInput((string) $record->getCalculationDetails());
-                    $calculation = $materialSnapshot->decodeCalculation((string) $record->getCalculationDetails());
-                    $materialV1Summaries[$record->getId()] = [
-                        'displayActivity' => $input->subproduct ?: $input->activity,
-                        'normalizedUnit' => $calculation['normalizedUnit'] ?? null,
-                    ];
-                } catch (\JsonException|\UnexpectedValueException) {
-                    // Keep corrupt modern records visible without treating them as legacy.
-                }
-            }
-        }
-        $paginationQuery = ['categoryId' => $selectedCategoryId];
-
-        foreach ($categoriesNavigation as &$category) {
-            $category['active'] = $category['id'] === $selectedCategoryId;
+            unset($category['allRecords']);
         }
         unset($category);
 
-        $newRecordUrl = $this->buildEmissionCreateUrl($selectedCategoryId, $energyId, $transportId, $waterId, $accommodationId, $cateringId, $wasteId, $materialId, $currentPage > 1 ? $currentPage : null);
+        $presentation = $this->buildVisibleRecordPresentation(
+            $visibleRecords,
+            $categoryData,
+            $transportSnapshot,
+            $energySnapshot,
+            $waterSnapshot,
+            $accommodationSnapshot,
+            $cateringSnapshot,
+            $wasteSnapshot,
+            $wasteCatalog,
+            $materialSnapshot,
+        );
 
-        return $this->render('backend/emission/index.html.twig', [
-            'project'             => $project,
-            'categoriesNavigation' => $categoriesNavigation,
-            'chartDataByCategory' => array_merge(
-                array_column($categoriesVM, 'chart', 'name'),
-                ['all' => $allChart]
-            ),
-            'energyId'            => $energyId,
-            'transportId'         => $transportId,
-            'waterId'             => $waterId,
-            'accommodationId'     => $accommodationId,
-            'cateringId'          => $cateringId,
-            'wasteId'             => $wasteId,
-            'materialId'          => $materialId,
-            'selectedCategoryId'   => $selectedCategoryId,
-            'selectedCategoryName' => $selectedCategoryName,
-            'selectedCategoryCount'=> $selectedCategoryCount,
-            'selectedCategoryChartKey' => $selectedCategoryChartKey,
-            'selectedCategoryRecords' => $selectedCategoryRecords,
-            'selectedCategoryTotalEmission' => $selectedCategoryTotalEmission,
-            'currentPage'          => $currentPage,
-            'totalPages'           => $totalPages,
-            'paginationQuery'      => $paginationQuery,
-            'perPage'              => $perPage,
-            'newRecordUrl'         => $newRecordUrl,
-            'hasCategories'        => $categoriesVM !== [],
-            'hasAnyEmissionRecords'=> $hasAnyEmissionRecords,
-            'transportV20RecordIds' => $transportV20RecordIds,
-            'transportV20Summaries' => $transportV20Summaries,
-            'energyV1RecordIds' => $energyV1RecordIds,
-            'energyV1Summaries' => $energyV1Summaries,
-            'waterV1RecordIds' => $waterV1RecordIds,
-            'waterV1Summaries' => $waterV1Summaries,
-            'accommodationV1RecordIds' => $accommodationV1RecordIds,
-            'accommodationV1Summaries' => $accommodationV1Summaries,
-            'cateringV1RecordIds' => $cateringV1RecordIds,
-            'cateringV1Summaries' => $cateringV1Summaries,
-            'wasteV1RecordIds' => $wasteV1RecordIds,
-            'wasteV1Summaries' => $wasteV1Summaries,
-            'materialV1RecordIds' => $materialV1RecordIds,
-            'materialV1Summaries' => $materialV1Summaries,
-        ]);
+        return $this->render('backend/emission/index.html.twig', array_merge($presentation, [
+            'project' => $project,
+            'categories' => $categories,
+            'hasCategories' => [] !== $categories,
+            'totalEmissionTonnes' => null === $totalEmissionKg ? null : $totalEmissionKg / 1000,
+        ]));
     }
 
     private function buildEmissionIndexQuery(Request $request, ?int $categoryId = null): array
@@ -416,14 +184,13 @@ class EmissionController extends AbstractController
      * @param array<int, Category> $allCategories
      *
      * @return array{
-     *     categoriesVM: array<int, array{id:int,name:string,records:array<int, EmissionRecord>,chart:array<string, float>}>,
-     *     categoriesNavigation: array<int, array{id:int,name:string,count:int,records:array<int, EmissionRecord>,active:bool,empty:bool,url:string,createUrl:?string,icon:string}>,
-     *     allChart: array<string, float>,
+     *     categories: list<array{id:int,name:string,labelKey:string,icon:string,slug:string,count:int,allRecords:list<EmissionRecord>,totalEmissionKg:?float}>,
      *     energyId: ?int,
      *     transportId: ?int,
      *     waterId: ?int,
      *     accommodationId: ?int,
      *     cateringId: ?int,
+     *     wasteId: ?int,
      *     materialId: ?int
      * }
      */
@@ -431,45 +198,8 @@ class EmissionController extends AbstractController
         array $records,
         array $allCategories,
         EntityManagerInterface $em,
-        WaterEmissionSnapshot $waterSnapshot,
-        AccommodationEmissionSnapshot $accommodationSnapshot,
-        CateringEmissionSnapshot $cateringSnapshot,
-        WasteEmissionSnapshot $wasteSnapshot,
-        WasteUiCatalog $wasteCatalog,
-        MaterialEmissionSnapshot $materialSnapshot,
-        TranslatorInterface $translator,
     ): array
     {
-        $categoriesVM = [];
-        $allChart = [];
-
-        foreach ($allCategories as $cat) {
-            $categoriesVM[$cat->getId()] = [
-                'id'      => $cat->getId(),
-                'name'    => $cat->getName(),
-                'records' => [],
-                'chart'   => [],
-            ];
-        }
-
-        foreach ($records as $record) {
-            $cat = $record->getEffectiveCategory();
-            if (!$cat) {
-                continue;
-            }
-
-            $catId    = $cat->getId();
-            $actName = $this->modernActivityName($record, $waterSnapshot, $accommodationSnapshot, $cateringSnapshot, $wasteSnapshot, $wasteCatalog, $materialSnapshot, $translator);
-
-            if (!isset($categoriesVM[$catId])) {
-                continue;
-            }
-
-            $categoriesVM[$catId]['records'][] = $record;
-            $categoriesVM[$catId]['chart'][$actName] = ($categoriesVM[$catId]['chart'][$actName] ?? 0) + (float) $record->getEmission();
-            $allChart[$actName] = ($allChart[$actName] ?? 0) + (float) $record->getEmission();
-        }
-
         $energyId    = $this->findCategoryIdByNameEs($em, 'Energía');
         $transportId = $this->findCategoryIdByNameEs($em, 'Transporte');
         $waterId     = $this->findCategoryIdByNameEs($em, 'Agua');
@@ -477,34 +207,45 @@ class EmissionController extends AbstractController
         $cateringId = $this->findCategoryIdByNameEs($em, 'Catering');
         $wasteId = $this->findCategoryIdByNameEs($em, 'Residuos');
         $materialId = $this->findCategoryIdByNameEs($em, 'Materiales');
-
-        $nonEmptyCategories = [];
-        $emptyCategories = [];
-        foreach ($categoriesVM as $category) {
-            $recordCount = count($category['records']);
-            $item = [
-                'id' => $category['id'],
-                'name' => $category['name'],
-                'count' => $recordCount,
-                'records' => $category['records'],
-                'active' => false,
-                'empty' => $recordCount === 0,
-                'url' => $this->generateUrl('backend_emission_index', ['categoryId' => $category['id']]),
-                'createUrl' => $this->buildEmissionCreateUrl($category['id'], $energyId, $transportId, $waterId, $accommodationId, $cateringId, $wasteId, $materialId),
-                'icon' => 'bi-folder2-open',
-            ];
-
-            if ($item['empty']) {
-                $emptyCategories[] = $item;
-            } else {
-                $nonEmptyCategories[] = $item;
+        $categoryDefinitions = [
+            ['id' => $transportId, 'name' => 'Transporte', 'labelKey' => 'transport', 'icon' => 'bi-truck', 'slug' => 'transport'],
+            ['id' => $waterId, 'name' => 'Agua', 'labelKey' => 'water', 'icon' => 'bi-droplet', 'slug' => 'water'],
+            ['id' => $accommodationId, 'name' => 'Alojamientos', 'labelKey' => 'accommodation', 'icon' => 'bi-house-door', 'slug' => 'accommodation'],
+            ['id' => $cateringId, 'name' => 'Catering', 'labelKey' => 'catering', 'icon' => 'bi-cup-straw', 'slug' => 'catering'],
+            ['id' => $energyId, 'name' => 'Energía', 'labelKey' => 'energy', 'icon' => 'bi-lightning-charge', 'slug' => 'energy'],
+            ['id' => $materialId, 'name' => 'Materiales', 'labelKey' => 'materials', 'icon' => 'bi-box-seam', 'slug' => 'materials'],
+            ['id' => $wasteId, 'name' => 'Residuos', 'labelKey' => 'waste', 'icon' => 'bi-recycle', 'slug' => 'waste'],
+        ];
+        $enabledIds = array_map(static fn (Category $category): ?int => $category->getId(), $allCategories);
+        $recordsByCategory = [];
+        foreach ($records as $record) {
+            $categoryId = $record->getEffectiveCategory()?->getId();
+            if (null !== $categoryId) {
+                $recordsByCategory[$categoryId][] = $record;
             }
         }
 
+        $categories = [];
+        foreach ($categoryDefinitions as $definition) {
+            if (null === $definition['id'] || !in_array($definition['id'], $enabledIds, true)) {
+                continue;
+            }
+            $categoryRecords = $recordsByCategory[$definition['id']] ?? [];
+            $totalEmissionKg = null;
+            foreach ($categoryRecords as $record) {
+                if (null !== $record->getEmission()) {
+                    $totalEmissionKg = ($totalEmissionKg ?? 0.0) + $record->getEmission();
+                }
+            }
+            $categories[] = array_merge($definition, [
+                'count' => count($categoryRecords),
+                'allRecords' => $categoryRecords,
+                'totalEmissionKg' => $totalEmissionKg,
+            ]);
+        }
+
         return [
-            'categoriesVM' => $categoriesVM,
-            'categoriesNavigation' => array_merge($nonEmptyCategories, $emptyCategories),
-            'allChart' => $allChart,
+            'categories' => $categories,
             'energyId' => $energyId,
             'transportId' => $transportId,
             'waterId' => $waterId,
@@ -513,6 +254,90 @@ class EmissionController extends AbstractController
             'wasteId' => $wasteId,
             'materialId' => $materialId,
         ];
+    }
+
+    /** @param list<EmissionRecord> $records
+     *  @param array<string, mixed> $categoryData
+     *  @return array<string, mixed>
+     */
+    private function buildVisibleRecordPresentation(
+        array $records,
+        array $categoryData,
+        TransportEmissionSnapshot $transportSnapshot,
+        EnergyEmissionSnapshot $energySnapshot,
+        WaterEmissionSnapshot $waterSnapshot,
+        AccommodationEmissionSnapshot $accommodationSnapshot,
+        CateringEmissionSnapshot $cateringSnapshot,
+        WasteEmissionSnapshot $wasteSnapshot,
+        WasteUiCatalog $wasteCatalog,
+        MaterialEmissionSnapshot $materialSnapshot,
+    ): array {
+        $data = [
+            'transportV20Summaries' => [], 'energyV1Summaries' => [], 'waterV1Summaries' => [],
+            'accommodationV1Summaries' => [], 'cateringV1Summaries' => [], 'wasteV1Summaries' => [],
+            'materialV1Summaries' => [], 'recordActions' => [],
+        ];
+
+        foreach ($records as $record) {
+            $id = $record->getId();
+            $categoryId = $record->getEffectiveCategory()?->getId();
+            if (null === $id || null === $categoryId) {
+                continue;
+            }
+
+            try {
+                if ($categoryId === $categoryData['transportId'] && $transportSnapshot->isTransportV20Record($record, $categoryId)) {
+                    $data['recordActions'][$id] = ['editRoute' => 'backend_emission_edit_transport_v20', 'duplicateRoute' => 'backend_emission_duplicate_transport_v20'];
+                    $data['transportV20Summaries'][$id] = $transportSnapshot->decodeSummary((string) $record->getCalculationDetails());
+                } elseif ($categoryId === $categoryData['energyId'] && $energySnapshot->isEnergyV1Record($record, $categoryId)) {
+                    $data['recordActions'][$id] = ['editRoute' => 'backend_emission_edit_energy_v1', 'duplicateRoute' => 'backend_emission_duplicate_energy_v1'];
+                    $data['energyV1Summaries'][$id] = $energySnapshot->decodeSummary((string) $record->getCalculationDetails());
+                } elseif ($categoryId === $categoryData['waterId'] && $waterSnapshot->isWaterV1Record($record, $categoryId)) {
+                    $data['recordActions'][$id] = ['editRoute' => 'backend_emission_edit_water_v1', 'duplicateRoute' => 'backend_emission_duplicate_water_v1'];
+                    $input = $waterSnapshot->decodeInput((string) $record->getCalculationDetails());
+                    $data['waterV1Summaries'][$id] = ['waterUseType' => $input->waterUseType, 'normalizedUnit' => null === $record->getAmount() ? null : 'm3'];
+                } elseif ($categoryId === $categoryData['accommodationId'] && $accommodationSnapshot->isAccommodationV1Record($record, $categoryId)) {
+                    $data['recordActions'][$id] = ['editRoute' => 'backend_emission_edit_accommodation_v1', 'duplicateRoute' => 'backend_emission_duplicate_accommodation_v1'];
+                    $input = $accommodationSnapshot->decodeInput((string) $record->getCalculationDetails());
+                    $data['accommodationV1Summaries'][$id] = [
+                        'accommodationType' => $input->accommodationType,
+                        'normalizedUnitKey' => match ($input->accommodationType) {
+                            'hotel' => 'occupied_room_night', 'hostel' => 'guest_night', 'apartment' => 'person_night', default => null,
+                        },
+                    ];
+                } elseif ($categoryId === $categoryData['cateringId'] && $cateringSnapshot->isCateringV1Record($record, $categoryId)) {
+                    $data['recordActions'][$id] = ['editRoute' => 'backend_emission_edit_catering_v1', 'duplicateRoute' => 'backend_emission_duplicate_catering_v1'];
+                    $input = $cateringSnapshot->decodeInput((string) $record->getCalculationDetails());
+                    $calculation = $cateringSnapshot->decodeCalculation((string) $record->getCalculationDetails());
+                    $data['cateringV1Summaries'][$id] = [
+                        'activityType' => $input->activityType,
+                        'normalizedUnitKey' => match ($calculation['normalizedUnit'] ?? null) {
+                            'people' => 'people', 'prepared_menu' => 'prepared_menu', 'prepared sandwich' => 'prepared_sandwich',
+                            'L' => 'liter', 'service' => 'service', 'kg' => 'kg', default => null,
+                        },
+                    ];
+                } elseif ($categoryId === $categoryData['wasteId'] && $wasteSnapshot->isWasteV1Record($record, $categoryId)) {
+                    $data['recordActions'][$id] = ['editRoute' => 'backend_emission_edit_waste_v1', 'duplicateRoute' => 'backend_emission_duplicate_waste_v1'];
+                    $input = $wasteSnapshot->decodeInput((string) $record->getCalculationDetails());
+                    $displayActivity = null;
+                    if (null !== $input->country && null !== $input->wasteType) {
+                        $displayActivity = null !== $input->wasteActivity && $input->wasteActivity !== $input->wasteType
+                            ? $input->wasteActivity
+                            : ($wasteCatalog->wasteTypeLabel($input->country, $input->wasteType) ?? $input->wasteType);
+                    }
+                    $data['wasteV1Summaries'][$id] = ['displayActivity' => $displayActivity, 'normalizedUnit' => null === $record->getAmount() ? null : 'kg'];
+                } elseif ($categoryId === $categoryData['materialId'] && $materialSnapshot->isMaterialV1Record($record, $categoryId)) {
+                    $data['recordActions'][$id] = ['editRoute' => 'backend_emission_edit_material_v1', 'duplicateRoute' => 'backend_emission_duplicate_material_v1'];
+                    $input = $materialSnapshot->decodeInput((string) $record->getCalculationDetails());
+                    $calculation = $materialSnapshot->decodeCalculation((string) $record->getCalculationDetails());
+                    $data['materialV1Summaries'][$id] = ['displayActivity' => $input->subproduct ?: $input->activity, 'normalizedUnit' => $calculation['normalizedUnit'] ?? null];
+                }
+            } catch (\JsonException|\UnexpectedValueException) {
+                // Keep corrupt modern records visible without exposing legacy actions.
+            }
+        }
+
+        return $data;
     }
 
     private function modernActivityName(
@@ -641,11 +466,8 @@ class EmissionController extends AbstractController
         ?int $cateringId,
         ?int $wasteId,
         ?int $materialId,
-        ?int $page = null
     ): string {
-        $params = array_filter([
-            'page' => $page,
-        ], static fn ($value): bool => $value !== null);
+        $params = ['categoryId' => $categoryId];
 
         if ($energyId !== null && $categoryId === $energyId) {
             return $this->generateUrl('backend_emission_new_energy_v1', $params);

@@ -203,6 +203,27 @@ final class TransportEmissionSnapshotTest extends TestCase
         );
 
         self::assertSame('t-km', $freightSummary['displayActivityUnit']);
+
+        $co2eData = json_decode(
+            $snapshot->encode($freightInput, $freightResult),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        $co2eData['calculation']['normalizedActivityUnit'] = 'kg CO2e';
+        $kgCo2eSummary = $snapshot->decodeSummary(
+            json_encode($co2eData, JSON_THROW_ON_ERROR)
+        );
+
+        self::assertSame('kg_co2e', $kgCo2eSummary['displayActivityUnit']);
+
+        $co2eData['calculation']['normalizedActivityUnit'] = 't CO2e';
+        $tCo2eSummary = $snapshot->decodeSummary(
+            json_encode($co2eData, JSON_THROW_ON_ERROR)
+        );
+
+        self::assertSame('t_co2e', $tCo2eSummary['displayActivityUnit']);
     }
 
 

@@ -5,482 +5,254 @@
 
 {% block breadcrumb %}
     {{ parent() }}
-    <li class="breadcrumb-item active" aria-current="page">
-        {{ 'backend.emission.index.breadcrumb'|trans }}
-    </li>
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.emission.index.breadcrumb'|trans }}</li>
 {% endblock %}
 
 {% block body %}
-{% set currentQuery = app.request.query.all %}
-{% set materialCategoryLabel = 'backend.emission.material_v1.display_name'|trans %}
-<div
-    class="container-fluid px-0 backend-client-shell"
-    data-controller="emission"
-    data-emission-i18n-value='{{ {
-        "backend.emission.chart.title.by_activity": "backend.emission.chart.title.by_activity"|trans,
-        "backend.emission.chart.title.by_phase": "backend.emission.chart.title.by_phase"|trans,
-        "backend.emission.chart.legend.by_activity": "backend.emission.chart.legend.by_activity"|trans,
-        "backend.emission.chart.legend.by_phase": "backend.emission.chart.legend.by_phase"|trans,
-        "backend.emission.chart.axis.kgco2e": "backend.emission.chart.axis.kgco2e"|trans,
-        "backend.emission.chart.unit.kgco2e": "backend.emission.chart.unit.kgco2e"|trans
-        }|json_encode|e('html_attr') }}'
-    data-emission-chart-data-value='{{ chartDataByCategory|json_encode|e('html_attr') }}'>
+<div class="container-fluid px-0 backend-client-shell emission-dashboard">
     <div class="backend-client-content">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="">
-                    {{ 'backend.emission.index.heading'|trans }}
-                    <strong>{{ project.name }}</strong>
-                </h2>
+        <header class="emission-dashboard__header">
+            <div>
+                <div class="emission-dashboard__eyebrow">{{ 'backend.emission.index.dashboard.eyebrow'|trans }}</div>
+                <h2 class="emission-dashboard__project-name">{{ project.name }}</h2>
             </div>
-
-            <div class="d-flex align-items-center mb-3">
-                {# Normalizamos a una clave canónica #}
-                {% set typeKey = (project.type ?? '')|lower %}
-                {% set typeIcon = typeKey == 'evento' ? 'bi-calendar-event' : 'bi-camera-reels' %}
-                {% set typeLabel = ('backend.project.type.' ~ typeKey)|trans %}
-
-                <span
-                    class="badge bg-secondary ms-1"
-                    data-bs-toggle="popover"
-                    data-bs-trigger="hover"
-                    data-bs-html="true"
-                    data-bs-content="{{ 'backend.plan.badges.type_popover'|trans({'%type%': typeLabel})|e('html_attr') }}">
-                    <i class="bi {{ typeIcon }}"></i> {{ typeLabel }}
-                </span>
-            </div>
-
-
-            <button type="button" class="btn btn-outline-secondary mb-4" data-bs-toggle="modal" data-bs-target="#reportModal">
-                <i class="bi bi-file-earmark-pdf me-2"></i> {{ 'backend.emission.index.reports_btn'|trans }}
-            </button>
-
-            {% if not hasCategories %}
-                <div class="alert alert-info">{{ 'backend.emission.index.no_categories'|trans }}</div>
-            {% else %}
-                <div class="emissions-layout">
-                    <aside class="emissions-category-panel card shadow-sm border-0">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-                                <h3 class="h6 mb-0">{{ 'backend.emission.index.categories_title'|trans }}</h3>
-                                <span class="badge text-bg-light border text-success-emphasis">
-                                    {{ selectedCategoryCount }}
-                                </span>
-                            </div>
-
-                            <div class="emissions-category-list">
-                                {% for category in categoriesNavigation %}
-                                    <a
-                                        href="{{ category.url }}"
-                                        class="emissions-category-item {{ category.active ? 'emissions-category-item--active' : '' }} {{ hasAnyEmissionRecords and category.empty ? 'emissions-category-item--empty' : '' }}"
-                                        aria-current="{{ category.active ? 'true' : 'false' }}"
-                                    >
-                                        <span class="emissions-category-item__label">
-                                            <i class="bi {{ category.icon }}"></i>
-                                            <span class="emissions-category-item__text">{{ category.id == materialId ? materialCategoryLabel : category.name }}</span>
-                                        </span>
-                                        <span class="badge rounded-pill {{ category.active ? 'text-bg-success' : 'text-bg-secondary' }}">
-                                            {{ category.count }}
-                                        </span>
-                                    </a>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </aside>
-
-                    <section class="emissions-records-panel">
-                        <div class="emissions-records-header d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-3">
-                            <div>
-                                <h3 class="h5 mb-1">{{ selectedCategoryId == materialId ? materialCategoryLabel : selectedCategoryName }}</h3>
-                                <div class="text-muted small">
-                                    {{ 'backend.emission.index.records_count'|trans({'%count%': selectedCategoryCount}) }}
-                                </div>
-                            </div>
-
-                            <a
-                                href="{{ newRecordUrl }}"
-                                class="btn btn-sm btn-success shadow-sm px-4 py-2 d-inline-flex align-items-center gap-2 text-decoration-none emissions-new-record-btn"
-                            >
-                                <i class="bi bi-plus-circle-fill fs-5"></i>
-                                <span class="fw-semibold">{{ 'backend.emission.index.new_record'|trans }}</span>
-                            </a>
-                        </div>
-
-                        {% if selectedCategoryRecords is empty %}
-                            <div class="alert alert-light mb-0">{{ 'backend.emission.index.no_records'|trans }}</div>
-                        {% else %}
-                            <div class="table-responsive emissions-table-wrapper">
-                                <table class="table table-hover green_table_1 align-middle mb-0">
-                                    <thead>
-                                    <tr>
-                                        <th>{{ 'backend.emission.index.th.activity'|trans }}</th>
-                                        <th>{{ 'backend.emission.index.th.phase'|trans }}</th>
-                                        <th>{{ 'backend.emission.index.th.unit'|trans }}</th>
-                                        <th>{{ 'backend.emission.index.th.amount'|trans }}</th>
-                                        <th title="{{ 'backend.emission.index.th.emission_title'|trans }}">{{ 'backend.emission.index.th.emission'|trans }}</th>
-                                        <th>{{ 'backend.emission.index.th.date'|trans }}</th>
-                                        <th>{{ 'backend.emission.index.th.actions'|trans }}</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {% for record in selectedCategoryRecords %}
-                                        {% set effectiveCategory = record.effectiveCategory %}
-                                        {% set transportV20Summary = transportV20Summaries[record.id]|default(null) %}
-                                        {% set energyV1Summary = energyV1Summaries[record.id]|default(null) %}
-                                        {% set waterV1Summary = waterV1Summaries[record.id]|default(null) %}
-                                        {% set accommodationV1Summary = accommodationV1Summaries[record.id]|default(null) %}
-                                        {% set cateringV1Summary = cateringV1Summaries[record.id]|default(null) %}
-                                        {% set wasteV1Summary = wasteV1Summaries[record.id]|default(null) %}
-                                        {% set materialV1Summary = materialV1Summaries[record.id]|default(null) %}
-                                        <tr class="emissions-record-row">
-                                            <td>
-                                                {% if transportV20Summary %}
-                                                    {{ ('backend.emission.transport_v20.modes.' ~ transportV20Summary.mode)|trans }}
-                                                    {% if transportV20Summary.detailCode %}
-                                                        <span class="text-muted">
-                                                            (
-                                                            {% if transportV20Summary.detailKind == 'vehicle_type' %}
-                                                                {{ ('backend.emission.transport_v20.vehicle_types.' ~ transportV20Summary.detailCode)|trans }}
-                                                            {% else %}
-                                                                {{ ('backend.emission.transport_v20.fuels.' ~ transportV20Summary.detailCode)|trans }}
-                                                            {% endif %}
-                                                            )
-                                                        </span>
-                                                    {% endif %}
-                                                {% elseif energyV1Summary %}
-                                                    {{ ('backend.emission.energy_v1.families.' ~ energyV1Summary.family)|trans }}
-                                                {% elseif waterV1Summary and waterV1Summary.waterUseType %}
-                                                    {{ ('backend.emission.water_v1.water_use_types.' ~ waterV1Summary.waterUseType)|trans }}
-                                                {% elseif accommodationV1Summary and accommodationV1Summary.accommodationType %}
-                                                    {{ ('backend.emission.accommodation_v1.types.' ~ accommodationV1Summary.accommodationType)|trans }}
-                                                {% elseif cateringV1Summary and cateringV1Summary.activityType %}
-                                                    {{ ('backend.emission.catering_v1.activities.' ~ cateringV1Summary.activityType)|trans }}
-                                                {% elseif wasteV1Summary and wasteV1Summary.displayActivity %}
-                                                    {{ wasteV1Summary.displayActivity }}
-                                                {% elseif materialV1Summary and materialV1Summary.displayActivity %}
-                                                    {{ materialV1Summary.displayActivity }}
-                                                {% else %}
-                                                    —
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ project.getPhaseLabel(record.phase.phase)|trans }}</td>
-                                            <td>
-                                                {% if transportV20Summary and transportV20Summary.displayActivityUnit %}
-                                                    {{ ('backend.emission.transport_v20.units.' ~ transportV20Summary.displayActivityUnit)|trans }}
-                                                {% elseif energyV1Summary and energyV1Summary.normalizedUnit %}
-                                                    {{ energyV1Summary.normalizedUnit }}
-                                                {% elseif waterV1Summary and waterV1Summary.normalizedUnit %}
-                                                    {{ ('backend.emission.water_v1.units.' ~ waterV1Summary.normalizedUnit)|trans }}
-                                                {% elseif accommodationV1Summary and accommodationV1Summary.normalizedUnitKey %}
-                                                    {{ ('backend.emission.accommodation_v1.units.' ~ accommodationV1Summary.normalizedUnitKey)|trans }}
-                                                {% elseif cateringV1Summary and cateringV1Summary.normalizedUnitKey %}
-                                                    {{ ('backend.emission.catering_v1.units.' ~ cateringV1Summary.normalizedUnitKey)|trans }}
-                                                {% elseif wasteV1Summary and wasteV1Summary.normalizedUnit %}
-                                                    {{ wasteV1Summary.normalizedUnit }}
-                                                {% elseif materialV1Summary and materialV1Summary.normalizedUnit %}
-                                                    {{ materialV1Summary.normalizedUnit }}
-                                                {% else %}
-                                                    —
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ record.amount is null ? '—' : record.amount }}</td>
-                                            <td>
-                                                {% if record.emission is not null %}
-                                                    {{ record.emission|number_format(2, ',', '.') }}
-                                                {% elseif record.status == 'PENDING_DATA' %}
-                                                    {{ 'backend.emission.energy_v1.statuses.PENDING_DATA'|trans }}
-                                                {% elseif record.status == 'NOT_AUTOMATICALLY_CALCULABLE' %}
-                                                    {{ 'backend.emission.energy_v1.statuses.NOT_AUTOMATICALLY_CALCULABLE'|trans }}
-                                                {% else %}
-                                                    —
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ record.registeredAt|date('d/m/Y') }}</td>
-                                            <td class="text-nowrap">
-                                                {% if record.id in transportV20RecordIds %}
-                                                <a
-                                                    href="{{ path('backend_emission_edit_transport_v20', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a
-                                                    href="{{ path('backend_emission_duplicate_transport_v20', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.emission.transport_v20.duplicate_action'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-files"></i>
-                                                </a>
-                                                {% elseif record.id in energyV1RecordIds %}
-                                                <a
-                                                    href="{{ path('backend_emission_edit_energy_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a
-                                                    href="{{ path('backend_emission_duplicate_energy_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.emission.energy_v1.duplicate_action'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-files"></i>
-                                                </a>
-                                                {% elseif record.id in waterV1RecordIds %}
-                                                <a
-                                                    href="{{ path('backend_emission_edit_water_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a
-                                                    href="{{ path('backend_emission_duplicate_water_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.emission.water_v1.duplicate_action'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-files"></i>
-                                                </a>
-                                                {% elseif record.id in accommodationV1RecordIds %}
-                                                <a
-                                                    href="{{ path('backend_emission_edit_accommodation_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a
-                                                    href="{{ path('backend_emission_duplicate_accommodation_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.emission.accommodation_v1.duplicate_action'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-files"></i>
-                                                </a>
-                                                {% elseif record.id in cateringV1RecordIds %}
-                                                <a
-                                                    href="{{ path('backend_emission_edit_catering_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a
-                                                    href="{{ path('backend_emission_duplicate_catering_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.emission.catering_v1.duplicate_action'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-files"></i>
-                                                </a>
-                                                {% elseif record.id in wasteV1RecordIds %}
-                                                <a
-                                                    href="{{ path('backend_emission_edit_waste_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a
-                                                    href="{{ path('backend_emission_duplicate_waste_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.emission.waste_v1.duplicate_action'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-files"></i>
-                                                </a>
-                                                {% elseif record.id in materialV1RecordIds %}
-                                                <a
-                                                    href="{{ path('backend_emission_edit_material_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a
-                                                    href="{{ path('backend_emission_duplicate_material_v1', { id: record.id }|merge(currentQuery)) }}"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.emission.material_v1.duplicate_action'|trans }}"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                >
-                                                    <i class="bi bi-files"></i>
-                                                </a>
-                                                {% endif %}
-
-                                                <form
-                                                    action="{{ path('backend_emission_delete', { id: record.id }|merge(currentQuery)) }}"
-                                                    method="post"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-trigger="hover"
-                                                    data-bs-placement="right"
-                                                    data-bs-content="{{ 'backend.common.delete'|trans }}"
-                                                    class="d-inline"
-                                                    onsubmit="return confirm('{{ 'backend.common.confirm_delete'|trans|e('js') }}');"
-                                                >
-                                                    <input type="hidden" name="categoryId" value="{{ effectiveCategory ? effectiveCategory.id : '' }}">
-                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
-                                                    <button class="btn btn-sm btn-outline-danger" type="submit">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                    </tbody>
-                                    <tfoot class="fw-bold">
-                                    <tr>
-                                        <td colspan="4">{{ 'backend.emission.index.total'|trans }}</td>
-                                        <td>{{ selectedCategoryTotalEmission|number_format(2, ',', '.') }}</td>
-                                        <td colspan="2"></td>
-                                    </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            {% if totalPages > 1 %}
-                                <nav class="d-flex justify-content-center mt-4 emissions-pagination" aria-label="{{ 'backend.pagination.title'|trans }}">
-                                    <ul class="pagination mb-0 flex-nowrap">
-                                        <li class="page-item {{ currentPage == 1 ? 'disabled' : '' }}">
-                                            <a
-                                                class="page-link text-decoration-none"
-                                                href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': currentPage - 1})) }}"
-                                                tabindex="-1"
-                                                aria-label="{{ 'backend.pagination.previous'|trans }}"
-                                            >
-                                                <span class="pagination-label pagination-label--desktop">&laquo; {{ 'backend.pagination.previous'|trans }}</span>
-                                                <span class="pagination-label pagination-label--mobile" aria-hidden="true">‹</span>
-                                            </a>
-                                        </li>
-
-                                        {% set startPage = currentPage - 2 %}
-                                        {% set endPage = currentPage + 2 %}
-                                        {% if startPage < 1 %}
-                                            {% set endPage = endPage + (1 - startPage) %}
-                                            {% set startPage = 1 %}
-                                        {% endif %}
-                                        {% if endPage > totalPages %}
-                                            {% set startPage = startPage - (endPage - totalPages) %}
-                                            {% set endPage = totalPages %}
-                                            {% if startPage < 1 %}
-                                                {% set startPage = 1 %}
-                                            {% endif %}
-                                        {% endif %}
-
-                                        {% if startPage > 1 %}
-                                            <li class="page-item">
-                                                <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': 1})) }}">1</a>
-                                            </li>
-                                            {% if startPage > 2 %}
-                                                <li class="page-item disabled"><span class="page-link">…</span></li>
-                                            {% endif %}
-                                        {% endif %}
-
-                                        {% for p in startPage..endPage %}
-                                            <li class="page-item {{ p == currentPage ? 'active' : '' }}">
-                                                <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': p})) }}">{{ p }}</a>
-                                            </li>
-                                        {% endfor %}
-
-                                        {% if endPage < totalPages %}
-                                            {% if endPage < totalPages - 1 %}
-                                                <li class="page-item disabled"><span class="page-link">…</span></li>
-                                            {% endif %}
-                                            <li class="page-item">
-                                                <a class="page-link text-decoration-none" href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': totalPages})) }}">{{ totalPages }}</a>
-                                            </li>
-                                        {% endif %}
-
-                                        <li class="page-item {{ currentPage == totalPages ? 'disabled' : '' }}">
-                                            <a
-                                                class="page-link text-decoration-none"
-                                                href="{{ path(app.request.attributes.get('_route'), paginationQuery|merge({'page': currentPage + 1})) }}"
-                                                aria-label="{{ 'backend.pagination.next'|trans }}"
-                                            >
-                                                <span class="pagination-label pagination-label--desktop">{{ 'backend.pagination.next'|trans }} &raquo;</span>
-                                                <span class="pagination-label pagination-label--mobile" aria-hidden="true">›</span>
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </nav>
-                            {% endif %}
-
-                            <div class="emissions-chart-wrapper mt-4">
-                                <canvas
-                                    data-emission-target="chart"
-                                    data-chart-category="{{ selectedCategoryChartKey }}"
-                                    class="emissions-chart">
-                                </canvas>
-                            </div>
-                        {% endif %}
-                    </section>
-                </div>
-
+            {% if is_granted('PROJECT_EDIT', project) %}
+                <a href="{{ path('backend_project_edit', {id: project.id}) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>
+                    {{ 'backend.emission.index.dashboard.edit_project'|trans }}
+                </a>
             {% endif %}
+        </header>
+
+        {% set typeKey = (project.type ?? '')|lower %}
+        <section class="emission-dashboard__project-meta" aria-label="{{ 'backend.emission.index.dashboard.project_data'|trans }}">
+            <div class="emission-dashboard__meta-item">
+                <span>{{ 'backend.emission.index.dashboard.project_type'|trans }}</span>
+                <strong>{{ ('backend.project.type.' ~ typeKey)|trans }}</strong>
+            </div>
+            {% for phaseDate in project.phaseDates %}
+                <div class="emission-dashboard__meta-item">
+                    <span>{{ project.getPhaseLabel(phaseDate.phase)|trans }}</span>
+                    <strong>
+                        {{ phaseDate.startDate ? phaseDate.startDate|date('d/m/Y') : '—' }}
+                        —
+                        {{ phaseDate.endDate ? phaseDate.endDate|date('d/m/Y') : '—' }}
+                    </strong>
+                </div>
+            {% endfor %}
+        </section>
+
+        <section class="emission-dashboard__hero">
+            <div class="emission-dashboard__metric">
+                <strong>{{ totalEmissionTonnes is null ? '—' : totalEmissionTonnes|number_format(2, ',', '.') ~ ' tCO₂e' }}</strong>
+                <span>{{ 'backend.emission.index.dashboard.emissions'|trans }}</span>
+            </div>
+        </section>
+
+        <div class="emission-dashboard__section-title">
+            <h3>{{ 'backend.emission.index.categories_title'|trans }}</h3>
+            <p>{{ 'backend.emission.index.dashboard.categories_help'|trans }}</p>
+        </div>
+
+        {% if not hasCategories %}
+            <div class="alert alert-info">{{ 'backend.emission.index.no_categories'|trans }}</div>
+        {% else %}
+            <div class="accordion emission-dashboard__categories" id="emission-categories">
+                {% for category in categories %}
+                    {% set categoryQuery = app.request.query.all|merge({categoryId: category.id}) %}
+                    <article class="accordion-item emission-dashboard-category emission-dashboard-category--{{ category.slug }}" id="emission-category-{{ category.id }}">
+                        <h4 class="accordion-header">
+                            <button
+                                class="accordion-button emission-dashboard-category__header {{ category.active ? '' : 'collapsed' }}"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#emission-category-body-{{ category.id }}"
+                                aria-expanded="{{ category.active ? 'true' : 'false' }}"
+                                aria-controls="emission-category-body-{{ category.id }}"
+                            >
+                                <span class="emission-dashboard-category__icon"><i class="bi {{ category.icon }}" aria-hidden="true"></i></span>
+                                <span class="emission-dashboard-category__identity">
+                                    <span class="emission-dashboard-category__name">{{ ('backend.emission.index.dashboard.categories.' ~ category.labelKey)|trans }}</span>
+                                    <span class="emission-dashboard-category__count">
+                                        {{ category.count == 0
+                                            ? 'backend.emission.index.dashboard.no_records'|trans
+                                            : 'backend.emission.index.records_count'|trans({'%count%': category.count}) }}
+                                    </span>
+                                </span>
+                                <span class="emission-dashboard-category__subtotal">
+                                    {{ category.totalEmissionKg is null ? '—' : (category.totalEmissionKg / 1000)|number_format(2, ',', '.') ~ ' tCO₂e' }}
+                                </span>
+                            </button>
+                        </h4>
+
+                        <div
+                            id="emission-category-body-{{ category.id }}"
+                            class="accordion-collapse collapse {{ category.active ? 'show' : '' }}"
+                            data-bs-parent="#emission-categories"
+                        >
+                            <div class="accordion-body emission-dashboard-category__body">
+                                <div class="emission-dashboard-category__tools">
+                                    <h5>{{ 'backend.emission.index.dashboard.entered_data'|trans }}</h5>
+                                    <a href="{{ category.createUrl }}" class="btn btn-sm emission-dashboard-category__add">
+                                        <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
+                                        {{ 'backend.emission.index.dashboard.add_data'|trans }}
+                                    </a>
+                                </div>
+
+                                {% if category.records is empty %}
+                                    <div class="emission-dashboard-category__empty">
+                                        <i class="bi bi-inbox" aria-hidden="true"></i>
+                                        <span>{{ 'backend.emission.index.no_records'|trans }}</span>
+                                    </div>
+                                {% else %}
+                                    <div class="emission-dashboard-records">
+                                        {% for record in category.records %}
+                                            {% set transportSummary = transportV20Summaries[record.id]|default(null) %}
+                                            {% set energySummary = energyV1Summaries[record.id]|default(null) %}
+                                            {% set waterSummary = waterV1Summaries[record.id]|default(null) %}
+                                            {% set accommodationSummary = accommodationV1Summaries[record.id]|default(null) %}
+                                            {% set cateringSummary = cateringV1Summaries[record.id]|default(null) %}
+                                            {% set wasteSummary = wasteV1Summaries[record.id]|default(null) %}
+                                            {% set materialSummary = materialV1Summaries[record.id]|default(null) %}
+                                            {% set action = recordActions[record.id]|default(null) %}
+
+                                            {% set activity %}
+                                                {% if transportSummary %}
+                                                    {{ ('backend.emission.transport_v20.modes.' ~ transportSummary.mode)|trans }}
+                                                    {% if transportSummary.detailCode %}
+                                                        · {{ ((transportSummary.detailKind == 'vehicle_type'
+                                                            ? 'backend.emission.transport_v20.vehicle_types.'
+                                                            : 'backend.emission.transport_v20.fuels.') ~ transportSummary.detailCode)|trans }}
+                                                    {% endif %}
+                                                {% elseif energySummary %}
+                                                    {{ ('backend.emission.energy_v1.families.' ~ energySummary.family)|trans }}
+                                                {% elseif waterSummary and waterSummary.waterUseType %}
+                                                    {{ ('backend.emission.water_v1.water_use_types.' ~ waterSummary.waterUseType)|trans }}
+                                                {% elseif accommodationSummary and accommodationSummary.accommodationType %}
+                                                    {{ ('backend.emission.accommodation_v1.types.' ~ accommodationSummary.accommodationType)|trans }}
+                                                {% elseif cateringSummary and cateringSummary.activityType %}
+                                                    {{ ('backend.emission.catering_v1.activities.' ~ cateringSummary.activityType)|trans }}
+                                                {% elseif wasteSummary and wasteSummary.displayActivity %}
+                                                    {{ wasteSummary.displayActivity }}
+                                                {% elseif materialSummary and materialSummary.displayActivity %}
+                                                    {{ materialSummary.displayActivity }}
+                                                {% else %}—{% endif %}
+                                            {% endset %}
+
+                                            {% set unit %}
+                                                {% if transportSummary and transportSummary.displayActivityUnit %}
+                                                    {{ ('backend.emission.transport_v20.units.' ~ transportSummary.displayActivityUnit)|trans }}
+                                                {% elseif energySummary and energySummary.normalizedUnit %}
+                                                    {{ energySummary.normalizedUnit }}
+                                                {% elseif waterSummary and waterSummary.normalizedUnit %}
+                                                    {{ ('backend.emission.water_v1.units.' ~ waterSummary.normalizedUnit)|trans }}
+                                                {% elseif accommodationSummary and accommodationSummary.normalizedUnitKey %}
+                                                    {{ ('backend.emission.accommodation_v1.units.' ~ accommodationSummary.normalizedUnitKey)|trans }}
+                                                {% elseif cateringSummary and cateringSummary.normalizedUnitKey %}
+                                                    {{ ('backend.emission.catering_v1.units.' ~ cateringSummary.normalizedUnitKey)|trans }}
+                                                {% elseif wasteSummary and wasteSummary.normalizedUnit %}
+                                                    {{ wasteSummary.normalizedUnit }}
+                                                {% elseif materialSummary and materialSummary.normalizedUnit %}
+                                                    {{ materialSummary.normalizedUnit }}
+                                                {% else %}—{% endif %}
+                                            {% endset %}
+
+                                            <div class="emission-dashboard-record emissions-record-row">
+                                                <div class="emission-dashboard-record__summary">
+                                                    <span class="emission-dashboard-record__date">{{ record.registeredAt|date('d/m/Y') }}</span>
+                                                    <span class="emission-dashboard-record__activity">{{ activity|trim }}</span>
+                                                    <span class="emission-dashboard-record__description">
+                                                        {{ record.amount is null ? '—' : record.amount|number_format(2, ',', '.') }}
+                                                        {% if unit|trim != '—' %} {{ unit|trim }}{% endif %}
+                                                    </span>
+                                                    <span class="emission-dashboard-record__emission">
+                                                        {{ record.emission is null ? '—' : record.emission|number_format(2, ',', '.') ~ ' kgCO₂e' }}
+                                                    </span>
+                                                    <button
+                                                        class="btn btn-sm btn-outline-secondary"
+                                                        type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#emission-record-detail-{{ record.id }}"
+                                                        aria-expanded="false"
+                                                        aria-controls="emission-record-detail-{{ record.id }}"
+                                                    >{{ 'backend.emission.index.dashboard.view'|trans }}</button>
+                                                </div>
+
+                                                <div class="collapse" id="emission-record-detail-{{ record.id }}">
+                                                    <div class="emission-dashboard-record__detail">
+                                                        <dl>
+                                                            <div><dt>{{ 'backend.emission.index.th.phase'|trans }}</dt><dd>{{ project.getPhaseLabel(record.phase.phase)|trans }}</dd></div>
+                                                            <div><dt>{{ 'backend.emission.index.th.activity'|trans }}</dt><dd>{{ activity|trim }}</dd></div>
+                                                            <div><dt>{{ 'backend.emission.index.th.amount'|trans }}</dt><dd>{{ record.amount is null ? '—' : record.amount|number_format(2, ',', '.') }}</dd></div>
+                                                            <div><dt>{{ 'backend.emission.index.th.unit'|trans }}</dt><dd>{{ unit|trim }}</dd></div>
+                                                            <div><dt>{{ 'backend.emission.index.dashboard.status'|trans }}</dt><dd>{{ record.status ? ('backend.emission.energy_v1.statuses.' ~ record.status)|trans : '—' }}</dd></div>
+                                                            <div><dt>{{ 'backend.emission.index.dashboard.emissions'|trans }}</dt><dd>{{ record.emission is null ? '—' : record.emission|number_format(2, ',', '.') ~ ' kgCO₂e' }}</dd></div>
+                                                        </dl>
+                                                        <div class="emission-dashboard-record__actions">
+                                                            {% if action %}
+                                                                <a href="{{ path(action.editRoute, {id: record.id}|merge(categoryQuery)) }}" class="btn btn-sm btn-outline-secondary">
+                                                                    <i class="bi bi-pencil me-1" aria-hidden="true"></i>{{ 'backend.common.edit'|trans }}
+                                                                </a>
+                                                                <a href="{{ path(action.duplicateRoute, {id: record.id}|merge(categoryQuery)) }}" class="btn btn-sm btn-outline-secondary">
+                                                                    <i class="bi bi-files me-1" aria-hidden="true"></i>{{ 'backend.emission.index.dashboard.duplicate'|trans }}
+                                                                </a>
+                                                            {% endif %}
+                                                            <form
+                                                                action="{{ path('backend_emission_delete', {id: record.id}|merge(categoryQuery)) }}"
+                                                                method="post"
+                                                                onsubmit="return confirm('{{ 'backend.common.confirm_delete'|trans|e('js') }}');"
+                                                            >
+                                                                <input type="hidden" name="category" value="{{ category.name }}">
+                                                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
+                                                                <button class="btn btn-sm btn-outline-danger" type="submit">
+                                                                    <i class="bi bi-trash me-1" aria-hidden="true"></i>{{ 'backend.common.delete'|trans }}
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+
+                                    {% if category.hasMore %}
+                                        <a href="{{ category.showAllUrl }}" class="emission-dashboard-category__show-all">
+                                            {{ 'backend.emission.index.dashboard.show_all'|trans }}
+                                        </a>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="emission-dashboard__footer">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#reportModal">
+                <i class="bi bi-bar-chart-line me-1" aria-hidden="true"></i>
+                {{ 'backend.emission.index.dashboard.provisional_results'|trans }}
+            </button>
+        </div>
     </div>
 </div>
 
 <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="reportModalLabel">
-            <i class="bi bi-file-earmark-pdf me-2"></i> {{ 'backend.emission.index.modal.title'|trans }}
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
-      </div>
-      <div class="modal-body">
-        <p class="mb-3 text-center">{{ 'backend.emission.index.modal.subtitle'|trans }}</p>
-        <div class="d-grid gap-2">
-          <a href="{{ path('report_emission_overview_pdf') }}" class="btn btn-outline-dark">
-            <i class="bi bi-diagram-3-fill me-2"></i> {{ 'backend.emission.index.modal.report_overview'|trans }}
-          </a>
-          <a href="{{ path('report_emission_detailed_pdf') }}" class="btn btn-outline-dark">
-            <i class="bi bi-table me-2"></i> {{ 'backend.emission.index.modal.report_detailed'|trans }}
-          </a>
-          <a href="{{ path('report_emission_by_activity_pdf') }}" class="btn btn-outline-dark">
-            <i class="bi bi-list-check me-2"></i> {{ 'backend.emission.index.modal.report_by_activity'|trans }}
-          </a>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="reportModalLabel"><i class="bi bi-file-earmark-pdf me-2"></i>{{ 'backend.emission.index.modal.title'|trans }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3 text-center">{{ 'backend.emission.index.modal.subtitle'|trans }}</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ path('report_emission_overview_pdf') }}" class="btn btn-outline-dark"><i class="bi bi-diagram-3-fill me-2"></i>{{ 'backend.emission.index.modal.report_overview'|trans }}</a>
+                    <a href="{{ path('report_emission_detailed_pdf') }}" class="btn btn-outline-dark"><i class="bi bi-table me-2"></i>{{ 'backend.emission.index.modal.report_detailed'|trans }}</a>
+                    <a href="{{ path('report_emission_by_activity_pdf') }}" class="btn btn-outline-dark"><i class="bi bi-list-check me-2"></i>{{ 'backend.emission.index.modal.report_by_activity'|trans }}</a>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </div>
 {% endblock %}

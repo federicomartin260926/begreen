@@ -37,60 +37,88 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class EmissionControllerTest extends KernelTestCase
 {
-    public function testIndexRendersFirstPageOfAllRecordsWithFullFooterTotal(): void
+    public function testIndexWithoutCategoryIdRendersSevenModernCategoriesInFixedOrder(): void
     {
         $payload = $this->buildPayload();
 
         $response = $this->renderIndex($payload['project'], $payload['records'], $payload['categories'], []);
 
-        self::assertSame(302, $response->getStatusCode());
-        self::assertSame('/backend/emission/records?categoryId=1', $response->headers->get('Location'));
+        self::assertSame(200, $response->getStatusCode());
+        $content = (string) $response->getContent();
+
+        $categoryLabels = [
+            'Transporte',
+            'Agua',
+            'Alojamiento',
+            'Catering',
+            'Energía y tecnología digital',
+            'Materiales y Productos',
+            'Residuos',
+        ];
+        $lastPosition = -1;
+        foreach ($categoryLabels as $label) {
+            $position = strpos($content, 'emission-dashboard-category__name">'.$label);
+            self::assertNotFalse($position, sprintf('No se encontró la categoría "%s".', $label));
+            self::assertGreaterThan($lastPosition, $position, sprintf('La categoría "%s" no respeta el orden visual.', $label));
+            $lastPosition = $position;
+        }
+
+        self::assertSame(7, substr_count($content, 'accordion-item emission-dashboard-category '));
+        self::assertStringNotContainsString('Viajes', $content);
+        self::assertMatchesRegularExpression('/id="emission-category-body-2"\s+class="accordion-collapse collapse show"/', $content);
+        self::assertStringNotContainsString('data-controller="emission"', $content);
+        self::assertStringNotContainsString('emissions-chart', $content);
+
+        self::assertStringContainsString('/backend/emission/new-transport?categoryId=2', $content);
+        self::assertStringContainsString('/backend/emission/new-water-v1?categoryId=5', $content);
+        self::assertStringContainsString('/backend/emission/new-accommodation-v1?categoryId=3', $content);
+        self::assertStringContainsString('/backend/emission/new-catering-v1?categoryId=7', $content);
+        self::assertStringContainsString('/backend/emission/new-energy-v1?categoryId=1', $content);
+        self::assertStringContainsString('/backend/emission/new-material-v1?categoryId=6', $content);
+        self::assertStringContainsString('/backend/emission/new-waste-v1?categoryId=4', $content);
     }
 
-    public function testIndexKeepsCategoryPagingAndFullCategoryTotal(): void
+    public function testIndexLimitsEachCategoryPreviewAndCanShowAllSelectedCategory(): void
     {
         $payload = $this->buildPayload();
+
+        $preview = $this->renderIndex($payload['project'], $payload['records'], $payload['categories'], []);
+        self::assertSame(200, $preview->getStatusCode());
+        $previewContent = (string) $preview->getContent();
+
+        self::assertSame(8, substr_count($previewContent, 'emissions-record-row'));
+        self::assertSame(1, substr_count($previewContent, 'Ver todos los registros'));
+        self::assertStringContainsString('/backend/emission/records?categoryId=1&amp;showAll=1#emission-category-1', $previewContent);
 
         $response = $this->renderIndex($payload['project'], $payload['records'], $payload['categories'], [
             'categoryId' => 1,
-            'page' => 2,
+            'showAll' => '1',
         ]);
 
         self::assertSame(200, $response->getStatusCode());
         $content = (string) $response->getContent();
 
-        self::assertStringContainsString('emissions-pagination', $content);
-        self::assertSame(2, substr_count($content, 'emissions-record-row'));
-        self::assertStringContainsString('27,60', $content);
-        self::assertStringContainsString('/backend/emission/new-energy-v1?page=2', $content);
-        self::assertStringNotContainsString('/edit-energy?', $content);
-        self::assertStringContainsString('categoryId=1', $content);
-        self::assertStringContainsString('data-emission-target="chart"', $content);
-        self::assertStringContainsString('data-chart-category="Energía"', $content);
-        self::assertStringContainsString('emissions-chart', $content);
-        self::assertStringNotContainsString('Todas', $content);
+        self::assertSame(15, substr_count($content, 'emissions-record-row'));
+        self::assertStringNotContainsString('Ver todos los registros', $content);
+        self::assertMatchesRegularExpression('/id="emission-category-body-1"\s+class="accordion-collapse collapse show"/', $content);
     }
 
-    public function testIndexShowsCategoriesNormallyWhenThereAreNoRecords(): void
+    public function testIndexShowsTotalsEmptyCategoriesAndProjectData(): void
     {
         $payload = $this->buildPayload();
 
-        $response = $this->renderIndex($payload['project'], [], $payload['categories'], [
-            'categoryId' => 1,
-        ]);
+        $response = $this->renderIndex($payload['project'], $payload['records'], $payload['categories'], []);
 
         self::assertSame(200, $response->getStatusCode());
         $content = (string) $response->getContent();
 
-        self::assertStringContainsString('emissions-category-panel', $content);
-        self::assertStringContainsString('Energía', $content);
-        self::assertStringContainsString('Transporte', $content);
-        self::assertStringContainsString('Residuos', $content);
-        self::assertStringContainsString('Agua', $content);
-        self::assertStringContainsString('Alojamientos', $content);
-        self::assertStringNotContainsString('Viajes', $content);
-        self::assertStringNotContainsString('emissions-category-item--empty', $content);
-        self::assertStringNotContainsString('Todas', $content);
+        self::assertStringContainsString('0,05 tCO₂e', $content);
+        self::assertSame(2, substr_count($content, '0,03 tCO₂e'));
+        self::assertStringContainsString('01/01/2026', $content);
+        self::assertStringContainsString('31/01/2026', $content);
+        self::assertStringContainsString('emission-dashboard-category--catering', $content);
+        self::assertStringContainsString('/backend/emission/new-catering-v1?categoryId=7', $content);
+        self::assertStringContainsString('Sin registros', $content);
     }
 
     public function testIndexUsesFunctionalMaterialLabelOnlyInCalculatorPresentation(): void
@@ -102,7 +130,7 @@ final class EmissionControllerTest extends KernelTestCase
         ])->getContent();
 
         self::assertStringContainsString('Materiales y Productos', $content);
-        self::assertStringContainsString('&quot;Materiales&quot;', $content);
+        self::assertStringNotContainsString('emission-dashboard-category__name">Materiales</span>', $content);
     }
 
     public function testIndexRendersModernRecordWithoutActivity(): void
@@ -392,19 +420,21 @@ final class EmissionControllerTest extends KernelTestCase
         $generic = (new Category())->setName('Agua');
         $accommodation = (new Category())->setName('Alojamientos');
         $material = (new Category())->setName('Materiales');
+        $catering = (new Category())->setName('Catering');
         $this->setEntityId($energy, 1);
         $this->setEntityId($transport, 2);
         $this->setEntityId($empty, 4);
         $this->setEntityId($generic, 5);
         $this->setEntityId($accommodation, 3);
         $this->setEntityId($material, 6);
+        $this->setEntityId($catering, 7);
 
         $phase = (new ProjectPhaseDate())
             ->setPhase('actividad')
             ->setStartDate(new \DateTimeImmutable('2026-01-01'))
-            ->setEndDate(new \DateTimeImmutable('2026-01-31'))
-            ->setProject($project);
+            ->setEndDate(new \DateTimeImmutable('2026-01-31'));
         $this->setEntityId($phase, 21);
+        $project->addPhaseDate($phase);
 
         $records = [];
         foreach (range(1, 12) as $i) {
@@ -433,14 +463,14 @@ final class EmissionControllerTest extends KernelTestCase
 
         return [
             'project' => $project,
-            'categories' => [$energy, $transport, $empty, $generic, $accommodation, $material],
+            'categories' => [$energy, $transport, $empty, $generic, $accommodation, $material, $catering],
             'records' => $records,
         ];
     }
 
     private function createEntityManagerMock(): EntityManagerInterface
     {
-        $ids = [1, 2, 5, 3, null, 4, 6];
+        $ids = [1, 2, 5, 3, 7, 4, 6];
 
         $query = $this->createMock(Query::class);
         foreach (['setParameter', 'setMaxResults'] as $method) {
