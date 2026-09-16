@@ -1109,9 +1109,10 @@ html.backend-sidebar-collapsed #sidebar #adminCollapse,
 
 .backend-project-phases {
     display: grid;
-    grid-template-columns: repeat(7, minmax(5.65rem, 1fr));
+    grid-template-columns: repeat(8, minmax(5.65rem, 1fr));
     gap: .35rem;
     min-width: 0;
+    overflow-x: auto;
 }
 
 .backend-project-phase {
@@ -1162,6 +1163,12 @@ html.backend-sidebar-collapsed #sidebar #adminCollapse,
     background: #edf0ee;
     color: #535b56;
     font-size: 1.15rem;
+}
+
+.backend-project-phase--highlighted .backend-project-phase__icon {
+    box-shadow:
+        0 0 0 2px #127552,
+        0 0 0 4px rgba(18, 117, 82, .22);
 }
 
 .backend-project-phase--completed .backend-project-phase__icon {

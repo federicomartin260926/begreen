@@ -529,6 +529,7 @@ backend:
       phase_names:
         elaboration: "Elaboración del plan de sostenibilidad"
         signage: "Cartelería sostenible"
+        bgos: "Be Green On Set"
         implementation: "Implementación del plan de sostenibilidad"
         co2: "Calculadora de huella de carbono"
         report: "Informe final de sostenibilidad"

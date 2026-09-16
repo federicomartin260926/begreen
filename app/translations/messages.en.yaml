@@ -527,6 +527,7 @@ backend:
       phase_names:
         elaboration: "Sustainability plan elaboration"
         signage: "Sustainable signage"
+        bgos: "Be Green On Set"
         implementation: "Sustainability plan implementation"
         co2: "Carbon footprint calculator"
         report: "Final sustainability report"

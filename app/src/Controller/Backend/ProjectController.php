@@ -392,6 +392,16 @@ class ProjectController extends AbstractController
                 ],
                 [
                     'code' => '03',
+                    'label' => $this->t->trans('backend.projects.dashboard.phase_names.bgos'),
+                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'state' => 'not_started',
+                    'icon' => 'bi-calendar-check',
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.bgos').' · '.$this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'primaryTarget' => null,
+                    'isHighlighted' => true,
+                ],
+                [
+                    'code' => '04',
                     'label' => $this->t->trans('backend.projects.dashboard.phase_names.implementation'),
                     'stateLabel' => $implementationStateLabel,
                     'state' => $implementationState,
@@ -400,7 +410,7 @@ class ProjectController extends AbstractController
                     'primaryTarget' => 'implementation',
                 ],
                 [
-                    'code' => '04',
+                    'code' => '05',
                     'label' => $this->t->trans('backend.projects.dashboard.phase_names.co2'),
                     'stateLabel' => $this->t->trans($emissionCount > 0
                         ? 'backend.projects.dashboard.phases.common.in_progress'
@@ -411,7 +421,7 @@ class ProjectController extends AbstractController
                     'primaryTarget' => 'emissions',
                 ],
                 [
-                    'code' => '05',
+                    'code' => '06',
                     'label' => $this->t->trans('backend.projects.dashboard.phase_names.report'),
                     'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
                     'state' => 'not_started',
@@ -420,7 +430,7 @@ class ProjectController extends AbstractController
                     'primaryTarget' => 'report',
                 ],
                 [
-                    'code' => '06',
+                    'code' => '07',
                     'label' => $this->t->trans('backend.projects.dashboard.phase_names.compensation'),
                     'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
                     'state' => 'not_started',
@@ -429,7 +439,7 @@ class ProjectController extends AbstractController
                     'primaryTarget' => null,
                 ],
                 [
-                    'code' => '07',
+                    'code' => '08',
                     'label' => $this->t->trans('backend.projects.dashboard.phase_names.certification'),
                     'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
                     'state' => 'not_started',

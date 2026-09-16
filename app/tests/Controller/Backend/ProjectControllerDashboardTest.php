@@ -140,6 +140,30 @@ final class ProjectControllerDashboardTest extends KernelTestCase
         self::assertStringContainsString('Largometraje Ficción', $content);
         self::assertStringContainsString('Serie Documental', $content);
         self::assertStringContainsString('Evento corporativo', $content);
+
+        $phaseLabels = [
+            'Elaboración del plan de sostenibilidad',
+            'Cartelería sostenible',
+            'Be Green On Set',
+            'Implementación del plan de sostenibilidad',
+            'Calculadora de huella de carbono',
+            'Informe final de sostenibilidad',
+            'Compensación final',
+            'Certificación final',
+        ];
+
+        $previousPosition = -1;
+        foreach ($phaseLabels as $phaseLabel) {
+            $position = strpos($content, $phaseLabel);
+            self::assertNotFalse($position, sprintf('No se encontró la fase "%s".', $phaseLabel));
+            self::assertGreaterThan($previousPosition, $position);
+            $previousPosition = (int) $position;
+        }
+
+        self::assertDoesNotMatchRegularExpression(
+            '/<a\\b[^>]*>(?:(?!<\\/a>).)*Be Green On Set(?:(?!<\\/a>).)*<\\/a>/s',
+            $content
+        );
     }
 
     public function testDashboardQueryDoesNotDuplicateProjectsWithMultipleSubscriptions(): void

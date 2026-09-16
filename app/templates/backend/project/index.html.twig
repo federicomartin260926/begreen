@@ -255,14 +255,14 @@
                                     {% for phase in project.phases %}
                                         {% if phase.primaryTarget %}
                                             <a href="{{ path('backend_project_select_project', {id: project.id, target: phase.primaryTarget}) }}"
-                                               class="backend-project-phase backend-project-phase--{{ phase.state }} text-decoration-none"
+                                               class="backend-project-phase backend-project-phase--{{ phase.state }}{% if phase.isHighlighted|default(false) %} backend-project-phase--highlighted{% endif %} text-decoration-none"
                                                title="{{ phase.title }}" aria-label="{{ phase.title }}" role="listitem">
                                                 <span class="backend-project-phase__icon" aria-hidden="true"><i class="bi {{ phase.icon }}"></i></span>
                                                 <span class="backend-project-phase__name">{{ phase.label }}</span>
                                                 <span class="backend-project-phase__state">{{ phase.stateLabel }}</span>
                                             </a>
                                         {% else %}
-                                            <span class="backend-project-phase backend-project-phase--{{ phase.state }} backend-project-phase--unavailable"
+                                            <span class="backend-project-phase backend-project-phase--{{ phase.state }}{% if phase.isHighlighted|default(false) %} backend-project-phase--highlighted{% endif %} backend-project-phase--unavailable"
                                                   title="{{ phase.title }}" aria-label="{{ phase.title }}" aria-disabled="true" role="listitem" tabindex="0">
                                                 <span class="backend-project-phase__icon" aria-hidden="true"><i class="bi {{ phase.icon }}"></i></span>
                                                 <span class="backend-project-phase__name">{{ phase.label }}</span>
