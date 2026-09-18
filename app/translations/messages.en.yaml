@@ -1800,8 +1800,9 @@ backend:
       add_another_record: "Add another record"
     agenda:
       title: "Be Green On Set Agenda"
-      eyebrow: "BGoS tracking"
+      eyebrow: "BE GREEN ON SET"
       intro: "Review project emissions and completion by period."
+      calendar_title: "Tracking calendar"
       period_emissions: "Period emissions"
       period: "Period"
       views_label: "Time view"

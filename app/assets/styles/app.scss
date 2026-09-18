@@ -2966,3 +2966,852 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         box-shadow: none;
     }
 }
+
+/* ===== BGoS — shared visual system #61 START ===== */
+
+/* ---------------------------------------------------------
+ * Base común de página
+ * --------------------------------------------------------- */
+
+.bgos-agenda,
+.bgos-config {
+    color: #1f2933;
+
+    .backend-client-content {
+        width: 100%;
+        max-width: none;
+        margin-inline: 0;
+    }
+}
+
+.bgos-agenda__header,
+.bgos-config__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.25rem;
+}
+
+.bgos-agenda__header {
+    margin-bottom: 1rem;
+}
+
+.bgos-config__header {
+    margin-bottom: 1.25rem;
+}
+
+.bgos-agenda__eyebrow,
+.bgos-config__eyebrow {
+    color: $primary;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .055em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.bgos-agenda__project-name,
+.bgos-config__project-name {
+    margin: .2rem 0 .15rem;
+    font-size: clamp(1.55rem, 3vw, 1.9rem);
+    line-height: 1.15;
+}
+
+.bgos-agenda__intro,
+.bgos-config__intro {
+    margin: 0;
+    color: #68747f;
+    font-size: .9rem;
+}
+
+.bgos-agenda__configure,
+.bgos-config__back {
+    flex-shrink: 0;
+}
+
+
+/* ---------------------------------------------------------
+ * Categorías — identidad visual compartida
+ * --------------------------------------------------------- */
+
+.bgos-agenda__categories,
+.bgos-config__categories {
+    --bs-accordion-border-color: #d7dee4;
+    --bs-accordion-border-radius: .65rem;
+}
+
+.bgos-agenda-category,
+.bgos-config-category {
+    --bgos-category: #60717c;
+    --bgos-category-soft: #f4f6f7;
+
+    margin-bottom: .45rem;
+    overflow: hidden;
+    border: 1px solid #d7dee4 !important;
+    border-radius: .6rem !important;
+    background: #fff;
+}
+
+.bgos-agenda-category--transport,
+.bgos-config-category--transport {
+    --bgos-category: #0d6efd;
+    --bgos-category-soft: #eef5ff;
+}
+
+.bgos-agenda-category--energy,
+.bgos-config-category--energy {
+    --bgos-category: #ff7a00;
+    --bgos-category-soft: #fff6eb;
+}
+
+.bgos-agenda-category--water,
+.bgos-config-category--water {
+    --bgos-category: #0aa8d8;
+    --bgos-category-soft: #edfaff;
+}
+
+.bgos-agenda-category--accommodation,
+.bgos-config-category--accommodation {
+    --bgos-category: #8a35d1;
+    --bgos-category-soft: #f7effc;
+}
+
+.bgos-agenda-category--catering,
+.bgos-config-category--catering {
+    --bgos-category: #dc3545;
+    --bgos-category-soft: #fff1f2;
+}
+
+.bgos-agenda-category--materials,
+.bgos-config-category--materials {
+    --bgos-category: #b36a22;
+    --bgos-category-soft: #fbf4ec;
+}
+
+.bgos-agenda-category--waste,
+.bgos-config-category--waste {
+    --bgos-category: #00a77d;
+    --bgos-category-soft: #edf9f5;
+}
+
+.bgos-agenda-category__header,
+.bgos-agenda-category__header:not(.collapsed),
+.bgos-config-category__header,
+.bgos-config-category__header:not(.collapsed) {
+    display: grid;
+    align-items: center;
+    min-height: 3rem;
+    padding: .55rem .75rem;
+    color: #24313a;
+    background: #fff;
+    box-shadow: none;
+}
+
+.bgos-agenda-category__header,
+.bgos-agenda-category__header:not(.collapsed) {
+    grid-template-columns:
+        2rem
+        minmax(8rem, 1.25fr)
+        minmax(12rem, 3fr)
+        minmax(7.5rem, auto)
+        1rem;
+    gap: .7rem;
+}
+
+.bgos-config-category__header,
+.bgos-config-category__header:not(.collapsed) {
+    grid-template-columns: 2rem minmax(0, auto) auto 1fr 1rem;
+    gap: .65rem;
+}
+
+.bgos-agenda-category__header:not(.collapsed),
+.bgos-config-category__header:not(.collapsed) {
+    background: var(--bgos-category-soft);
+    box-shadow: inset 3px 0 0 var(--bgos-category);
+}
+
+.bgos-agenda-category__header:focus,
+.bgos-config-category__header:focus {
+    border-color: transparent;
+    box-shadow: inset 3px 0 0 var(--bgos-category);
+}
+
+.bgos-agenda-category__header::after,
+.bgos-config-category__header::after {
+    grid-column: 5;
+    grid-row: 1;
+    align-self: center;
+    justify-self: center;
+    width: .9rem;
+    height: .9rem;
+    margin-left: 0;
+    background-size: .9rem;
+}
+
+.bgos-agenda-category__icon,
+.bgos-config-category__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    background: var(--bgos-category);
+    color: #fff;
+    font-size: .86rem;
+}
+
+
+/* ---------------------------------------------------------
+ * Agenda
+ * --------------------------------------------------------- */
+
+.bgos-agenda__heading {
+    min-width: 0;
+}
+
+.bgos-agenda__summary {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 1.35rem;
+    border: 1px solid #dce2e7;
+    border-radius: .7rem;
+    background: #f8faf9;
+    overflow: hidden;
+}
+
+.bgos-agenda__summary-item {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    min-width: 0;
+    padding: .75rem 1rem;
+}
+
+.bgos-agenda__summary-item--emissions {
+    flex: 0 1 auto;
+}
+
+.bgos-agenda__summary-label {
+    color: #64717c;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .025em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.bgos-agenda__summary-emissions {
+    color: #17212b;
+    font-size: 1.45rem;
+    letter-spacing: -.025em;
+    white-space: nowrap;
+
+    span {
+        font-size: .8rem;
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+}
+
+.bgos-agenda__summary-period {
+    font-size: .9rem;
+    white-space: nowrap;
+}
+
+.bgos-agenda__summary-divider {
+    width: 1px;
+    margin-block: .6rem;
+    background: #dce2e7;
+}
+
+.bgos-agenda__calendar {
+    min-width: 0;
+}
+
+.bgos-agenda__calendar-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .55rem;
+}
+
+.bgos-agenda__section-title {
+    margin: 0;
+    color: #52616d;
+    font-size: .92rem;
+    font-weight: 800;
+}
+
+.bgos-agenda__views {
+    .btn {
+        min-width: 3.45rem;
+        padding: .28rem .65rem;
+    }
+
+    .btn-secondary {
+        color: #fff;
+        background: #697681;
+        border-color: #697681;
+    }
+}
+
+.bgos-agenda__period-navigation {
+    display: grid;
+    grid-template-columns: 2.1rem auto 2.1rem;
+    align-items: center;
+    justify-content: start;
+    gap: .55rem;
+    min-height: 2.15rem;
+    margin-bottom: .85rem;
+}
+
+.bgos-agenda__period-button,
+.bgos-agenda__period-button-spacer {
+    width: 2.1rem;
+    height: 2.1rem;
+}
+
+.bgos-agenda__period-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.bgos-agenda__period-current {
+    min-width: 10rem;
+    text-align: center;
+    font-size: .88rem;
+}
+
+.bgos-agenda-category__name {
+    min-width: 0;
+    overflow: hidden;
+    font-size: .88rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bgos-agenda-category__progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    min-width: 0;
+}
+
+.bgos-agenda-category__progress {
+    display: block;
+    flex: 1 1 auto;
+    height: .42rem;
+    min-width: 4rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e7ecef;
+}
+
+.bgos-agenda-category__progress > .progress-bar {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+}
+
+.bgos-agenda-category__progress > .progress-bar.is-complete {
+    background-color: #198754;
+}
+
+.bgos-agenda-category__progress > .progress-bar.is-pending {
+    background-color: #f6b800;
+}
+
+.bgos-agenda-category__progress--empty {
+    height: .42rem;
+    background: #e7ecef;
+}
+
+.bgos-agenda-category__percentage {
+    flex: 0 0 auto;
+    min-width: 2.2rem;
+    color: #6b7783;
+    font-size: .7rem;
+    text-align: right;
+}
+
+.bgos-agenda-category__emissions {
+    justify-self: end;
+    color: #25333c;
+    font-size: .82rem;
+    font-weight: 700;
+    white-space: nowrap;
+
+    small {
+        color: #68747f;
+        font-size: .72rem;
+        font-weight: 500;
+    }
+}
+
+.bgos-agenda-category__body {
+    padding: 0 1rem .2rem 3rem;
+    background: #fff;
+}
+
+.bgos-agenda-subcategory {
+    display: grid;
+    grid-template-columns:
+        minmax(12rem, 1.6fr)
+        minmax(7rem, .65fr)
+        minmax(7rem, .55fr)
+        auto;
+    align-items: center;
+    gap: .65rem 1rem;
+    min-height: 3.2rem;
+    padding: .55rem .4rem;
+    border-bottom: 1px solid #edf0f2;
+}
+
+.bgos-agenda-subcategory:last-child {
+    border-bottom: 0;
+}
+
+.bgos-agenda-subcategory__main {
+    min-width: 0;
+}
+
+.bgos-agenda-subcategory__name {
+    color: #26343d;
+    font-size: .83rem;
+    font-weight: 650;
+}
+
+.bgos-agenda-subcategory__group {
+    margin-top: .1rem;
+    color: #7a8791;
+    font-size: .7rem;
+}
+
+.bgos-agenda-subcategory__status {
+    display: flex;
+    align-items: baseline;
+    gap: .35rem;
+    color: #697681;
+    font-size: .74rem;
+
+    strong {
+        color: inherit;
+        font-size: .76rem;
+    }
+}
+
+.bgos-agenda-subcategory__status--complete {
+    color: #087647;
+}
+
+.bgos-agenda-subcategory__status--pending {
+    color: #a96800;
+}
+
+.bgos-agenda-subcategory__status--future,
+.bgos-agenda-subcategory__status--not_applicable,
+.bgos-agenda-subcategory__status--unconfigured,
+.bgos-agenda-subcategory__status--no_data {
+    color: #7b8790;
+}
+
+.bgos-agenda-subcategory__emissions {
+    justify-self: end;
+    font-size: .8rem;
+    font-weight: 650;
+    white-space: nowrap;
+
+    small {
+        color: #77838c;
+        font-size: .7rem;
+        font-weight: 500;
+    }
+}
+
+.bgos-agenda-subcategory__action {
+    justify-self: end;
+
+    .btn {
+        padding: .25rem .55rem;
+        font-size: .72rem;
+        white-space: nowrap;
+    }
+}
+
+.bgos-agenda__empty {
+    padding: .85rem .25rem;
+    color: #77838c;
+    font-size: .82rem;
+}
+
+
+/* ---------------------------------------------------------
+ * Configuración
+ * --------------------------------------------------------- */
+
+.bgos-config__section-heading {
+    margin-bottom: .55rem;
+
+    h3 {
+        margin: 0;
+        color: #52616d;
+        font-size: .92rem;
+        font-weight: 800;
+    }
+}
+
+.bgos-config-category__name {
+    font-size: .88rem;
+    font-weight: 700;
+}
+
+.bgos-config-category__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.45rem;
+    height: 1.35rem;
+    padding-inline: .35rem;
+    border-radius: 999px;
+    background: #fff;
+    color: #68747f;
+    font-size: .68rem;
+    font-weight: 800;
+    box-shadow: inset 0 0 0 1px rgba(80, 96, 108, .12);
+}
+
+.bgos-config-category__body {
+    padding: .1rem 1rem .25rem 3rem;
+    background: #fff;
+}
+
+.bgos-config__group {
+    margin: 1rem .35rem .25rem;
+    color: #74808a;
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+.bgos-config-row {
+    display: grid;
+    grid-template-columns:
+        minmax(13rem, 1.4fr)
+        repeat(3, minmax(9rem, .8fr))
+        minmax(6.5rem, auto)
+        auto;
+    align-items: end;
+    gap: .55rem .8rem;
+    padding: .65rem .4rem;
+    border-bottom: 1px solid #edf0f2;
+}
+
+.bgos-config-row:last-child {
+    border-bottom: 0;
+}
+
+.bgos-config-row__name {
+    align-self: center;
+    color: #26343d;
+    font-size: .83rem;
+    font-weight: 700;
+}
+
+.bgos-config-row__frequency {
+    min-width: 0;
+
+    .form-label {
+        margin-bottom: .2rem;
+        color: #697681;
+        font-size: .68rem;
+        font-weight: 700;
+    }
+
+    .form-select {
+        min-height: 2rem;
+        padding-top: .25rem;
+        padding-bottom: .25rem;
+        font-size: .78rem;
+    }
+}
+
+.bgos-config-row__active {
+    align-self: center;
+    padding-top: 1.1rem;
+
+    .form-check {
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    .form-check-label {
+        color: #4f5e68;
+        font-size: .76rem;
+    }
+}
+
+.bgos-config-row__action {
+    align-self: center;
+    justify-self: end;
+    padding-top: 1.1rem;
+
+    .btn {
+        padding: .27rem .6rem;
+        font-size: .72rem;
+        white-space: nowrap;
+    }
+}
+
+
+/* ---------------------------------------------------------
+ * Responsive
+ * --------------------------------------------------------- */
+
+@media (max-width: 1199.98px) {
+    .bgos-config-row {
+        grid-template-columns:
+            minmax(12rem, 1.2fr)
+            repeat(3, minmax(8rem, 1fr));
+    }
+
+    .bgos-config-row__name {
+        grid-column: 1 / -1;
+    }
+
+    .bgos-config-row__active,
+    .bgos-config-row__action {
+        padding-top: 0;
+    }
+
+    .bgos-config-row__active {
+        grid-column: 1 / 3;
+    }
+
+    .bgos-config-row__action {
+        grid-column: 3 / 5;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .bgos-agenda-category__header,
+    .bgos-agenda-category__header:not(.collapsed) {
+        grid-template-columns:
+            2rem
+            minmax(8rem, 1fr)
+            minmax(10rem, 1.7fr)
+            auto
+            1rem;
+    }
+
+    .bgos-agenda-category__percentage {
+        display: none;
+    }
+
+    .bgos-agenda-subcategory {
+        grid-template-columns: minmax(0, 1.4fr) minmax(6rem, .7fr) auto;
+    }
+
+    .bgos-agenda-subcategory__action {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .bgos-agenda__header,
+    .bgos-config__header {
+        flex-direction: column;
+        gap: .75rem;
+    }
+
+    .bgos-agenda__configure,
+    .bgos-config__back {
+        align-self: flex-start;
+    }
+
+    .bgos-agenda__summary {
+        flex-direction: column;
+    }
+
+    .bgos-agenda__summary-item {
+        justify-content: space-between;
+        gap: .75rem;
+        padding: .65rem .8rem;
+    }
+
+    .bgos-agenda__summary-divider {
+        width: auto;
+        height: 1px;
+        margin: 0 .8rem;
+    }
+
+    .bgos-agenda__summary-emissions {
+        font-size: 1.25rem;
+    }
+
+    .bgos-agenda__calendar-heading {
+        align-items: stretch;
+        flex-direction: column;
+        gap: .65rem;
+    }
+
+    .bgos-agenda__views {
+        display: flex;
+        width: 100%;
+
+        .btn {
+            flex: 1 1 25%;
+            min-width: 0;
+        }
+    }
+
+    .bgos-agenda__period-navigation {
+        grid-template-columns: 2.1rem minmax(0, 1fr) 2.1rem;
+        justify-content: stretch;
+    }
+
+    .bgos-agenda__period-current {
+        min-width: 0;
+    }
+
+    .bgos-agenda-category__header,
+    .bgos-agenda-category__header:not(.collapsed) {
+        grid-template-columns: 2rem minmax(0, 1fr) auto 1rem;
+        gap: .45rem .65rem;
+        padding: .55rem .65rem;
+    }
+
+    .bgos-agenda-category__icon {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+    }
+
+    .bgos-agenda-category__name {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .bgos-agenda-category__emissions {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .bgos-agenda-category__progress-wrap {
+        grid-column: 2 / 4;
+        grid-row: 2;
+    }
+
+    .bgos-agenda-category__header::after {
+        grid-column: 4;
+        grid-row: 1 / span 2;
+    }
+
+    .bgos-agenda-category__body {
+        padding: .15rem .75rem .2rem 2.75rem;
+    }
+
+    .bgos-agenda-subcategory {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: .4rem .7rem;
+        padding: .65rem .15rem;
+    }
+
+    .bgos-agenda-subcategory__main {
+        grid-column: 1 / -1;
+    }
+
+    .bgos-agenda-subcategory__status {
+        grid-column: 1;
+    }
+
+    .bgos-agenda-subcategory__emissions {
+        grid-column: 2;
+    }
+
+    .bgos-agenda-subcategory__action {
+        grid-column: 1 / -1;
+    }
+
+    .bgos-config-category__body {
+        padding: .1rem .75rem .25rem;
+    }
+
+    .bgos-config-row {
+        grid-template-columns: 1fr;
+        gap: .5rem;
+        padding: .85rem .15rem;
+    }
+
+    .bgos-config-row__name,
+    .bgos-config-row__frequency,
+    .bgos-config-row__active,
+    .bgos-config-row__action {
+        grid-column: 1;
+    }
+
+    .bgos-config-row__name {
+        margin-bottom: .2rem;
+        font-size: .86rem;
+    }
+
+    .bgos-config-row__active {
+        padding-top: .2rem;
+    }
+
+    .bgos-config-row__action {
+        justify-self: end;
+        padding-top: 0;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .bgos-agenda__summary-item {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .15rem;
+    }
+
+    .bgos-agenda__summary-period {
+        white-space: normal;
+    }
+
+    .bgos-agenda-category__body {
+        padding-left: .75rem;
+    }
+
+    .bgos-agenda-category__emissions {
+        font-size: .76rem;
+
+        small {
+            display: block;
+            text-align: right;
+        }
+    }
+
+    .bgos-agenda-subcategory__action {
+        justify-self: end;
+    }
+
+    .bgos-config-category__header,
+    .bgos-config-category__header:not(.collapsed) {
+        grid-template-columns: 2rem minmax(0, 1fr) auto 1rem;
+    }
+
+    .bgos-config-category__header::after {
+        grid-column: 4;
+    }
+
+    .bgos-config-category__name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* ===== BGoS — shared visual system #61 END ===== */

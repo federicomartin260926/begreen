@@ -1808,8 +1808,9 @@ backend:
       add_another_record: "Añadir otro registro"
     agenda:
       title: "Agenda Be Green On Set"
-      eyebrow: "Seguimiento BGoS"
+      eyebrow: "BE GREEN ON SET"
       intro: "Consulta el seguimiento de emisiones y la completitud del proyecto por periodo."
+      calendar_title: "Calendario de seguimiento"
       period_emissions: "Emisiones del periodo"
       period: "Periodo"
       views_label: "Vista temporal"
