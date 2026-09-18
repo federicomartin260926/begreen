@@ -163,7 +163,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertMatchesRegularExpression('/data-phase="actividad"\s+value="Rodaje"/', $filmingContent);
         self::assertMatchesRegularExpression('/data-phase="actividad"\s+value="Actividad"/', $eventContent);
         self::assertStringContainsString('data-project-label-activity-filming-value="Rodaje"', $filmingContent);
-        self::assertStringContainsString('data-project-label-activity-event-value="Actividad"', $filmingContent);
+        self::assertStringContainsString('data-project-label-activity-event-value="Evento"', $filmingContent);
     }
 
     public function testWizardStepThreeRendersPlanningInSpanishAndEnglish(): void
@@ -314,7 +314,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringContainsString('Basic', $content);
         self::assertStringContainsString('Mejorar plan', $content);
         self::assertStringContainsString('Continuar con plan Basic', $content);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/elaboration', $content);
+        self::assertStringContainsString('/backend/project/billing/elaboration#billing-project-' . $project->getId(), $content);
     }
 
     public function testCreatedRedirectsWhenProjectDoesNotExist(): void
@@ -362,6 +362,30 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertSame(302, $response->getStatusCode());
         self::assertStringContainsString('/backend/project/', $response->getTargetUrl());
         self::assertSame(['backend.projects.flash.project_not_found'], $request->getSession()->getFlashBag()->peek('warning'));
+    }
+
+    public function testSelectProjectCanEnterBgosWithTheSelectedProject(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+        $project = $this->createProject($entityManager, $admin, 'Proyecto acceso BGoS');
+        $this->setAdminToken($admin);
+        $request = $this->createRequest('backend_project_select_project', ['id' => $project->getId()]);
+        $request->query->set('target', 'bgos');
+        $activeProjectService = $this->createMock(ActiveProjectService::class);
+        $activeProjectService->expects(self::once())->method('setActiveProject')->with($project);
+
+        $response = $this->createController()->selectProject(
+            (int) $project->getId(),
+            $container->get(ProjectRepository::class),
+            $activeProjectService,
+            $request,
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringEndsWith('/backend/bgos/', $response->getTargetUrl());
     }
 
     public function testProjectSelectorRendersNumericActionWithoutPlaceholder(): void

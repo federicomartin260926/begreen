@@ -1,0 +1,115 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'backend.bgos.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.bgos.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0 backend-client-shell">
+    <div class="backend-client-content">
+        <header class="mb-4 d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-start">
+            <div>
+                <div class="text-uppercase small text-muted fw-semibold">{{ 'backend.bgos.eyebrow'|trans }}</div>
+                <h2 class="mb-1">{{ project.name }}</h2>
+                <p class="text-muted mb-0">{{ 'backend.bgos.intro'|trans }}</p>
+            </div>
+            <div>
+                <a class="btn btn-outline-secondary" href="{{ path('backend_bgos_index') }}">
+                    {{ 'backend.bgos.actions.back_to_agenda'|trans }}
+                </a>
+            </div>
+        </header>
+
+        <div class="accordion" id="bgos-categories">
+            {% for category in categories %}
+                <section class="accordion-item" data-bgos-category="{{ category.key }}">
+                    <h3 class="accordion-header" id="bgos-category-heading-{{ category.key }}">
+                        <button class="accordion-button {{ category.open ? '' : 'collapsed' }}" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#bgos-category-{{ category.key }}"
+                                aria-expanded="{{ category.open ? 'true' : 'false' }}"
+                                aria-controls="bgos-category-{{ category.key }}">
+                            {{ category.labelKey|trans }}
+                            <span class="badge text-bg-light ms-2">{{ category.subcategories|length }}</span>
+                        </button>
+                    </h3>
+
+                    <div id="bgos-category-{{ category.key }}"
+                         class="accordion-collapse collapse {{ category.open ? 'show' : '' }}"
+                         aria-labelledby="bgos-category-heading-{{ category.key }}"
+                         data-bs-parent="#bgos-categories">
+                        <div class="accordion-body">
+                            {% for definition in category.subcategories %}
+                                {% if definition.showGroup %}
+                                    <h4 class="h6 text-uppercase text-muted mt-4 mb-3" data-bgos-group="{{ definition.groupKey }}">
+                                        {{ definition.groupLabel }}
+                                    </h4>
+                                {% endif %}
+
+                                <form method="post"
+                                      action="{{ path('backend_bgos_subcategory_save', {
+                                          categoryKey: definition.categoryKey,
+                                          subcategoryKey: definition.subcategoryKey
+                                      }) }}"
+                                      id="bgos-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}"
+                                      class="border rounded-3 p-3 mb-3"
+                                      data-bgos-subcategory="{{ definition.subcategoryKey }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token(
+                                        'bgos_subcategory_save_' ~ definition.categoryKey ~ '_' ~ definition.subcategoryKey
+                                    ) }}">
+                                    <div class="row g-3 align-items-end">
+                                        <div class="col-12 col-xl-3">
+                                            <div class="form-label fw-semibold mb-1">
+                                                {{ definition.labelKey ? definition.labelKey|trans : definition.label }}
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-sm-4 col-xl-2">
+                                            <label class="form-label" for="bgos-preproduction-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}">{{ phaseLabels.preproduction|trans }}</label>
+                                            <select class="form-select" id="bgos-preproduction-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}" name="preproductionFrequency">
+                                                {% for frequency in frequencies %}
+                                                    <option value="{{ frequency }}" {{ definition.preproductionFrequency == frequency ? 'selected' : '' }}>{{ ('backend.bgos.frequencies.' ~ frequency)|trans }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-sm-4 col-xl-2">
+                                            <label class="form-label" for="bgos-activity-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}">{{ phaseLabels.activity|trans }}</label>
+                                            <select class="form-select" id="bgos-activity-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}" name="activityFrequency">
+                                                {% for frequency in frequencies %}
+                                                    <option value="{{ frequency }}" {{ definition.activityFrequency == frequency ? 'selected' : '' }}>{{ ('backend.bgos.frequencies.' ~ frequency)|trans }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-sm-4 col-xl-2">
+                                            <label class="form-label" for="bgos-postproduction-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}">{{ phaseLabels.postproduction|trans }}</label>
+                                            <select class="form-select" id="bgos-postproduction-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}" name="postproductionFrequency">
+                                                {% for frequency in frequencies %}
+                                                    <option value="{{ frequency }}" {{ definition.postproductionFrequency == frequency ? 'selected' : '' }}>{{ ('backend.bgos.frequencies.' ~ frequency)|trans }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-6 col-xl-1">
+                                            <input type="hidden" name="active" value="0">
+                                            <div class="form-check form-switch mb-2">
+                                                <input class="form-check-input" type="checkbox" role="switch"
+                                                       id="bgos-active-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}"
+                                                       name="active" value="1" {{ definition.active ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="bgos-active-{{ definition.categoryKey }}-{{ definition.subcategoryKey }}">{{ 'backend.bgos.fields.active'|trans }}</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-xl-2 text-end">
+                                            <button class="btn btn-primary" type="submit">{{ 'backend.bgos.actions.save'|trans }}</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

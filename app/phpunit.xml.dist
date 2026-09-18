@@ -6,9 +6,9 @@
          cacheDirectory=".phpunit.cache"
 >
     <php>
-        <server name="APP_ENV" value="test"/>
+        <env name="APP_ENV" value="test" force="true"/>
         <server name="APP_DEBUG" value="1"/>
-        <server name="DATABASE_URL" value="mysql://begreen:begreen@db:3306/begreenmyfriend?serverVersion=11.3&amp;charset=utf8mb4"/>
+        <env name="DATABASE_URL" value="mysql://begreen:begreen@db:3306/begreenmyfriend_test?serverVersion=11.3&amp;charset=utf8mb4" force="true"/>
         <server name="MAILER_DSN" value="null://null"/>
         <server name="MESSENGER_TRANSPORT_DSN" value="null://null"/>
         <server name="DEFAULT_LOCALE" value="es"/>

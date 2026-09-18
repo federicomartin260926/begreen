@@ -397,7 +397,7 @@ class ProjectController extends AbstractController
                     'state' => 'not_started',
                     'icon' => 'bi-calendar-check',
                     'title' => $this->t->trans('backend.projects.dashboard.phase_names.bgos').' · '.$this->t->trans('backend.projects.dashboard.phases.common.not_started'),
-                    'primaryTarget' => null,
+                    'primaryTarget' => 'bgos',
                     'isHighlighted' => true,
                 ],
                 [
@@ -1644,6 +1644,7 @@ class ProjectController extends AbstractController
             'plan' => $this->redirectToRoute('backend_plan_index'),
             'elaboration_done' => $this->redirectToRoute('backend_plan_done'),
             'implementation' => $this->redirectToRoute('backend_plan_review', ['state' => 'all']),
+            'bgos' => $this->redirectToRoute('backend_bgos_index'),
             'emissions' => $this->redirectToRoute('backend_emission_index'),
             'report' => $this->redirectToRoute('report_emission_overview_pdf'),
             default => $this->redirectToRoute('app_backend'),

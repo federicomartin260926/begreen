@@ -1787,6 +1787,52 @@ backend:
           applicability: "Aplicables"
           selection: "Seleccionadas"
           critical_coverage: "Críticas"
+  bgos:
+    title: "Configuración Be Green On Set"
+    breadcrumb: "Be Green On Set"
+    eyebrow: "Configuración de seguimiento"
+    intro: "Define las subcategorías que se seguirán y su frecuencia en cada fase del proyecto."
+    transport:
+      people: "Transporte de equipo y personas"
+    fields:
+      active: "Activa"
+    frequencies:
+      not_applicable: "No aplica"
+      daily: "Cada jornada"
+      punctual: "Puntual"
+    actions:
+      save: "Guardar"
+      configure: "Configurar seguimiento"
+      back_to_agenda: "Volver a la Agenda"
+      add_record: "Añadir registro"
+      add_another_record: "Añadir otro registro"
+    agenda:
+      title: "Agenda Be Green On Set"
+      eyebrow: "Seguimiento BGoS"
+      intro: "Consulta el seguimiento de emisiones y la completitud del proyecto por periodo."
+      period_emissions: "Emisiones del periodo"
+      period: "Periodo"
+      views_label: "Vista temporal"
+      previous: "Anterior"
+      next: "Siguiente"
+      no_dates: "El proyecto todavía no tiene fases con fechas configuradas."
+      no_tracking: "No hay seguimiento ni emisiones registradas para este periodo."
+      views:
+        day: "Día"
+        week: "Semana"
+        month: "Mes"
+        total: "Total"
+      status:
+        complete: "Completo"
+        pending: "Pendiente"
+        no_data: "Sin datos"
+        not_applicable: "No aplica"
+        future: "Futuro"
+        unconfigured: "Sin seguimiento"
+    flash:
+      saved: "Configuración guardada correctamente."
+      invalid_input: "Revisa las frecuencias indicadas."
+      csrf_invalid: "La solicitud ha caducado. Inténtalo de nuevo."
   emission:
     phase:
       preproduccion: "Preproducción"

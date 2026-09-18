@@ -1779,6 +1779,52 @@ backend:
           applicability: "Applicable"
           selection: "Selected"
           critical_coverage: "Critical"
+  bgos:
+    title: "Be Green On Set configuration"
+    breadcrumb: "Be Green On Set"
+    eyebrow: "Tracking configuration"
+    intro: "Define the subcategories to track and their frequency in each project phase."
+    transport:
+      people: "Crew and people transport"
+    fields:
+      active: "Active"
+    frequencies:
+      not_applicable: "Not applicable"
+      daily: "Every day"
+      punctual: "One-off"
+    actions:
+      save: "Save"
+      configure: "Configure tracking"
+      back_to_agenda: "Back to Agenda"
+      add_record: "Add record"
+      add_another_record: "Add another record"
+    agenda:
+      title: "Be Green On Set Agenda"
+      eyebrow: "BGoS tracking"
+      intro: "Review project emissions and completion by period."
+      period_emissions: "Period emissions"
+      period: "Period"
+      views_label: "Time view"
+      previous: "Previous"
+      next: "Next"
+      no_dates: "The project does not have phases with configured dates yet."
+      no_tracking: "There is no tracking or recorded emissions for this period."
+      views:
+        day: "Day"
+        week: "Week"
+        month: "Month"
+        total: "Total"
+      status:
+        complete: "Complete"
+        pending: "Pending"
+        no_data: "No data"
+        not_applicable: "Not applicable"
+        future: "Future"
+        unconfigured: "Not tracked"
+    flash:
+      saved: "Configuration saved successfully."
+      invalid_input: "Check the selected frequencies."
+      csrf_invalid: "The request has expired. Please try again."
   emission:
     phase:
       preproduccion: "Pre-production"

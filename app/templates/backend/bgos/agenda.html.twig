@@ -1,0 +1,262 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'backend.bgos.agenda.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.bgos.breadcrumb'|trans }}</li>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0 backend-client-shell">
+    <div class="backend-client-content">
+
+        <header class="mb-4 d-flex flex-column flex-xl-row justify-content-between gap-3 align-items-xl-start">
+            <div>
+                <div class="text-uppercase small text-muted fw-semibold">
+                    {{ 'backend.bgos.agenda.eyebrow'|trans }}
+                </div>
+
+                <h2 class="mb-1">{{ project.name }}</h2>
+
+                <p class="text-muted mb-0">
+                    {{ 'backend.bgos.agenda.intro'|trans }}
+                </p>
+            </div>
+
+            <div>
+                <a class="btn btn-outline-secondary"
+                   href="{{ path('backend_bgos_config') }}">
+                    {{ 'backend.bgos.actions.configure'|trans }}
+                </a>
+            </div>
+        </header>
+
+        {% if window is null %}
+            <div class="alert alert-info">
+                {{ 'backend.bgos.agenda.no_dates'|trans }}
+            </div>
+        {% else %}
+
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-lg-5">
+                    <div class="border rounded-3 p-3 h-100">
+                        <div class="small text-muted text-uppercase fw-semibold mb-1">
+                            {{ 'backend.bgos.agenda.period_emissions'|trans }}
+                        </div>
+
+                        <div class="fs-3 fw-semibold">
+                            {% if period.totalKgCo2e is null %}
+                                —
+                            {% else %}
+                                {{ period.totalKgCo2e|number_format(2, ',', '.') }} kg CO₂e
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-7">
+                    <div class="border rounded-3 p-3 h-100 d-flex flex-column justify-content-center">
+                        <div class="small text-muted text-uppercase fw-semibold mb-1">
+                            {{ 'backend.bgos.agenda.period'|trans }}
+                        </div>
+
+                        <div class="fw-semibold">
+                            {% if window.startDate == window.endDate %}
+                                {{ window.startDate|date('d/m/Y') }}
+                            {% else %}
+                                {{ window.startDate|date('d/m/Y') }}
+                                →
+                                {{ window.endDate|date('d/m/Y') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="mb-3" aria-label="{{ 'backend.bgos.agenda.views_label'|trans }}">
+                <div class="nav nav-pills flex-wrap gap-2">
+                    {% for view in views %}
+                        <a class="nav-link {{ window.view == view ? 'active' : '' }}"
+                           href="{{ path('backend_bgos_index', {
+                               view: view,
+                               date: window.selectedDate|date('Y-m-d')
+                           }) }}">
+                            {{ ('backend.bgos.agenda.views.' ~ view)|trans }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </nav>
+
+            {% if window.previousDate or window.nextDate %}
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        {% if window.previousDate %}
+                            <a class="btn btn-sm btn-outline-secondary"
+                               href="{{ path('backend_bgos_index', {
+                                   view: window.view,
+                                   date: window.previousDate|date('Y-m-d')
+                               }) }}">
+                                ← {{ 'backend.bgos.agenda.previous'|trans }}
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        {% if window.nextDate %}
+                            <a class="btn btn-sm btn-outline-secondary"
+                               href="{{ path('backend_bgos_index', {
+                                   view: window.view,
+                                   date: window.nextDate|date('Y-m-d')
+                               }) }}">
+                                {{ 'backend.bgos.agenda.next'|trans }} →
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="accordion" id="bgos-agenda-categories">
+                {% for category in period.categories %}
+                    {% set pct = category.completion.completionPercentage %}
+
+                    <section class="accordion-item"
+                             data-bgos-agenda-category="{{ category.key }}">
+                        <h3 class="accordion-header"
+                            id="bgos-agenda-heading-{{ category.key }}">
+                            <button
+                                class="accordion-button {{ loop.first ? '' : 'collapsed' }}"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#bgos-agenda-category-{{ category.key }}"
+                                aria-expanded="{{ loop.first ? 'true' : 'false' }}"
+                                aria-controls="bgos-agenda-category-{{ category.key }}"
+                            >
+                                <div class="w-100 pe-3">
+                                    <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                                        <div class="fw-semibold">
+                                            {{ category.labelKey|trans }}
+                                        </div>
+
+                                        <div class="small text-muted">
+                                            {% if category.totalKgCo2e is null %}
+                                                —
+                                            {% else %}
+                                                {{ category.totalKgCo2e|number_format(2, ',', '.') }} kg CO₂e
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    {% if pct is not null %}
+                                        <div class="d-flex align-items-center gap-2 mt-2">
+                                            <div class="progress flex-grow-1"
+                                                 style="height: 6px;"
+                                                 role="progressbar"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100"
+                                                 aria-valuenow="{{ pct|round }}">
+                                                <div class="progress-bar"
+                                                     style="width: {{ pct }}%">
+                                                </div>
+                                            </div>
+
+                                            <span class="small text-muted">
+                                                {{ pct|round }}%
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </button>
+                        </h3>
+
+                        <div
+                            id="bgos-agenda-category-{{ category.key }}"
+                            class="accordion-collapse collapse {{ loop.first ? 'show' : '' }}"
+                            aria-labelledby="bgos-agenda-heading-{{ category.key }}"
+                            data-bs-parent="#bgos-agenda-categories"
+                        >
+                            <div class="accordion-body">
+                                {% set hasVisibleSubcategory = false %}
+
+                                {% for subcategory in category.subcategories %}
+                                    {% if subcategory.configured or subcategory.completion.expectedCount > 0 or subcategory.totalKgCo2e is not null %}
+                                        {% set hasVisibleSubcategory = true %}
+                                        {% set subPct = subcategory.completion.completionPercentage %}
+
+                                        <div class="border rounded-3 p-3 mb-2"
+                                             data-bgos-agenda-subcategory="{{ subcategory.key }}">
+                                            <div class="row g-3 align-items-center">
+                                                <div class="col-12 col-lg-5">
+                                                    <div class="fw-semibold">
+                                                        {{ subcategory.labelKey
+                                                            ? subcategory.labelKey|trans
+                                                            : subcategory.label }}
+                                                    </div>
+
+                                                    {% if subcategory.groupLabel %}
+                                                        <div class="small text-muted">
+                                                            {{ subcategory.groupLabel }}
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+
+                                                <div class="col-6 col-lg-3">
+                                                    <div class="small text-muted">
+                                                        {{ ('backend.bgos.agenda.status.' ~ subcategory.trackingStatus)|trans }}
+                                                    </div>
+
+                                                    {% if subPct is not null %}
+                                                        <div class="fw-semibold">
+                                                            {{ subPct|round }}%
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+
+                                                <div class="col-6 col-lg-4 text-end">
+                                                    {% if subcategory.totalKgCo2e is null %}
+                                                        —
+                                                    {% else %}
+                                                        {{ subcategory.totalKgCo2e|number_format(2, ',', '.') }} kg CO₂e
+                                                    {% endif %}
+
+                                                    {% if window.view == 'day'
+                                                        and subcategory.configured
+                                                        and subcategory.active
+                                                        and subcategory.trackingStatus != 'not_applicable'
+                                                    %}
+                                                        <div class="mt-2">
+                                                            <a class="btn btn-sm btn-outline-success"
+                                                               href="{{ path(entryRoutes[category.key], {
+                                                                   bgosDate: window.selectedDate|date('Y-m-d'),
+                                                                   bgosView: window.view,
+                                                                   bgosCategory: category.key,
+                                                                   bgosSubcategory: subcategory.key
+                                                               }) }}">
+                                                                {{ (subcategory.trackingStatus == 'complete'
+                                                                    ? 'backend.bgos.actions.add_another_record'
+                                                                    : 'backend.bgos.actions.add_record')|trans }}
+                                                            </a>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if not hasVisibleSubcategory %}
+                                    <p class="text-muted mb-0">
+                                        {{ 'backend.bgos.agenda.no_tracking'|trans }}
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

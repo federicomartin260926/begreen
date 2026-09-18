@@ -12,6 +12,7 @@ use App\Repository\ProjectRepository;
 use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\Bgos\BgosEmissionEntryContextResolver;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\EmissionCountryCatalog;
 use App\Service\Emission\EmissionRecordAttachmentValidationException;
@@ -83,11 +84,17 @@ final class WaterEmissionController extends AbstractController
         WaterEmissionRecordService $recordService,
         EmissionRecordAttachmentStorage $attachmentStorage,
         EntityManagerInterface $entityManager,
+        ?BgosEmissionEntryContextResolver $bgosContextResolver = null,
     ): Response {
         $project = $this->activeProject($activeProjectService);
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
         $category = $this->waterCategory($categoryRepository);
-        $values = $this->formValues($request, $this->createDefaults());
+        $bgosContext = $bgosContextResolver?->resolve($request, 'water');
+        $defaults = $this->createDefaults();
+        if ($request->isMethod('GET') && null !== $bgosContext) {
+            $defaults = array_replace($defaults, $bgosContext->formDefaults());
+        }
+        $values = $this->formValues($request, $defaults);
 
         if ($request->isMethod('GET')) {
             return $this->renderForm($request, $project, $category, $values, false, null, []);
@@ -119,6 +126,10 @@ final class WaterEmissionController extends AbstractController
         }
 
         $this->addFlash('success', 'backend.emission.water_v1.flash.created');
+
+        if (null !== $bgosContext) {
+            return $this->redirectToRoute('backend_bgos_index', $bgosContext->returnQuery());
+        }
 
         return $this->redirectToRoute('backend_emission_index', $this->indexQuery($request, (int) $category->getId()));
     }

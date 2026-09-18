@@ -10,6 +10,7 @@ use App\Repository\ProjectRepository;
 use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\Bgos\BgosEmissionEntryContextResolver;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
 use App\Service\Emission\EmissionCountryCatalog;
 use App\Service\Emission\EmissionRecordAttachmentValidationException;
@@ -106,6 +107,7 @@ final class TransportEmissionController extends AbstractController
         TransportUiCatalog $uiCatalog,
         EmissionRecordAttachmentStorage $attachmentStorage,
         EntityManagerInterface $entityManager,
+        ?BgosEmissionEntryContextResolver $bgosContextResolver = null,
     ): Response {
         $project = $activeProjectService->getActiveProject();
         if (!$project) {
@@ -114,7 +116,12 @@ final class TransportEmissionController extends AbstractController
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
 
         $category = $this->transportCategory($categoryRepository);
-        $values = $this->formValues($request, $this->createDefaults($project));
+        $bgosContext = $bgosContextResolver?->resolve($request, 'transport');
+        $defaults = $this->createDefaults($project);
+        if ($request->isMethod('GET') && null !== $bgosContext) {
+            $defaults = array_replace($defaults, $bgosContext->formDefaults());
+        }
+        $values = $this->formValues($request, $defaults);
         if ($request->isMethod('GET')) {
             return $this->renderForm($request, $project, $category, $uiCatalog, $values, false, null, []);
         }
@@ -154,6 +161,10 @@ final class TransportEmissionController extends AbstractController
         }
 
         $this->addFlash('success', 'backend.emission.transport_v20.flash.created');
+
+        if (null !== $bgosContext) {
+            return $this->redirectToRoute('backend_bgos_index', $bgosContext->returnQuery());
+        }
 
         return $this->redirectToRoute('backend_emission_index', $this->indexQuery($request, (int) $category->getId()));
     }

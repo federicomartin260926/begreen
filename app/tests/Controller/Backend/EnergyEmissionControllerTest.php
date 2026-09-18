@@ -13,6 +13,8 @@ use App\Repository\CategoryRepository;
 use App\Repository\EmissionFactorRepository;
 use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
+use App\Service\Bgos\BgosEmissionEntryContextResolver;
+use App\Service\Bgos\BgosSubcategoryCatalog;
 use App\Service\Emission\EmissionFactorKeyGenerator;
 use App\Service\Emission\EmissionFactorResolver;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
@@ -134,6 +136,27 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         }
     }
 
+    public function testGetCreateFromBgosPrefillsDateAndSubcategory(): void
+    {
+        $context = $this->context();
+        $response = $this->create($this->request('GET', query: [
+            'bgosDate' => '2025-06-15',
+            'bgosView' => 'day',
+            'bgosCategory' => 'energy',
+            'bgosSubcategory' => 'electricity',
+        ]), $context, 0);
+
+        $initial = $this->initialValues((string) $response->getContent());
+
+        self::assertSame('electricity', $initial['family']);
+        self::assertSame('2025-06-15', $initial['startDate']);
+        self::assertSame('2025-06-15', $initial['endDate']);
+        self::assertStringContainsString(
+            'action="/backend/emission/new-energy-v1?bgosDate=2025-06-15&amp;bgosView=day&amp;bgosCategory=energy&amp;bgosSubcategory=electricity&amp;categoryId=20"',
+            (string) $response->getContent(),
+        );
+    }
+
     public function testCreatePersistsModernAuthoritativeRecordAndIgnoresBrowserEmission(): void
     {
         $context = $this->context();
@@ -156,6 +179,29 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         $snapshot = json_decode((string) $persisted->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
         self::assertSame('energy-v1', $snapshot['calculatorVersion']);
         self::assertNull($snapshot['calculation']['factorTraces'][0]['factorVersion']);
+        self::assertStringContainsString('/backend/emission/', $response->getTargetUrl());
+        self::assertStringNotContainsString('/backend/bgos/', $response->getTargetUrl());
+    }
+
+    public function testCreateFromBgosRedirectsBackToSameAgendaDay(): void
+    {
+        $context = $this->context();
+        $request = $this->request('POST', $this->validPost(), [
+            'bgosDate' => '2025-06-01',
+            'bgosView' => 'day',
+            'bgosCategory' => 'energy',
+            'bgosSubcategory' => 'electricity',
+        ]);
+        $request->request->set('_token', $this->csrfToken('energy_emission_v1_create'));
+        $persisted = null;
+
+        $response = $this->create($request, $context, 1, $persisted);
+
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        self::assertStringEndsWith(
+            '/backend/bgos/?view=day&date=2025-06-01',
+            $response->getTargetUrl(),
+        );
     }
 
     public function testCreatePersistsRestoredDigitalFamily(): void
@@ -335,6 +381,9 @@ final class EnergyEmissionControllerTest extends KernelTestCase
             $this->uiCatalog(),
             new EmissionRecordAttachmentStorage($this->attachmentDirectory),
             $this->attachmentEntityManager(),
+            new BgosEmissionEntryContextResolver(
+                self::getContainer()->get(BgosSubcategoryCatalog::class),
+            ),
         );
     }
 

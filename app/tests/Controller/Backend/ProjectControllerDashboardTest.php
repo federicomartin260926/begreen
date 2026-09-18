@@ -160,10 +160,11 @@ final class ProjectControllerDashboardTest extends KernelTestCase
             $previousPosition = (int) $position;
         }
 
-        self::assertDoesNotMatchRegularExpression(
+        self::assertMatchesRegularExpression(
             '/<a\\b[^>]*>(?:(?!<\\/a>).)*Be Green On Set(?:(?!<\\/a>).)*<\\/a>/s',
             $content
         );
+        self::assertStringContainsString('target=bgos', $content);
     }
 
     public function testDashboardQueryDoesNotDuplicateProjectsWithMultipleSubscriptions(): void

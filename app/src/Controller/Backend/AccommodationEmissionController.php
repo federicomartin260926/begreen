@@ -12,6 +12,7 @@ use App\Repository\ProjectRepository;
 use App\Security\EmissionRecordVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\Bgos\BgosEmissionEntryContextResolver;
 use App\Service\Emission\Accommodation\AccommodationEmissionCalculator;
 use App\Service\Emission\Accommodation\AccommodationEmissionInput;
 use App\Service\Emission\Accommodation\AccommodationEmissionRecordService;
@@ -77,11 +78,17 @@ final class AccommodationEmissionController extends AbstractController
         AccommodationEmissionRecordService $recordService,
         EmissionRecordAttachmentStorage $attachmentStorage,
         EntityManagerInterface $entityManager,
+        ?BgosEmissionEntryContextResolver $bgosContextResolver = null,
     ): Response {
         $project = $this->activeProject($activeProjectService);
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
         $category = $this->category($categoryRepository);
-        $values = $this->formValues($request, array_fill_keys(self::FORM_FIELDS, null));
+        $bgosContext = $bgosContextResolver?->resolve($request, 'accommodation');
+        $defaults = array_fill_keys(self::FORM_FIELDS, null);
+        if ($request->isMethod('GET') && null !== $bgosContext) {
+            $defaults = array_replace($defaults, $bgosContext->formDefaults());
+        }
+        $values = $this->formValues($request, $defaults);
 
         if ($request->isMethod('GET')) {
             return $this->renderForm($request, $project, $category, $values, false, null, []);
@@ -112,6 +119,10 @@ final class AccommodationEmissionController extends AbstractController
         }
 
         $this->addFlash('success', 'backend.emission.accommodation_v1.flash.created');
+
+        if (null !== $bgosContext) {
+            return $this->redirectToRoute('backend_bgos_index', $bgosContext->returnQuery());
+        }
 
         return $this->redirectToRoute('backend_emission_index', $this->indexQuery($request, (int) $category->getId()));
     }
