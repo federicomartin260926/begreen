@@ -165,7 +165,7 @@ class EmissionController extends AbstractController
             'project' => $project,
             'categories' => $categories,
             'hasCategories' => [] !== $categories,
-            'totalEmissionTonnes' => null === $totalEmissionKg ? null : $totalEmissionKg / 1000,
+            'totalEmissionKg' => $totalEmissionKg,
         ]));
     }
 

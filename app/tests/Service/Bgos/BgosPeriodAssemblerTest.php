@@ -46,6 +46,50 @@ final class BgosPeriodAssemblerTest extends TestCase
         self::assertCount(2, $people['dailyRecords']);
     }
 
+    public function testFullProjectEmissionCanIncludeRecordsOutsideTrackingPeriod(): void
+    {
+        $project = $this->project();
+        $config = $this->config($project, 'people', 'daily');
+
+        $records = [
+            $this->record('2026-09-09', 10.0),
+            $this->record('2026-09-10', 20.0),
+            $this->record('2026-09-21', 30.0),
+        ];
+
+        $partial = $this->assembler()->build(
+            $project,
+            $this->catalog(),
+            $this->configs([$config]),
+            $records,
+            new \DateTimeImmutable('2026-09-10'),
+            new \DateTimeImmutable('2026-09-20'),
+            new \DateTimeImmutable('2026-09-20'),
+        );
+
+        self::assertSame(20.0, $partial['totalKgCo2e']);
+
+        $full = $this->assembler()->build(
+            $project,
+            $this->catalog(),
+            $this->configs([$config]),
+            $records,
+            new \DateTimeImmutable('2026-09-10'),
+            new \DateTimeImmutable('2026-09-20'),
+            new \DateTimeImmutable('2026-09-20'),
+            true,
+        );
+
+        self::assertSame(60.0, $full['totalKgCo2e']);
+
+        $transport = $this->category($full['categories'], 'transport');
+        $people = $this->subcategory($transport['subcategories'], 'people');
+
+        self::assertSame(60.0, $transport['totalKgCo2e']);
+        self::assertSame(60.0, $people['totalKgCo2e']);
+        self::assertCount(3, $people['dailyRecords']);
+    }
+
     public function testInactiveConfigKeepsHistoricalEmissionButNoExpectation(): void
     {
         $project = $this->project();

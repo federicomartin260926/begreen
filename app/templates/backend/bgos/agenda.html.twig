@@ -73,7 +73,9 @@
                      aria-label="{{ 'backend.bgos.agenda.period_emissions'|trans }}">
                 <div class="bgos-agenda__summary-item bgos-agenda__summary-item--emissions">
                     <span class="bgos-agenda__summary-label">
-                        {{ 'backend.bgos.agenda.period_emissions'|trans }}
+                        {{ (window.view == 'total'
+                            ? 'backend.bgos.agenda.project_emissions'
+                            : 'backend.bgos.agenda.period_emissions')|trans }}
                     </span>
 
                     <strong class="bgos-agenda__summary-emissions">
@@ -94,7 +96,9 @@
                     </span>
 
                     <strong class="bgos-agenda__summary-period">
-                        {% if window.startDate == window.endDate %}
+                        {% if window.view == 'total' %}
+                            {{ 'backend.bgos.agenda.full_project'|trans }}
+                        {% elseif window.startDate == window.endDate %}
                             {{ window.startDate|date('d/m/Y') }}
                         {% else %}
                             {{ window.startDate|date('d/m/Y') }}
@@ -147,7 +151,9 @@
                     {% endif %}
 
                     <strong class="bgos-agenda__period-current">
-                        {% if window.startDate == window.endDate %}
+                        {% if window.view == 'total' %}
+                            {{ 'backend.bgos.agenda.full_project'|trans }}
+                        {% elseif window.startDate == window.endDate %}
                             {{ window.startDate|date('d/m/Y') }}
                         {% else %}
                             {{ window.startDate|date('d/m/Y') }}

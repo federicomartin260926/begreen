@@ -26,6 +26,7 @@ final class BgosPeriodService
         \DateTimeInterface $periodStart,
         \DateTimeInterface $periodEnd,
         \DateTimeInterface $today,
+        bool $includeAllEmissions = false,
     ): array {
         return $this->assembler->build(
             $project,
@@ -35,6 +36,7 @@ final class BgosPeriodService
             $periodStart,
             $periodEnd,
             $today,
+            $includeAllEmissions,
         );
     }
 

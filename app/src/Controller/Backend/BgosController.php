@@ -51,6 +51,7 @@ final class BgosController extends AbstractController
                 $window->startDate,
                 $window->endDate,
                 $today,
+                BgosPeriodWindowResolver::VIEW_TOTAL === $window->view,
             );
         }
 

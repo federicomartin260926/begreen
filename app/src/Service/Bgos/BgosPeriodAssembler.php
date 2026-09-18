@@ -34,6 +34,7 @@ final class BgosPeriodAssembler
         \DateTimeInterface $periodStart,
         \DateTimeInterface $periodEnd,
         \DateTimeInterface $today,
+        bool $includeAllEmissions = false,
     ): array {
         $periodStart = $this->normalizeDate($periodStart);
         $periodEnd = $this->normalizeDate($periodEnd);
@@ -96,14 +97,16 @@ final class BgosPeriodAssembler
                     $completion->pendingCount,
                 );
 
-                $periodRecords = array_values(array_filter(
-                    $matchingDailyRecords,
-                    static fn (BgosDailyRecord $record): bool =>
-                        $record->date >= $periodStart
-                        && $record->date <= $periodEnd
-                ));
+                $emissionRecords = $includeAllEmissions
+                    ? $matchingDailyRecords
+                    : array_values(array_filter(
+                        $matchingDailyRecords,
+                        static fn (BgosDailyRecord $record): bool =>
+                            $record->date >= $periodStart
+                            && $record->date <= $periodEnd
+                    ));
 
-                $subcategoryEmission = $this->sumEmission($periodRecords);
+                $subcategoryEmission = $this->sumEmission($emissionRecords);
 
                 if (null !== $subcategoryEmission) {
                     $categoryEmission += $subcategoryEmission;
@@ -121,7 +124,7 @@ final class BgosPeriodAssembler
                     'trackingStatus' => $trackingStatus,
                     'totalKgCo2e' => $subcategoryEmission,
                     'completion' => $completion,
-                    'dailyRecords' => $periodRecords,
+                    'dailyRecords' => $emissionRecords,
                 ];
             }
 

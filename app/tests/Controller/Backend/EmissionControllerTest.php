@@ -112,8 +112,9 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertSame(200, $response->getStatusCode());
         $content = (string) $response->getContent();
 
-        self::assertStringContainsString('0,05 tCO₂e', $content);
-        self::assertSame(2, substr_count($content, '0,03 tCO₂e'));
+        self::assertStringContainsString('54,60 kg CO₂e', $content);
+        self::assertStringContainsString('27,00 kg CO₂e', $content);
+        self::assertStringContainsString('27,60 kg CO₂e', $content);
         self::assertStringContainsString('01/01/2026', $content);
         self::assertStringContainsString('31/01/2026', $content);
         self::assertStringContainsString('emission-dashboard-category--catering', $content);

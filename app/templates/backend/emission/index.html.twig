@@ -44,7 +44,7 @@
 
         <section class="emission-dashboard__hero">
             <div class="emission-dashboard__metric">
-                <strong>{{ totalEmissionTonnes is null ? '—' : totalEmissionTonnes|number_format(2, ',', '.') ~ ' tCO₂e' }}</strong>
+                <strong>{{ totalEmissionKg is null ? '—' : totalEmissionKg|number_format(2, ',', '.') ~ ' kg CO₂e' }}</strong>
                 <span>{{ 'backend.emission.index.dashboard.emissions'|trans }}</span>
             </div>
         </section>
@@ -80,7 +80,7 @@
                                     </span>
                                 </span>
                                 <span class="emission-dashboard-category__subtotal">
-                                    {{ category.totalEmissionKg is null ? '—' : (category.totalEmissionKg / 1000)|number_format(2, ',', '.') ~ ' tCO₂e' }}
+                                    {{ category.totalEmissionKg is null ? '—' : category.totalEmissionKg|number_format(2, ',', '.') ~ ' kg CO₂e' }}
                                 </span>
                             </button>
                         </h4>
