@@ -1,0 +1,84 @@
+title: 'Equipo y movilidad'
+breadcrumb: 'Equipo y movilidad'
+eyebrow: 'Be Green On Set'
+intro: 'Configura la movilidad habitual del equipo para reutilizarla después en el seguimiento diario.'
+
+actions:
+  manage_team: 'Gestionar Equipo Técnico'
+  back_to_agenda: 'Volver a Agenda'
+  save: 'Guardar movilidad'
+  open: 'Equipo y movilidad'
+
+help:
+  title: 'Defaults habituales'
+  text: 'Estos datos sirven como punto de partida. Cada jornada podrá modificarlos sin alterar el perfil habitual de la persona.'
+
+empty:
+  text: 'Este proyecto todavía no tiene personas en el Equipo Técnico.'
+
+roster:
+  title: 'Equipo del proyecto'
+  count: '%count% personas'
+
+assignment:
+  auto: 'Automática si existe una única asignación'
+  none: 'Sin departamento/cargo'
+  required: 'Tiene varias asignaciones: selecciona cuál usar habitualmente en BGoS.'
+  badge: 'Asignación pendiente'
+
+fields:
+  assignment: 'Departamento y cargo habitual'
+  assignment_help: 'Evita contar dos veces a una persona que tenga varias funciones.'
+  origin: 'Origen habitual'
+  origin_placeholder: 'Ej.: Madrid, domicilio, oficina…'
+  mode: 'Modo habitual'
+  vehicle_type: 'Tipo de vehículo'
+  fuel: 'Combustible'
+  thermal_fuel: 'Combustible térmico'
+
+common:
+  not_defined: 'Sin definir'
+
+modes:
+  car: 'Coche'
+  taxi: 'Taxi'
+  urban_bus: 'Autobús urbano'
+  metro: 'Metro'
+  tram: 'Tranvía'
+  commuter_train: 'Tren de cercanías'
+  plane: 'Avión'
+  long_distance_train: 'Tren de larga distancia'
+  passenger_ferry: 'Ferry de pasajeros'
+
+vehicle_types:
+  petrol: 'Gasolina'
+  diesel: 'Diésel'
+  hev: 'Híbrido'
+  phev: 'Híbrido enchufable'
+  bev: 'Eléctrico'
+  lpg: 'GLP'
+  cng: 'GNC'
+  unknown: 'Desconocido'
+
+fuels:
+  petrol: 'Gasolina'
+  diesel: 'Diésel'
+  lpg: 'GLP'
+  cng: 'GNC'
+tracking:
+  title: 'Seguimiento del equipo'
+  people: 'personas'
+  person_days: 'persona-días'
+  unassigned: 'Sin departamento asignado'
+  status: 'Estado del desplazamiento'
+  update: 'Actualizar'
+  edit_day: 'Editar jornada'
+  day_help: 'Los cambios realizados aquí afectan solo a esta jornada y no modifican los valores habituales de la persona.'
+  save_day: 'Guardar jornada'
+  remove: 'Quitar de esta jornada'
+  add_for_today: 'Añadir personas para esta jornada'
+  no_candidates: 'Todas las personas configuradas ya están incluidas en esta jornada.'
+  statuses:
+    pending: 'Pendiente'
+    resolved: 'Resuelto'
+    not_applicable: 'No aplica'

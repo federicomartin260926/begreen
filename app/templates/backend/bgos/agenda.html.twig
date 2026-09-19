@@ -56,11 +56,19 @@
                 </p>
             </div>
 
-            <a class="btn btn-outline-success bgos-agenda__configure"
-               href="{{ path('backend_bgos_config') }}">
-                <i class="bi bi-sliders me-1" aria-hidden="true"></i>
-                {{ 'backend.bgos.actions.configure'|trans }}
-            </a>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-secondary"
+                   href="{{ path('backend_bgos_crew') }}">
+                    <i class="bi bi-people me-1" aria-hidden="true"></i>
+                    {{ 'actions.open'|trans({}, 'bgos_crew') }}
+                </a>
+
+                <a class="btn btn-outline-success bgos-agenda__configure"
+                   href="{{ path('backend_bgos_config') }}">
+                    <i class="bi bi-sliders me-1" aria-hidden="true"></i>
+                    {{ 'backend.bgos.actions.configure'|trans }}
+                </a>
+            </div>
         </header>
 
         {% if window is null %}
@@ -259,7 +267,12 @@
                                         {% if subcategory.configured
                                             or subcategory.completion.expectedCount > 0
                                             or subcategory.totalKgCo2e is not null
+                                            or subcategory.crewTracking is defined
                                         %}
+                                            {% set isCrewTransport =
+                                                category.key == 'transport'
+                                                and subcategory.key == 'people'
+                                            %}
                                             {% set hasVisibleSubcategory = true %}
                                             {% set subPct = subcategory.completion.completionPercentage %}
 
@@ -300,7 +313,8 @@
                                                     {% endif %}
                                                 </div>
 
-                                                {% if window.view == 'day'
+                                                {% if not isCrewTransport
+                                                    and window.view == 'day'
                                                     and subcategory.configured
                                                     and subcategory.active
                                                     and subcategory.trackingStatus != 'not_applicable'
@@ -318,6 +332,434 @@
                                                                 ? 'backend.bgos.actions.add_another_record'
                                                                 : 'backend.bgos.actions.add_record')|trans }}
                                                         </a>
+                                                    </div>
+                                                {% endif %}
+
+                                                {% if isCrewTransport %}
+                                                    {% set crew = subcategory.crewTracking %}
+
+                                                    <div
+                                                        id="bgos-crew-transport"
+                                                        class="mt-3 pt-3 border-top"
+                                                        style="grid-column: 1 / -1;"
+                                                    >
+                                                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                                            <div>
+                                                                <strong>
+                                                                    {{ 'tracking.title'|trans({}, 'bgos_crew') }}
+                                                                </strong>
+
+                                                                {% if window.view == 'day' %}
+                                                                    <span class="text-muted ms-2">
+                                                                        {{ crew.completedCount }}/{{ crew.expectedCount }}
+                                                                        {{ 'tracking.people'|trans({}, 'bgos_crew') }}
+                                                                    </span>
+                                                                {% else %}
+                                                                    <span class="text-muted ms-2">
+                                                                        {{ crew.completedCount }}/{{ crew.expectedCount }}
+                                                                        {{ 'tracking.person_days'|trans({}, 'bgos_crew') }}
+                                                                    </span>
+                                                                {% endif %}
+                                                            </div>
+
+                                                            <a
+                                                                class="btn btn-sm btn-outline-secondary"
+                                                                href="{{ path('backend_bgos_crew') }}"
+                                                            >
+                                                                <i class="bi bi-people me-1" aria-hidden="true"></i>
+                                                                {{ 'actions.open'|trans({}, 'bgos_crew') }}
+                                                            </a>
+                                                        </div>
+
+                                                        {% if crew.departments is not empty %}
+                                                            <div class="vstack gap-2 mb-3">
+                                                                {% for department in crew.departments %}
+                                                                    <div class="border rounded p-2 bg-light">
+                                                                        <div class="d-flex justify-content-between gap-3">
+                                                                            <strong class="small">
+                                                                                {{ department.department
+                                                                                    ? department.department.name
+                                                                                    : 'tracking.unassigned'|trans({}, 'bgos_crew') }}
+                                                                            </strong>
+
+                                                                            <span class="small fw-semibold">
+                                                                                {{ department.completedCount }}/{{ department.expectedCount }}
+                                                                            </span>
+                                                                        </div>
+
+                                                                        {% if window.view == 'day' %}
+                                                                            <div class="vstack gap-2 mt-2">
+                                                                                {% for day in department.days %}
+                                                                                    {% set member = day.crewMember %}
+
+                                                                                    <div class="d-flex flex-column flex-xl-row justify-content-between gap-2 bg-white border rounded p-2">
+                                                                                        <div>
+                                                                                            <div class="fw-semibold">
+                                                                                                {{ member.name }} {{ member.lastName }}
+                                                                                            </div>
+
+                                                                                            <div class="small text-muted">
+                                                                                                {% if day.crewAssignment %}
+                                                                                                    {{ day.crewAssignment.crewDepartment.name }}
+
+                                                                                                    {% if day.crewAssignment.crewPosition %}
+                                                                                                        · {{ day.crewAssignment.crewPosition.name }}
+                                                                                                    {% endif %}
+                                                                                                {% endif %}
+
+                                                                                                {% if day.origin %}
+                                                                                                    · {{ day.origin }}
+                                                                                                {% endif %}
+
+                                                                                                {% if day.mode %}
+                                                                                                    · {{ ('modes.' ~ day.mode)|trans({}, 'bgos_crew') }}
+                                                                                                {% endif %}
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                                                                            <form
+                                                                                                method="post"
+                                                                                                action="{{ path('backend_bgos_crew_day_status', {
+                                                                                                    dayId: day.id
+                                                                                                }) }}"
+                                                                                                class="d-flex gap-2"
+                                                                                            >
+                                                                                                <input
+                                                                                                    type="hidden"
+                                                                                                    name="_token"
+                                                                                                    value="{{ csrf_token('bgos_crew_day_status_' ~ day.id) }}"
+                                                                                                >
+
+                                                                                                <select
+                                                                                                    class="form-select form-select-sm"
+                                                                                                    name="status"
+                                                                                                    aria-label="{{ 'tracking.status'|trans({}, 'bgos_crew') }}"
+                                                                                                >
+                                                                                                    {% for status in ['pending', 'resolved', 'not_applicable'] %}
+                                                                                                        <option
+                                                                                                            value="{{ status }}"
+                                                                                                            {% if day.status == status %}selected{% endif %}
+                                                                                                        >
+                                                                                                            {{ ('tracking.statuses.' ~ status)|trans({}, 'bgos_crew') }}
+                                                                                                        </option>
+                                                                                                    {% endfor %}
+                                                                                                </select>
+
+                                                                                                <button
+                                                                                                    class="btn btn-sm btn-outline-success"
+                                                                                                    type="submit"
+                                                                                                >
+                                                                                                    {{ 'tracking.update'|trans({}, 'bgos_crew') }}
+                                                                                                </button>
+                                                                                            </form>
+
+                                                                                            <button
+                                                                                                class="btn btn-sm btn-outline-secondary"
+                                                                                                type="button"
+                                                                                                data-bs-toggle="collapse"
+                                                                                                data-bs-target="#bgos-crew-day-edit-{{ day.id }}"
+                                                                                                aria-expanded="false"
+                                                                                                aria-controls="bgos-crew-day-edit-{{ day.id }}"
+                                                                                            >
+                                                                                                <i class="bi bi-pencil me-1" aria-hidden="true"></i>
+                                                                                                {{ 'tracking.edit_day'|trans({}, 'bgos_crew') }}
+                                                                                            </button>
+
+                                                                                            <form
+                                                                                                method="post"
+                                                                                                action="{{ path('backend_bgos_crew_day_remove', {
+                                                                                                    dayId: day.id
+                                                                                                }) }}"
+                                                                                            >
+                                                                                                <input
+                                                                                                    type="hidden"
+                                                                                                    name="_token"
+                                                                                                    value="{{ csrf_token('bgos_crew_day_remove_' ~ day.id) }}"
+                                                                                                >
+
+                                                                                                <button
+                                                                                                    class="btn btn-sm btn-outline-danger"
+                                                                                                    type="submit"
+                                                                                                    title="{{ 'tracking.remove'|trans({}, 'bgos_crew') }}"
+                                                                                                >
+                                                                                                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                                                                                    <span class="visually-hidden">
+                                                                                                        {{ 'tracking.remove'|trans({}, 'bgos_crew') }}
+                                                                                                    </span>
+                                                                                                </button>
+                                                                                            </form>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div
+                                                                                        class="collapse mt-2"
+                                                                                        id="bgos-crew-day-edit-{{ day.id }}"
+                                                                                    >
+                                                                                        <form
+                                                                                            method="post"
+                                                                                            action="{{ path('backend_bgos_crew_day_update', {
+                                                                                                dayId: day.id
+                                                                                            }) }}"
+                                                                                            class="border rounded bg-light p-3"
+                                                                                        >
+                                                                                            <input
+                                                                                                type="hidden"
+                                                                                                name="_token"
+                                                                                                value="{{ csrf_token('bgos_crew_day_update_' ~ day.id) }}"
+                                                                                            >
+
+                                                                                            <div class="small text-muted mb-3">
+                                                                                                {{ 'tracking.day_help'|trans({}, 'bgos_crew') }}
+                                                                                            </div>
+
+                                                                                            <div class="row g-3">
+                                                                                                <div class="col-12 col-xl-4">
+                                                                                                    <label class="form-label">
+                                                                                                        {{ 'fields.assignment'|trans({}, 'bgos_crew') }}
+                                                                                                    </label>
+
+                                                                                                    <select
+                                                                                                        class="form-select form-select-sm"
+                                                                                                        name="crewAssignment"
+                                                                                                    >
+                                                                                                        <option value="">
+                                                                                                            {{ 'assignment.none'|trans({}, 'bgos_crew') }}
+                                                                                                        </option>
+
+                                                                                                        {% for assignment in member.assignments %}
+                                                                                                            <option
+                                                                                                                value="{{ assignment.id }}"
+                                                                                                                {% if day.crewAssignment and day.crewAssignment.id == assignment.id %}
+                                                                                                                    selected
+                                                                                                                {% endif %}
+                                                                                                            >
+                                                                                                                {{ assignment.crewDepartment.name }}
+                                                                                                                {% if assignment.crewPosition %}
+                                                                                                                    · {{ assignment.crewPosition.name }}
+                                                                                                                {% endif %}
+                                                                                                            </option>
+                                                                                                        {% endfor %}
+                                                                                                    </select>
+                                                                                                </div>
+
+                                                                                                <div class="col-12 col-xl-8">
+                                                                                                    <label class="form-label">
+                                                                                                        {{ 'fields.origin'|trans({}, 'bgos_crew') }}
+                                                                                                    </label>
+
+                                                                                                    <input
+                                                                                                        class="form-control form-control-sm"
+                                                                                                        type="text"
+                                                                                                        name="origin"
+                                                                                                        maxlength="255"
+                                                                                                        value="{{ day.origin ?? '' }}"
+                                                                                                    >
+                                                                                                </div>
+
+                                                                                                <div class="col-12 col-md-6 col-xl-3">
+                                                                                                    <label class="form-label">
+                                                                                                        {{ 'fields.mode'|trans({}, 'bgos_crew') }}
+                                                                                                    </label>
+
+                                                                                                    <select
+                                                                                                        class="form-select form-select-sm"
+                                                                                                        name="mode"
+                                                                                                    >
+                                                                                                        <option value="">
+                                                                                                            {{ 'common.not_defined'|trans({}, 'bgos_crew') }}
+                                                                                                        </option>
+
+                                                                                                        {% for mode in crewTransportOptions.peopleModes %}
+                                                                                                            <option
+                                                                                                                value="{{ mode }}"
+                                                                                                                {% if day.mode == mode %}selected{% endif %}
+                                                                                                            >
+                                                                                                                {{ ('modes.' ~ mode)|trans({}, 'bgos_crew') }}
+                                                                                                            </option>
+                                                                                                        {% endfor %}
+                                                                                                    </select>
+                                                                                                </div>
+
+                                                                                                <div class="col-12 col-md-6 col-xl-3">
+                                                                                                    <label class="form-label">
+                                                                                                        {{ 'fields.vehicle_type'|trans({}, 'bgos_crew') }}
+                                                                                                    </label>
+
+                                                                                                    <select
+                                                                                                        class="form-select form-select-sm"
+                                                                                                        name="vehicleType"
+                                                                                                    >
+                                                                                                        <option value="">
+                                                                                                            {{ 'common.not_defined'|trans({}, 'bgos_crew') }}
+                                                                                                        </option>
+
+                                                                                                        {% for vehicleType in crewTransportOptions.vehicleTypes %}
+                                                                                                            <option
+                                                                                                                value="{{ vehicleType }}"
+                                                                                                                {% if day.vehicleType == vehicleType %}selected{% endif %}
+                                                                                                            >
+                                                                                                                {{ ('vehicle_types.' ~ vehicleType)|trans({}, 'bgos_crew') }}
+                                                                                                            </option>
+                                                                                                        {% endfor %}
+                                                                                                    </select>
+                                                                                                </div>
+
+                                                                                                <div class="col-12 col-md-6 col-xl-3">
+                                                                                                    <label class="form-label">
+                                                                                                        {{ 'fields.fuel'|trans({}, 'bgos_crew') }}
+                                                                                                    </label>
+
+                                                                                                    <select
+                                                                                                        class="form-select form-select-sm"
+                                                                                                        name="fuel"
+                                                                                                    >
+                                                                                                        <option value="">
+                                                                                                            {{ 'common.not_defined'|trans({}, 'bgos_crew') }}
+                                                                                                        </option>
+
+                                                                                                        {% for fuel in crewTransportOptions.fuels %}
+                                                                                                            <option
+                                                                                                                value="{{ fuel }}"
+                                                                                                                {% if day.fuel == fuel %}selected{% endif %}
+                                                                                                            >
+                                                                                                                {{ ('fuels.' ~ fuel)|trans({}, 'bgos_crew') }}
+                                                                                                            </option>
+                                                                                                        {% endfor %}
+                                                                                                    </select>
+                                                                                                </div>
+
+                                                                                                <div class="col-12 col-md-6 col-xl-3">
+                                                                                                    <label class="form-label">
+                                                                                                        {{ 'fields.thermal_fuel'|trans({}, 'bgos_crew') }}
+                                                                                                    </label>
+
+                                                                                                    <select
+                                                                                                        class="form-select form-select-sm"
+                                                                                                        name="thermalFuel"
+                                                                                                    >
+                                                                                                        <option value="">
+                                                                                                            {{ 'common.not_defined'|trans({}, 'bgos_crew') }}
+                                                                                                        </option>
+
+                                                                                                        {% for fuel in crewTransportOptions.thermalFuels %}
+                                                                                                            <option
+                                                                                                                value="{{ fuel }}"
+                                                                                                                {% if day.thermalFuel == fuel %}selected{% endif %}
+                                                                                                            >
+                                                                                                                {{ ('fuels.' ~ fuel)|trans({}, 'bgos_crew') }}
+                                                                                                            </option>
+                                                                                                        {% endfor %}
+                                                                                                    </select>
+                                                                                                </div>
+
+                                                                                                <div class="col-12 col-md-6 col-xl-3">
+                                                                                                    <label class="form-label">
+                                                                                                        {{ 'tracking.status'|trans({}, 'bgos_crew') }}
+                                                                                                    </label>
+
+                                                                                                    <select
+                                                                                                        class="form-select form-select-sm"
+                                                                                                        name="status"
+                                                                                                    >
+                                                                                                        {% for status in ['pending', 'resolved', 'not_applicable'] %}
+                                                                                                            <option
+                                                                                                                value="{{ status }}"
+                                                                                                                {% if day.status == status %}selected{% endif %}
+                                                                                                            >
+                                                                                                                {{ ('tracking.statuses.' ~ status)|trans({}, 'bgos_crew') }}
+                                                                                                            </option>
+                                                                                                        {% endfor %}
+                                                                                                    </select>
+                                                                                                </div>
+                                                                                            </div>
+
+                                                                                            <div class="d-flex justify-content-end mt-3">
+                                                                                                <button
+                                                                                                    class="btn btn-sm btn-success"
+                                                                                                    type="submit"
+                                                                                                >
+                                                                                                    <i class="bi bi-check-lg me-1" aria-hidden="true"></i>
+                                                                                                    {{ 'tracking.save_day'|trans({}, 'bgos_crew') }}
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </form>
+                                                                                    </div>
+                                                                                {% endfor %}
+                                                                            </div>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% endif %}
+
+                                                        {% if window.view == 'day' and subcategory.active %}
+                                                            <div class="border rounded p-3">
+                                                                <div class="fw-semibold mb-2">
+                                                                    {{ 'tracking.add_for_today'|trans({}, 'bgos_crew') }}
+                                                                </div>
+
+                                                                {% set hasCandidate = false %}
+
+                                                                <div class="d-flex flex-wrap gap-2">
+                                                                    {% for rosterRow in period.crewRoster %}
+                                                                        {% set member = rosterRow.member %}
+
+                                                                        {% if member.id not in crew.trackedMemberIds %}
+                                                                            {% set hasCandidate = true %}
+
+                                                                            {% if rosterRow.effectiveAssignment %}
+                                                                                <form
+                                                                                    method="post"
+                                                                                    action="{{ path('backend_bgos_crew_day_add', {
+                                                                                        crewMemberId: member.id
+                                                                                    }) }}"
+                                                                                >
+                                                                                    <input
+                                                                                        type="hidden"
+                                                                                        name="date"
+                                                                                        value="{{ window.selectedDate|date('Y-m-d') }}"
+                                                                                    >
+
+                                                                                    <input
+                                                                                        type="hidden"
+                                                                                        name="_token"
+                                                                                        value="{{ csrf_token(
+                                                                                            'bgos_crew_day_add_'
+                                                                                            ~ member.id
+                                                                                            ~ '_'
+                                                                                            ~ window.selectedDate|date('Y-m-d')
+                                                                                        ) }}"
+                                                                                    >
+
+                                                                                    <button
+                                                                                        class="btn btn-sm btn-outline-success"
+                                                                                        type="submit"
+                                                                                    >
+                                                                                        <i class="bi bi-person-plus me-1" aria-hidden="true"></i>
+                                                                                        {{ member.name }} {{ member.lastName }}
+                                                                                    </button>
+                                                                                </form>
+                                                                            {% else %}
+                                                                                <a
+                                                                                    class="btn btn-sm btn-outline-warning"
+                                                                                    href="{{ path('backend_bgos_crew') }}#crew-member-{{ member.id }}"
+                                                                                >
+                                                                                    <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                                                                                    {{ member.name }} {{ member.lastName }}
+                                                                                </a>
+                                                                            {% endif %}
+                                                                        {% endif %}
+                                                                    {% endfor %}
+                                                                </div>
+
+                                                                {% if not hasCandidate %}
+                                                                    <div class="small text-muted">
+                                                                        {{ 'tracking.no_candidates'|trans({}, 'bgos_crew') }}
+                                                                    </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        {% endif %}
                                                     </div>
                                                 {% endif %}
                                             </div>

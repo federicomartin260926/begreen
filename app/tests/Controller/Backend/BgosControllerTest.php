@@ -14,6 +14,7 @@ use App\Service\ActiveProjectService;
 use App\Service\Bgos\BgosPeriodService;
 use App\Service\Bgos\BgosPeriodWindowResolver;
 use App\Service\Bgos\BgosSubcategoryCatalog;
+use App\Service\Emission\Transport\TransportUiCatalog;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -82,6 +83,7 @@ final class BgosControllerTest extends KernelTestCase
             $activeProjectService,
             self::getContainer()->get(BgosPeriodWindowResolver::class),
             self::getContainer()->get(BgosPeriodService::class),
+            self::getContainer()->get(TransportUiCatalog::class),
             $request,
         );
 
@@ -133,6 +135,7 @@ final class BgosControllerTest extends KernelTestCase
             $activeProjectService,
             self::getContainer()->get(BgosPeriodWindowResolver::class),
             self::getContainer()->get(BgosPeriodService::class),
+            self::getContainer()->get(TransportUiCatalog::class),
             $request,
         )->getContent();
 

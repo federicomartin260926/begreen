@@ -2,15 +2,23 @@
 
 namespace App\Controller\Backend;
 
+use App\Entity\BgosCrewTransportDay;
 use App\Entity\BgosSubcategoryConfig;
+use App\Entity\CrewMemberAssignment;
 use App\Entity\Project;
+use App\Repository\BgosCrewTransportDayRepository;
 use App\Repository\BgosSubcategoryConfigRepository;
+use App\Repository\CrewMemberRepository;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\Bgos\BgosCrewProfileManager;
+use App\Service\Bgos\BgosCrewTransportDayManager;
+use App\Service\Bgos\BgosCrewRosterService;
 use App\Service\Bgos\BgosEmissionEntryContextResolver;
 use App\Service\Bgos\BgosPeriodService;
 use App\Service\Bgos\BgosPeriodWindowResolver;
 use App\Service\Bgos\BgosSubcategoryCatalog;
+use App\Service\Emission\Transport\TransportUiCatalog;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -28,6 +36,7 @@ final class BgosController extends AbstractController
         ActiveProjectService $activeProjectService,
         BgosPeriodWindowResolver $windowResolver,
         BgosPeriodService $periodService,
+        TransportUiCatalog $transportCatalog,
         Request $request,
     ): Response {
         $project = $this->activeProject($activeProjectService);
@@ -61,6 +70,7 @@ final class BgosController extends AbstractController
             'period' => $period,
             'views' => BgosPeriodWindowResolver::VIEWS,
             'entryRoutes' => BgosEmissionEntryContextResolver::ROUTES,
+            'crewTransportOptions' => $this->crewTransportOptions($transportCatalog),
         ]);
     }
 
@@ -117,6 +127,403 @@ final class BgosController extends AbstractController
                 'activity' => $project->getPhaseLabel('actividad'),
                 'postproduction' => $project->getPhaseLabel('postproduccion'),
             ],
+        ]);
+    }
+
+    #[Route('/crew', name: 'crew', methods: ['GET'])]
+    public function crew(
+        ActiveProjectService $activeProjectService,
+        BgosCrewRosterService $rosterService,
+        TransportUiCatalog $transportCatalog,
+    ): Response {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+
+        $transportCategories = $transportCatalog->categories();
+        $transportConfig = $transportCatalog->configuration();
+
+        $peopleModes = array_values(array_unique(array_merge(
+            $transportCategories['local'] ?? [],
+            $transportCategories['travel'] ?? [],
+        )));
+
+        return $this->render('backend/bgos/crew.html.twig', [
+            'project' => $project,
+            'rows' => $rosterService->build($project),
+            'peopleModes' => $peopleModes,
+            'vehicleTypes' => $transportConfig['vehicleTypes'] ?? [],
+            'fuels' => $transportConfig['fuelsByMode']['car'] ?? [],
+            'thermalFuels' => $transportConfig['thermalFuels'] ?? [],
+        ]);
+    }
+
+    #[Route(
+        '/crew/{crewMemberId}/profile',
+        name: 'crew_profile_save',
+        methods: ['POST'],
+        requirements: ['crewMemberId' => '\d+'],
+    )]
+    public function saveCrewProfile(
+        int $crewMemberId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        CrewMemberRepository $crewMemberRepository,
+        BgosCrewProfileManager $profileManager,
+        EntityManagerInterface $entityManager,
+    ): RedirectResponse {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $crewMember = $crewMemberRepository->find($crewMemberId);
+
+        if (
+            null === $crewMember
+            || $crewMember->getProject() !== $project
+        ) {
+            throw $this->createNotFoundException();
+        }
+
+        if (!$this->isCsrfTokenValid(
+            'bgos_crew_profile_'.$crewMemberId,
+            $request->request->getString('_token'),
+        )) {
+            $this->addFlash('danger', 'backend.bgos.flash.csrf_invalid');
+
+            return $this->redirectToRoute('backend_bgos_crew');
+        }
+
+        $assignment = null;
+        $assignmentId = $request->request->getString('defaultAssignment');
+
+        if ('' !== $assignmentId) {
+            if (!ctype_digit($assignmentId)) {
+                $this->addFlash('danger', 'backend.bgos.flash.invalid_input');
+
+                return $this->redirectToRoute('backend_bgos_crew', [
+                    '_fragment' => 'crew-member-'.$crewMemberId,
+                ]);
+            }
+
+            $assignment = $entityManager->find(
+                CrewMemberAssignment::class,
+                (int) $assignmentId,
+            );
+
+            if (
+                !$assignment instanceof CrewMemberAssignment
+                || $assignment->getCrewMember() !== $crewMember
+            ) {
+                $this->addFlash('danger', 'backend.bgos.flash.invalid_input');
+
+                return $this->redirectToRoute('backend_bgos_crew', [
+                    '_fragment' => 'crew-member-'.$crewMemberId,
+                ]);
+            }
+        }
+
+        try {
+            $profileManager->save(
+                $crewMember,
+                $assignment,
+                $request->request->get('defaultOrigin'),
+                $request->request->get('defaultMode'),
+                $request->request->get('defaultVehicleType'),
+                $request->request->get('defaultFuel'),
+                $request->request->get('defaultThermalFuel'),
+            );
+        } catch (\InvalidArgumentException) {
+            $this->addFlash('danger', 'backend.bgos.flash.invalid_input');
+
+            return $this->redirectToRoute('backend_bgos_crew', [
+                '_fragment' => 'crew-member-'.$crewMemberId,
+            ]);
+        }
+
+        $this->addFlash('success', 'backend.bgos.flash.saved');
+
+        return $this->redirectToRoute('backend_bgos_crew', [
+            '_fragment' => 'crew-member-'.$crewMemberId,
+        ]);
+    }
+
+    #[Route(
+        '/crew-day/{crewMemberId}/add',
+        name: 'crew_day_add',
+        methods: ['POST'],
+        requirements: ['crewMemberId' => '\d+'],
+    )]
+    public function addCrewDay(
+        int $crewMemberId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        CrewMemberRepository $crewMemberRepository,
+        BgosCrewTransportDayManager $dayManager,
+    ): RedirectResponse {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $crewMember = $crewMemberRepository->find($crewMemberId);
+
+        if (
+            null === $crewMember
+            || $crewMember->getProject() !== $project
+        ) {
+            throw $this->createNotFoundException();
+        }
+
+        $date = $this->selectedDate(
+            $request->request->getString('date')
+        );
+
+        if (null === $date) {
+            $this->addFlash('danger', 'backend.bgos.flash.invalid_input');
+
+            return $this->redirectToRoute('backend_bgos_index');
+        }
+
+        if (!$this->isCsrfTokenValid(
+            sprintf(
+                'bgos_crew_day_add_%d_%s',
+                $crewMemberId,
+                $date->format('Y-m-d'),
+            ),
+            $request->request->getString('_token'),
+        )) {
+            $this->addFlash('danger', 'backend.bgos.flash.csrf_invalid');
+
+            return $this->redirectToRoute('backend_bgos_index', [
+                'view' => BgosPeriodWindowResolver::VIEW_DAY,
+                'date' => $date->format('Y-m-d'),
+            ]);
+        }
+
+        $dayManager->ensure($crewMember, $date);
+
+        $this->addFlash('success', 'backend.bgos.flash.saved');
+
+        return $this->redirectToRoute('backend_bgos_index', [
+            'view' => BgosPeriodWindowResolver::VIEW_DAY,
+            'date' => $date->format('Y-m-d'),
+            '_fragment' => 'bgos-agenda-heading-transport',
+        ]);
+    }
+
+    #[Route(
+        '/crew-day/{dayId}/status',
+        name: 'crew_day_status',
+        methods: ['POST'],
+        requirements: ['dayId' => '\d+'],
+    )]
+    public function updateCrewDayStatus(
+        int $dayId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        BgosCrewTransportDayRepository $dayRepository,
+        BgosCrewTransportDayManager $dayManager,
+    ): RedirectResponse {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $day = $dayRepository->find($dayId);
+
+        if (
+            !$day instanceof BgosCrewTransportDay
+            || $day->getCrewMember()?->getProject() !== $project
+        ) {
+            throw $this->createNotFoundException();
+        }
+
+        if (!$this->isCsrfTokenValid(
+            'bgos_crew_day_status_'.$dayId,
+            $request->request->getString('_token'),
+        )) {
+            $this->addFlash('danger', 'backend.bgos.flash.csrf_invalid');
+
+            return $this->redirectToRoute('backend_bgos_index', [
+                'view' => BgosPeriodWindowResolver::VIEW_DAY,
+                'date' => $day->getDate()?->format('Y-m-d'),
+            ]);
+        }
+
+        try {
+            $dayManager->update(
+                $day,
+                $request->request->getString('status'),
+                $day->getCrewAssignment(),
+                $day->getOrigin(),
+                $day->getMode(),
+                $day->getVehicleType(),
+                $day->getFuel(),
+                $day->getThermalFuel(),
+            );
+        } catch (\InvalidArgumentException|\LogicException) {
+            $this->addFlash('danger', 'backend.bgos.flash.invalid_input');
+
+            return $this->redirectToRoute('backend_bgos_index', [
+                'view' => BgosPeriodWindowResolver::VIEW_DAY,
+                'date' => $day->getDate()?->format('Y-m-d'),
+            ]);
+        }
+
+        $this->addFlash('success', 'backend.bgos.flash.saved');
+
+        return $this->redirectToRoute('backend_bgos_index', [
+            'view' => BgosPeriodWindowResolver::VIEW_DAY,
+            'date' => $day->getDate()?->format('Y-m-d'),
+            '_fragment' => 'bgos-agenda-heading-transport',
+        ]);
+    }
+
+    #[Route(
+        '/crew-day/{dayId}/update',
+        name: 'crew_day_update',
+        methods: ['POST'],
+        requirements: ['dayId' => '\d+'],
+    )]
+    public function updateCrewDay(
+        int $dayId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        BgosCrewTransportDayRepository $dayRepository,
+        BgosCrewTransportDayManager $dayManager,
+        EntityManagerInterface $entityManager,
+    ): RedirectResponse {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $day = $dayRepository->find($dayId);
+
+        if (
+            !$day instanceof BgosCrewTransportDay
+            || $day->getCrewMember()?->getProject() !== $project
+        ) {
+            throw $this->createNotFoundException();
+        }
+
+        $date = $day->getDate();
+
+        if (!$this->isCsrfTokenValid(
+            'bgos_crew_day_update_'.$dayId,
+            $request->request->getString('_token'),
+        )) {
+            $this->addFlash('danger', 'backend.bgos.flash.csrf_invalid');
+
+            return $this->redirectToRoute('backend_bgos_index', [
+                'view' => BgosPeriodWindowResolver::VIEW_DAY,
+                'date' => $date?->format('Y-m-d'),
+            ]);
+        }
+
+        $assignment = null;
+        $assignmentId = $request->request->getString('crewAssignment');
+
+        if ('' !== $assignmentId) {
+            if (!ctype_digit($assignmentId)) {
+                $this->addFlash('danger', 'backend.bgos.flash.invalid_input');
+
+                return $this->redirectToRoute('backend_bgos_index', [
+                    'view' => BgosPeriodWindowResolver::VIEW_DAY,
+                    'date' => $date?->format('Y-m-d'),
+                    '_fragment' => 'bgos-agenda-heading-transport',
+                ]);
+            }
+
+            $assignment = $entityManager->find(
+                CrewMemberAssignment::class,
+                (int) $assignmentId,
+            );
+
+            if (
+                !$assignment instanceof CrewMemberAssignment
+                || $assignment->getCrewMember() !== $day->getCrewMember()
+            ) {
+                $this->addFlash('danger', 'backend.bgos.flash.invalid_input');
+
+                return $this->redirectToRoute('backend_bgos_index', [
+                    'view' => BgosPeriodWindowResolver::VIEW_DAY,
+                    'date' => $date?->format('Y-m-d'),
+                    '_fragment' => 'bgos-agenda-heading-transport',
+                ]);
+            }
+        }
+
+        try {
+            $dayManager->update(
+                $day,
+                $request->request->getString('status'),
+                $assignment,
+                $request->request->getString('origin'),
+                $request->request->getString('mode'),
+                $request->request->getString('vehicleType'),
+                $request->request->getString('fuel'),
+                $request->request->getString('thermalFuel'),
+            );
+        } catch (\InvalidArgumentException|\LogicException) {
+            $this->addFlash('danger', 'backend.bgos.flash.invalid_input');
+
+            return $this->redirectToRoute('backend_bgos_index', [
+                'view' => BgosPeriodWindowResolver::VIEW_DAY,
+                'date' => $date?->format('Y-m-d'),
+                '_fragment' => 'bgos-agenda-heading-transport',
+            ]);
+        }
+
+        $this->addFlash('success', 'backend.bgos.flash.saved');
+
+        return $this->redirectToRoute('backend_bgos_index', [
+            'view' => BgosPeriodWindowResolver::VIEW_DAY,
+            'date' => $date?->format('Y-m-d'),
+            '_fragment' => 'bgos-agenda-heading-transport',
+        ]);
+    }
+
+    #[Route(
+        '/crew-day/{dayId}/remove',
+        name: 'crew_day_remove',
+        methods: ['POST'],
+        requirements: ['dayId' => '\d+'],
+    )]
+    public function removeCrewDay(
+        int $dayId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        BgosCrewTransportDayRepository $dayRepository,
+        BgosCrewTransportDayManager $dayManager,
+    ): RedirectResponse {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $day = $dayRepository->find($dayId);
+
+        if (
+            !$day instanceof BgosCrewTransportDay
+            || $day->getCrewMember()?->getProject() !== $project
+        ) {
+            throw $this->createNotFoundException();
+        }
+
+        $date = $day->getDate();
+
+        if (!$this->isCsrfTokenValid(
+            'bgos_crew_day_remove_'.$dayId,
+            $request->request->getString('_token'),
+        )) {
+            $this->addFlash('danger', 'backend.bgos.flash.csrf_invalid');
+
+            return $this->redirectToRoute('backend_bgos_index', [
+                'view' => BgosPeriodWindowResolver::VIEW_DAY,
+                'date' => $date?->format('Y-m-d'),
+            ]);
+        }
+
+        $dayManager->remove($day);
+
+        $this->addFlash('success', 'backend.bgos.flash.saved');
+
+        return $this->redirectToRoute('backend_bgos_index', [
+            'view' => BgosPeriodWindowResolver::VIEW_DAY,
+            'date' => $date?->format('Y-m-d'),
+            '_fragment' => 'bgos-agenda-heading-transport',
         ]);
     }
 
@@ -208,6 +615,31 @@ final class BgosController extends AbstractController
                 $subcategoryKey,
             ),
         ]);
+    }
+
+    /**
+     * @return array{
+     *     peopleModes:list<string>,
+     *     vehicleTypes:list<string>,
+     *     fuels:list<string>,
+     *     thermalFuels:list<string>
+     * }
+     */
+    private function crewTransportOptions(
+        TransportUiCatalog $transportCatalog,
+    ): array {
+        $categories = $transportCatalog->categories();
+        $config = $transportCatalog->configuration();
+
+        return [
+            'peopleModes' => array_values(array_unique(array_merge(
+                $categories['local'] ?? [],
+                $categories['travel'] ?? [],
+            ))),
+            'vehicleTypes' => $config['vehicleTypes'] ?? [],
+            'fuels' => $config['fuelsByMode']['car'] ?? [],
+            'thermalFuels' => $config['thermalFuels'] ?? [],
+        ];
     }
 
     private function activeProject(

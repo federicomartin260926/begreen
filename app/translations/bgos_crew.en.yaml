@@ -1,0 +1,84 @@
+title: 'Team and mobility'
+breadcrumb: 'Team and mobility'
+eyebrow: 'Be Green On Set'
+intro: 'Configure the team’s usual mobility so it can be reused in daily tracking.'
+
+actions:
+  manage_team: 'Manage Technical Team'
+  back_to_agenda: 'Back to Agenda'
+  save: 'Save mobility'
+  open: 'Team and mobility'
+
+help:
+  title: 'Usual defaults'
+  text: 'These values are a starting point. Each day can override them without changing the person’s usual profile.'
+
+empty:
+  text: 'This project does not have any Technical Team members yet.'
+
+roster:
+  title: 'Project team'
+  count: '%count% people'
+
+assignment:
+  auto: 'Automatic when there is a single assignment'
+  none: 'No department/role'
+  required: 'This person has several assignments: choose the one normally used by BGoS.'
+  badge: 'Assignment required'
+
+fields:
+  assignment: 'Usual department and role'
+  assignment_help: 'Prevents counting a person twice when they have several functions.'
+  origin: 'Usual origin'
+  origin_placeholder: 'E.g. home, office, city…'
+  mode: 'Usual mode'
+  vehicle_type: 'Vehicle type'
+  fuel: 'Fuel'
+  thermal_fuel: 'Thermal fuel'
+
+common:
+  not_defined: 'Not defined'
+
+modes:
+  car: 'Car'
+  taxi: 'Taxi'
+  urban_bus: 'Urban bus'
+  metro: 'Metro'
+  tram: 'Tram'
+  commuter_train: 'Commuter train'
+  plane: 'Plane'
+  long_distance_train: 'Long-distance train'
+  passenger_ferry: 'Passenger ferry'
+
+vehicle_types:
+  petrol: 'Petrol'
+  diesel: 'Diesel'
+  hev: 'Hybrid'
+  phev: 'Plug-in hybrid'
+  bev: 'Electric'
+  lpg: 'LPG'
+  cng: 'CNG'
+  unknown: 'Unknown'
+
+fuels:
+  petrol: 'Petrol'
+  diesel: 'Diesel'
+  lpg: 'LPG'
+  cng: 'CNG'
+tracking:
+  title: 'Team tracking'
+  people: 'people'
+  person_days: 'person-days'
+  unassigned: 'No department assigned'
+  status: 'Transport status'
+  update: 'Update'
+  edit_day: 'Edit day'
+  day_help: 'Changes made here only affect this day and do not modify the person’s usual defaults.'
+  save_day: 'Save day'
+  remove: 'Remove from this day'
+  add_for_today: 'Add people for this day'
+  no_candidates: 'All configured people are already included for this day.'
+  statuses:
+    pending: 'Pending'
+    resolved: 'Resolved'
+    not_applicable: 'Not applicable'

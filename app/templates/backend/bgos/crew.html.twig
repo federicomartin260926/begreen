@@ -1,0 +1,327 @@
+{% extends 'base_backend.html.twig' %}
+{% trans_default_domain 'bgos_crew' %}
+
+{% block title %}{{ 'title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active" aria-current="page">
+        {{ 'breadcrumb'|trans }}
+    </li>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0 backend-client-shell">
+    <div class="backend-client-content">
+
+        <header class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+            <div>
+                <div class="text-uppercase small text-success fw-semibold mb-1">
+                    {{ 'eyebrow'|trans }}
+                </div>
+
+                <h2 class="mb-2">{{ project.name }}</h2>
+
+                <p class="text-muted mb-0">
+                    {{ 'intro'|trans }}
+                </p>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 align-self-lg-start">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{{ path('backend_project_edit_crew', {id: project.id}) }}"
+                >
+                    <i class="bi bi-people me-1" aria-hidden="true"></i>
+                    {{ 'actions.manage_team'|trans }}
+                </a>
+
+                <a
+                    class="btn btn-outline-success"
+                    href="{{ path('backend_bgos_index') }}"
+                >
+                    <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+                    {{ 'actions.back_to_agenda'|trans }}
+                </a>
+            </div>
+        </header>
+
+        <div class="alert alert-light border mb-4">
+            <div class="d-flex gap-2">
+                <i class="bi bi-info-circle text-success mt-1" aria-hidden="true"></i>
+                <div>
+                    <strong>{{ 'help.title'|trans }}</strong>
+                    <div class="small text-muted mt-1">
+                        {{ 'help.text'|trans }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if rows is empty %}
+            <div class="alert alert-info">
+                <p class="mb-2">{{ 'empty.text'|trans }}</p>
+
+                <a
+                    class="btn btn-sm btn-primary"
+                    href="{{ path('backend_project_edit_crew', {id: project.id}) }}"
+                >
+                    {{ 'actions.manage_team'|trans }}
+                </a>
+            </div>
+        {% else %}
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="h5 mb-0">{{ 'roster.title'|trans }}</h3>
+
+                <span class="badge text-bg-light border">
+                    {{ 'roster.count'|trans({'%count%': rows|length}) }}
+                </span>
+            </div>
+
+            <div class="vstack gap-3">
+                {% for row in rows %}
+                    {% set member = row.member %}
+                    {% set profile = row.profile %}
+
+                    <section
+                        class="card shadow-sm"
+                        id="crew-member-{{ member.id }}"
+                    >
+                        <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between gap-2">
+                            <div>
+                                <h4 class="h6 mb-1">
+                                    {{ member.name }} {{ member.lastName }}
+                                </h4>
+
+                                {% if row.effectiveAssignment %}
+                                    <div class="small text-muted">
+                                        {{ row.effectiveAssignment.crewDepartment.name }}
+
+                                        {% if row.effectiveAssignment.crewPosition %}
+                                            · {{ row.effectiveAssignment.crewPosition.name }}
+                                        {% endif %}
+                                    </div>
+                                {% elseif member.assignments|length == 0 %}
+                                    <div class="small text-warning-emphasis">
+                                        {{ 'assignment.none'|trans }}
+                                    </div>
+                                {% else %}
+                                    <div class="small text-warning-emphasis">
+                                        {{ 'assignment.required'|trans }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            {% if row.requiresAssignmentSelection %}
+                                <span class="badge text-bg-warning align-self-md-start">
+                                    {{ 'assignment.badge'|trans }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="card-body">
+                            <form
+                                method="post"
+                                action="{{ path('backend_bgos_crew_profile_save', {
+                                    crewMemberId: member.id
+                                }) }}"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="_token"
+                                    value="{{ csrf_token('bgos_crew_profile_' ~ member.id) }}"
+                                >
+
+                                <div class="row g-3">
+                                    <div class="col-12 col-xl-4">
+                                        <label
+                                            class="form-label"
+                                            for="crew-assignment-{{ member.id }}"
+                                        >
+                                            {{ 'fields.assignment'|trans }}
+                                        </label>
+
+                                        <select
+                                            class="form-select"
+                                            id="crew-assignment-{{ member.id }}"
+                                            name="defaultAssignment"
+                                        >
+                                            <option value="">
+                                                {{ 'assignment.auto'|trans }}
+                                            </option>
+
+                                            {% for assignment in member.assignments %}
+                                                <option
+                                                    value="{{ assignment.id }}"
+                                                    {% if row.effectiveAssignment and assignment.id == row.effectiveAssignment.id %}
+                                                        selected
+                                                    {% endif %}
+                                                >
+                                                    {{ assignment.crewDepartment.name }}
+                                                    {% if assignment.crewPosition %}
+                                                        · {{ assignment.crewPosition.name }}
+                                                    {% endif %}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+
+                                        <div class="form-text">
+                                            {{ 'fields.assignment_help'|trans }}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-xl-8">
+                                        <label
+                                            class="form-label"
+                                            for="crew-origin-{{ member.id }}"
+                                        >
+                                            {{ 'fields.origin'|trans }}
+                                        </label>
+
+                                        <input
+                                            class="form-control"
+                                            id="crew-origin-{{ member.id }}"
+                                            name="defaultOrigin"
+                                            type="text"
+                                            maxlength="255"
+                                            value="{{ profile ? profile.defaultOrigin : '' }}"
+                                            placeholder="{{ 'fields.origin_placeholder'|trans }}"
+                                        >
+                                    </div>
+
+                                    <div class="col-12 col-md-6 col-xl-3">
+                                        <label
+                                            class="form-label"
+                                            for="crew-mode-{{ member.id }}"
+                                        >
+                                            {{ 'fields.mode'|trans }}
+                                        </label>
+
+                                        <select
+                                            class="form-select"
+                                            id="crew-mode-{{ member.id }}"
+                                            name="defaultMode"
+                                        >
+                                            <option value="">
+                                                {{ 'common.not_defined'|trans }}
+                                            </option>
+
+                                            {% for mode in peopleModes %}
+                                                <option
+                                                    value="{{ mode }}"
+                                                    {% if profile and profile.defaultMode == mode %}
+                                                        selected
+                                                    {% endif %}
+                                                >
+                                                    {{ ('modes.' ~ mode)|trans }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12 col-md-6 col-xl-3">
+                                        <label
+                                            class="form-label"
+                                            for="crew-vehicle-{{ member.id }}"
+                                        >
+                                            {{ 'fields.vehicle_type'|trans }}
+                                        </label>
+
+                                        <select
+                                            class="form-select"
+                                            id="crew-vehicle-{{ member.id }}"
+                                            name="defaultVehicleType"
+                                        >
+                                            <option value="">
+                                                {{ 'common.not_defined'|trans }}
+                                            </option>
+
+                                            {% for vehicleType in vehicleTypes %}
+                                                <option
+                                                    value="{{ vehicleType }}"
+                                                    {% if profile and profile.defaultVehicleType == vehicleType %}
+                                                        selected
+                                                    {% endif %}
+                                                >
+                                                    {{ ('vehicle_types.' ~ vehicleType)|trans }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12 col-md-6 col-xl-3">
+                                        <label
+                                            class="form-label"
+                                            for="crew-fuel-{{ member.id }}"
+                                        >
+                                            {{ 'fields.fuel'|trans }}
+                                        </label>
+
+                                        <select
+                                            class="form-select"
+                                            id="crew-fuel-{{ member.id }}"
+                                            name="defaultFuel"
+                                        >
+                                            <option value="">
+                                                {{ 'common.not_defined'|trans }}
+                                            </option>
+
+                                            {% for fuel in fuels %}
+                                                <option
+                                                    value="{{ fuel }}"
+                                                    {% if profile and profile.defaultFuel == fuel %}
+                                                        selected
+                                                    {% endif %}
+                                                >
+                                                    {{ ('fuels.' ~ fuel)|trans }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12 col-md-6 col-xl-3">
+                                        <label
+                                            class="form-label"
+                                            for="crew-thermal-fuel-{{ member.id }}"
+                                        >
+                                            {{ 'fields.thermal_fuel'|trans }}
+                                        </label>
+
+                                        <select
+                                            class="form-select"
+                                            id="crew-thermal-fuel-{{ member.id }}"
+                                            name="defaultThermalFuel"
+                                        >
+                                            <option value="">
+                                                {{ 'common.not_defined'|trans }}
+                                            </option>
+
+                                            {% for fuel in thermalFuels %}
+                                                <option
+                                                    value="{{ fuel }}"
+                                                    {% if profile and profile.defaultThermalFuel == fuel %}
+                                                        selected
+                                                    {% endif %}
+                                                >
+                                                    {{ ('fuels.' ~ fuel)|trans }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end mt-3">
+                                    <button class="btn btn-success" type="submit">
+                                        <i class="bi bi-check-lg me-1" aria-hidden="true"></i>
+                                        {{ 'actions.save'|trans }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

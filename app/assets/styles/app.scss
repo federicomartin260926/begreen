@@ -3815,3 +3815,8 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
 }
 
 /* ===== BGoS — shared visual system #61 END ===== */
+
+/* BGoS: evita que el header fijo tape la categoría al volver tras una acción. */
+.bgos-agenda-category > .accordion-header {
+    scroll-margin-top: 76px;
+}

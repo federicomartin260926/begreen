@@ -6,6 +6,7 @@ namespace App\Service\Bgos;
 
 use App\Entity\BgosSubcategoryConfig;
 use App\Entity\Project;
+use App\Repository\BgosCrewTransportDayRepository;
 use App\Repository\BgosSubcategoryConfigRepository;
 use App\Repository\EmissionRecordRepository;
 
@@ -18,6 +19,10 @@ final class BgosPeriodService
         private readonly BgosEmissionRecordTemporalMapper $temporalMapper,
         private readonly BgosDailyRecordProjector $dailyProjector,
         private readonly BgosPeriodAssembler $assembler,
+        private readonly BgosCrewTransportDayRepository $crewTransportDayRepository,
+        private readonly BgosCrewTransportCompletionService $crewTransportCompletionService,
+        private readonly BgosCrewRosterService $crewRosterService,
+        private readonly BgosCompletionAggregator $completionAggregator,
     ) {
     }
 
@@ -28,7 +33,7 @@ final class BgosPeriodService
         \DateTimeInterface $today,
         bool $includeAllEmissions = false,
     ): array {
-        return $this->assembler->build(
+        $period = $this->assembler->build(
             $project,
             $this->catalog->categories(),
             $this->configsByIdentity($project),
@@ -38,6 +43,73 @@ final class BgosPeriodService
             $today,
             $includeAllEmissions,
         );
+
+        $crewDays = $this->crewTransportDayRepository->findByProjectAndPeriod(
+            $project,
+            $periodStart,
+            $periodEnd,
+        );
+
+        $crewSummary = $this->crewTransportCompletionService->summarize($crewDays);
+
+        $crewSummary['trackedMemberIds'] = array_values(array_unique(array_filter(
+            array_map(
+                static fn ($day): ?int => $day->getCrewMember()?->getId(),
+                $crewDays,
+            ),
+            static fn (?int $id): bool => null !== $id,
+        )));
+
+        $crewCompletion = $this->completionAggregator->aggregate([
+            new BgosCompletionResult(
+                $crewSummary['status'],
+                $crewSummary['expectedCount'],
+                $crewSummary['completedCount'],
+                $crewSummary['pendingCount'],
+            ),
+        ]);
+
+        foreach ($period['categories'] as &$category) {
+            if ('transport' !== $category['key']) {
+                continue;
+            }
+
+            foreach ($category['subcategories'] as &$subcategory) {
+                if ('people' !== $subcategory['key']) {
+                    continue;
+                }
+
+                $subcategory['crewTracking'] = $crewSummary;
+
+                if ($subcategory['active']) {
+                    $subcategory['completion'] = $crewCompletion;
+                    $subcategory['trackingStatus'] = $crewSummary['status'];
+                }
+            }
+            unset($subcategory);
+
+            $categoryResults = [];
+
+            foreach ($category['subcategories'] as $subcategory) {
+                $completion = $subcategory['completion'];
+
+                $categoryResults[] = new BgosCompletionResult(
+                    $completion->status,
+                    $completion->expectedCount,
+                    $completion->completedCount,
+                    $completion->pendingCount,
+                );
+            }
+
+            $category['completion'] = $this->completionAggregator->aggregate(
+                $categoryResults
+            );
+        }
+        unset($category);
+
+        $period['crewRoster'] = $this->crewRosterService->build($project);
+
+        return $period;
     }
 
     /**
