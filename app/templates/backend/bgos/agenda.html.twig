@@ -191,6 +191,7 @@
                      id="bgos-agenda-categories">
 
                     {% for category in period.categories %}
+                        {% set isOpen = app.request.query.get('open') == category.key %}
                         {% set pct = category.completion.completionPercentage %}
                         {% set visual = categoryVisuals[category.key] ?? {
                             icon: 'bi-circle-fill',
@@ -205,11 +206,11 @@
                                 id="bgos-agenda-heading-{{ category.key }}">
 
                                 <button
-                                    class="accordion-button bgos-agenda-category__header {{ loop.first ? '' : 'collapsed' }}"
+                                    class="accordion-button bgos-agenda-category__header {{ isOpen ? '' : 'collapsed' }}"
                                     type="button"
                                     data-bs-toggle="collapse"
                                     data-bs-target="#bgos-agenda-category-{{ category.key }}"
-                                    aria-expanded="{{ loop.first ? 'true' : 'false' }}"
+                                    aria-expanded="{{ isOpen ? 'true' : 'false' }}"
                                     aria-controls="bgos-agenda-category-{{ category.key }}"
                                 >
                                     <span class="bgos-agenda-category__icon" aria-hidden="true">
@@ -256,7 +257,7 @@
 
                             <div
                                 id="bgos-agenda-category-{{ category.key }}"
-                                class="accordion-collapse collapse {{ loop.first ? 'show' : '' }}"
+                                class="accordion-collapse collapse {{ isOpen ? 'show' : '' }}"
                                 aria-labelledby="bgos-agenda-heading-{{ category.key }}"
                                 data-bs-parent="#bgos-agenda-categories"
                             >
@@ -765,6 +766,11 @@
                                             </div>
                                         {% endif %}
                                     {% endfor %}
+
+                                    {% if category.key == 'transport' and window.view == 'day' %}
+                                        {% set hasVisibleSubcategory = true %}
+                                        {% include 'backend/bgos/_crew_transport_journeys.html.twig' %}
+                                    {% endif %}
 
                                     {% if not hasVisibleSubcategory %}
                                         <p class="bgos-agenda__empty mb-0">

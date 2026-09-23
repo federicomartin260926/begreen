@@ -82,3 +82,39 @@ tracking:
     pending: 'Pendiente'
     resolved: 'Resuelto'
     not_applicable: 'No aplica'
+
+journeys:
+  title: 'Desplazamientos del día'
+  help: 'Trayectos físicos compartidos por una o varias personas del equipo.'
+  empty: 'Todavía no hay desplazamientos registrados para este día.'
+  no_crew: 'Añade primero personas al Equipo Técnico para crear un desplazamiento.'
+  segment: 'Tramo'
+  participants: 'Participantes'
+  confirm_remove: '¿Quieres eliminar este desplazamiento?'
+  fields:
+    mode: 'Modo de transporte'
+    vehicle_type: 'Motorización'
+    origin: 'Origen'
+    destination: 'Destino'
+    distance: 'Distancia (km)'
+    person: 'Persona'
+    choose_person: 'Selecciona una persona'
+    role: 'Rol'
+  roles:
+    driver: 'Conductor'
+    passenger: 'Pasajero'
+  summary:
+    segments: 'tramos'
+    people: 'personas'
+  actions:
+    create: 'Crear desplazamiento'
+    edit: 'Editar'
+    remove: 'Eliminar'
+    save: 'Guardar desplazamiento'
+    add_segment: 'Añadir tramo'
+    remove_segment: 'Quitar tramo'
+    add_participant: 'Añadir participante'
+    remove_participant: 'Quitar participante'
+  validation:
+    duplicate: 'Una persona no puede aparecer dos veces en el mismo tramo.'
+    driver: 'Solo puede haber un conductor por tramo.'

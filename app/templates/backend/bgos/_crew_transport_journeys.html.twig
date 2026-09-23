@@ -1,0 +1,335 @@
+{% trans_default_domain 'messages' %}
+
+{% macro participant_row(segmentIndex, participantIndex, participant, crewMembers) %}
+    <div class="row g-2 align-items-end border rounded p-2"
+         data-bgos-journey-participant
+         data-participant-index="{{ participantIndex }}">
+        <div class="col-12 col-md-7">
+            <label class="form-label small">
+                {{ 'journeys.fields.person'|trans({}, 'bgos_crew') }}
+            </label>
+            <select class="form-select form-select-sm"
+                    name="segments[{{ segmentIndex }}][participants][{{ participantIndex }}][crewMember]"
+                    required
+                    data-bgos-journey-member
+                    data-action="change->bgos-journey#revalidateSegment">
+                <option value="">{{ 'journeys.fields.choose_person'|trans({}, 'bgos_crew') }}</option>
+                {% for crewMember in crewMembers %}
+                    <option value="{{ crewMember.id }}"
+                        {% if participant and participant.crewMember == crewMember %}selected{% endif %}>
+                        {{ crewMember.name }} {{ crewMember.lastName }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-9 col-md-4">
+            <label class="form-label small">
+                {{ 'journeys.fields.role'|trans({}, 'bgos_crew') }}
+            </label>
+            <select class="form-select form-select-sm"
+                    name="segments[{{ segmentIndex }}][participants][{{ participantIndex }}][role]"
+                    required
+                    data-bgos-journey-role
+                    data-action="change->bgos-journey#revalidateSegment">
+                {% for role in ['driver', 'passenger'] %}
+                    <option value="{{ role }}"
+                        {% if participant and participant.role == role %}selected{% endif %}>
+                        {{ ('journeys.roles.' ~ role)|trans({}, 'bgos_crew') }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-3 col-md-1 text-end">
+            <button type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    data-action="bgos-journey#removeParticipant"
+                    title="{{ 'journeys.actions.remove_participant'|trans({}, 'bgos_crew') }}">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                <span class="visually-hidden">
+                    {{ 'journeys.actions.remove_participant'|trans({}, 'bgos_crew') }}
+                </span>
+            </button>
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro segment_card(segmentIndex, segment, crewMembers) %}
+    <div class="border rounded p-3 bg-light"
+         data-bgos-journey-segment
+         data-segment-index="{{ segmentIndex }}">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+            <strong>{{ 'journeys.segment'|trans({}, 'bgos_crew') }}</strong>
+            <button type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    data-action="bgos-journey#removeSegment">
+                <i class="bi bi-trash me-1" aria-hidden="true"></i>
+                {{ 'journeys.actions.remove_segment'|trans({}, 'bgos_crew') }}
+            </button>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 col-lg-5">
+                <label class="form-label">{{ 'journeys.fields.origin'|trans({}, 'bgos_crew') }}</label>
+                <input class="form-control form-control-sm"
+                       name="segments[{{ segmentIndex }}][origin]"
+                       value="{{ segment ? segment.origin : '' }}"
+                       required>
+            </div>
+            <div class="col-12 col-lg-5">
+                <label class="form-label">{{ 'journeys.fields.destination'|trans({}, 'bgos_crew') }}</label>
+                <input class="form-control form-control-sm"
+                       name="segments[{{ segmentIndex }}][destination]"
+                       value="{{ segment ? segment.destination : '' }}"
+                       required>
+            </div>
+            <div class="col-12 col-lg-2">
+                <label class="form-label">{{ 'journeys.fields.distance'|trans({}, 'bgos_crew') }}</label>
+                <input class="form-control form-control-sm"
+                       type="number"
+                       min="0"
+                       step="0.001"
+                       name="segments[{{ segmentIndex }}][distanceKm]"
+                       value="{{ segment and segment.distanceKm is not null
+    ? segment.distanceKm|number_format(3, '.', '')|trim('0', 'right')|trim('.', 'right')
+    : ''
+}}">
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                <span class="small fw-semibold">
+                    {{ 'journeys.participants'|trans({}, 'bgos_crew') }}
+                </span>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        data-action="bgos-journey#addParticipant">
+                    <i class="bi bi-person-plus me-1" aria-hidden="true"></i>
+                    {{ 'journeys.actions.add_participant'|trans({}, 'bgos_crew') }}
+                </button>
+            </div>
+
+            <div class="vstack gap-2" data-bgos-journey-participants>
+                {% if segment %}
+                    {% for participant in segment.participants %}
+                        {{ _self.participant_row(segmentIndex, loop.index0, participant, crewMembers) }}
+                    {% endfor %}
+                {% else %}
+                    {{ _self.participant_row(segmentIndex, 0, null, crewMembers) }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro journey_form(journey, action, token, date, options, crewMembers) %}
+    <form method="post"
+          action="{{ action }}"
+          class="border rounded bg-white p-3"
+          data-controller="bgos-journey"
+          data-action="submit->bgos-journey#validate"
+          data-bgos-journey-duplicate-message-value="{{ 'journeys.validation.duplicate'|trans({}, 'bgos_crew') }}"
+          data-bgos-journey-driver-message-value="{{ 'journeys.validation.driver'|trans({}, 'bgos_crew') }}">
+        <input type="hidden" name="_token" value="{{ token }}">
+        {% if journey is null %}
+            <input type="hidden" name="date" value="{{ date|date('Y-m-d') }}">
+        {% endif %}
+
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6 col-xl-3">
+                <label class="form-label">{{ 'journeys.fields.mode'|trans({}, 'bgos_crew') }}</label>
+                <select class="form-select form-select-sm" name="mode" required>
+                    <option value="">{{ 'common.not_defined'|trans({}, 'bgos_crew') }}</option>
+                    {% for mode in options.peopleModes %}
+                        <option value="{{ mode }}" {% if journey and journey.mode == mode %}selected{% endif %}>
+                            {{ ('modes.' ~ mode)|trans({}, 'bgos_crew') }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <label class="form-label">{{ 'journeys.fields.vehicle_type'|trans({}, 'bgos_crew') }}</label>
+                <select class="form-select form-select-sm" name="vehicleType">
+                    <option value="">{{ 'common.not_defined'|trans({}, 'bgos_crew') }}</option>
+                    {% for vehicleType in options.vehicleTypes %}
+                        <option value="{{ vehicleType }}" {% if journey and journey.vehicleType == vehicleType %}selected{% endif %}>
+                            {{ ('vehicle_types.' ~ vehicleType)|trans({}, 'bgos_crew') }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <label class="form-label">{{ 'fields.fuel'|trans({}, 'bgos_crew') }}</label>
+                <select class="form-select form-select-sm" name="fuel">
+                    <option value="">{{ 'common.not_defined'|trans({}, 'bgos_crew') }}</option>
+                    {% for fuel in options.fuels %}
+                        <option value="{{ fuel }}" {% if journey and journey.fuel == fuel %}selected{% endif %}>
+                            {{ ('fuels.' ~ fuel)|trans({}, 'bgos_crew') }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <label class="form-label">{{ 'fields.thermal_fuel'|trans({}, 'bgos_crew') }}</label>
+                <select class="form-select form-select-sm" name="thermalFuel">
+                    <option value="">{{ 'common.not_defined'|trans({}, 'bgos_crew') }}</option>
+                    {% for fuel in options.thermalFuels %}
+                        <option value="{{ fuel }}" {% if journey and journey.thermalFuel == fuel %}selected{% endif %}>
+                            {{ ('fuels.' ~ fuel)|trans({}, 'bgos_crew') }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="vstack gap-3" data-bgos-journey-target="segments">
+            {% if journey %}
+                {% for segment in journey.segments %}
+                    {{ _self.segment_card(loop.index0, segment, crewMembers) }}
+                {% endfor %}
+            {% else %}
+                {{ _self.segment_card(0, null, crewMembers) }}
+            {% endif %}
+        </div>
+
+        <template data-bgos-journey-target="segmentTemplate">
+            {{ _self.segment_card('__segment__', null, crewMembers) }}
+        </template>
+        <template data-bgos-journey-target="participantTemplate">
+            {{ _self.participant_row('__segment__', '__participant__', null, crewMembers) }}
+        </template>
+
+        <div class="d-flex flex-wrap justify-content-between gap-2 mt-3">
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    data-action="bgos-journey#addSegment">
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                {{ 'journeys.actions.add_segment'|trans({}, 'bgos_crew') }}
+            </button>
+            <button type="submit" class="btn btn-sm btn-success">
+                <i class="bi bi-check-lg me-1" aria-hidden="true"></i>
+                {{ 'journeys.actions.save'|trans({}, 'bgos_crew') }}
+            </button>
+        </div>
+    </form>
+{% endmacro %}
+
+<section id="bgos-crew-journeys" class="mt-4 pt-4 border-top">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="h6 mb-1">{{ 'journeys.title'|trans({}, 'bgos_crew') }}</h4>
+            <p class="small text-muted mb-0">{{ 'journeys.help'|trans({}, 'bgos_crew') }}</p>
+        </div>
+        {% if journeyCrewMembers is not empty %}
+            <button class="btn btn-sm btn-success"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#bgos-journey-create"
+                    aria-expanded="{{ crewTransportJourneys is empty ? 'true' : 'false' }}"
+                    aria-controls="bgos-journey-create">
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                {{ 'journeys.actions.create'|trans({}, 'bgos_crew') }}
+            </button>
+        {% endif %}
+    </div>
+
+    {% if journeyCrewMembers is empty %}
+        <div class="alert alert-info mb-0">
+            {{ 'journeys.no_crew'|trans({}, 'bgos_crew') }}
+            <a href="{{ path('backend_bgos_crew') }}" class="alert-link">
+                {{ 'actions.open'|trans({}, 'bgos_crew') }}
+            </a>
+        </div>
+    {% else %}
+        {% if crewTransportJourneys is empty %}
+            <div class="text-muted small mb-3">{{ 'journeys.empty'|trans({}, 'bgos_crew') }}</div>
+        {% else %}
+            <div class="vstack gap-2 mb-3">
+                {% for journey in crewTransportJourneys %}
+                    {% set firstSegment = journey.segments|first %}
+                    {% set lastSegment = journey.segments|last %}
+                    {% set totalDistance = 0 %}
+                    {% set hasDistance = false %}
+                    {% set participantIds = [] %}
+                    {% for segment in journey.segments %}
+                        {% if segment.distanceKm is not null %}
+                            {% set hasDistance = true %}
+                            {% set totalDistance = totalDistance + segment.distanceKm %}
+                        {% endif %}
+                        {% for participant in segment.participants %}
+                            {% if participant.crewMember.id not in participantIds %}
+                                {% set participantIds = participantIds|merge([participant.crewMember.id]) %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+
+                    <article class="border rounded p-3 bg-white" data-bgos-journey-id="{{ journey.id }}">
+                        <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
+                            <div>
+                                <div class="fw-semibold">
+                                    {{ ('modes.' ~ journey.mode)|trans({}, 'bgos_crew') }}
+                                    {% if journey.vehicleType %}
+                                        · {{ ('vehicle_types.' ~ journey.vehicleType)|trans({}, 'bgos_crew') }}
+                                    {% endif %}
+                                    {% if journey.fuel %}
+                                        · {{ ('fuels.' ~ journey.fuel)|trans({}, 'bgos_crew') }}
+                                    {% endif %}
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    {{ firstSegment.origin }} → {{ lastSegment.destination }}
+                                    · {{ journey.segments|length }} {{ 'journeys.summary.segments'|trans({}, 'bgos_crew') }}
+                                    · {{ participantIds|length }} {{ 'journeys.summary.people'|trans({}, 'bgos_crew') }}
+                                    {% if hasDistance %}
+                                        · {{ totalDistance|number_format(3, ',', '.')|trim('0', 'right')|trim(',', 'right') }} km
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-start gap-2">
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#bgos-journey-edit-{{ journey.id }}"
+                                        aria-controls="bgos-journey-edit-{{ journey.id }}">
+                                    <i class="bi bi-pencil me-1" aria-hidden="true"></i>
+                                    {{ 'journeys.actions.edit'|trans({}, 'bgos_crew') }}
+                                </button>
+                                <form method="post"
+                                      action="{{ path('backend_bgos_journey_remove', {journeyId: journey.id}) }}"
+                                      data-controller="bgos-journey"
+                                      data-action="submit->bgos-journey#confirmRemoval"
+                                      data-bgos-journey-confirm-message-value="{{ 'journeys.confirm_remove'|trans({}, 'bgos_crew') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('bgos_crew_journey_remove_' ~ journey.id) }}">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">
+                                        <i class="bi bi-trash me-1" aria-hidden="true"></i>
+                                        {{ 'journeys.actions.remove'|trans({}, 'bgos_crew') }}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="collapse mt-3" id="bgos-journey-edit-{{ journey.id }}">
+                            {{ _self.journey_form(
+                                journey,
+                                path('backend_bgos_journey_update', {journeyId: journey.id}),
+                                csrf_token('bgos_crew_journey_update_' ~ journey.id),
+                                window.selectedDate,
+                                crewTransportOptions,
+                                journeyCrewMembers
+                            ) }}
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="collapse {{ crewTransportJourneys is empty ? 'show' : '' }}" id="bgos-journey-create">
+            {{ _self.journey_form(
+                null,
+                path('backend_bgos_journey_create'),
+                csrf_token('bgos_crew_journey_create_' ~ window.selectedDate|date('Y-m-d')),
+                window.selectedDate,
+                crewTransportOptions,
+                journeyCrewMembers
+            ) }}
+        </div>
+    {% endif %}
+</section>

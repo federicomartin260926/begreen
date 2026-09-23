@@ -23,11 +23,19 @@ final class BgosCrewTransportJourneyRepository extends ServiceEntityRepository
     public function findForProjectAndDate(Project $project, \DateTimeImmutable $date): array
     {
         return $this->createQueryBuilder('journey')
+            ->leftJoin('journey.segments', 'segment')
+            ->addSelect('segment')
+            ->leftJoin('segment.participants', 'participant')
+            ->addSelect('participant')
+            ->leftJoin('participant.crewMember', 'crewMember')
+            ->addSelect('crewMember')
             ->andWhere('journey.project = :project')
             ->andWhere('journey.date = :date')
             ->setParameter('project', $project)
             ->setParameter('date', $date->setTime(0, 0))
             ->orderBy('journey.id', 'ASC')
+            ->addOrderBy('segment.position', 'ASC')
+            ->addOrderBy('participant.id', 'ASC')
             ->getQuery()
             ->getResult();
     }

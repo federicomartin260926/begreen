@@ -82,3 +82,39 @@ tracking:
     pending: 'Pending'
     resolved: 'Resolved'
     not_applicable: 'Not applicable'
+
+journeys:
+  title: 'Journeys for the day'
+  help: 'Physical journeys shared by one or more crew members.'
+  empty: 'No journeys have been registered for this day yet.'
+  no_crew: 'Add people to the Technical Team before creating a journey.'
+  segment: 'Segment'
+  participants: 'Participants'
+  confirm_remove: 'Do you want to remove this journey?'
+  fields:
+    mode: 'Transport mode'
+    vehicle_type: 'Powertrain'
+    origin: 'Origin'
+    destination: 'Destination'
+    distance: 'Distance (km)'
+    person: 'Person'
+    choose_person: 'Choose a person'
+    role: 'Role'
+  roles:
+    driver: 'Driver'
+    passenger: 'Passenger'
+  summary:
+    segments: 'segments'
+    people: 'people'
+  actions:
+    create: 'Create journey'
+    edit: 'Edit'
+    remove: 'Remove'
+    save: 'Save journey'
+    add_segment: 'Add segment'
+    remove_segment: 'Remove segment'
+    add_participant: 'Add participant'
+    remove_participant: 'Remove participant'
+  validation:
+    duplicate: 'A person cannot appear twice in the same segment.'
+    driver: 'A segment can only have one driver.'

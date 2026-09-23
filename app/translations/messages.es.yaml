@@ -1836,6 +1836,10 @@ backend:
       saved: "Configuración guardada correctamente."
       invalid_input: "Revisa las frecuencias indicadas."
       csrf_invalid: "La solicitud ha caducado. Inténtalo de nuevo."
+      journey_saved: "Desplazamiento guardado correctamente."
+      journey_removed: "Desplazamiento eliminado correctamente."
+      journey_invalid: "Revisa los datos del desplazamiento, sus tramos y participantes."
+      journey_protected: "Este desplazamiento no se puede eliminar porque tiene emisiones asociadas."
   emission:
     phase:
       preproduccion: "Preproducción"

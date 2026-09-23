@@ -1828,6 +1828,10 @@ backend:
       saved: "Configuration saved successfully."
       invalid_input: "Check the selected frequencies."
       csrf_invalid: "The request has expired. Please try again."
+      journey_saved: "Journey saved successfully."
+      journey_removed: "Journey removed successfully."
+      journey_invalid: "Review the journey, segment and participant data."
+      journey_protected: "This journey cannot be removed because it has linked emissions."
   emission:
     phase:
       preproduccion: "Pre-production"

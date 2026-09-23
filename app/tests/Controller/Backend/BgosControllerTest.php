@@ -46,10 +46,11 @@ final class BgosControllerTest extends KernelTestCase
         self::assertStringNotContainsString('Viajes', $content);
         self::assertStringNotContainsString('Añadir subcategoría', $content);
         self::assertStringNotContainsString('<code>', $content);
-        self::assertMatchesRegularExpression(
+        self::assertDoesNotMatchRegularExpression(
             '/id="bgos-category-transport"\s+class="accordion-collapse collapse show"/',
             $content,
         );
+        self::assertSame(0, substr_count($content, 'accordion-collapse collapse show'));
         self::assertSame(0, $repository->count(['project' => $project]));
 
         $entityManager->clear();
@@ -84,6 +85,7 @@ final class BgosControllerTest extends KernelTestCase
             self::getContainer()->get(BgosPeriodWindowResolver::class),
             self::getContainer()->get(BgosPeriodService::class),
             self::getContainer()->get(TransportUiCatalog::class),
+            self::getContainer()->get(\App\Repository\BgosCrewTransportJourneyRepository::class),
             $request,
         );
 
@@ -136,6 +138,7 @@ final class BgosControllerTest extends KernelTestCase
             self::getContainer()->get(BgosPeriodWindowResolver::class),
             self::getContainer()->get(BgosPeriodService::class),
             self::getContainer()->get(TransportUiCatalog::class),
+            self::getContainer()->get(\App\Repository\BgosCrewTransportJourneyRepository::class),
             $request,
         )->getContent();
 
@@ -246,7 +249,7 @@ final class BgosControllerTest extends KernelTestCase
         self::assertStringContainsString('id="bgos-waste-aceites-usados"', $content);
     }
 
-    public function testConfigDefaultsToTransportWhenOpenIsMissingOrInvalid(): void
+    public function testConfigKeepsAllCategoriesClosedWhenOpenIsMissingOrInvalid(): void
     {
         [$controller, $entityManager, $project, $activeProjectService, $repository, $catalog] = $this->context();
 
@@ -258,11 +261,11 @@ final class BgosControllerTest extends KernelTestCase
                 $this->configRequest($open),
             )->getContent();
 
-            self::assertMatchesRegularExpression(
+            self::assertDoesNotMatchRegularExpression(
                 '/id="bgos-category-transport"\s+class="accordion-collapse collapse show"/',
                 $content,
             );
-            self::assertSame(1, substr_count($content, 'accordion-collapse collapse show'));
+            self::assertSame(0, substr_count($content, 'accordion-collapse collapse show'));
             self::assertStringNotContainsString('bgos-category-invented', $content);
         }
     }

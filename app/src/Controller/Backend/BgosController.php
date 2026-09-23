@@ -3,16 +3,20 @@
 namespace App\Controller\Backend;
 
 use App\Entity\BgosCrewTransportDay;
+use App\Entity\BgosCrewTransportJourney;
 use App\Entity\BgosSubcategoryConfig;
+use App\Entity\CrewMember;
 use App\Entity\CrewMemberAssignment;
 use App\Entity\Project;
 use App\Repository\BgosCrewTransportDayRepository;
+use App\Repository\BgosCrewTransportJourneyRepository;
 use App\Repository\BgosSubcategoryConfigRepository;
 use App\Repository\CrewMemberRepository;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Bgos\BgosCrewProfileManager;
 use App\Service\Bgos\BgosCrewTransportDayManager;
+use App\Service\Bgos\BgosCrewTransportJourneyManager;
 use App\Service\Bgos\BgosCrewRosterService;
 use App\Service\Bgos\BgosEmissionEntryContextResolver;
 use App\Service\Bgos\BgosPeriodService;
@@ -37,6 +41,7 @@ final class BgosController extends AbstractController
         BgosPeriodWindowResolver $windowResolver,
         BgosPeriodService $periodService,
         TransportUiCatalog $transportCatalog,
+        BgosCrewTransportJourneyRepository $journeyRepository,
         Request $request,
     ): Response {
         $project = $this->activeProject($activeProjectService);
@@ -64,6 +69,17 @@ final class BgosController extends AbstractController
             );
         }
 
+        $journeys = [];
+        if (
+            null !== $window
+            && BgosPeriodWindowResolver::VIEW_DAY === $window->view
+        ) {
+            $journeys = $journeyRepository->findForProjectAndDate(
+                $project,
+                $window->selectedDate,
+            );
+        }
+
         return $this->render('backend/bgos/agenda.html.twig', [
             'project' => $project,
             'window' => $window,
@@ -71,7 +87,166 @@ final class BgosController extends AbstractController
             'views' => BgosPeriodWindowResolver::VIEWS,
             'entryRoutes' => BgosEmissionEntryContextResolver::ROUTES,
             'crewTransportOptions' => $this->crewTransportOptions($transportCatalog),
+            'crewTransportJourneys' => $journeys,
+            'journeyCrewMembers' => $this->projectCrewMembers($project),
         ]);
+    }
+
+    #[Route('/journey/create', name: 'journey_create', methods: ['POST'])]
+    public function createJourney(
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        BgosCrewTransportJourneyManager $journeyManager,
+    ): RedirectResponse {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $date = $this->selectedDate($request->request->getString('date'));
+        if (null === $date) {
+            $this->addFlash('danger', 'backend.bgos.flash.journey_invalid');
+
+            return $this->redirectToRoute('backend_bgos_index');
+        }
+
+        if (!$this->isCsrfTokenValid(
+            'bgos_crew_journey_create_'.$date->format('Y-m-d'),
+            $request->request->getString('_token'),
+        )) {
+            $this->addFlash('danger', 'backend.bgos.flash.csrf_invalid');
+
+            return $this->journeyRedirect($date);
+        }
+
+        try {
+            $journeyManager->create(
+                $project,
+                $date,
+                $request->request->getString('mode'),
+                $request->request->getString('vehicleType'),
+                $request->request->getString('fuel'),
+                $request->request->getString('thermalFuel'),
+                $this->readJourneySegments($request, $project),
+            );
+        } catch (\InvalidArgumentException|\LogicException) {
+            $this->addFlash('danger', 'backend.bgos.flash.journey_invalid');
+
+            return $this->journeyRedirect($date);
+        }
+
+        $this->addFlash('success', 'backend.bgos.flash.journey_saved');
+
+        return $this->journeyRedirect($date);
+    }
+
+    #[Route(
+        '/journey/{journeyId}/update',
+        name: 'journey_update',
+        methods: ['POST'],
+        requirements: ['journeyId' => '\d+'],
+    )]
+    public function updateJourney(
+        int $journeyId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        BgosCrewTransportJourneyRepository $journeyRepository,
+        BgosCrewTransportJourneyManager $journeyManager,
+    ): RedirectResponse {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $journey = $journeyRepository->find($journeyId);
+        if (
+            !$journey instanceof BgosCrewTransportJourney
+            || $journey->getProject() !== $project
+        ) {
+            throw $this->createNotFoundException();
+        }
+
+        $date = $journey->getDate();
+        if (!$date instanceof \DateTimeImmutable) {
+            throw new \LogicException('BGoS crew transport journey has no date.');
+        }
+
+        if (!$this->isCsrfTokenValid(
+            'bgos_crew_journey_update_'.$journeyId,
+            $request->request->getString('_token'),
+        )) {
+            $this->addFlash('danger', 'backend.bgos.flash.csrf_invalid');
+
+            return $this->journeyRedirect($date);
+        }
+
+        try {
+            $journeyManager->update(
+                $project,
+                $journey,
+                $date,
+                $request->request->getString('mode'),
+                $request->request->getString('vehicleType'),
+                $request->request->getString('fuel'),
+                $request->request->getString('thermalFuel'),
+                $this->readJourneySegments($request, $project),
+            );
+        } catch (\InvalidArgumentException|\LogicException) {
+            $this->addFlash('danger', 'backend.bgos.flash.journey_invalid');
+
+            return $this->journeyRedirect($date);
+        }
+
+        $this->addFlash('success', 'backend.bgos.flash.journey_saved');
+
+        return $this->journeyRedirect($date);
+    }
+
+    #[Route(
+        '/journey/{journeyId}/remove',
+        name: 'journey_remove',
+        methods: ['POST'],
+        requirements: ['journeyId' => '\d+'],
+    )]
+    public function removeJourney(
+        int $journeyId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        BgosCrewTransportJourneyRepository $journeyRepository,
+        BgosCrewTransportJourneyManager $journeyManager,
+    ): RedirectResponse {
+        $project = $this->activeProject($activeProjectService);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+
+        $journey = $journeyRepository->find($journeyId);
+        if (
+            !$journey instanceof BgosCrewTransportJourney
+            || $journey->getProject() !== $project
+        ) {
+            throw $this->createNotFoundException();
+        }
+
+        $date = $journey->getDate();
+        if (!$date instanceof \DateTimeImmutable) {
+            throw new \LogicException('BGoS crew transport journey has no date.');
+        }
+
+        if (!$this->isCsrfTokenValid(
+            'bgos_crew_journey_remove_'.$journeyId,
+            $request->request->getString('_token'),
+        )) {
+            $this->addFlash('danger', 'backend.bgos.flash.csrf_invalid');
+
+            return $this->journeyRedirect($date);
+        }
+
+        try {
+            $journeyManager->remove($project, $journey);
+        } catch (\InvalidArgumentException|\LogicException) {
+            $this->addFlash('danger', 'backend.bgos.flash.journey_protected');
+
+            return $this->journeyRedirect($date);
+        }
+
+        $this->addFlash('success', 'backend.bgos.flash.journey_removed');
+
+        return $this->journeyRedirect($date);
     }
 
     #[Route('/config', name: 'config', methods: ['GET'])]
@@ -94,7 +269,7 @@ final class BgosController extends AbstractController
         $categoryKeys = array_column($categories, 'key');
         $openCategory = in_array($requestedOpenCategory, $categoryKeys, true)
             ? $requestedOpenCategory
-            : ($categoryKeys[0] ?? null);
+            : null;
 
         foreach ($categories as &$category) {
             $category['open'] = $category['key'] === $openCategory;
@@ -304,6 +479,7 @@ final class BgosController extends AbstractController
         return $this->redirectToRoute('backend_bgos_index', [
             'view' => BgosPeriodWindowResolver::VIEW_DAY,
             'date' => $date->format('Y-m-d'),
+            'open' => 'transport',
             '_fragment' => 'bgos-agenda-heading-transport',
         ]);
     }
@@ -370,6 +546,7 @@ final class BgosController extends AbstractController
         return $this->redirectToRoute('backend_bgos_index', [
             'view' => BgosPeriodWindowResolver::VIEW_DAY,
             'date' => $day->getDate()?->format('Y-m-d'),
+            'open' => 'transport',
             '_fragment' => 'bgos-agenda-heading-transport',
         ]);
     }
@@ -424,7 +601,8 @@ final class BgosController extends AbstractController
                 return $this->redirectToRoute('backend_bgos_index', [
                     'view' => BgosPeriodWindowResolver::VIEW_DAY,
                     'date' => $date?->format('Y-m-d'),
-                    '_fragment' => 'bgos-agenda-heading-transport',
+                    'open' => 'transport',
+            '_fragment' => 'bgos-agenda-heading-transport',
                 ]);
             }
 
@@ -442,7 +620,8 @@ final class BgosController extends AbstractController
                 return $this->redirectToRoute('backend_bgos_index', [
                     'view' => BgosPeriodWindowResolver::VIEW_DAY,
                     'date' => $date?->format('Y-m-d'),
-                    '_fragment' => 'bgos-agenda-heading-transport',
+                    'open' => 'transport',
+            '_fragment' => 'bgos-agenda-heading-transport',
                 ]);
             }
         }
@@ -464,7 +643,8 @@ final class BgosController extends AbstractController
             return $this->redirectToRoute('backend_bgos_index', [
                 'view' => BgosPeriodWindowResolver::VIEW_DAY,
                 'date' => $date?->format('Y-m-d'),
-                '_fragment' => 'bgos-agenda-heading-transport',
+                'open' => 'transport',
+            '_fragment' => 'bgos-agenda-heading-transport',
             ]);
         }
 
@@ -473,6 +653,7 @@ final class BgosController extends AbstractController
         return $this->redirectToRoute('backend_bgos_index', [
             'view' => BgosPeriodWindowResolver::VIEW_DAY,
             'date' => $date?->format('Y-m-d'),
+            'open' => 'transport',
             '_fragment' => 'bgos-agenda-heading-transport',
         ]);
     }
@@ -523,6 +704,7 @@ final class BgosController extends AbstractController
         return $this->redirectToRoute('backend_bgos_index', [
             'view' => BgosPeriodWindowResolver::VIEW_DAY,
             'date' => $date?->format('Y-m-d'),
+            'open' => 'transport',
             '_fragment' => 'bgos-agenda-heading-transport',
         ]);
     }
@@ -614,6 +796,120 @@ final class BgosController extends AbstractController
                 $categoryKey,
                 $subcategoryKey,
             ),
+        ]);
+    }
+
+    /**
+     * @return list<array{
+     *     origin:string,
+     *     destination:string,
+     *     distanceKm:?string,
+     *     distanceSource:?string,
+     *     participants:list<array{crewMember:CrewMember, role:string}>
+     * }>
+     */
+    private function readJourneySegments(Request $request, Project $project): array
+    {
+        $requestData = $request->request->all();
+        $rawSegments = $requestData['segments'] ?? [];
+        if (!is_array($rawSegments)) {
+            throw new \InvalidArgumentException('Invalid journey segments.');
+        }
+
+        $crewMembers = [];
+        foreach ($project->getCrewMembers() as $crewMember) {
+            if (null !== $crewMember->getId()) {
+                $crewMembers[$crewMember->getId()] = $crewMember;
+            }
+        }
+
+        $segments = [];
+        foreach ($rawSegments as $rawSegment) {
+            if (!is_array($rawSegment)) {
+                throw new \InvalidArgumentException('Invalid journey segment.');
+            }
+
+            $rawParticipants = $rawSegment['participants'] ?? [];
+            if (!is_array($rawParticipants)) {
+                throw new \InvalidArgumentException('Invalid journey participants.');
+            }
+
+            $participants = [];
+            foreach ($rawParticipants as $rawParticipant) {
+                if (!is_array($rawParticipant)) {
+                    throw new \InvalidArgumentException('Invalid journey participant.');
+                }
+
+                $crewMemberId = $this->journeyInputString(
+                    $rawParticipant['crewMember'] ?? null,
+                );
+                if (!ctype_digit($crewMemberId)) {
+                    throw new \InvalidArgumentException('Invalid journey crew member.');
+                }
+
+                $crewMember = $crewMembers[(int) $crewMemberId] ?? null;
+                if (!$crewMember instanceof CrewMember) {
+                    throw new \InvalidArgumentException(
+                        'Journey crew member does not belong to the active project.',
+                    );
+                }
+
+                $participants[] = [
+                    'crewMember' => $crewMember,
+                    'role' => $this->journeyInputString($rawParticipant['role'] ?? null),
+                ];
+            }
+
+            $distanceKm = trim($this->journeyInputString($rawSegment['distanceKm'] ?? null));
+            $distanceKm = '' === $distanceKm ? null : $distanceKm;
+
+            $segments[] = [
+                'origin' => $this->journeyInputString($rawSegment['origin'] ?? null),
+                'destination' => $this->journeyInputString($rawSegment['destination'] ?? null),
+                'distanceKm' => $distanceKm,
+                'distanceSource' => null === $distanceKm ? null : 'manual',
+                'participants' => $participants,
+            ];
+        }
+
+        return $segments;
+    }
+
+    private function journeyInputString(mixed $value): string
+    {
+        if (null === $value) {
+            return '';
+        }
+
+        if (!is_scalar($value)) {
+            throw new \InvalidArgumentException('Invalid journey input.');
+        }
+
+        return (string) $value;
+    }
+
+    /** @return list<CrewMember> */
+    private function projectCrewMembers(Project $project): array
+    {
+        $crewMembers = $project->getCrewMembers()->toArray();
+        usort(
+            $crewMembers,
+            static fn (CrewMember $left, CrewMember $right): int => strcasecmp(
+                trim((string) $left->getName().' '.(string) $left->getLastName()),
+                trim((string) $right->getName().' '.(string) $right->getLastName()),
+            ),
+        );
+
+        return $crewMembers;
+    }
+
+    private function journeyRedirect(\DateTimeInterface $date): RedirectResponse
+    {
+        return $this->redirectToRoute('backend_bgos_index', [
+            'view' => BgosPeriodWindowResolver::VIEW_DAY,
+            'date' => $date->format('Y-m-d'),
+            'open' => 'transport',
+            '_fragment' => 'bgos-crew-journeys',
         ]);
     }
 
