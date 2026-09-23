@@ -803,6 +803,10 @@ final class BgosController extends AbstractController
      * @return list<array{
      *     origin:string,
      *     destination:string,
+     *     originLatitude:?string,
+     *     originLongitude:?string,
+     *     destinationLatitude:?string,
+     *     destinationLongitude:?string,
      *     distanceKm:?string,
      *     distanceSource:?string,
      *     participants:list<array{crewMember:CrewMember, role:string}>
@@ -862,12 +866,17 @@ final class BgosController extends AbstractController
 
             $distanceKm = trim($this->journeyInputString($rawSegment['distanceKm'] ?? null));
             $distanceKm = '' === $distanceKm ? null : $distanceKm;
+            $distanceSource = trim($this->journeyInputString($rawSegment['distanceSource'] ?? null));
 
             $segments[] = [
                 'origin' => $this->journeyInputString($rawSegment['origin'] ?? null),
                 'destination' => $this->journeyInputString($rawSegment['destination'] ?? null),
+                'originLatitude' => $this->journeyOptionalInputString($rawSegment['originLatitude'] ?? null),
+                'originLongitude' => $this->journeyOptionalInputString($rawSegment['originLongitude'] ?? null),
+                'destinationLatitude' => $this->journeyOptionalInputString($rawSegment['destinationLatitude'] ?? null),
+                'destinationLongitude' => $this->journeyOptionalInputString($rawSegment['destinationLongitude'] ?? null),
                 'distanceKm' => $distanceKm,
-                'distanceSource' => null === $distanceKm ? null : 'manual',
+                'distanceSource' => null === $distanceKm ? null : ('ors' === $distanceSource ? 'ors' : 'manual'),
                 'participants' => $participants,
             ];
         }
@@ -886,6 +895,13 @@ final class BgosController extends AbstractController
         }
 
         return (string) $value;
+    }
+
+    private function journeyOptionalInputString(mixed $value): ?string
+    {
+        $value = trim($this->journeyInputString($value));
+
+        return '' === $value ? null : $value;
     }
 
     /** @return list<CrewMember> */

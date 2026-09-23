@@ -142,6 +142,34 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
         self::assertStringEndsWith('/backend/bgos/?view=day&date=2026-09-10&open=transport#bgos-crew-journeys', $response->getTargetUrl());
     }
 
+    public function testCreatesJourneyWithOrsRouteData(): void
+    {
+        $segment = $this->segment('Madrid, España', 'Toledo, España', [
+            $this->participant($this->ana, BgosCrewTransportParticipant::ROLE_DRIVER),
+        ], '73.125');
+        $segment += [
+            'originLatitude' => '40.4168',
+            'originLongitude' => '-3.7038',
+            'destinationLatitude' => '39.8628',
+            'destinationLongitude' => '-4.0273',
+            'distanceSource' => 'ors',
+        ];
+
+        $this->controller->createJourney(
+            $this->createRequest([$segment]),
+            $this->activeProjectService,
+            $this->journeyManager,
+        );
+
+        $storedSegment = $this->journeys('2026-09-10')[0]->getSegments()->first();
+        self::assertSame('40.4168', $storedSegment->getOriginLatitude());
+        self::assertSame('-3.7038', $storedSegment->getOriginLongitude());
+        self::assertSame('39.8628', $storedSegment->getDestinationLatitude());
+        self::assertSame('-4.0273', $storedSegment->getDestinationLongitude());
+        self::assertSame('73.125', $storedSegment->getDistanceKm());
+        self::assertSame('ors', $storedSegment->getDistanceSource());
+    }
+
     public function testCreatesSharedJourneyWithSeveralParticipants(): void
     {
         $this->controller->createJourney(

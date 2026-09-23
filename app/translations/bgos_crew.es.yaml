@@ -115,6 +115,11 @@ journeys:
     remove_segment: 'Quitar tramo'
     add_participant: 'Añadir participante'
     remove_participant: 'Quitar participante'
+    calculate_distance: 'Calcular distancia por carretera'
+  routing:
+    autocomplete_error: 'No se han podido buscar ubicaciones.'
+    distance_error: 'No se ha podido calcular la distancia.'
+    select_locations: 'Selecciona un origen y un destino de las sugerencias.'
   validation:
     duplicate: 'Una persona no puede aparecer dos veces en el mismo tramo.'
     driver: 'Solo puede haber un conductor por tramo.'

@@ -68,19 +68,27 @@
         </div>
 
         <div class="row g-3">
-            <div class="col-12 col-lg-5">
+            <div class="col-12 col-lg-5 position-relative">
                 <label class="form-label">{{ 'journeys.fields.origin'|trans({}, 'bgos_crew') }}</label>
                 <input class="form-control form-control-sm"
                        name="segments[{{ segmentIndex }}][origin]"
                        value="{{ segment ? segment.origin : '' }}"
+                       autocomplete="off"
+                       data-endpoint="origin"
+                       data-action="input->bgos-journey#locationChanged"
                        required>
+                <div class="list-group position-absolute start-0 end-0 z-3" data-bgos-journey-suggestions></div>
             </div>
-            <div class="col-12 col-lg-5">
+            <div class="col-12 col-lg-5 position-relative">
                 <label class="form-label">{{ 'journeys.fields.destination'|trans({}, 'bgos_crew') }}</label>
                 <input class="form-control form-control-sm"
                        name="segments[{{ segmentIndex }}][destination]"
                        value="{{ segment ? segment.destination : '' }}"
+                       autocomplete="off"
+                       data-endpoint="destination"
+                       data-action="input->bgos-journey#locationChanged"
                        required>
+                <div class="list-group position-absolute start-0 end-0 z-3" data-bgos-journey-suggestions></div>
             </div>
             <div class="col-12 col-lg-2">
                 <label class="form-label">{{ 'journeys.fields.distance'|trans({}, 'bgos_crew') }}</label>
@@ -89,11 +97,29 @@
                        min="0"
                        step="0.001"
                        name="segments[{{ segmentIndex }}][distanceKm]"
+                       data-bgos-journey-distance
+                       data-action="input->bgos-journey#distanceChanged"
                        value="{{ segment and segment.distanceKm is not null
     ? segment.distanceKm|number_format(3, '.', '')|trim('0', 'right')|trim('.', 'right')
     : ''
 }}">
             </div>
+        </div>
+
+        <input type="hidden" name="segments[{{ segmentIndex }}][originLatitude]" value="{{ segment ? segment.originLatitude : '' }}" data-bgos-journey-origin-latitude>
+        <input type="hidden" name="segments[{{ segmentIndex }}][originLongitude]" value="{{ segment ? segment.originLongitude : '' }}" data-bgos-journey-origin-longitude>
+        <input type="hidden" name="segments[{{ segmentIndex }}][destinationLatitude]" value="{{ segment ? segment.destinationLatitude : '' }}" data-bgos-journey-destination-latitude>
+        <input type="hidden" name="segments[{{ segmentIndex }}][destinationLongitude]" value="{{ segment ? segment.destinationLongitude : '' }}" data-bgos-journey-destination-longitude>
+        <input type="hidden" name="segments[{{ segmentIndex }}][distanceSource]" value="{{ segment ? segment.distanceSource : '' }}" data-bgos-journey-distance-source>
+
+        <div class="mt-2">
+            <button type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    data-bgos-journey-route-button
+                    data-action="bgos-journey#calculateDistance">
+                {{ 'journeys.actions.calculate_distance'|trans({}, 'bgos_crew') }}
+            </button>
+            <div class="small mt-2 text-muted" data-bgos-journey-routing-feedback></div>
         </div>
 
         <div class="mt-3">
@@ -129,7 +155,12 @@
           data-controller="bgos-journey"
           data-action="submit->bgos-journey#validate"
           data-bgos-journey-duplicate-message-value="{{ 'journeys.validation.duplicate'|trans({}, 'bgos_crew') }}"
-          data-bgos-journey-driver-message-value="{{ 'journeys.validation.driver'|trans({}, 'bgos_crew') }}">
+          data-bgos-journey-driver-message-value="{{ 'journeys.validation.driver'|trans({}, 'bgos_crew') }}"
+          data-bgos-journey-autocomplete-url-value="{{ path('backend_emission_location_autocomplete') }}"
+          data-bgos-journey-distance-url-value="{{ path('backend_emission_calculate_distance') }}"
+          data-bgos-journey-autocomplete-error-message-value="{{ 'journeys.routing.autocomplete_error'|trans({}, 'bgos_crew') }}"
+          data-bgos-journey-distance-error-message-value="{{ 'journeys.routing.distance_error'|trans({}, 'bgos_crew') }}"
+          data-bgos-journey-select-locations-message-value="{{ 'journeys.routing.select_locations'|trans({}, 'bgos_crew') }}">
         <input type="hidden" name="_token" value="{{ token }}">
         {% if journey is null %}
             <input type="hidden" name="date" value="{{ date|date('Y-m-d') }}">
@@ -138,7 +169,7 @@
         <div class="row g-3 mb-3">
             <div class="col-12 col-md-6 col-xl-3">
                 <label class="form-label">{{ 'journeys.fields.mode'|trans({}, 'bgos_crew') }}</label>
-                <select class="form-select form-select-sm" name="mode" required>
+                <select class="form-select form-select-sm" name="mode" data-action="change->bgos-journey#updateRoutingAvailability" required>
                     <option value="">{{ 'common.not_defined'|trans({}, 'bgos_crew') }}</option>
                     {% for mode in options.peopleModes %}
                         <option value="{{ mode }}" {% if journey and journey.mode == mode %}selected{% endif %}>

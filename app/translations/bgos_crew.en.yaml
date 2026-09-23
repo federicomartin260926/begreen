@@ -115,6 +115,11 @@ journeys:
     remove_segment: 'Remove segment'
     add_participant: 'Add participant'
     remove_participant: 'Remove participant'
+    calculate_distance: 'Calculate road distance'
+  routing:
+    autocomplete_error: 'Locations could not be searched.'
+    distance_error: 'The distance could not be calculated.'
+    select_locations: 'Select an origin and destination from the suggestions.'
   validation:
     duplicate: 'A person cannot appear twice in the same segment.'
     driver: 'A segment can only have one driver.'
