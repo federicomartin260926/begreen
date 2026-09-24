@@ -7,8 +7,9 @@ namespace App\Tests\Controller\Backend;
 use App\Controller\Backend\BgosController;
 use App\Entity\BgosCrewTransportJourney;
 use App\Entity\BgosCrewTransportParticipant;
+use App\Entity\Category;
 use App\Entity\CrewMember;
-use App\Entity\EmissionRecord;
+use App\Entity\EmissionFactor;
 use App\Entity\Project;
 use App\Entity\ProjectPhaseDate;
 use App\Entity\ProjectSubscription;
@@ -19,6 +20,9 @@ use App\Service\ActiveProjectService;
 use App\Service\Bgos\BgosCrewTransportJourneyManager;
 use App\Service\Bgos\BgosPeriodService;
 use App\Service\Bgos\BgosPeriodWindowResolver;
+use App\Service\Emission\EmissionFactorKeyGenerator;
+use App\Service\Emission\Transport\TransportEmissionInput;
+use App\Service\Emission\Transport\TransportFactorCriteriaMapper;
 use App\Service\Emission\Transport\TransportUiCatalog;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -72,6 +76,7 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
                     ->setEndDate(new \DateTimeImmutable('2026-09-30')),
             );
         $this->entityManager->persist($this->project);
+        $this->prepareEmissionContext();
         $this->entityManager->flush();
 
         $container->get('security.token_storage')->setToken(
@@ -139,7 +144,7 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
         self::assertCount(1, $journeys[0]->getSegments()->first()->getParticipants());
         self::assertSame('72.5', $journeys[0]->getSegments()->first()->getDistanceKm());
         self::assertSame('manual', $journeys[0]->getSegments()->first()->getDistanceSource());
-        self::assertStringEndsWith('/backend/bgos/?view=day&date=2026-09-10&open=transport#bgos-crew-journeys', $response->getTargetUrl());
+        self::assertStringEndsWith('/backend/bgos/?view=day&date=2026-09-10&open=transport#bgos-agenda-heading-transport', $response->getTargetUrl());
     }
 
     public function testCreatesJourneyWithOrsRouteData(): void
@@ -220,7 +225,7 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
             ], '')],
         ]);
 
-        $this->controller->updateJourney(
+        $response = $this->controller->updateJourney(
             (int) $journey->getId(),
             $request,
             $this->activeProjectService,
@@ -233,9 +238,10 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
         self::assertNull($journey->getSegments()->first()->getDistanceKm());
         self::assertNull($journey->getSegments()->first()->getDistanceSource());
         self::assertSame($this->luis, $journey->getSegments()->first()->getParticipants()->first()->getCrewMember());
+        self::assertStringEndsWith('/backend/bgos/?view=day&date=2026-09-10&open=transport#bgos-agenda-heading-transport', $response->getTargetUrl());
     }
 
-    public function testRemovesJourneyWithoutEmissions(): void
+    public function testRemovesJourneyWithSynchronizedEmission(): void
     {
         $journey = $this->createJourney('2026-09-10', 'Madrid', 'Toledo', [$this->ana]);
         $id = $journey->getId();
@@ -325,30 +331,31 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
             ['backend.bgos.flash.journey_invalid'],
             $request->getSession()->getFlashBag()->peek('danger'),
         );
-        self::assertStringContainsString('#bgos-crew-journeys', $response->getTargetUrl());
+        self::assertStringContainsString('#bgos-agenda-heading-transport', $response->getTargetUrl());
     }
 
-    public function testProtectedRemovalIsShownAsControlledFlash(): void
+    public function testRemovalRedirectKeepsTransportOpenAndHeadingVisible(): void
     {
         $journey = $this->createJourney('2026-09-10', 'Madrid', 'Toledo', [$this->ana]);
-        $journey->getSegments()->first()->setEmissionRecord(new EmissionRecord());
+        $journeyId = $journey->getId();
         $request = $this->postRequest('backend_bgos_journey_remove', [
-            '_token' => $this->csrf('bgos_crew_journey_remove_'.$journey->getId()),
+            '_token' => $this->csrf('bgos_crew_journey_remove_'.$journeyId),
         ]);
 
-        $this->controller->removeJourney(
-            (int) $journey->getId(),
+        $response = $this->controller->removeJourney(
+            (int) $journeyId,
             $request,
             $this->activeProjectService,
             $this->journeyRepository,
             $this->journeyManager,
         );
 
-        self::assertSame($journey, $this->journeyRepository->find($journey->getId()));
+        self::assertNull($this->journeyRepository->find($journeyId));
         self::assertSame(
-            ['backend.bgos.flash.journey_protected'],
-            $request->getSession()->getFlashBag()->peek('danger'),
+            ['backend.bgos.flash.journey_removed'],
+            $request->getSession()->getFlashBag()->peek('success'),
         );
+        self::assertStringEndsWith('/backend/bgos/?view=day&date=2026-09-10&open=transport#bgos-agenda-heading-transport', $response->getTargetUrl());
     }
 
     private function agenda(string $date): string
@@ -397,7 +404,7 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
             $this->project,
             new \DateTimeImmutable($date),
             'car',
-            null,
+            'petrol',
             null,
             null,
             [[
@@ -447,6 +454,7 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
             '_token' => $token ?? $this->csrf('bgos_crew_journey_create_2026-09-10'),
             'date' => '2026-09-10',
             'mode' => 'car',
+            'vehicleType' => 'petrol',
             'segments' => $segments,
         ]);
     }
@@ -500,5 +508,33 @@ final class BgosCrewTransportJourneyControllerTest extends KernelTestCase
         return (new CrewMember())
             ->setProject($project)
             ->setName($name);
+    }
+
+    private function prepareEmissionContext(): void
+    {
+        $category = $this->entityManager->getRepository(Category::class)->findOneBy(['name' => 'Transporte']);
+        if (!$category instanceof Category) {
+            $this->entityManager->persist((new Category())->setName('Transporte'));
+        }
+
+        $date = new \DateTimeImmutable('2026-09-10');
+        $input = new TransportEmissionInput(
+            'local', 'car', 'distance', 'ES', $date, $date, '1', 'km', vehicleType: 'petrol',
+        );
+        $mapping = (new TransportFactorCriteriaMapper())->map($input);
+        self::assertNotNull($mapping);
+
+        $this->entityManager->persist(
+            (new EmissionFactor())
+                ->setCategoryKey('transport')
+                ->setFunctionalKey((new EmissionFactorKeyGenerator())->generate($mapping->criteria))
+                ->setFactorId('BGOS_CONTROLLER_CAR_PETROL')
+                ->setCriteria($mapping->criteria)
+                ->setActivityYear(2026)
+                ->setYear(2026)
+                ->setValue('0.5')
+                ->setUnit($mapping->criteria['unit'])
+                ->setSource('BGoS controller test'),
+        );
     }
 }

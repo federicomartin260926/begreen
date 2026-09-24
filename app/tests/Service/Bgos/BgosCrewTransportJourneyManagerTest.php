@@ -11,6 +11,7 @@ use App\Entity\CrewMember;
 use App\Entity\EmissionRecord;
 use App\Entity\Project;
 use App\Service\Bgos\BgosCrewMobilityValidator;
+use App\Service\Bgos\BgosCrewTransportEmissionSynchronizer;
 use App\Service\Bgos\BgosCrewTransportJourneyManager;
 use App\Service\Emission\Transport\TransportUiCatalog;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,13 +21,19 @@ use PHPUnit\Framework\TestCase;
 final class BgosCrewTransportJourneyManagerTest extends TestCase
 {
     private EntityManagerInterface&MockObject $entityManager;
+    private BgosCrewTransportEmissionSynchronizer&MockObject $emissionSynchronizer;
     private BgosCrewTransportJourneyManager $manager;
 
     protected function setUp(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->entityManager->method('wrapInTransaction')->willReturnCallback(
+            fn (callable $operation): mixed => $operation($this->entityManager),
+        );
+        $this->emissionSynchronizer = $this->createMock(BgosCrewTransportEmissionSynchronizer::class);
         $this->manager = new BgosCrewTransportJourneyManager(
             new BgosCrewMobilityValidator(new TransportUiCatalog()),
+            $this->emissionSynchronizer,
             $this->entityManager,
         );
     }
@@ -356,15 +363,15 @@ final class BgosCrewTransportJourneyManagerTest extends TestCase
         );
     }
 
-    public function testUpdateRejectsJourneyWithLinkedEmissionRecord(): void
+    public function testUpdateSynchronizesJourneyWithLinkedEmissionRecord(): void
     {
         $project = new Project();
         $member = $this->member($project, 'Ana');
         $journey = $this->journey($project, $member);
         $journey->getSegments()->first()->setEmissionRecord(new EmissionRecord());
-
-        $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('cannot be updated');
+        $this->emissionSynchronizer->expects(self::once())
+            ->method('synchronize')
+            ->with($journey, []);
 
         $this->manager->update(
             $project,
@@ -378,14 +385,14 @@ final class BgosCrewTransportJourneyManagerTest extends TestCase
         );
     }
 
-    public function testRemovalRejectsJourneyWithLinkedEmissionRecord(): void
+    public function testRemovalSynchronizesJourneyWithLinkedEmissionRecord(): void
     {
         $project = new Project();
         $journey = $this->journey($project, $this->member($project, 'Ana'));
         $journey->getSegments()->first()->setEmissionRecord(new EmissionRecord());
-
-        $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('cannot be removed');
+        $this->emissionSynchronizer->expects(self::once())
+            ->method('remove')
+            ->with($journey);
 
         $this->manager->remove($project, $journey);
     }

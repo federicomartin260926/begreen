@@ -65,7 +65,7 @@ final class EmissionControllerTest extends KernelTestCase
 
         self::assertSame(7, substr_count($content, 'accordion-item emission-dashboard-category '));
         self::assertStringNotContainsString('Viajes', $content);
-        self::assertMatchesRegularExpression('/id="emission-category-body-2"\s+class="accordion-collapse collapse show"/', $content);
+        self::assertSame(0, substr_count($content, 'accordion-collapse collapse show'));
         self::assertStringNotContainsString('data-controller="emission"', $content);
         self::assertStringNotContainsString('emissions-chart', $content);
 

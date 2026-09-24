@@ -114,7 +114,7 @@ class EmissionController extends AbstractController
         $validCategoryIds = array_column($categories, 'id');
         $activeCategoryId = in_array($requestedCategoryId, $validCategoryIds, true)
             ? $requestedCategoryId
-            : ($categoryData['transportId'] ?? ($validCategoryIds[0] ?? 0));
+            : 0;
         $showAll = '1' === $request->query->get('showAll');
         $visibleRecords = [];
         $totalEmissionKg = null;

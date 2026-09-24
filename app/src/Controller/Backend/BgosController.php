@@ -925,7 +925,7 @@ final class BgosController extends AbstractController
             'view' => BgosPeriodWindowResolver::VIEW_DAY,
             'date' => $date->format('Y-m-d'),
             'open' => 'transport',
-            '_fragment' => 'bgos-crew-journeys',
+            '_fragment' => 'bgos-agenda-heading-transport',
         ]);
     }
 

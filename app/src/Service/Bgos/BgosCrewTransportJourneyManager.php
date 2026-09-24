@@ -15,6 +15,7 @@ final readonly class BgosCrewTransportJourneyManager
 {
     public function __construct(
         private BgosCrewMobilityValidator $mobilityValidator,
+        private BgosCrewTransportEmissionSynchronizer $emissionSynchronizer,
         private EntityManagerInterface $entityManager,
     ) {
     }
@@ -42,30 +43,41 @@ final readonly class BgosCrewTransportJourneyManager
         ?string $thermalFuel,
         array $segments,
     ): BgosCrewTransportJourney {
-        [$mode, $vehicleType, $fuel, $thermalFuel] = $this->normalizeMobility(
+        return $this->entityManager->wrapInTransaction(function (EntityManagerInterface $entityManager) use (
+            $project,
+            $date,
             $mode,
             $vehicleType,
             $fuel,
             $thermalFuel,
-        );
-        $normalizedSegments = $this->buildSegments($project, $segments);
+            $segments,
+        ): BgosCrewTransportJourney {
+            [$mode, $vehicleType, $fuel, $thermalFuel] = $this->normalizeMobility(
+                $mode,
+                $vehicleType,
+                $fuel,
+                $thermalFuel,
+            );
+            $normalizedSegments = $this->buildSegments($project, $segments);
 
-        $journey = (new BgosCrewTransportJourney())
-            ->setProject($project)
-            ->setDate($date)
-            ->setMode($mode)
-            ->setVehicleType($vehicleType)
-            ->setFuel($fuel)
-            ->setThermalFuel($thermalFuel);
+            $journey = (new BgosCrewTransportJourney())
+                ->setProject($project)
+                ->setDate($date)
+                ->setMode($mode)
+                ->setVehicleType($vehicleType)
+                ->setFuel($fuel)
+                ->setThermalFuel($thermalFuel);
 
-        foreach ($normalizedSegments as $segment) {
-            $journey->addSegment($segment);
-        }
+            foreach ($normalizedSegments as $segment) {
+                $journey->addSegment($segment);
+            }
 
-        $this->entityManager->persist($journey);
-        $this->entityManager->flush();
+            $entityManager->persist($journey);
+            $this->emissionSynchronizer->synchronize($journey);
+            $entityManager->flush();
 
-        return $journey;
+            return $journey;
+        });
     }
 
     /**
@@ -93,37 +105,49 @@ final readonly class BgosCrewTransportJourneyManager
         array $segments,
     ): BgosCrewTransportJourney {
         $this->assertJourneyBelongsToProject($journey, $project);
-        $this->assertHasNoEmissionRecords($journey, 'updated');
 
-        [$mode, $vehicleType, $fuel, $thermalFuel] = $this->normalizeMobility(
+        return $this->entityManager->wrapInTransaction(function (EntityManagerInterface $entityManager) use (
+            $project,
+            $journey,
+            $date,
             $mode,
             $vehicleType,
             $fuel,
             $thermalFuel,
-        );
-        $normalizedSegments = $this->buildSegments($project, $segments);
+            $segments,
+        ): BgosCrewTransportJourney {
+            [$mode, $vehicleType, $fuel, $thermalFuel] = $this->normalizeMobility(
+                $mode,
+                $vehicleType,
+                $fuel,
+                $thermalFuel,
+            );
+            $normalizedSegments = $this->buildSegments($project, $segments);
 
-        $journey
-            ->setDate($date)
-            ->setMode($mode)
-            ->setVehicleType($vehicleType)
-            ->setFuel($fuel)
-            ->setThermalFuel($thermalFuel);
+            $journey
+                ->setDate($date)
+                ->setMode($mode)
+                ->setVehicleType($vehicleType)
+                ->setFuel($fuel)
+                ->setThermalFuel($thermalFuel);
 
-        $this->synchronizeSegments($journey, $normalizedSegments);
+            $removedSegments = $this->synchronizeSegments($journey, $normalizedSegments);
+            $this->emissionSynchronizer->synchronize($journey, $removedSegments);
+            $entityManager->flush();
 
-        $this->entityManager->flush();
-
-        return $journey;
+            return $journey;
+        });
     }
 
     public function remove(Project $project, BgosCrewTransportJourney $journey): void
     {
         $this->assertJourneyBelongsToProject($journey, $project);
-        $this->assertHasNoEmissionRecords($journey, 'removed');
 
-        $this->entityManager->remove($journey);
-        $this->entityManager->flush();
+        $this->entityManager->wrapInTransaction(function (EntityManagerInterface $entityManager) use ($journey): void {
+            $this->emissionSynchronizer->remove($journey);
+            $entityManager->remove($journey);
+            $entityManager->flush();
+        });
     }
 
     /**
@@ -292,11 +316,14 @@ final readonly class BgosCrewTransportJourneyManager
         }
     }
 
-    /** @param list<BgosCrewTransportSegment> $normalizedSegments */
+    /**
+     * @param list<BgosCrewTransportSegment> $normalizedSegments
+     * @return list<BgosCrewTransportSegment>
+     */
     private function synchronizeSegments(
         BgosCrewTransportJourney $journey,
         array $normalizedSegments,
-    ): void {
+    ): array {
         $existingByPosition = [];
         foreach ($journey->getSegments() as $segment) {
             $existingByPosition[$segment->getPosition()] = $segment;
@@ -331,6 +358,8 @@ final readonly class BgosCrewTransportJourneyManager
         foreach ($existingByPosition as $obsoleteSegment) {
             $journey->removeSegment($obsoleteSegment);
         }
+
+        return array_values($existingByPosition);
     }
 
     /** @param list<BgosCrewTransportParticipant> $normalizedParticipants */
@@ -402,17 +431,4 @@ final readonly class BgosCrewTransportJourneyManager
         }
     }
 
-    private function assertHasNoEmissionRecords(
-        BgosCrewTransportJourney $journey,
-        string $operation,
-    ): void {
-        foreach ($journey->getSegments() as $segment) {
-            if (null !== $segment->getEmissionRecord()) {
-                throw new \LogicException(sprintf(
-                    'A BGoS crew transport journey with linked emission records cannot be %s.',
-                    $operation,
-                ));
-            }
-        }
-    }
 }
