@@ -12,6 +12,7 @@ use App\Repository\EmissionRecordRepository;
 use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\EmissionTraceabilityPresenter;
 use App\Service\Emission\Accommodation\AccommodationEmissionInput;
 use App\Service\Emission\Accommodation\AccommodationEmissionResult;
 use App\Service\Emission\Accommodation\AccommodationEmissionSnapshot;
@@ -68,6 +69,11 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertSame(0, substr_count($content, 'accordion-collapse collapse show'));
         self::assertStringNotContainsString('data-controller="emission"', $content);
         self::assertStringNotContainsString('emissions-chart', $content);
+        self::assertStringNotContainsString('>Ver<', $content);
+        self::assertMatchesRegularExpression(
+            '/class="emission-dashboard-record__toggle"[^>]+data-bs-toggle="collapse"[^>]+data-bs-target="#emission-record-detail-\d+"[^>]+aria-expanded="false"[^>]+aria-controls="emission-record-detail-\d+"/',
+            $content,
+        );
 
         self::assertStringContainsString('/backend/emission/new-transport?categoryId=2', $content);
         self::assertStringContainsString('/backend/emission/new-water-v1?categoryId=5', $content);
@@ -155,6 +161,7 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend/emission/999/delete', $content);
         self::assertStringNotContainsString('/backend/emission/999/edit-transport', $content);
         self::assertStringNotContainsString('/backend/emission/999/duplicate-transport', $content);
+        self::assertStringContainsString('Factores utilizados', $content);
     }
 
     public function testIndexRendersModernEnergyPendingStatusAndActions(): void
@@ -208,7 +215,18 @@ final class EmissionControllerTest extends KernelTestCase
             ->setAmount(10)
             ->setEmission(2)
             ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'))
-            ->setCalculationDetails('{"version":"transport-v20"}');
+            ->setCalculationDetails(json_encode([
+                'version' => 'transport-v20',
+                'calculation' => [
+                    'factorTraces' => [[
+                        'component' => 'Trayecto principal',
+                        'factorValue' => '0.183000000000000000',
+                        'factorUnit' => 'km',
+                        'source' => 'DEFRA 2026',
+                        'sourceDetail' => 'Passenger transport factors',
+                    ]],
+                ],
+            ], JSON_THROW_ON_ERROR));
         $this->setEntityId($modern, 998);
 
         $transportResponse = $this->renderIndex(
@@ -221,6 +239,47 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('/backend/emission/new-transport', $transportContent);
         self::assertStringContainsString('/backend/emission/998/edit-transport', $transportContent);
         self::assertStringContainsString('/backend/emission/998/duplicate-transport', $transportContent);
+        self::assertStringContainsString('</i>Editar', $transportContent);
+        self::assertStringContainsString('</i>Duplicar', $transportContent);
+        self::assertStringContainsString('</i>Eliminar', $transportContent);
+        self::assertStringContainsString('0,183 kgCO2e/km', $transportContent);
+        self::assertStringNotContainsString('0,183 km', $transportContent);
+        self::assertStringNotContainsString('0.183000000000000000', $transportContent);
+        self::assertStringContainsString('DEFRA 2026', $transportContent);
+        self::assertStringContainsString('Passenger transport factors', $transportContent);
+    }
+
+    public function testEnergyFactorKeepsItsCompleteEmissionUnit(): void
+    {
+        $payload = $this->buildPayload();
+        $record = (new EmissionRecord())
+            ->setProject($payload['project'])
+            ->setPhase($payload['records'][0]->getPhase())
+            ->setCategory($payload['categories'][0])
+            ->setAmount(10)
+            ->setEmission(2.58)
+            ->setRegisteredAt(new \DateTimeImmutable('2026-01-20'))
+            ->setCalculationDetails(json_encode([
+                'version' => 'energy-v1',
+                'calculation' => [
+                    'factorTraces' => [[
+                        'factorValue' => '0.258000000000000000',
+                        'factorUnit' => 'kgCO2e/kWh',
+                    ]],
+                ],
+            ], JSON_THROW_ON_ERROR));
+        $this->setEntityId($record, 997);
+
+        $content = (string) $this->renderIndex(
+            $payload['project'],
+            [$record],
+            $payload['categories'],
+            ['categoryId' => 1],
+        )->getContent();
+
+        self::assertStringContainsString('0,258 kgCO2e/kWh', $content);
+        self::assertStringNotContainsString('kgCO2e/kgCO2e/kWh', $content);
+        self::assertStringNotContainsString('0.258000000000000000', $content);
     }
 
     public function testTripsIsDisabledAndLegacyRoutesAreRemoved(): void
@@ -401,6 +460,7 @@ final class EmissionControllerTest extends KernelTestCase
             new \App\Service\Emission\Waste\WasteEmissionSnapshot(),
             new \App\Service\Emission\Waste\WasteUiCatalog(),
             new \App\Service\Emission\Material\MaterialEmissionSnapshot(),
+            new EmissionTraceabilityPresenter(),
             $request
         );
 

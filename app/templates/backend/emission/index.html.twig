@@ -115,6 +115,7 @@
                                             {% set wasteSummary = wasteV1Summaries[record.id]|default(null) %}
                                             {% set materialSummary = materialV1Summaries[record.id]|default(null) %}
                                             {% set action = recordActions[record.id]|default(null) %}
+                                            {% set traceabilities = recordTraceabilities[record.id]|default([]) %}
 
                                             {% set activity %}
                                                 {% if transportSummary %}
@@ -159,23 +160,63 @@
 
                                             <div class="emission-dashboard-record emissions-record-row">
                                                 <div class="emission-dashboard-record__summary">
-                                                    <span class="emission-dashboard-record__date">{{ record.registeredAt|date('d/m/Y') }}</span>
-                                                    <span class="emission-dashboard-record__activity">{{ activity|trim }}</span>
-                                                    <span class="emission-dashboard-record__description">
-                                                        {{ record.amount is null ? '—' : record.amount|number_format(2, ',', '.') }}
-                                                        {% if unit|trim != '—' %} {{ unit|trim }}{% endif %}
-                                                    </span>
-                                                    <span class="emission-dashboard-record__emission">
-                                                        {{ record.emission is null ? '—' : record.emission|number_format(2, ',', '.') ~ ' kgCO₂e' }}
-                                                    </span>
                                                     <button
-                                                        class="btn btn-sm btn-outline-secondary"
+                                                        class="emission-dashboard-record__toggle"
                                                         type="button"
                                                         data-bs-toggle="collapse"
                                                         data-bs-target="#emission-record-detail-{{ record.id }}"
                                                         aria-expanded="false"
                                                         aria-controls="emission-record-detail-{{ record.id }}"
-                                                    >{{ 'backend.emission.index.dashboard.view'|trans }}</button>
+                                                    >
+                                                        <span class="emission-dashboard-record__date">{{ record.registeredAt|date('d/m/Y') }}</span>
+                                                        <span class="emission-dashboard-record__activity">{{ activity|trim }}</span>
+                                                        <span class="emission-dashboard-record__description">
+                                                            {{ record.amount is null ? '—' : record.amount|number_format(2, ',', '.') }}
+                                                            {% if unit|trim != '—' %} {{ unit|trim }}{% endif %}
+                                                        </span>
+                                                        <span class="emission-dashboard-record__emission">
+                                                            {{ record.emission is null ? '—' : record.emission|number_format(2, ',', '.') ~ ' kgCO₂e' }}
+                                                        </span>
+                                                    </button>
+                                                    <div class="dropdown emission-dashboard-record__menu">
+                                                        <button
+                                                            class="btn btn-sm btn-outline-secondary"
+                                                            type="button"
+                                                            data-bs-toggle="dropdown"
+                                                            aria-expanded="false"
+                                                            aria-label="{{ 'backend.emission.index.dashboard.actions'|trans }}"
+                                                        >
+                                                            <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end">
+                                                            {% if action %}
+                                                                <li>
+                                                                    <a href="{{ path(action.editRoute, {id: record.id}|merge(categoryQuery)) }}" class="dropdown-item">
+                                                                        <i class="bi bi-pencil me-2" aria-hidden="true"></i>{{ 'backend.common.edit'|trans }}
+                                                                    </a>
+                                                                </li>
+                                                                <li>
+                                                                    <a href="{{ path(action.duplicateRoute, {id: record.id}|merge(categoryQuery)) }}" class="dropdown-item">
+                                                                        <i class="bi bi-files me-2" aria-hidden="true"></i>{{ 'backend.emission.index.dashboard.duplicate'|trans }}
+                                                                    </a>
+                                                                </li>
+                                                                <li><hr class="dropdown-divider"></li>
+                                                            {% endif %}
+                                                            <li>
+                                                                <form
+                                                                    action="{{ path('backend_emission_delete', {id: record.id}|merge(categoryQuery)) }}"
+                                                                    method="post"
+                                                                    onsubmit="return confirm('{{ 'backend.common.confirm_delete'|trans|e('js') }}');"
+                                                                >
+                                                                    <input type="hidden" name="category" value="{{ category.name }}">
+                                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
+                                                                    <button class="dropdown-item text-danger" type="submit">
+                                                                        <i class="bi bi-trash me-2" aria-hidden="true"></i>{{ 'backend.common.delete'|trans }}
+                                                                    </button>
+                                                                </form>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
                                                 </div>
 
                                                 <div class="collapse" id="emission-record-detail-{{ record.id }}">
@@ -188,26 +229,25 @@
                                                             <div><dt>{{ 'backend.emission.index.dashboard.status'|trans }}</dt><dd>{{ record.status ? ('backend.emission.energy_v1.statuses.' ~ record.status)|trans : '—' }}</dd></div>
                                                             <div><dt>{{ 'backend.emission.index.dashboard.emissions'|trans }}</dt><dd>{{ record.emission is null ? '—' : record.emission|number_format(2, ',', '.') ~ ' kgCO₂e' }}</dd></div>
                                                         </dl>
-                                                        <div class="emission-dashboard-record__actions">
-                                                            {% if action %}
-                                                                <a href="{{ path(action.editRoute, {id: record.id}|merge(categoryQuery)) }}" class="btn btn-sm btn-outline-secondary">
-                                                                    <i class="bi bi-pencil me-1" aria-hidden="true"></i>{{ 'backend.common.edit'|trans }}
-                                                                </a>
-                                                                <a href="{{ path(action.duplicateRoute, {id: record.id}|merge(categoryQuery)) }}" class="btn btn-sm btn-outline-secondary">
-                                                                    <i class="bi bi-files me-1" aria-hidden="true"></i>{{ 'backend.emission.index.dashboard.duplicate'|trans }}
-                                                                </a>
+                                                        <div class="emission-dashboard-record__traceability">
+                                                            <h6>{{ 'backend.emission.index.dashboard.factors_used'|trans }}</h6>
+                                                            {% if traceabilities %}
+                                                                <div class="emission-dashboard-record__traces">
+                                                                    {% for trace in traceabilities %}
+                                                                        <div class="emission-dashboard-record__trace">
+                                                                            {% if trace.component %}<strong class="emission-dashboard-record__trace-component">{{ trace.component }}</strong>{% endif %}
+                                                                            <dl>
+                                                                                {% if trace.factorId %}<div><dt>{{ 'backend.emission.reports.detailed.trace.factor_id'|trans }}</dt><dd>{{ trace.factorId }}</dd></div>{% endif %}
+                                                                                {% if trace.factorValueDisplay is not null %}<div><dt>{{ 'backend.emission.reports.detailed.trace.factor'|trans }}</dt><dd>{{ trace.factorValueDisplay }}{% if trace.factorUnitDisplay %} {{ trace.factorUnitDisplay }}{% endif %}</dd></div>{% endif %}
+                                                                                {% if trace.source %}<div><dt>{{ 'backend.emission.reports.detailed.trace.source'|trans }}</dt><dd>{{ trace.source }}</dd></div>{% endif %}
+                                                                                {% if trace.sourceDetail %}<div><dt>{{ 'backend.emission.reports.detailed.trace.source_detail'|trans }}</dt><dd>{{ trace.sourceDetail }}</dd></div>{% endif %}
+                                                                            </dl>
+                                                                        </div>
+                                                                    {% endfor %}
+                                                                </div>
+                                                            {% else %}
+                                                                <span class="text-muted">—</span>
                                                             {% endif %}
-                                                            <form
-                                                                action="{{ path('backend_emission_delete', {id: record.id}|merge(categoryQuery)) }}"
-                                                                method="post"
-                                                                onsubmit="return confirm('{{ 'backend.common.confirm_delete'|trans|e('js') }}');"
-                                                            >
-                                                                <input type="hidden" name="category" value="{{ category.name }}">
-                                                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
-                                                                <button class="btn btn-sm btn-outline-danger" type="submit">
-                                                                    <i class="bi bi-trash me-1" aria-hidden="true"></i>{{ 'backend.common.delete'|trans }}
-                                                                </button>
-                                                            </form>
                                                         </div>
                                                     </div>
                                                 </div>

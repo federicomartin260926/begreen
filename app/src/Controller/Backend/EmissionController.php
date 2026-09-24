@@ -9,6 +9,7 @@ use App\Repository\{CategoryRepository, EmissionRecordRepository, ProjectReposit
 use App\Security\{EmissionRecordVoter, ProjectVoter};
 use App\Service\{ActiveProjectService, OpenRouteService};
 use App\Service\Emission\EmissionRecordAttachmentStorage;
+use App\Service\Emission\EmissionTraceabilityPresenter;
 use App\Service\Emission\Accommodation\AccommodationEmissionSnapshot;
 use App\Service\Emission\Catering\CateringEmissionSnapshot;
 use App\Service\Emission\Energy\EnergyEmissionSnapshot;
@@ -98,6 +99,7 @@ class EmissionController extends AbstractController
         WasteEmissionSnapshot $wasteSnapshot,
         WasteUiCatalog $wasteCatalog,
         MaterialEmissionSnapshot $materialSnapshot,
+        EmissionTraceabilityPresenter $traceabilityPresenter,
         Request $request
     ): Response {
         $project = $activeProjectService->getActiveProject();
@@ -159,6 +161,10 @@ class EmissionController extends AbstractController
             $wasteSnapshot,
             $wasteCatalog,
             $materialSnapshot,
+        );
+        $presentation['recordTraceabilities'] = $this->buildRecordTraceabilities(
+            $visibleRecords,
+            $traceabilityPresenter,
         );
 
         return $this->render('backend/emission/index.html.twig', array_merge($presentation, [
@@ -338,6 +344,78 @@ class EmissionController extends AbstractController
         }
 
         return $data;
+    }
+
+    /**
+     * @param list<EmissionRecord> $records
+     * @return array<int, list<array<string, mixed>>>
+     */
+    private function buildRecordTraceabilities(
+        array $records,
+        EmissionTraceabilityPresenter $traceabilityPresenter,
+    ): array {
+        $traceabilities = [];
+
+        foreach ($records as $record) {
+            $id = $record->getId();
+            $details = $record->getCalculationDetails();
+            if (null === $id || !is_string($details) || '' === $details) {
+                continue;
+            }
+
+            try {
+                $snapshot = json_decode($details, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                continue;
+            }
+
+            if (!is_array($snapshot)) {
+                $traceabilities[$id] = [];
+                continue;
+            }
+
+            $isTransportV20 = TransportEmissionSnapshot::VERSION === ($snapshot['version'] ?? null);
+            $traceabilities[$id] = array_map(
+                function (array $trace) use ($isTransportV20): array {
+                    $trace['factorValueDisplay'] = $this->formatFactorValue($trace['factorValue']);
+                    $trace['factorUnitDisplay'] = $this->formatFactorUnit($trace['factorUnit'], $isTransportV20);
+
+                    return $trace;
+                },
+                $traceabilityPresenter->extract($snapshot),
+            );
+        }
+
+        return $traceabilities;
+    }
+
+    private function formatFactorValue(string|int|float|null $value): ?string
+    {
+        if (null === $value) {
+            return null;
+        }
+
+        $rawValue = (string) $value;
+        if (!preg_match('/^(-?\d+)(?:\.(\d+))?([eE][+-]?\d+)?$/', $rawValue, $matches)) {
+            return $rawValue;
+        }
+
+        $fraction = rtrim($matches[2] ?? '', '0');
+
+        return $matches[1]
+            .('' === $fraction ? '' : ','.$fraction)
+            .($matches[3] ?? '');
+    }
+
+    private function formatFactorUnit(?string $unit, bool $isTransportV20): ?string
+    {
+        if (!$isTransportV20 || null === $unit || '' === $unit || str_starts_with($unit, 'kgCO2e/')) {
+            return $unit;
+        }
+
+        return str_contains($unit, '*')
+            ? sprintf('kgCO2e/(%s)', $unit)
+            : sprintf('kgCO2e/%s', $unit);
     }
 
     private function modernActivityName(

@@ -1909,9 +1909,10 @@ backend:
         no_records: "Sin registros"
         entered_data: "Datos introducidos"
         add_data: "Añadir nuevo dato"
-        view: "Ver"
+        actions: "Acciones del registro"
         status: "Estado"
         duplicate: "Duplicar"
+        factors_used: "Factores utilizados"
         show_all: "Ver todos los registros"
         provisional_results: "Ver resultados provisionales"
         categories:

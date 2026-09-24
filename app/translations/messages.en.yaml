@@ -1901,9 +1901,10 @@ backend:
         no_records: "No records"
         entered_data: "Entered data"
         add_data: "Add new data"
-        view: "View"
+        actions: "Record actions"
         status: "Status"
         duplicate: "Duplicate"
+        factors_used: "Factors used"
         show_all: "View all records"
         provisional_results: "View provisional results"
         categories:
