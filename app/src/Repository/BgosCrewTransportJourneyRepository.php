@@ -39,4 +39,33 @@ final class BgosCrewTransportJourneyRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /** @return list<BgosCrewTransportJourney> */
+    public function findForProjectAndPeriod(
+        Project $project,
+        \DateTimeInterface $start,
+        \DateTimeInterface $end,
+    ): array {
+        $start = \DateTimeImmutable::createFromInterface($start)->setTime(0, 0);
+        $end = \DateTimeImmutable::createFromInterface($end)->setTime(0, 0);
+
+        return $this->createQueryBuilder('journey')
+            ->leftJoin('journey.segments', 'segment')
+            ->addSelect('segment')
+            ->leftJoin('segment.participants', 'participant')
+            ->addSelect('participant')
+            ->leftJoin('participant.crewMember', 'crewMember')
+            ->addSelect('crewMember')
+            ->andWhere('journey.project = :project')
+            ->andWhere('journey.date BETWEEN :start AND :end')
+            ->setParameter('project', $project)
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->orderBy('journey.date', 'ASC')
+            ->addOrderBy('journey.id', 'ASC')
+            ->addOrderBy('segment.position', 'ASC')
+            ->addOrderBy('participant.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

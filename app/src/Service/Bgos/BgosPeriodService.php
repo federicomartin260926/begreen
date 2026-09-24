@@ -7,6 +7,7 @@ namespace App\Service\Bgos;
 use App\Entity\BgosSubcategoryConfig;
 use App\Entity\Project;
 use App\Repository\BgosCrewTransportDayRepository;
+use App\Repository\BgosCrewTransportJourneyRepository;
 use App\Repository\BgosSubcategoryConfigRepository;
 use App\Repository\EmissionRecordRepository;
 
@@ -20,6 +21,7 @@ final class BgosPeriodService
         private readonly BgosDailyRecordProjector $dailyProjector,
         private readonly BgosPeriodAssembler $assembler,
         private readonly BgosCrewTransportDayRepository $crewTransportDayRepository,
+        private readonly BgosCrewTransportJourneyRepository $crewTransportJourneyRepository,
         private readonly BgosCrewTransportCompletionService $crewTransportCompletionService,
         private readonly BgosCrewRosterService $crewRosterService,
         private readonly BgosCompletionAggregator $completionAggregator,
@@ -49,16 +51,16 @@ final class BgosPeriodService
             $periodStart,
             $periodEnd,
         );
+        $crewJourneys = $this->crewTransportJourneyRepository->findForProjectAndPeriod(
+            $project,
+            $periodStart,
+            $periodEnd,
+        );
 
-        $crewSummary = $this->crewTransportCompletionService->summarize($crewDays);
-
-        $crewSummary['trackedMemberIds'] = array_values(array_unique(array_filter(
-            array_map(
-                static fn ($day): ?int => $day->getCrewMember()?->getId(),
-                $crewDays,
-            ),
-            static fn (?int $id): bool => null !== $id,
-        )));
+        $crewSummary = $this->crewTransportCompletionService->summarize(
+            $crewDays,
+            $crewJourneys,
+        );
 
         $crewCompletion = $this->completionAggregator->aggregate([
             new BgosCompletionResult(
