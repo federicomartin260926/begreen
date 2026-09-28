@@ -12,9 +12,9 @@ use App\Enum\CommercialPhase;
 use App\Repository\MeasureRepository;
 use App\Repository\PlanRepository;
 use App\Repository\ProjectRepository;
-use App\Repository\ProtocolRepository;
+use App\Service\Animation\AnimationNotApplicableValidator;
 use App\Service\CommercialPlanResolver;
-use App\Service\PlanMeasureCatalogResolver;
+use App\Service\ProtocolAvailabilityResolver;
 use App\Service\SustainabilityPlanCompletionService;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,9 +34,10 @@ final class SeedSustainabilityPlanCommand extends Command
     public function __construct(
         private readonly ProjectRepository $projectRepository,
         private readonly PlanRepository $planRepository,
-        private readonly ProtocolRepository $protocolRepository,
         private readonly MeasureRepository $measureRepository,
         private readonly CommercialPlanResolver $commercialPlanResolver,
+        private readonly ProtocolAvailabilityResolver $protocolAvailabilityResolver,
+        private readonly AnimationNotApplicableValidator $animationNotApplicableValidator,
         private readonly SustainabilityPlanCompletionService $completionService,
         private readonly SustainabilityPlanMeasureOrderer $measureOrderer,
         private readonly EntityManagerInterface $entityManager,
@@ -81,26 +82,44 @@ final class SeedSustainabilityPlanCommand extends Command
         $commercialPlan = $this->commercialPlanResolver->getPlanForProject($project, CommercialPhase::ELABORATION);
 
         $plan = $this->planRepository->findOneBy(['project' => $project]);
-        if (!$plan instanceof Plan) {
+        $existingPlan = $plan instanceof Plan;
+
+        if (!$existingPlan) {
             $plan = (new Plan())
                 ->setProject($project)
                 ->setUser($this->resolvePlanUser($project));
             $this->entityManager->persist($plan);
-        } else {
-            $this->resetPlan($plan);
         }
 
         $protocol = $plan->getProtocol();
-        if (!$protocol instanceof Protocol) {
-            $protocol = $this->protocolRepository->findOneBy([
-                'code' => PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE,
-            ]);
+
+        if ($protocol instanceof Protocol
+            && !$this->protocolAvailabilityResolver->isAvailable($project, $protocol)) {
+            $io->error(sprintf(
+                'El protocolo actual "%s" no es compatible con la configuración del proyecto.',
+                (string) $protocol->getName(),
+            ));
+
+            return Command::FAILURE;
         }
 
         if (!$protocol instanceof Protocol) {
-            $io->error('No se ha encontrado el protocolo base de sostenibilidad.');
+            $availableProtocols = $this->protocolAvailabilityResolver->getAvailableProtocols($project);
 
-            return Command::FAILURE;
+            if (count($availableProtocols) !== 1) {
+                $io->error(sprintf(
+                    'Se esperaba exactamente un protocolo disponible para el proyecto y se encontraron %d.',
+                    count($availableProtocols),
+                ));
+
+                return Command::FAILURE;
+            }
+
+            $protocol = $availableProtocols[0];
+        }
+
+        if ($existingPlan) {
+            $this->resetPlan($plan);
         }
 
         $plan->setProtocol($protocol);
@@ -141,7 +160,7 @@ final class SeedSustainabilityPlanCommand extends Command
             $plan->addPlanMeasure($planMeasure);
             $planMeasure->setMeasure($measure);
             $planMeasure->markAsManual();
-            $this->populateSeedPlanMeasureState($planMeasure, $seedSummary);
+            $this->populateSeedPlanMeasureState($planMeasure, $project, $seedSummary);
             $this->entityManager->persist($planMeasure);
         }
 
@@ -241,9 +260,21 @@ final class SeedSustainabilityPlanCommand extends Command
      *     nonCritical: int
      * } $seedSummary
      */
-    private function populateSeedPlanMeasureState(PlanMeasure $planMeasure, array &$seedSummary): void
-    {
+    private function populateSeedPlanMeasureState(
+        PlanMeasure $planMeasure,
+        Project $project,
+        array &$seedSummary,
+    ): void {
+        $measure = $planMeasure->getMeasure();
+        if (!$measure instanceof Measure) {
+            throw new \LogicException('No se puede generar estado para un PlanMeasure sin Measure.');
+        }
+
         $isApplicable = $this->randomBoolean();
+        if (!$isApplicable && !$this->animationNotApplicableValidator->allows($project, $measure)) {
+            $isApplicable = true;
+        }
+
         $planMeasure->setIsApplicable($isApplicable);
 
         if (!$isApplicable) {
@@ -292,10 +323,10 @@ final class SeedSustainabilityPlanCommand extends Command
     private function randomObservation(): string
     {
         $observations = [
-            'Medida prioritaria por impacto operativo.',
-            'Requiere coordinación con el equipo de producción.',
-            'Decisión registrada para el seguimiento del plan.',
-            'Necesita validación adicional antes de implementarla.',
+            'Medida prioritaria por impacto operativo y seguimiento durante la ejecución.',
+            'Requiere coordinación con el equipo de producción antes de su implementación.',
+            'Decisión registrada para facilitar el seguimiento y la revisión posterior del plan.',
+            'Necesita validación adicional del equipo responsable antes de iniciar la implementación.',
         ];
 
         return $observations[random_int(0, count($observations) - 1)];
