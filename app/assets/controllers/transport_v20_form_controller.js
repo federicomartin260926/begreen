@@ -423,8 +423,7 @@ export default class extends Controller {
     const fuel = this.modeTarget.value === 'car'
       ? (['hev', 'phev'].includes(this.vehicleTypeTarget.value) ? this.thermalFuelTarget.value : this.vehicleTypeTarget.value)
       : this.fuelTarget.value;
-    const isSpain = this.element.querySelector('[name="country"]')?.value.trim().toUpperCase() === 'ES';
-    if (isSpain && ['cng', 'lng'].includes(fuel)) return ['kg'];
+    if (this.isSpain && ['cng', 'lng'].includes(fuel)) return ['kg'];
     return ['L', 'us_gal', 'imp_gal'];
   }
 
@@ -487,18 +486,18 @@ export default class extends Controller {
   }
 
   get isSpain() {
-    return this.element.querySelector('[name="country"]')?.value.trim().toUpperCase() === 'ES';
+    const country = this.element.querySelector('[name="country"]')?.value.trim().toUpperCase();
+    return ['ES', 'ESP'].includes(country);
   }
 
   get canUseOrs() {
-    const country = this.element.querySelector('[name="country"]')?.value.trim().toUpperCase();
     const method = this.methodTarget.value;
 
     if (method === 'route' && this.tripTypeTarget.value === 'multiple') {
       return false;
     }
 
-    return country === 'ES'
+    return this.isSpain
       && ['route', 'route_stops'].includes(method)
       && this.configValue.orsRoadModes.includes(this.modeTarget.value);
   }
