@@ -193,6 +193,11 @@
 
             <strong>{{ 'backend.plan.pdf_visual.cover.summary.catalog'|trans }}:</strong>
             {{ coverIndicators.total }}
+
+            &nbsp;&nbsp;&nbsp;
+
+            <strong>{{ 'backend.plan.filters.protocol'|trans }}:</strong>
+            {{ plan.protocol ? plan.protocol.name : '—' }}
         </div>
 
         {% set projectDetails = [] %}

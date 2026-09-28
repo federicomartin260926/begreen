@@ -80,7 +80,7 @@
                     </h3>
                 </div>
 
-                {% if showSummary %}
+                {% if showSummary and category.summary is not empty %}
                     <p class="pdf-ai-page__category-summary">
                         {{ category.summary }}
                     </p>

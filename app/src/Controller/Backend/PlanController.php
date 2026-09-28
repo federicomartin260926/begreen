@@ -2709,9 +2709,6 @@ HTML;
             }
 
             $key = sprintf('category:%d', $categoryId);
-            if (!isset($summariesByKey[$key])) {
-                continue;
-            }
 
             if (!isset($categories[$key])) {
                 $categoryName = (string) $category->getName();
@@ -2719,7 +2716,7 @@ HTML;
                 $categories[$key] = [
                     'key' => $key,
                     'name' => $categoryName,
-                    'summary' => $summariesByKey[$key],
+                    'summary' => $summariesByKey[$key] ?? null,
                     'futureSummary' => $futureSummariesByKey[$key] ?? null,
                     'visual' => $this->pdfCategoryVisual($categoryName),
                     'committedMeasures' => [],
