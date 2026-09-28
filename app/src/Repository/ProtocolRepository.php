@@ -31,4 +31,16 @@ class ProtocolRepository extends ServiceEntityRepository
         // ['name' => 'XYZ'] -> 'XYZ'
         return array_column($qb->getQuery()->getScalarResult(), 'name');
     }
+
+    /** @return list<Protocol> */
+    public function findForProjectType(string $projectType): array
+    {
+        return $this->createQueryBuilder('p')
+            ->where('p.type = :type OR p.type = :both')
+            ->setParameter('type', $projectType)
+            ->setParameter('both', Protocol::TYPE_AMBOS)
+            ->orderBy('p.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

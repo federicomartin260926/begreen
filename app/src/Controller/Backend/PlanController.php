@@ -4,6 +4,7 @@ namespace App\Controller\Backend;
 
 use App\Entity\{CommercialPlan, Plan, PlanMeasure, Measure, Ods, EsG, Scope, Project, ProjectCompany, Protocol, CrewMember, Category, Department, ProjectSubscription, MeasureBlock, SustainabilityPlanBlockAnswer, User, VerificationSource};
 use App\Enum\CommercialPhase;
+use App\Enum\ProjectCatalog;
 use App\Exception\Ai\AiReportException;
 use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
 use App\Service\PlanMeasureCatalogResolver;
@@ -21,6 +22,11 @@ use App\Service\SustainabilityPlanClosureSummaryService;
 use App\Service\SustainabilityPlanClosureEmailRecipientResolver;
 use App\Service\SustainabilityGamificationService;
 use App\Service\ProjectFeatureGate;
+use App\Service\ProtocolAvailabilityResolver;
+use App\Service\Animation\AnimationCatalogImporter;
+use App\Service\Animation\AnimationPlanSynchronizer;
+use App\Service\Animation\AnimationComplianceService;
+use App\Service\Animation\AnimationNotApplicableValidator;
 use App\Service\StripeProjectCheckoutService;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
@@ -28,7 +34,6 @@ use App\Service\ActiveProjectService;
 use App\Service\Ai\PlanAiReportService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{Request, Response, JsonResponse};
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -79,6 +84,10 @@ class PlanController extends AbstractController
         private PlanMeasureElaborationDecisionValidator $decisionValidator,
         private PlanAiReportService $planAiReportService,
         private LoggerInterface $logger,
+        private ProtocolAvailabilityResolver $protocolAvailabilityResolver,
+        private AnimationPlanSynchronizer $animationPlanSynchronizer,
+        private AnimationComplianceService $animationComplianceService,
+        private AnimationNotApplicableValidator $animationNotApplicableValidator,
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -93,6 +102,13 @@ class PlanController extends AbstractController
         }
 
         $plan = $planRepository->findOneBy(['project' => $project]);
+
+        if ($plan?->getProtocol() instanceof Protocol
+            && !$this->protocolAvailabilityResolver->isAvailable($project, $plan->getProtocol())) {
+            $this->addFlash('danger', 'backend.plan.flash.inconsistent_project_protocol');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
 
         // Si no hay plan o no hay protocolo seleccionado -> ir a Welcome
         if (!$plan || !$plan->getProtocol()) {
@@ -133,6 +149,13 @@ class PlanController extends AbstractController
             $em->flush();
         }
 
+        if ($plan->getProtocol() instanceof Protocol
+            && !$this->protocolAvailabilityResolver->isAvailable($project, $plan->getProtocol())) {
+            $this->addFlash('danger', 'backend.plan.flash.inconsistent_project_protocol');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
+
         // Si ya hay alguna medida en el plan, ir a measures directamente
         $alreadyHasMeasures = (bool) $planMeasureRepo->findOneBy(['plan' => $plan]);
         if ($alreadyHasMeasures) {
@@ -140,8 +163,10 @@ class PlanController extends AbstractController
         }
 
         // Protocolos aplicables al tipo de proyecto (evento/rodaje/ambos)
-        $protocolNames = $protocolRepository->getNamesForProjectType($project->getType());
-        $protocols = $protocolRepository->findBy(['name' => $protocolNames], ['name' => 'ASC']);
+        $protocols = $this->protocolAvailabilityResolver->getAvailableProtocols($project);
+        if (ProjectCatalog::FILMING_GENRE_ANIMATION === $project->getFilmingGenre() && [] === $protocols) {
+            $this->addFlash('danger', 'backend.plan.flash.animation_protocol_unavailable');
+        }
 
         return $this->render('backend/plan/welcome.html.twig', [
             'project'   => $project,
@@ -184,6 +209,23 @@ class PlanController extends AbstractController
             return $this->redirectToRoute('backend_plan_welcome');
         }
 
+        if (!$this->protocolAvailabilityResolver->isAvailable($project, $protocol)) {
+            $this->addFlash('danger', 'backend.plan.flash.invalid_protocol');
+
+            return $this->redirectToRoute('backend_plan_welcome');
+        }
+
+        $currentProtocol = $plan->getProtocol();
+        if ($currentProtocol instanceof Protocol
+            && $currentProtocol->getCode() !== $protocol->getCode()
+            && (ProjectCatalog::FILMING_GENRE_ANIMATION === $project->getFilmingGenre()
+                || AnimationCatalogImporter::PROTOCOL_CODE === $currentProtocol->getCode()
+                || AnimationCatalogImporter::PROTOCOL_CODE === $protocol->getCode())) {
+            $this->addFlash('danger', 'backend.plan.flash.inconsistent_project_protocol');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
+
         // Persistimos en el plan
         $plan->setProtocol($protocol);
         $em->flush();
@@ -213,6 +255,12 @@ class PlanController extends AbstractController
         if (!$plan || !$plan->getProtocol()) {
             $this->addFlash('info', 'backend.plan.flash.select_protocol_to_continue');
             return $this->redirectToRoute('backend_plan_welcome');
+        }
+
+        if (!$this->protocolAvailabilityResolver->isAvailable($project, $plan->getProtocol())) {
+            $this->addFlash('danger', 'backend.plan.flash.inconsistent_project_protocol');
+
+            return $this->redirectToRoute('backend_project_index');
         }
 
         // VOTER: puede editar el plan (miembro/admin)
@@ -365,6 +413,7 @@ class PlanController extends AbstractController
             $project,
             $planComplete ? null : $currentMeasure?->getId()
         );
+        $isAnimationPlan = $this->animationPlanSynchronizer->supports($plan, $project);
 
         // ===== Render =====
         return $this->render('backend/plan/measures.html.twig', [
@@ -382,11 +431,12 @@ class PlanController extends AbstractController
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'upgradeCta'       => $upgradeCta,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
-            'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
+            'commitmentSummary' => $isAnimationPlan ? null : $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
             'navigationQuery'  => $navigationQuery,
             'showCustomMeasuresStep' => $showCustomMeasuresStep,
             'gamificationMessage' => $gamificationMessage,
+            'isAnimationPlan' => $isAnimationPlan,
 
             // navegación y medida actual
             'index'            => $index,
@@ -559,6 +609,13 @@ class PlanController extends AbstractController
             return $this->redirectToRoute('backend_plan_welcome');
         }
 
+        if (!$plan->getProtocol() instanceof Protocol
+            || !$this->protocolAvailabilityResolver->isAvailable($project, $plan->getProtocol())) {
+            $this->addFlash('danger', 'backend.plan.flash.inconsistent_project_protocol');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
+
         // Permiso de acceso al plan
         $this->denyAccessUnlessGranted(PlanVoter::VIEW, $plan);
 
@@ -585,7 +642,10 @@ class PlanController extends AbstractController
         }
 
         // Protocolos válidos para el tipo
-        $protocols = $protocolRepository->getNamesForProjectType($project->getType());
+        $protocols = array_map(
+            static fn (Protocol $protocol): string => (string) $protocol->getName(),
+            $this->protocolAvailabilityResolver->getAvailableProtocols($project),
+        );
 
         // --- Filtros por GET ---
         $protocol         = $request->query->get('protocol');
@@ -619,21 +679,27 @@ class PlanController extends AbstractController
         }
 
         // START Número medida
-        $baseQb = $measureRepository->createQueryBuilder('m')
-            ->select('m.id AS id')
-            ->join('m.protocol', 'p');
-        $this->catalogResolver->applyCatalogFilter($baseQb, 'm', 'p', $project);
-        if (!$protocol) {
-            $baseQb->andWhere('p.name IN (:protocols)')->setParameter('protocols', $protocols);
+        if ($this->animationPlanSynchronizer->supports($plan, $project)) {
+            $positionById = $protocol && $protocol !== $plan->getProtocol()?->getName()
+                ? []
+                : $this->planCompletionService->getVisibleMeasurePositions($plan, $project, $measureRepository);
         } else {
-            $baseQb->andWhere('p.name = :protocol')->setParameter('protocol', $protocol);
-        }
-        $baseQb->orderBy('m.id', 'ASC');
-        $baseIdsRows = $baseQb->getQuery()->getScalarResult();
-        $positionById = [];
-        foreach ($baseIdsRows as $idx => $row) {
-            $id = (int) $row['id'];
-            $positionById[$id] = $idx + 1;
+            $baseQb = $measureRepository->createQueryBuilder('m')
+                ->select('m.id AS id')
+                ->join('m.protocol', 'p');
+            $this->catalogResolver->applyCatalogFilter($baseQb, 'm', 'p', $project);
+            if (!$protocol) {
+                $baseQb->andWhere('p.name IN (:protocols)')->setParameter('protocols', $protocols);
+            } else {
+                $baseQb->andWhere('p.name = :protocol')->setParameter('protocol', $protocol);
+            }
+            $baseQb->orderBy('m.id', 'ASC');
+            $baseIdsRows = $baseQb->getQuery()->getScalarResult();
+            $positionById = [];
+            foreach ($baseIdsRows as $idx => $row) {
+                $id = (int) $row['id'];
+                $positionById[$id] = $idx + 1;
+            }
         }
         // END Número medida
 
@@ -667,12 +733,21 @@ class PlanController extends AbstractController
             'is_critical' => null,
             'state' => PlanMeasureOperationalStateResolver::ALL,
         ]);
+        $isAnimationPlan = $this->animationPlanSynchronizer->supports($plan, $project);
+        if ($isAnimationPlan) {
+            $byVisualPosition = static fn (PlanMeasure $left, PlanMeasure $right): int =>
+                ($positionById[$left->getMeasure()?->getId()] ?? PHP_INT_MAX)
+                <=> ($positionById[$right->getMeasure()?->getId()] ?? PHP_INT_MAX);
+            usort($allImplementationPlanMeasures, $byVisualPosition);
+            usort($filteredPlanMeasures, $byVisualPosition);
+        }
         $implementationView = $this->implementationViewService->build(
             $allImplementationPlanMeasures,
             $filteredPlanMeasures,
             $state,
             $openId > 0 ? $openId : null,
             $openCategory,
+            $isAnimationPlan,
         );
 
         $effective = 0; $nonApplicable = 0; $agreed = 0; $implemented = 0;
@@ -685,11 +760,16 @@ class PlanController extends AbstractController
 
         $measuresTotal = $implementationView['visibleCount'];
 
-        $planChartsConfig = $this->buildReviewChartsConfig(
-            $filteredPlanMeasures,
-            $plan->getProtocol()?->getId(),
-            $plan->getPlanMeasures()->toArray()
-        );
+        $planChartsConfig = $isAnimationPlan
+            ? []
+            : $this->buildReviewChartsConfig(
+                $filteredPlanMeasures,
+                $plan->getProtocol()?->getId(),
+                $plan->getPlanMeasures()->toArray()
+            );
+        $animationCompliance = $isAnimationPlan
+            ? $this->animationComplianceService->summarize($allImplementationPlanMeasures)
+            : null;
 
         // Puntuación total y ganada para el protocolo del plan
         $scoreMax = 0;
@@ -744,10 +824,12 @@ class PlanController extends AbstractController
             'taxonomyPresenter'=> $this->taxonomyPresenter,
             'verificationSources' => $verificationSources,
             'collaborationSummary' => $this->collaborationService->buildProgressSummary($plan, $project),
-            'commitmentSummary' => $this->commitmentLevelService->buildSummary($plan, $project),
+            'commitmentSummary' => $isAnimationPlan ? null : $this->commitmentLevelService->buildSummary($plan, $project),
             'customMeasures'   => $this->collaborationService->getCustomMeasures($plan),
             'crewMembersByMeasure' => $this->buildCrewMembersByMeasure($plan, $project),
             'implementationGroups' => $implementationView['groups'],
+            'isAnimationPlan' => $isAnimationPlan,
+            'animationCompliance' => $animationCompliance,
             'positionById'     => $positionById,
             'filters'          => [
                 'protocol'          => $protocol,
@@ -814,6 +896,14 @@ class PlanController extends AbstractController
         }
         if (!$this->catalogResolver->isCatalogMeasure($measure, $project)) {
             return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
+        }
+        $requestsNotApplicable = ('decision' === $field && 'na' === $value)
+            || ('isApplicable' === $field && 'false' === $value);
+        if ($requestsNotApplicable && !$this->animationNotApplicableValidator->allows($project, $measure)) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => $this->t->trans('backend.plan.animation.not_applicable_forbidden'),
+            ], 422);
         }
 
         if (!$this->isReviewInlineFieldAllowed($project, $field)) {
@@ -3569,25 +3659,6 @@ HTML;
         return null;
     }
 
-    private function createVisibleMeasuresQueryBuilder(
-        MeasureRepository $measureRepository,
-        Protocol $protocol,
-        Project $project
-    ): QueryBuilder
-    {
-        $qb = $measureRepository->createQueryBuilder('m')
-            ->join('m.protocol', 'p')
-            ->leftJoin('m.category', 'c')
-            ->leftJoin('m.department', 'd')
-            ->leftJoin('m.measureBlock', 'mb')
-            ->addSelect('c', 'd', 'mb')
-            ->andWhere('p = :protocol')
-            ->setParameter('protocol', $protocol);
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
-
-        return $qb;
-    }
-
     /**
      * Construye la config de los 4 gráficos de review calculados por puntos.
      */
@@ -4063,9 +4134,15 @@ HTML;
             }
 
             $commercialPlans[$tier] = $commercialPlan;
-            $measureCounts[$tier] = $protocol instanceof Protocol
-                ? $measureRepository->countCatalogMeasuresForProtocol($protocol, $commercialPlan->getAllowedScores())
-                : null;
+            if ($phase === CommercialPhase::ELABORATION
+                && $protocol instanceof Protocol
+                && $this->animationPlanSynchronizer->supports($plan, $project)) {
+                $measureCounts[$tier] = count($this->animationPlanSynchronizer->resolveMeasuresForTier($plan, $project, $tier));
+            } else {
+                $measureCounts[$tier] = $protocol instanceof Protocol
+                    ? $measureRepository->countCatalogMeasuresForProtocol($protocol, $commercialPlan->getAllowedScores())
+                    : null;
+            }
         }
 
         $options = [];

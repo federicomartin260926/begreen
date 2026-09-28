@@ -7,9 +7,12 @@ use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
 use App\Enum\CommercialPhase;
+use App\Enum\ProjectCatalog;
 use App\Service\PlanMeasureCatalogResolver;
 use PHPUnit\Framework\TestCase;
 use App\Tests\Support\CommercialPlanTestHelpers;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 
 final class PlanMeasureCatalogResolverTest extends TestCase
 {
@@ -31,6 +34,15 @@ final class PlanMeasureCatalogResolverTest extends TestCase
             PlanMeasureCatalogResolver::BE_GREEN_MY_EVENT_IMPORT_VERSION,
             $resolver->getImportVersionForProtocol($eventProtocol)
         );
+
+        $project = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC);
+        foreach ([$filmProtocol, $eventProtocol] as $protocol) {
+            $measure = (new Measure())
+                ->setProtocol($protocol)
+                ->setImportVersion(PlanMeasureCatalogResolver::CATALOG_IMPORT_VERSION)
+                ->setScore(5);
+            self::assertTrue($resolver->isCatalogMeasure($measure, $project));
+        }
     }
 
     public function testCatalogMeasureDetectionSkipsLegacyBeGreenMyFilmRows(): void
@@ -64,6 +76,33 @@ final class PlanMeasureCatalogResolverTest extends TestCase
         self::assertSame(50, $this->countVisibleMeasures($resolver, $basicProject));
         self::assertSame(100, $this->countVisibleMeasures($resolver, $standardProject));
         self::assertSame(200, $this->countVisibleMeasures($resolver, $proProject));
+    }
+
+    public function testQueryFilterUsesOnlySelectorIdsForAnimationAndKeepsV23ForFilm(): void
+    {
+        $resolver = $this->createResolver();
+        $animationProject = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC)
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setFilmingGenre(ProjectCatalog::FILMING_GENRE_ANIMATION);
+        $animationQb = $this->queryBuilder();
+
+        $resolver->applyCatalogFilter($animationQb, 'm', 'p', $animationProject, [101]);
+
+        self::assertStringContainsString('m.id IN (:animationEligibleMeasureIds)', $animationQb->getDQL());
+        self::assertSame([101], $animationQb->getParameter('animationEligibleMeasureIds')?->getValue());
+        self::assertStringNotContainsString('m.score', $animationQb->getDQL());
+
+        $emptyQb = $this->queryBuilder();
+        $resolver->applyCatalogFilter($emptyQb, 'm', 'p', $animationProject, []);
+        self::assertStringContainsString('1 = 0', $emptyQb->getDQL());
+
+        $filmQb = $this->queryBuilder();
+        $filmProject = $this->createProjectWithTier(ProjectSubscription::TIER_BASIC)
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setFilmingGenre('ficcion');
+        $resolver->applyCatalogFilter($filmQb, 'm', 'p', $filmProject);
+        self::assertStringContainsString('m.importVersion = :catalogImportVersion', $filmQb->getDQL());
+        self::assertStringContainsString('m.score IN (:catalogAllowedScores)', $filmQb->getDQL());
     }
 
     private function createResolver(): PlanMeasureCatalogResolver
@@ -110,5 +149,13 @@ final class PlanMeasureCatalogResolverTest extends TestCase
         }
 
         return $count;
+    }
+
+    private function queryBuilder(): QueryBuilder
+    {
+        return (new QueryBuilder($this->createMock(EntityManagerInterface::class)))
+            ->select('m')
+            ->from(Measure::class, 'm')
+            ->leftJoin('m.protocol', 'p');
     }
 }

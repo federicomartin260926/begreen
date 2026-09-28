@@ -7,6 +7,9 @@ use App\Entity\Protocol;
 use App\Entity\Project;
 use App\Enum\CommercialPhase;
 use App\Service\ProjectFeatureGate;
+use App\Service\Animation\AnimationCatalogImporter;
+use App\Service\Animation\AnimationProjectMeasureResolver;
+use App\Enum\ProjectCatalog;
 use Doctrine\ORM\QueryBuilder;
 
 final class PlanMeasureCatalogResolver
@@ -22,8 +25,10 @@ final class PlanMeasureCatalogResolver
         self::BE_GREEN_MY_EVENT_CODE => self::CATALOG_IMPORT_VERSION,
     ];
 
-    public function __construct(private readonly ProjectFeatureGate $featureGate)
-    {
+    public function __construct(
+        private readonly ProjectFeatureGate $featureGate,
+        private readonly ?AnimationProjectMeasureResolver $animationMeasureResolver = null,
+    ) {
     }
 
     public function isCanonicalProtocol(?Protocol $protocol): bool
@@ -38,8 +43,34 @@ final class PlanMeasureCatalogResolver
         return $code !== null ? (self::IMPORT_VERSIONS_BY_PROTOCOL[$code] ?? null) : null;
     }
 
-    public function applyCatalogFilter(QueryBuilder $qb, string $measureAlias, string $protocolAlias, ?Project $project = null): void
+    /** @param list<int>|null $animationEligibleMeasureIds */
+    public function applyCatalogFilter(
+        QueryBuilder $qb,
+        string $measureAlias,
+        string $protocolAlias,
+        ?Project $project = null,
+        ?array $animationEligibleMeasureIds = null,
+    ): void
     {
+        $isAnimationProject = $project instanceof Project
+            && 'rodaje' === $project->getType()
+            && ProjectCatalog::FILMING_GENRE_ANIMATION === $project->getFilmingGenre();
+        if ($isAnimationProject) {
+            if (null === $animationEligibleMeasureIds) {
+                throw new \LogicException('El filtro Animation requiere los IDs elegibles resueltos por AnimationMeasureSelector.');
+            }
+            if ([] === $animationEligibleMeasureIds) {
+                $qb->andWhere('1 = 0');
+
+                return;
+            }
+
+            $qb->andWhere(sprintf('%s.id IN (:animationEligibleMeasureIds)', $measureAlias))
+                ->setParameter('animationEligibleMeasureIds', $animationEligibleMeasureIds);
+
+            return;
+        }
+
         $qb->andWhere(sprintf('(COALESCE(%s.code, \'\') NOT IN (:catalogProtocolCodes) OR (%s.importVersion = :catalogImportVersion%s))', $protocolAlias, $measureAlias, $project ? ' AND ' . $measureAlias . '.score IN (:catalogAllowedScores)' : ''))
             ->setParameter('catalogProtocolCodes', array_keys(self::IMPORT_VERSIONS_BY_PROTOCOL))
             ->setParameter('catalogImportVersion', self::CATALOG_IMPORT_VERSION);
@@ -52,6 +83,14 @@ final class PlanMeasureCatalogResolver
     public function isCatalogMeasure(Measure $measure, ?Project $project = null): bool
     {
         $protocol = $measure->getProtocol();
+        if (AnimationCatalogImporter::PROTOCOL_CODE === $protocol?->getCode()) {
+            if (!$project instanceof Project || null === $this->animationMeasureResolver) {
+                return false;
+            }
+
+            return $this->animationMeasureResolver->isEligible($project, $measure);
+        }
+
         if (!$this->isCanonicalProtocol($protocol)) {
             return true;
         }

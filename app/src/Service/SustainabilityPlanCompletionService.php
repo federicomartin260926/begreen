@@ -9,6 +9,9 @@ use App\Entity\Project;
 use App\Entity\Protocol;
 use App\Repository\MeasureRepository;
 use Doctrine\ORM\QueryBuilder;
+use App\Enum\ProjectCatalog;
+use App\Service\Animation\AnimationCatalogImporter;
+use App\Service\Animation\AnimationPlanSynchronizer;
 
 final class SustainabilityPlanCompletionService
 {
@@ -17,6 +20,7 @@ final class SustainabilityPlanCompletionService
         private readonly PlanMeasureCatalogResolver $catalogResolver,
         private readonly SustainabilityPlanMeasureOrderer $measureOrderer,
         private readonly PlanMeasureElaborationDecisionValidator $decisionValidator,
+        private readonly ?AnimationPlanSynchronizer $animationPlanSynchronizer = null,
     ) {
     }
 
@@ -60,6 +64,20 @@ final class SustainabilityPlanCompletionService
             return [];
         }
 
+        $isAnimationProject = 'rodaje' === $project->getType()
+            && ProjectCatalog::FILMING_GENRE_ANIMATION === $project->getFilmingGenre();
+        $isAnimationProtocol = AnimationCatalogImporter::PROTOCOL_CODE === $protocol->getCode();
+        if ($isAnimationProject || $isAnimationProtocol) {
+            if (null === $this->animationPlanSynchronizer) {
+                throw new \LogicException('No está disponible la sincronización del Plan Animation.');
+            }
+
+            return array_values(array_filter(array_map(
+                static fn (PlanMeasure $planMeasure): ?Measure => $planMeasure->getMeasure(),
+                $this->animationPlanSynchronizer->synchronize($plan, $project),
+            )));
+        }
+
         if ($protocol->getId() === null) {
             $measures = $this->buildVisibleMeasuresFromPlan($plan, $protocol);
         } else {
@@ -72,6 +90,19 @@ final class SustainabilityPlanCompletionService
             $protocol->getGroupingBy(),
             $this->catalogResolver->isCanonicalProtocol($protocol)
         );
+    }
+
+    /** @return array<int, int> map measure ID => one-based visible position */
+    public function getVisibleMeasurePositions(Plan $plan, Project $project, ?MeasureRepository $measureRepository = null): array
+    {
+        $positions = [];
+        foreach ($this->getVisibleMeasures($plan, $project, $measureRepository) as $index => $measure) {
+            if (null !== $measure->getId()) {
+                $positions[$measure->getId()] = $index + 1;
+            }
+        }
+
+        return $positions;
     }
 
     /**

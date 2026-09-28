@@ -7,7 +7,9 @@ use App\Form\{ProjectType, CrewMemberCollectionType};
 use App\Repository\{CrewDepartmentRepository, CrewPositionRepository, ProjectBillingDocumentRepository, ProjectRepository, EmissionRecordRepository, PlanRepository};
 use App\Security\ProjectVoter;
 use App\Enum\CommercialPhase;
+use App\Enum\ProjectCatalog;
 use App\Service\ActiveProjectService;
+use App\Service\Animation\AnimationProjectConfigurationUpdater;
 use App\Service\CrewCatalogScopeResolver;
 use App\Entity\ProjectSubscription;
 use App\Service\ProjectFeatureGate;
@@ -48,6 +50,7 @@ class ProjectController extends AbstractController
         private readonly SustainabilityPlanCollaborationService $collaborationService,
         private readonly SustainabilityPlanImplementationPhaseService $implementationPhaseService,
         private readonly ProjectCompanyLogoStorage $companyLogoStorage,
+        private readonly AnimationProjectConfigurationUpdater $animationConfigurationUpdater,
     ) {}
 
     #[Route('/', name: 'index')]
@@ -534,7 +537,8 @@ class ProjectController extends AbstractController
     public function new(
         Request $request,
         EntityManagerInterface $em,
-        ActiveProjectService $activeProjectService
+        ActiveProjectService $activeProjectService,
+        \App\Service\ProjectDocument\ProjectDocumentStorage $projectDocumentStorage
     ): Response {
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
@@ -557,6 +561,8 @@ class ProjectController extends AbstractController
         $this->normalizeProject($project);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $this->applyAnimationConfiguration($form, $project);
+
             /** @var User $creator */
             $creator = $this->getUser();
 
@@ -572,6 +578,7 @@ class ProjectController extends AbstractController
             $this->ensureBasicSubscriptions($project);
 
             $newLogoPaths = [];
+            $newProjectDocumentFiles = [];
             $connection = $em->getConnection();
             $connection->beginTransaction();
 
@@ -579,6 +586,13 @@ class ProjectController extends AbstractController
                 $em->persist($project);
                 $em->persist($membership);
                 $em->flush();
+
+                $this->processProjectDocuments(
+                    $form,
+                    $projectDocumentStorage,
+                    $newProjectDocumentFiles
+                );
+
                 [, $newLogoPaths] = $this->processCompanyLogos($form);
                 $em->flush();
                 $connection->commit();
@@ -589,7 +603,16 @@ class ProjectController extends AbstractController
                 foreach ($newLogoPaths as $path) {
                     $this->companyLogoStorage->delete($path);
                 }
-                $form->addError(new FormError('backend.projects.form.project_company.storage_error'));
+
+                foreach ($newProjectDocumentFiles as $document) {
+                    try {
+                        $projectDocumentStorage->delete($document);
+                    } catch (\Throwable) {
+                    }
+                    $document->clearFileMetadata();
+                }
+
+                $form->addError(new FormError('backend.projects.form.documents.validation.storage_error'));
 
                 return $this->render('backend/project/form.html.twig', [
                     'form' => $form->createView(),
@@ -610,7 +633,12 @@ class ProjectController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'edit')]
-    public function edit(Project $project, Request $request, EntityManagerInterface $em): Response
+    public function edit(
+        Project $project,
+        Request $request,
+        EntityManagerInterface $em,
+        \App\Service\ProjectDocument\ProjectDocumentStorage $projectDocumentStorage
+    ): Response
     {
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
         $wizardStep = min(5, max(1, (int) $request->request->get('_wizard_step', $request->query->get('step', 1))));
@@ -623,6 +651,8 @@ class ProjectController extends AbstractController
             $originalPhases->add($phaseDate);
         }
         $originalCompanies = new ArrayCollection($project->getProjectCompanies()->toArray());
+        $originalDocuments = new ArrayCollection($project->getProjectDocuments()->toArray());
+
         $originalLogoPaths = [];
         foreach ($originalCompanies as $company) {
             $originalLogoPaths[spl_object_id($company)] = $company->getLogoPath();
@@ -636,11 +666,19 @@ class ProjectController extends AbstractController
 
         $canSaveCurrentStep = false;
         if ($form->isSubmitted()) {
+            $projectDocumentsValid = !$form->has('projectDocuments')
+                || $form->get('projectDocuments')->isValid();
+
             $canSaveCurrentStep = $form->isValid()
-                || ($wizardStep < 5 && !$this->hasErrorsForWizardStep($form, $wizardStep));
+                || (
+                    $wizardStep < 5
+                    && $projectDocumentsValid
+                    && !$this->hasErrorsForWizardStep($form, $wizardStep)
+                );
         }
 
         if ($canSaveCurrentStep) {
+            $this->applyAnimationConfiguration($form, $project);
 
             // Eliminar fases eliminadas en el formulario
             foreach ($originalPhases as $originalPhase) {
@@ -656,13 +694,31 @@ class ProjectController extends AbstractController
                 }
             }
 
+            $removedProjectDocumentStoredNames = [];
+            foreach ($originalDocuments as $originalDocument) {
+                if (!$project->getProjectDocuments()->contains($originalDocument)
+                    && $originalDocument instanceof \App\Entity\ProjectDocument
+                    && $originalDocument->isFile()
+                    && null !== $originalDocument->getStoredName()) {
+                    $removedProjectDocumentStoredNames[] = $originalDocument->getStoredName();
+                }
+            }
+
             $newLogoPaths = [];
             $replacedLogoPaths = [];
+            $newProjectDocumentFiles = [];
             $connection = $em->getConnection();
             $connection->beginTransaction();
 
             try {
                 $em->flush();
+
+                $this->processProjectDocuments(
+                    $form,
+                    $projectDocumentStorage,
+                    $newProjectDocumentFiles
+                );
+
                 [$replacedLogoPaths, $newLogoPaths] = $this->processCompanyLogos($form);
                 $em->flush();
                 $connection->commit();
@@ -673,6 +729,15 @@ class ProjectController extends AbstractController
                 foreach ($newLogoPaths as $path) {
                     $this->companyLogoStorage->delete($path);
                 }
+
+                foreach ($newProjectDocumentFiles as $document) {
+                    try {
+                        $projectDocumentStorage->delete($document);
+                    } catch (\Throwable) {
+                    }
+                    $document->clearFileMetadata();
+                }
+
                 foreach ($project->getProjectCompanies() as $company) {
                     $company->setLogoPath($originalLogoPaths[spl_object_id($company)] ?? null);
                 }
@@ -697,6 +762,17 @@ class ProjectController extends AbstractController
 
             foreach (array_unique([...$removedLogoPaths, ...$replacedLogoPaths]) as $path) {
                 $this->companyLogoStorage->delete($path);
+            }
+
+            $projectId = $project->getId();
+            if (null !== $projectId) {
+                foreach (array_unique($removedProjectDocumentStoredNames) as $storedName) {
+                    try {
+                        $projectDocumentStorage->deleteStoredFile($projectId, $storedName);
+                    } catch (\Throwable) {
+                        $this->addFlash('warning', 'backend.projects.form.documents.validation.storage_cleanup_error');
+                    }
+                }
             }
 
             $this->addFlash('success', 'backend.projects.flash.updated');
@@ -811,6 +887,12 @@ class ProjectController extends AbstractController
             ->setEcoManagerStatus($project->getEcoManagerStatus())
             ->setEpisodios($project->getEpisodios())
             ->setDuracionEpisodio($project->getDuracionEpisodio());
+
+        if (!$this->animationConfigurationUpdater->copyProjectConfiguration($project, $newProject)) {
+            $this->addFlash('danger', 'backend.projects.flash.clone_animation_configuration_missing');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
 
         foreach ($project->getProjectCompanies() as $company) {
             $newCompany = (new ProjectCompany())
@@ -1480,7 +1562,12 @@ class ProjectController extends AbstractController
     }
 
     #[Route('/{id}/delete', name: 'delete', methods: ['POST'])]
-    public function delete(Project $project, Request $request, EntityManagerInterface $em): Response
+    public function delete(
+        Project $project,
+        Request $request,
+        EntityManagerInterface $em,
+        \App\Service\ProjectDocument\ProjectDocumentStorage $projectDocumentStorage
+    ): Response
     {
         // Autorización: ADMIN o miembro del proyecto
         if (!$this->isGranted('ROLE_ADMIN')) {
@@ -1518,10 +1605,29 @@ class ProjectController extends AbstractController
                     static fn (ProjectCompany $company): ?string => $company->getLogoPath(),
                     $project->getProjectCompanies()->toArray(),
                 );
+
+                $projectId = $project->getId();
+                $projectDocumentStoredNames = [];
+                foreach ($project->getProjectDocuments() as $document) {
+                    if ($document->isFile() && null !== $document->getStoredName()) {
+                        $projectDocumentStoredNames[] = $document->getStoredName();
+                    }
+                }
+
                 $em->remove($project);
                 $em->flush();
+
                 foreach ($companyLogoPaths as $companyLogoPath) {
                     $this->companyLogoStorage->delete($companyLogoPath);
+                }
+
+                if (null !== $projectId) {
+                    foreach ($projectDocumentStoredNames as $storedName) {
+                        try {
+                            $projectDocumentStorage->deleteStoredFile($projectId, $storedName);
+                        } catch (\Throwable) {
+                        }
+                    }
                 }
                 $this->addFlash('success', 'backend.projects.flash.deleted');
             } catch (\Throwable $e) {
@@ -1530,6 +1636,39 @@ class ProjectController extends AbstractController
         }
 
         return $this->redirectToRoute('backend_project_index');
+    }
+
+    /**
+     * @param list<\App\Entity\ProjectDocument> $storedDocuments
+     */
+    private function processProjectDocuments(
+        FormInterface $form,
+        \App\Service\ProjectDocument\ProjectDocumentStorage $storage,
+        array &$storedDocuments
+    ): void {
+        foreach ($form->get('projectDocuments')->all() as $documentForm) {
+            if (!$documentForm->isValid()) {
+                continue;
+            }
+
+            $document = $documentForm->getData();
+            if (!$document instanceof \App\Entity\ProjectDocument) {
+                continue;
+            }
+
+            if (!$document->isFile()) {
+                $document->clearFileMetadata();
+                continue;
+            }
+
+            $file = $documentForm->get('file')->getData();
+            if (!$file instanceof UploadedFile) {
+                continue;
+            }
+
+            $storage->store($document, $file);
+            $storedDocuments[] = $document;
+        }
     }
 
     /** @return array{0: list<string>, 1: list<string>} */
@@ -1574,6 +1713,7 @@ class ProjectController extends AbstractController
             'filmingType' => 1,
             'filmingGenre' => 1,
             'distributionMedia' => 1,
+            'animationConfiguration' => 1,
             'episodios' => 1,
             'duracionEpisodio' => 1,
             'eventTypePrimary' => 1,
@@ -1583,6 +1723,7 @@ class ProjectController extends AbstractController
             'mainLocation' => 2,
             'presupuesto' => 2,
             'projectCompanies' => 2,
+            'projectDocuments' => 2,
             'phaseDates' => 3,
             'projectFundingSources' => 4,
             'ecoManagerStatus' => 4,
@@ -1622,6 +1763,30 @@ class ProjectController extends AbstractController
         }
 
         return false;
+    }
+
+    private function applyAnimationConfiguration(FormInterface $form, Project $project): void
+    {
+        if ('rodaje' !== $project->getType()
+            || ProjectCatalog::FILMING_GENRE_ANIMATION !== $project->getFilmingGenre()) {
+            return;
+        }
+
+        $animationForm = $form->get('animationConfiguration');
+        $data = $animationForm->getData();
+        if (!is_array($data) || !$animationForm->isValid()) {
+            return;
+        }
+
+        $this->animationConfigurationUpdater->updateProject(
+            project: $project,
+            techniques: is_array($data['techniques'] ?? null) ? $data['techniques'] : [],
+            structure: is_string($data['structure'] ?? null) ? $data['structure'] : null,
+            shootingAnswered: is_bool($data['shootingAnswered'] ?? null) ? $data['shootingAnswered'] : null,
+            processingLevel: is_string($data['processingLevel'] ?? null) ? $data['processingLevel'] : null,
+            processingInfrastructures: is_array($data['processingInfrastructures'] ?? null) ? $data['processingInfrastructures'] : [],
+            usesAi: is_bool($data['usesAi'] ?? null) ? $data['usesAi'] : null,
+        );
     }
 
     #[Route('/select-project/{id}', name: 'select_project', methods: ['POST','GET'], requirements: ['id' => '\d+'])]

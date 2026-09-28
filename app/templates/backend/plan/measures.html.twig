@@ -223,9 +223,10 @@
                         planMeasures: planMeasures,
                         currentBlockAnswer: currentBlockAnswer,
                         projectType: project.type|default(null),
+                        isAnimation: isAnimationPlan|default(false),
                         measureNavigation: measureNavigation
                     } %}
-                    {% if commitmentSummary is defined %}
+                    {% if commitmentSummary is not null %}
                         {% include 'backend/plan/_commitment_growth_footer.html.twig' with {
                             variant: 'full',
                             showHeader: false,

@@ -557,6 +557,7 @@ backend:
       created: "Project created successfully."
       updated: "Project updated successfully."
       cloned: "Project cloned successfully."
+      clone_animation_configuration_missing: "The Animation project cannot be cloned because it has no persisted configuration."
       crew_updated: "Crew updated successfully."
       crew_import_no_file: "No file selected."
       crew_import_ok: "Crew members imported successfully."
@@ -667,7 +668,7 @@ backend:
         step_4: "Funding"
         step_5: "Summary"
         overview_label: "Project details"
-        project_label: "Filming or event type"
+        project_label: "Project configuration"
         general_label: "General information"
         dates_label: "Timeline"
         funding_label: "Funding"
@@ -728,12 +729,12 @@ backend:
       start_date: "Start date"
       end_date: "End date"
 
-      subsection_filming: "Filming fields"
+      subsection_filming: "Audiovisual data"
       subsection_event: "Event fields"
       subsection_common: "Common fields"
 
       filming_type:
-        label: "Filming type"
+        label: "Format"
         options:
           feature: "Feature film"
           short: "Short film"
@@ -747,7 +748,7 @@ backend:
           shooting: "Shooting / photo session"
 
       filming_genre:
-        label: "Genre / Format"
+        label: "Audiovisual genre"
         groups:
           film_tv: "Genre (fiction/series)"
           tv_prog: "Format (TV program)"
@@ -802,8 +803,8 @@ backend:
       budget_eur: "Budget (€)"
 
       distribution_media:
-        label: "Distribution media"
-        title: "Distribution media"
+        label: "Distribution / exhibition media"
+        title: "Distribution / exhibition media"
         help: "You can select multiple media."
         options:
           cinema: "Cinema"
@@ -813,6 +814,18 @@ backend:
           social_media: "Social media"
           photography: "Photography"
           radio: "Radio"
+          interactive: "Interactive"
+
+      animation:
+        title: "Animation configuration"
+        help: "Define the technical characteristics of the animation production."
+        techniques: "Techniques"
+        shooting: "Does the production include filming, capture or physical sessions?"
+        shooting_forced_notice: "One of the selected techniques requires filming or capture."
+        structure: "Structure"
+        processing_level: "Processing level"
+        processing_infrastructures: "Processing infrastructure"
+        uses_ai: "Does the production use artificial intelligence?"
 
       eco_manager_status:
         label: "Eco Manager status"
@@ -913,7 +926,7 @@ backend:
       shoot: "Shoot"
       postproduction: "Post-production"
     type:
-      rodaje: Filming
+      rodaje: "Audiovisual"
       evento: Event
   subscription:
     status:
@@ -1220,6 +1233,8 @@ backend:
       add_custom_measure: "Add custom measure"
       continue_without_adding: "Continue without adding"
       continue: "Continue"
+      single_protocol_copy: "Start the %protocol% Sustainability Plan for your project."
+      single_protocol_button: "Start plan"
       go_to_elaboration_close: "Finish Elaboration and view summary"
       custom_measures_title: "Added measures"
       custom_measures_empty: "You haven’t added any custom measures yet."
@@ -1309,9 +1324,27 @@ backend:
           Title: %title%
           Description: %description%
           Date: %date%
+    animation:
+      current_measures: "Current Animation measures"
+      expected_impact: "Expected impact"
+      effort_cost: "Effort / cost"
+      complexity: "Complexity"
+      operational_condition: "Operational condition"
+      not_applicable_forbidden: "This Animation measure cannot be marked Not applicable."
+      compliance:
+        title: "Animation compliance"
+        fulfilled: "Fulfilled"
+        not_fulfilled: "Not fulfilled"
+        not_applicable: "Not applicable"
+        pending: "Pending"
+        in_progress: "In progress"
+        discarded: "Discarded"
+        no_evaluable_measures: "No evaluable measures"
     flash:
       select_protocol_required: "You must select a protocol."
       invalid_protocol: "Invalid protocol."
+      animation_protocol_unavailable: "The Be Green My Animation protocol is unavailable."
+      inconsistent_project_protocol: "The Plan protocol does not match the project's current type and genre."
       select_protocol_to_continue: "Select a protocol to continue."
       completed: "Plan completed. You can review and export it!"
       saved_incomplete: "Saved. There are still measures to be answered."
@@ -3449,3 +3482,59 @@ pdf_grouped_visual:
 "backend.emission.material_v1.flash.created": "Material record created successfully."
 "backend.emission.material_v1.flash.updated": "Material record updated successfully."
 "backend.emission.material_v1.duplicate_action": "Duplicate"
+
+'backend.projects.form.documents.title': 'Project documentation'
+'backend.projects.form.documents.optional': 'Optional'
+'backend.projects.form.documents.help': 'You can upload reference documentation now or add it later.'
+'backend.projects.form.documents.allowed_formats': 'Accepted formats:'
+'backend.projects.form.documents.max_size': 'Maximum %size% per file.'
+'backend.projects.form.documents.add_file': '+ Upload file'
+'backend.projects.form.documents.add_link': '+ Add link'
+'backend.projects.form.documents.type': 'Document type'
+'backend.projects.form.documents.type_placeholder': 'Select a type'
+'backend.projects.form.documents.other_type': 'Specify'
+'backend.projects.form.documents.file': 'File'
+'backend.projects.form.documents.url': 'Link'
+'backend.projects.form.documents.validation.other_type_required': 'Specify the document type.'
+'backend.projects.form.documents.validation.file_with_url': 'A file document cannot contain a link.'
+'backend.projects.form.documents.validation.file_required': 'Select a file.'
+'backend.projects.form.documents.validation.link_with_file': 'A link cannot contain a file.'
+'backend.projects.form.documents.validation.url_required': 'Enter a valid link.'
+'backend.projects.form.documents.validation.kind_change_not_allowed': 'An existing file cannot be directly converted into a link.'
+'backend.projects.form.documents.validation.animation_type_forbidden': 'This document type is only available for Animation projects.'
+'backend.projects.form.documents.validation.storage_error': 'The project documentation could not be stored.'
+
+'backend.projects.form.documents.types.script': 'Script'
+'backend.projects.form.documents.types.treatment': 'Treatment'
+'backend.projects.form.documents.types.briefing': 'Briefing'
+'backend.projects.form.documents.types.storyboard': 'Storyboard'
+'backend.projects.form.documents.types.budget': 'Budget'
+'backend.projects.form.documents.types.report_dossier': 'Report / dossier'
+'backend.projects.form.documents.types.ppm_dossier': 'PPM dossier'
+'backend.projects.form.documents.types.shooting_plan': 'Shooting plan'
+'backend.projects.form.documents.types.production_plan': 'Production plan'
+'backend.projects.form.documents.types.schedule': 'Schedule'
+'backend.projects.form.documents.types.production_breakdown': 'Production breakdown'
+'backend.projects.form.documents.types.equipment_list': 'Equipment list'
+'backend.projects.form.documents.types.locations': 'Locations'
+'backend.projects.form.documents.types.suppliers': 'Suppliers'
+'backend.projects.form.documents.types.delivery_specs': 'Delivery specifications'
+'backend.projects.form.documents.types.client_platform_requirements': 'Client / platform requirements'
+'backend.projects.form.documents.types.animatic': 'Animatic'
+'backend.projects.form.documents.types.series_project_bible': 'Series / project bible'
+'backend.projects.form.documents.types.concept_visual_design': 'Concept art / visual design'
+'backend.projects.form.documents.types.software_hardware_list': 'Software / hardware list'
+'backend.projects.form.documents.types.pipeline_docs': 'Pipeline / technical documentation'
+'backend.projects.form.documents.types.asset_list': 'Asset list'
+'backend.projects.form.documents.types.shot_list': 'Shot list'
+'backend.projects.form.documents.types.render_plan': 'Render plan'
+'backend.projects.form.documents.types.capture_mocap_plan': 'Capture / mocap plan'
+'backend.projects.form.documents.types.materials_list': 'Materials list'
+'backend.projects.form.documents.types.other': 'Other'
+'backend.projects.form.documents.summary_value': 'File / link'
+'backend.projects.form.documents.validation.file_too_large': 'The file exceeds the maximum allowed size.'
+'backend.projects.form.documents.validation.file_type_not_allowed': 'This file format is not allowed.'
+'backend.projects.form.documents.validation.storage_cleanup_error': 'The project was saved, but an old project document file could not be removed.'
+
+'backend.projects.form.project_kind.audiovisual': 'Audiovisual'
+'backend.projects.form.project_kind.event': 'Event'

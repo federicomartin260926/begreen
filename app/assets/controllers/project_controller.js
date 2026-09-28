@@ -12,6 +12,10 @@ export default class extends Controller {
     "filmingGenre",
     "filmingGenreRow",
     "eventModality",
+    "animationConfigurationRow",
+    "animationTechnique",
+    "animationShootingChoice",
+    "animationShootingNotice",
   ];
 
   static values = {
@@ -38,13 +42,14 @@ export default class extends Controller {
     this.updateLabels();
     this.toggleAddButton();
     this.toggleConditionalRows();
-    this.setupFilmingGenreOptions(); // inicializa opciones según el valor actual
+    this.animationShootingForced = null;
+    this.updateAnimationShooting();
   }
 
   typeTargetConnected() {
     this.updateLabels();
     this.toggleConditionalRows();
-    this.setupFilmingGenreOptions();
+    this.updateAnimationShooting();
   }
 
   // === Mostrar/Ocultar por tipo de proyecto
@@ -67,12 +72,13 @@ export default class extends Controller {
 
   matchesRule(rule, currentType) {
     if (!rule) return true;
-    const parts = rule.split(",").map((s) => s.trim());
-    for (const part of parts) {
-      const [k, v] = part.split(":").map((s) => s.trim());
-      if (this.getFieldValue(k) === v) return true;
-    }
-    return false;
+    return rule.split(",").some((alternative) => alternative
+      .split("&")
+      .map((condition) => condition.trim())
+      .every((condition) => {
+        const [fieldName, expectedValue] = condition.split(":").map((part) => part.trim());
+        return fieldName && expectedValue && this.getFieldValue(fieldName) === expectedValue;
+      }));
   }
 
   getFieldValue(fieldName) {
@@ -106,6 +112,8 @@ export default class extends Controller {
     if (
       event.target === this.typeTarget ||
       event.target === this.filmingTypeTarget ||
+      (this.hasFilmingGenreTarget && event.target === this.filmingGenreTarget) ||
+      (this.hasAnimationTechniqueTarget && this.animationTechniqueTargets.includes(event.target)) ||
       (this.hasEventModalityTarget && event.target === this.eventModalityTarget)
     ) {
       if (event.target === this.typeTarget) {
@@ -118,54 +126,45 @@ export default class extends Controller {
 
       this.updateLabels();
       this.toggleConditionalRows();
-      this.setupFilmingGenreOptions();
+      this.updateAnimationShooting();
       this.emitChanged();
     }
   }
 
-  // === Filming type -> genre options
-  onFilmingTypeChange() {
-    this.setupFilmingGenreOptions();
+  updateAnimationShooting() {
+    if (!this.hasAnimationShootingChoiceTarget) return;
+
+    const animationActive = this.hasTypeTarget
+      && this.typeTarget.value === "rodaje"
+      && this.hasFilmingGenreTarget
+      && this.filmingGenreTarget.value === "animacion";
+    const forced = this.hasForcedAnimationTechnique();
+
+    if (forced) {
+      this.animationShootingChoiceTargets.forEach((choice) => {
+        choice.checked = choice.value === "1";
+      });
+    } else if (this.animationShootingForced === true) {
+      this.animationShootingChoiceTargets.forEach((choice) => {
+        choice.checked = false;
+      });
+    }
+
+    this.animationShootingChoiceTargets.forEach((choice) => {
+      choice.disabled = !animationActive || forced;
+    });
+    if (this.hasAnimationShootingNoticeTarget) {
+      this.animationShootingNoticeTarget.classList.toggle("d-none", !animationActive || !forced);
+    }
+
+    this.animationShootingForced = forced;
   }
 
-  setupFilmingGenreOptions() {
-    if (!this.hasFilmingTypeTarget || !this.hasFilmingGenreTarget) return;
-
-    const type = this.filmingTypeTarget.value;
-    const genericTypes = new Set(["feature", "short", "tv_series"]);
-    const tvProgramTypes = new Set(["tv_program"]);
-    const showAllowed = genericTypes.has(type) || tvProgramTypes.has(type);
-    const allowed = genericTypes.has(type)
-      ? new Set(["ficcion", "documental", "animacion", "experimental"])
-      : tvProgramTypes.has(type)
-        ? new Set(["informativo", "entretenimiento", "cultural", "educativo", "religioso"])
-        : new Set();
-
-    if (this.hasFilmingGenreRowTarget) {
-      this.filmingGenreRowTarget.classList.toggle("d-none", !showAllowed);
-      this.filmingGenreRowTarget
-        .querySelectorAll("select, input, textarea, button")
-        .forEach((el) => (el.disabled = !showAllowed));
-    }
-
-    const select = this.filmingGenreTarget;
-    const current = select.value;
-
-    Array.from(select.options).forEach((opt) => {
-      if (opt.value === "") {
-        opt.hidden = false;
-        opt.disabled = false;
-        return;
-      }
-
-      const isAllowed = allowed.has(opt.value);
-      opt.hidden = !isAllowed;
-      opt.disabled = !isAllowed;
-    });
-
-    if (current && !allowed.has(current)) {
-      select.value = "";
-    }
+  hasForcedAnimationTechnique() {
+    return this.hasAnimationTechniqueTarget
+      && this.animationTechniqueTargets.some((technique) => (
+        technique.checked && technique.dataset.forceShooting === "1"
+      ));
   }
 
   syncTypeSpecificFields() {

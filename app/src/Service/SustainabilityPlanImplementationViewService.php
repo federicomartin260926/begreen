@@ -31,6 +31,7 @@ final class SustainabilityPlanImplementationViewService
         string $state,
         ?int $openMeasureId = null,
         ?string $requestedOpenCategory = null,
+        bool $preserveInputOrder = false,
     ): array {
         $progressByCategory = [];
 
@@ -39,7 +40,9 @@ final class SustainabilityPlanImplementationViewService
                 continue;
             }
 
-            $categoryKey = $this->categoryKey($planMeasure->getMeasure()?->getCategory());
+            $categoryKey = $preserveInputOrder
+                ? 'animation'
+                : $this->categoryKey($planMeasure->getMeasure()?->getCategory());
             $progressByCategory[$categoryKey] ??= $this->emptyProgress();
             ++$progressByCategory[$categoryKey]['totalComputable'];
 
@@ -98,7 +101,9 @@ final class SustainabilityPlanImplementationViewService
             ];
         }
 
-        $orderedMeasures = $this->measureOrderer->sortVisibleMeasures($visibleMeasures, Protocol::GROUP_BY_CATEGORY);
+        $orderedMeasures = $preserveInputOrder
+            ? $visibleMeasures
+            : $this->measureOrderer->sortVisibleMeasures($visibleMeasures, Protocol::GROUP_BY_CATEGORY);
         $groupsByKey = [];
         $openMeasureCategory = null;
 
@@ -109,10 +114,12 @@ final class SustainabilityPlanImplementationViewService
             }
 
             $category = $measure->getCategory();
-            $categoryKey = $this->categoryKey($category);
+            $categoryKey = $preserveInputOrder ? 'animation' : $this->categoryKey($category);
             $groupsByKey[$categoryKey] ??= [
                 'key' => $categoryKey,
-                'name' => $category?->getName() ?? $this->translator->trans('backend.plan.review.implementation_categories.uncategorized'),
+                'name' => $preserveInputOrder
+                    ? $this->translator->trans('backend.plan.animation.current_measures')
+                    : ($category?->getName() ?? $this->translator->trans('backend.plan.review.implementation_categories.uncategorized')),
                 'sortOrder' => $category?->getSortOrder() ?? PHP_INT_MAX,
                 'categoryId' => $category?->getId(),
                 'items' => [],
@@ -127,7 +134,9 @@ final class SustainabilityPlanImplementationViewService
         }
 
         $groups = array_values($groupsByKey);
-        usort($groups, fn (array $left, array $right): int => $this->compareGroups($left, $right));
+        if (!$preserveInputOrder) {
+            usort($groups, fn (array $left, array $right): int => $this->compareGroups($left, $right));
+        }
 
         $visibleKeys = array_fill_keys(array_column($groups, 'key'), true);
         $openCategory = $openMeasureCategory;

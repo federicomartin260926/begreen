@@ -113,6 +113,7 @@ final class ProjectControllerDashboardTest extends KernelTestCase
             $container->get(\App\Service\SustainabilityPlanCollaborationService::class),
             $container->get(\App\Service\SustainabilityPlanImplementationPhaseService::class),
             $container->get(ProjectCompanyLogoStorage::class),
+            $container->get(\App\Service\Animation\AnimationProjectConfigurationUpdater::class),
         );
         $controller->setContainer($container);
 

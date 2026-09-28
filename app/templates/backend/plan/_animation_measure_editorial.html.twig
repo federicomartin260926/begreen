@@ -1,0 +1,43 @@
+{% set metadata = measure.animationMetadata %}
+{% if metadata %}
+    <div class="animation-measure-editorial d-flex flex-column gap-3">
+        {% if measure.description %}
+            <details class="border rounded-3 bg-white p-2">
+                <summary class="fw-semibold">{{ 'backend.plan.measure.description'|trans }}</summary>
+                <div class="pt-2 text-body-secondary">{{ measure.description }}</div>
+            </details>
+        {% endif %}
+
+        {% if measure.implementation %}
+            <details class="border rounded-3 bg-white p-2">
+                <summary class="fw-semibold">{{ 'backend.plan.measure.implementation'|trans }}</summary>
+                <div class="pt-2 text-body-secondary">{{ measure.implementation }}</div>
+            </details>
+        {% endif %}
+
+        {% if metadata.operationalCondition %}
+            <div class="alert alert-info mb-0 py-2">
+                <div class="fw-semibold small mb-1">{{ 'backend.plan.animation.operational_condition'|trans }}</div>
+                <div>{{ metadata.operationalCondition }}</div>
+            </div>
+        {% endif %}
+
+        <div class="d-flex flex-wrap gap-2">
+            {% if metadata.expectedImpact %}
+                <span class="badge bg-success-subtle text-success-emphasis border">
+                    {{ 'backend.plan.animation.expected_impact'|trans }}: {{ metadata.expectedImpact }}
+                </span>
+            {% endif %}
+            {% if metadata.effortCost %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border">
+                    {{ 'backend.plan.animation.effort_cost'|trans }}: {{ metadata.effortCost }}
+                </span>
+            {% endif %}
+            {% if metadata.complexity %}
+                <span class="badge bg-info-subtle text-info-emphasis border">
+                    {{ 'backend.plan.animation.complexity'|trans }}: {{ metadata.complexity }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}

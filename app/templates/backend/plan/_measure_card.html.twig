@@ -80,27 +80,32 @@
                         '%total%': measureNavigation.total
                     }) }}
                 </div>
-                <div class="text-muted text-nowrap">{{ 'backend.plan.score.total_inline'|trans({'%gained%': scoreGained|default(0), '%max%': scoreMax|default(0)}) }}</div>
-                {% set measureScore = measure.score is not null ? measure.score : 0 %}
-                <div
-                    class="text-warning text-nowrap"
-                    role="img"
-                    aria-label="{{ 'backend.plan.score.current_inline'|trans({'%score%': measureScore}) }}">
-                    {% if measureScore > 0 %}
-                        {% for point in 1..measureScore %}
-                            <i class="bi bi-star-fill" aria-hidden="true"></i>
-                        {% endfor %}
-                    {% else %}
-                        <span class="text-muted">0 {{ 'backend.common.points'|trans }}</span>
-                    {% endif %}
-                </div>
+                {% if not isAnimation|default(false) %}
+                    <div class="text-muted text-nowrap">{{ 'backend.plan.score.total_inline'|trans({'%gained%': scoreGained|default(0), '%max%': scoreMax|default(0)}) }}</div>
+                    {% set measureScore = measure.score is not null ? measure.score : 0 %}
+                    <div
+                        class="text-warning text-nowrap"
+                        role="img"
+                        aria-label="{{ 'backend.plan.score.current_inline'|trans({'%score%': measureScore}) }}">
+                        {% if measureScore > 0 %}
+                            {% for point in 1..measureScore %}
+                                <i class="bi bi-star-fill" aria-hidden="true"></i>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">0 {{ 'backend.common.points'|trans }}</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         {% endif %}
     </div>
 
-    <h5 class="fw-semibold mb-2">{{ measure.questionText ?: measure.name }}</h5>
+    <h5 class="fw-semibold mb-2">{{ isAnimation|default(false) ? measure.name : (measure.questionText ?: measure.name) }}</h5>
 
     <div class="measure-details bg-white shadow-sm rounded-3 p-3">
+        {% if isAnimation|default(false) %}
+            {% include 'backend/plan/_animation_measure_editorial.html.twig' with {measure: measure} only %}
+        {% else %}
         <dl class="row mb-0">
             {% if measure.implementation and projectType|default(null) != 'evento' %}
                 <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.implementation'|trans }}</dt>
@@ -125,6 +130,7 @@
                 showVerificationSources: false
             } %}
         </dl>
+        {% endif %}
     </div>
 
     {# Busca el PlanMeasure de esta medida #}
@@ -178,7 +184,7 @@
                     {{ 'backend.common.no'|trans }}
                 </button>
 
-                <button
+                {% if not isAnimation|default(false) or (measure.animationMetadata and measure.animationMetadata.notApplicableAllowed) %}<button
                     type="button"
                     class="btn {% if decision == 'na' %}btn-secondary{% else %}btn-outline-secondary{% endif %} px-4"
                     data-plan-measures-target="actionBtn"
@@ -187,7 +193,7 @@
                     data-value="na">
                     {% if decision == 'na' %}<i class="bi bi-check-lg me-1"></i>{% endif %}
                     {{ 'backend.plan.answers.not_applicable_project'|trans }}
-                </button>
+                </button>{% endif %}
             </div>
 
             {# 2) ¿Crítica? (se renderiza oculta hasta que Aplica = true) #}

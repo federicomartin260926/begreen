@@ -559,6 +559,7 @@ backend:
       created: "Proyecto creado correctamente."
       updated: "Proyecto actualizado correctamente."
       cloned: "Proyecto clonado correctamente."
+      clone_animation_configuration_missing: "No se puede clonar el proyecto Animation porque no tiene una configuración persistida."
       crew_updated: "Equipo técnico actualizado correctamente."
       crew_import_no_file: "No se ha seleccionado ningún archivo."
       crew_import_ok: "Miembros importados correctamente."
@@ -669,7 +670,7 @@ backend:
         step_4: "Financiación"
         step_5: "Resumen"
         overview_label: "Datos del proyecto"
-        project_label: "Tipo de rodaje o evento"
+        project_label: "Configuración del proyecto"
         general_label: "Información general"
         dates_label: "Calendario"
         funding_label: "Financiación"
@@ -730,12 +731,12 @@ backend:
       start_date: "Fecha de inicio"
       end_date: "Fecha de fin"
 
-      subsection_filming: "Campos del rodaje"
+      subsection_filming: "Datos audiovisuales"
       subsection_event: "Campos del evento"
       subsection_common: "Campos comunes"
 
       filming_type:
-        label: "Tipo de rodaje"
+        label: "Formato"
         options:
           feature: "Largometraje"
           short: "Cortometraje"
@@ -749,7 +750,7 @@ backend:
           shooting: "Shooting / sesión fotográfica"
 
       filming_genre:
-        label: "Género / Formato"
+        label: "Género audiovisual"
         groups:
           film_tv: "Género (ficción/serie)"
           tv_prog: "Formato (programa TV)"
@@ -804,8 +805,8 @@ backend:
       budget_eur: "Presupuesto (€)"
 
       distribution_media:
-        label: "Medios de distribución"
-        title: "Medios de distribución"
+        label: "Medios de distribución / exhibición"
+        title: "Medios de distribución / exhibición"
         help: "Puedes seleccionar varios medios."
         options:
           cinema: "Cine"
@@ -815,6 +816,18 @@ backend:
           social_media: "Redes sociales"
           photography: "Fotografía"
           radio: "Radio"
+          interactive: "Interactivo"
+
+      animation:
+        title: "Configuración de animación"
+        help: "Define las características técnicas de la producción de animación."
+        techniques: "Técnicas"
+        shooting: "¿La producción incluye rodaje, captura o sesiones físicas?"
+        shooting_forced_notice: "Una de las técnicas seleccionadas requiere rodaje o captura."
+        structure: "Estructura"
+        processing_level: "Nivel de procesamiento"
+        processing_infrastructures: "Infraestructura de procesamiento"
+        uses_ai: "¿La producción utiliza inteligencia artificial?"
 
       eco_manager_status:
         label: "Estado del Eco Manager"
@@ -915,7 +928,7 @@ backend:
       shoot: "Rodaje"
       postproduction: "Postproducción"
     type:
-      rodaje: Rodaje
+      rodaje: "Audiovisual"
       evento: Evento
   subscription:
     status:
@@ -1312,9 +1325,27 @@ backend:
           Título: %title%
           Descripción: %description%
           Fecha: %date%
+    animation:
+      current_measures: "Medidas Animation actuales"
+      expected_impact: "Impacto esperado"
+      effort_cost: "Esfuerzo / coste"
+      complexity: "Complejidad"
+      operational_condition: "Condición operativa"
+      not_applicable_forbidden: "Esta medida Animation no permite marcar No aplicable."
+      compliance:
+        title: "Cumplimiento Animation"
+        fulfilled: "Cumplidas"
+        not_fulfilled: "No cumplidas"
+        not_applicable: "No aplicables"
+        pending: "Pendientes"
+        in_progress: "En curso"
+        discarded: "Descartadas"
+        no_evaluable_measures: "Sin medidas evaluables"
     flash:
       select_protocol_required: "Debes seleccionar un protocolo."
       invalid_protocol: "Protocolo no válido."
+      animation_protocol_unavailable: "El protocolo Be Green My Animation no está disponible."
+      inconsistent_project_protocol: "El protocolo del Plan no corresponde al tipo y género actuales del proyecto."
       select_protocol_to_continue: "Selecciona un protocolo para continuar."
       completed: "Plan completado. ¡Puedes revisar y exportar!"
       saved_incomplete: "Guardado. Aún quedan medidas por responder."
@@ -1385,7 +1416,7 @@ backend:
       select_placeholder: "Selecciona protocolo"
       helper_text: "Necesitamos algo más de información sobre tu proyecto, dinos qué medidas aplican o no y consigue ya tu plan."
       continue: "Continuar"
-      single_protocol_copy: "Comienza el Plan de Sostenibilidad Be Green My Film para tu proyecto."
+      single_protocol_copy: "Comienza el Plan de Sostenibilidad %protocol% para tu proyecto."
       single_protocol_button: "Comenzar plan"
     done:
       title: "Elaboración completada"
@@ -3499,3 +3530,59 @@ pdf_grouped_visual:
 "backend.emission.material_v1.flash.created": "Registro de materiales creado correctamente."
 "backend.emission.material_v1.flash.updated": "Registro de materiales actualizado correctamente."
 "backend.emission.material_v1.duplicate_action": "Duplicar"
+
+'backend.projects.form.documents.title': 'Documentación del proyecto'
+'backend.projects.form.documents.optional': 'Opcional'
+'backend.projects.form.documents.help': 'Puedes subir documentación de referencia ahora o añadirla más adelante.'
+'backend.projects.form.documents.allowed_formats': 'Formatos admitidos:'
+'backend.projects.form.documents.max_size': 'Máximo %size% por archivo.'
+'backend.projects.form.documents.add_file': '+ Subir archivo'
+'backend.projects.form.documents.add_link': '+ Añadir enlace'
+'backend.projects.form.documents.type': 'Tipo de documento'
+'backend.projects.form.documents.type_placeholder': 'Selecciona un tipo'
+'backend.projects.form.documents.other_type': 'Especifica'
+'backend.projects.form.documents.file': 'Archivo'
+'backend.projects.form.documents.url': 'Enlace'
+'backend.projects.form.documents.validation.other_type_required': 'Especifica el tipo de documento.'
+'backend.projects.form.documents.validation.file_with_url': 'Un documento de archivo no puede contener un enlace.'
+'backend.projects.form.documents.validation.file_required': 'Selecciona un archivo.'
+'backend.projects.form.documents.validation.link_with_file': 'Un enlace no puede contener un archivo.'
+'backend.projects.form.documents.validation.url_required': 'Introduce un enlace válido.'
+'backend.projects.form.documents.validation.kind_change_not_allowed': 'No se puede convertir directamente un archivo existente en enlace.'
+'backend.projects.form.documents.validation.animation_type_forbidden': 'Este tipo de documento solo está disponible para proyectos de Animación.'
+'backend.projects.form.documents.validation.storage_error': 'No se pudo guardar la documentación del proyecto.'
+
+'backend.projects.form.documents.types.script': 'Guion'
+'backend.projects.form.documents.types.treatment': 'Tratamiento'
+'backend.projects.form.documents.types.briefing': 'Briefing'
+'backend.projects.form.documents.types.storyboard': 'Storyboard'
+'backend.projects.form.documents.types.budget': 'Presupuesto'
+'backend.projects.form.documents.types.report_dossier': 'Memoria / dossier'
+'backend.projects.form.documents.types.ppm_dossier': 'Dossier PPM'
+'backend.projects.form.documents.types.shooting_plan': 'Plan de rodaje'
+'backend.projects.form.documents.types.production_plan': 'Plan de producción'
+'backend.projects.form.documents.types.schedule': 'Cronograma'
+'backend.projects.form.documents.types.production_breakdown': 'Desglose de producción'
+'backend.projects.form.documents.types.equipment_list': 'Lista de equipo'
+'backend.projects.form.documents.types.locations': 'Localizaciones'
+'backend.projects.form.documents.types.suppliers': 'Proveedores'
+'backend.projects.form.documents.types.delivery_specs': 'Especificaciones de entrega'
+'backend.projects.form.documents.types.client_platform_requirements': 'Requisitos del cliente / plataforma'
+'backend.projects.form.documents.types.animatic': 'Animatic'
+'backend.projects.form.documents.types.series_project_bible': 'Biblia de serie / proyecto'
+'backend.projects.form.documents.types.concept_visual_design': 'Arte conceptual / diseño visual'
+'backend.projects.form.documents.types.software_hardware_list': 'Lista de software / hardware'
+'backend.projects.form.documents.types.pipeline_docs': 'Pipeline / documentación técnica'
+'backend.projects.form.documents.types.asset_list': 'Asset list'
+'backend.projects.form.documents.types.shot_list': 'Shot list'
+'backend.projects.form.documents.types.render_plan': 'Render plan'
+'backend.projects.form.documents.types.capture_mocap_plan': 'Plan de captura / mocap'
+'backend.projects.form.documents.types.materials_list': 'Lista de materiales'
+'backend.projects.form.documents.types.other': 'Otro'
+'backend.projects.form.documents.summary_value': 'Archivo / enlace'
+'backend.projects.form.documents.validation.file_too_large': 'El archivo supera el tamaño máximo permitido.'
+'backend.projects.form.documents.validation.file_type_not_allowed': 'El formato del archivo no está permitido.'
+'backend.projects.form.documents.validation.storage_cleanup_error': 'El proyecto se guardó, pero no se pudo eliminar un archivo documental antiguo.'
+
+'backend.projects.form.project_kind.audiovisual': 'Audiovisual'
+'backend.projects.form.project_kind.event': 'Evento'

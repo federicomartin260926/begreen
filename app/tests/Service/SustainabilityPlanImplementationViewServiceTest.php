@@ -132,6 +132,31 @@ final class SustainabilityPlanImplementationViewServiceTest extends TestCase
         self::assertSame(67, $model['groups'][0]['progressPercentage']);
     }
 
+    public function testAnimationModePreservesExactInputOrderWithoutCategoryReordering(): void
+    {
+        $lateCategory = (new Category())->setName('Primera por taxonomía')->setSortOrder(1);
+        $earlyCategory = (new Category())->setName('Segunda por taxonomía')->setSortOrder(2);
+        $this->setId($lateCategory, 10);
+        $this->setId($earlyCategory, 20);
+        $firstByVisualOrder = $this->implementedPlanMeasure(20, $earlyCategory);
+        $secondByVisualOrder = $this->implementedPlanMeasure(10, $lateCategory);
+
+        $model = $this->service()->build(
+            [$firstByVisualOrder, $secondByVisualOrder],
+            [$firstByVisualOrder, $secondByVisualOrder],
+            PlanMeasureOperationalStateResolver::ALL,
+            null,
+            null,
+            true,
+        );
+
+        self::assertCount(1, $model['groups']);
+        self::assertSame(
+            [20, 10],
+            array_map(static fn (array $item): ?int => $item['measure']->getId(), $model['groups'][0]['items']),
+        );
+    }
+
     private function service(): SustainabilityPlanImplementationViewService
     {
         return new SustainabilityPlanImplementationViewService(

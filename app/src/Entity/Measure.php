@@ -128,6 +128,9 @@ class Measure
     #[ORM\Column(type: 'integer', nullable: true)]
     private ?int $sourceRow = null;
 
+    #[ORM\Column(length: 64, nullable: true, unique: true)]
+    private ?string $catalogId = null;
+
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     private int $sortOrder = 0;
 
@@ -136,6 +139,9 @@ class Measure
 
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $importVersion = null;
+
+    #[ORM\OneToOne(mappedBy: 'measure', targetEntity: AnimationMeasureMetadata::class, cascade: ['persist'])]
+    private ?AnimationMeasureMetadata $animationMetadata = null;
 
     public function __construct()
     {
@@ -477,6 +483,19 @@ class Measure
         return $this;
     }
 
+    public function getCatalogId(): ?string
+    {
+        return $this->catalogId;
+    }
+
+    public function setCatalogId(?string $catalogId): self
+    {
+        $catalogId = null === $catalogId ? null : trim($catalogId);
+        $this->catalogId = '' === $catalogId ? null : $catalogId;
+
+        return $this;
+    }
+
     public function getSortOrder(): int
     {
         return $this->sortOrder;
@@ -507,6 +526,31 @@ class Measure
     public function setImportVersion(?string $importVersion): self
     {
         $this->importVersion = $importVersion;
+        return $this;
+    }
+
+    public function getAnimationMetadata(): ?AnimationMeasureMetadata
+    {
+        return $this->animationMetadata;
+    }
+
+    public function setAnimationMetadata(?AnimationMeasureMetadata $animationMetadata): self
+    {
+        if ($this->animationMetadata === $animationMetadata) {
+            return $this;
+        }
+
+        $previous = $this->animationMetadata;
+        $this->animationMetadata = $animationMetadata;
+
+        if (null !== $previous && $previous->getMeasure() === $this) {
+            $previous->setMeasure(null);
+        }
+
+        if (null !== $animationMetadata && $animationMetadata->getMeasure() !== $this) {
+            $animationMetadata->setMeasure($this);
+        }
+
         return $this;
     }
 

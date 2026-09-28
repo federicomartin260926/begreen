@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Enum\ProjectCatalog;
+use App\Enum\ProjectDocumentCatalog;
 use App\Enum\CommercialPhase;
 use App\Repository\ProjectRepository;
 use App\Entity\Traits\TimestampableTrait;
@@ -72,6 +73,14 @@ class Project
     #[ORM\OneToMany(mappedBy: 'project', targetEntity: ProjectBillingDocument::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $billingDocuments;
 
+    #[ORM\OneToMany(mappedBy: 'project', targetEntity: ProjectDocument::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['createdAt' => 'ASC', 'id' => 'ASC'])]
+    #[Assert\Valid]
+    private Collection $projectDocuments;
+
+    #[ORM\OneToOne(mappedBy: 'project', targetEntity: AnimationProjectConfiguration::class, cascade: ['persist'])]
+    private ?AnimationProjectConfiguration $animationConfiguration = null;
+
     #[ORM\OneToMany(mappedBy: 'project', targetEntity: CrewMember::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[Assert\Valid]
     private Collection $crewMembers;
@@ -85,6 +94,7 @@ class Project
     private ?string $filmingType = null;
 
     #[ORM\Column(length: 30, nullable: true)]
+    #[Assert\Choice(choices: ProjectCatalog::PERSISTABLE_FILMING_GENRES)]
     private ?string $filmingGenre = null;
 
     // === Evento ===
@@ -122,7 +132,7 @@ class Project
 
     #[ORM\Column(type: 'json', nullable: true)]
     #[Assert\All([
-        new Assert\Choice(choices: ProjectCatalog::DISTRIBUTION_MEDIA),
+        new Assert\Choice(choices: ProjectCatalog::PERSISTABLE_DISTRIBUTION_MEDIA),
     ])]
     private ?array $distributionMedia = [];
 
@@ -136,7 +146,34 @@ class Project
         $this->projectFundingSources = new ArrayCollection();
         $this->crewMembers = new ArrayCollection();
         $this->billingDocuments = new ArrayCollection();
+        $this->projectDocuments = new ArrayCollection();
         $this->subscriptions = new ArrayCollection();
+    }
+
+    /** @return Collection<int, ProjectDocument> */
+    public function getProjectDocuments(): Collection
+    {
+        return $this->projectDocuments;
+    }
+
+    public function addProjectDocument(ProjectDocument $document): static
+    {
+        if (!$this->projectDocuments->contains($document)) {
+            $this->projectDocuments->add($document);
+            $document->setProject($this);
+        }
+
+        return $this;
+    }
+
+    public function removeProjectDocument(ProjectDocument $document): static
+    {
+        if ($this->projectDocuments->removeElement($document)
+            && $document->getProject() === $this) {
+            $document->setProject(null);
+        }
+
+        return $this;
     }
 
     public function getId(): ?int { return $this->id; }
@@ -506,6 +543,31 @@ class Project
         return $this;
     }
 
+    public function getAnimationConfiguration(): ?AnimationProjectConfiguration
+    {
+        return $this->animationConfiguration;
+    }
+
+    public function setAnimationConfiguration(?AnimationProjectConfiguration $animationConfiguration): self
+    {
+        if ($this->animationConfiguration === $animationConfiguration) {
+            return $this;
+        }
+
+        $previous = $this->animationConfiguration;
+        $this->animationConfiguration = $animationConfiguration;
+
+        if (null !== $previous && $previous->getProject() === $this) {
+            $previous->setProject(null);
+        }
+
+        if (null !== $animationConfiguration && $animationConfiguration->getProject() !== $this) {
+            $animationConfiguration->setProject($this);
+        }
+
+        return $this;
+    }
+
     public function getEpisodios(): ?int { return $this->episodios; }
     public function setEpisodios(?int $episodios): self { $this->episodios = $episodios; return $this; }
 
@@ -632,6 +694,57 @@ class Project
 
         $this->validateProjectCompanies($context);
         $this->validateFundingSources($context);
+        $this->validateProjectDocuments($context);
+    }
+
+    private function validateProjectDocuments(ExecutionContextInterface $context): void
+    {
+        $isAnimation = 'rodaje' === $this->type
+            && ProjectCatalog::FILMING_GENRE_ANIMATION === $this->filmingGenre;
+
+        foreach ($this->projectDocuments as $index => $document) {
+            if (!$document instanceof ProjectDocument) {
+                continue;
+            }
+
+            if (ProjectDocumentCatalog::isAnimationType($document->getType())
+                && !$isAnimation
+                && null === $document->getId()) {
+                $context->buildViolation('backend.projects.form.documents.validation.animation_type_forbidden')
+                    ->atPath("projectDocuments[$index].type")
+                    ->addViolation();
+            }
+
+            if ('other' === $document->getType() && null === $document->getOtherType()) {
+                $context->buildViolation('backend.projects.form.documents.validation.other_type_required')
+                    ->atPath("projectDocuments[$index].otherType")
+                    ->addViolation();
+            }
+
+            if (ProjectDocumentCatalog::KIND_FILE === $document->getKind()) {
+                if (null !== $document->getUrl()) {
+                    $context->buildViolation('backend.projects.form.documents.validation.file_with_url')
+                        ->atPath("projectDocuments[$index].url")
+                        ->addViolation();
+                }
+
+                continue;
+            }
+
+            if (ProjectDocumentCatalog::KIND_LINK === $document->getKind()) {
+                if (null === $document->getUrl()) {
+                    $context->buildViolation('backend.projects.form.documents.validation.url_required')
+                        ->atPath("projectDocuments[$index].url")
+                        ->addViolation();
+                }
+
+                if (null !== $document->getStoredName()) {
+                    $context->buildViolation('backend.projects.form.documents.validation.kind_change_not_allowed')
+                        ->atPath("projectDocuments[$index].kind")
+                        ->addViolation();
+                }
+            }
+        }
     }
 
     public function normalizeNullableString(?string $value): ?string

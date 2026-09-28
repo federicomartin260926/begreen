@@ -8,9 +8,11 @@ use App\Entity\Plan;
 use App\Entity\ProjectSubscription;
 use App\Entity\Protocol;
 use App\Enum\CommercialPhase;
+use App\Enum\ProjectCatalog;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
 use App\Tests\Support\CommercialPlanTestHelpers;
+use App\Service\Animation\AnimationCatalogImporter;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class PlanControllerUpgradeCtaTest extends KernelTestCase
@@ -149,6 +151,44 @@ final class PlanControllerUpgradeCtaTest extends KernelTestCase
         self::assertSame('unavailable', $result['mode']);
         self::assertSame(CommercialPhase::IMPLEMENTATION->value, $result['phase']);
         self::assertSame([], $result['options']);
+    }
+
+    public function testImplementationAnimationCountsDoNotUseElaborationSelector(): void
+    {
+        $controller = $this->getController();
+        $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_BASIC, ProjectSubscription::TIER_BASIC)
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setFilmingGenre(ProjectCatalog::FILMING_GENRE_ANIMATION);
+        $plan = (new Plan())
+            ->setProject($project)
+            ->setProtocol((new Protocol())
+                ->setCode(AnimationCatalogImporter::PROTOCOL_CODE)
+                ->setType(Protocol::TYPE_RODAJE));
+        $plans = $this->makeDefaultCommercialPlans();
+        $plans['implementation_standard']->setStripePriceId('price_implementation_standard');
+        $plans['implementation_pro']->setStripePriceId('price_implementation_pro');
+        $measureRepository = $this->createMock(MeasureRepository::class);
+        $measureRepository->expects(self::exactly(3))
+            ->method('countCatalogMeasuresForProtocol')
+            ->willReturn(239);
+
+        $result = $this->invokeBuildUpgradeCta(
+            $controller,
+            $project,
+            $plan,
+            CommercialPhase::IMPLEMENTATION,
+            ProjectSubscription::TIER_BASIC,
+            [
+                ProjectSubscription::TIER_STANDARD => ['priceId' => 'price_implementation_standard'],
+                ProjectSubscription::TIER_PRO => ['priceId' => 'price_implementation_pro'],
+            ],
+            $this->makeCommercialPlanRepository($plans),
+            $measureRepository,
+        );
+
+        self::assertSame(239, $result['measureCounts'][ProjectSubscription::TIER_BASIC]);
+        self::assertSame(239, $result['measureCounts'][ProjectSubscription::TIER_STANDARD]);
+        self::assertSame(239, $result['measureCounts'][ProjectSubscription::TIER_PRO]);
     }
 
     private function getController(): PlanController

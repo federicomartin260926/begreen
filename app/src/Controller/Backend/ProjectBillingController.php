@@ -17,6 +17,7 @@ use App\Repository\ProjectMembershipRepository;
 use App\Repository\ProjectRepository;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\Animation\AnimationPlanSynchronizer;
 use App\Service\CommercialPlanComparisonBuilder;
 use App\Service\StripeProjectCheckoutService;
 use App\Service\StripeInvoiceStorageService;
@@ -46,6 +47,7 @@ final class ProjectBillingController extends AbstractController
         private readonly MeasureRepository $measureRepository,
         private readonly TranslatorInterface $translator,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ?AnimationPlanSynchronizer $animationPlanSynchronizer = null,
     ) {
     }
 
@@ -99,7 +101,7 @@ final class ProjectBillingController extends AbstractController
             && $subscription->getStripeCheckoutSessionId() !== null;
         $canVerify = $hasPendingUpgrade;
         $upgradeCta = $this->buildUpgradeCta($project, $phase, $availableUpgradeTargets, $this->commercialPlanRepository);
-        $upgradeCta = $this->attachMeasureCounts($upgradeCta, $plan);
+        $upgradeCta = $this->attachMeasureCounts($upgradeCta, $plan, $phase);
         $showUpgradeCta = $subscription === null || $subscription->getStatus() === ProjectSubscription::STATUS_CANCELLED;
         $pendingUpgrade = $this->buildPendingUpgrade($subscription, $upgradeCta);
         $canManageBilling = $this->isGranted(ProjectVoter::EDIT, $project);
@@ -473,7 +475,7 @@ final class ProjectBillingController extends AbstractController
         ];
     }
 
-    private function attachMeasureCounts(array $upgradeCta, ?Plan $plan): array
+    private function attachMeasureCounts(array $upgradeCta, ?Plan $plan, CommercialPhase $phase): array
     {
         $protocol = $plan?->getProtocol();
         if (!$protocol) {
@@ -481,9 +483,11 @@ final class ProjectBillingController extends AbstractController
         }
 
         foreach ($upgradeCta['options'] ?? [] as $index => $option) {
-            $upgradeCta['options'][$index]['measureCount'] = $this->measureRepository->countCatalogMeasuresForProtocol(
-                $protocol,
-                $option['allowedScores'] ?? []
+            $upgradeCta['options'][$index]['measureCount'] = $this->countMeasuresForTier(
+                $plan,
+                $phase,
+                (string) ($option['targetTier'] ?? ''),
+                $option['allowedScores'] ?? [],
             );
         }
 
@@ -492,13 +496,28 @@ final class ProjectBillingController extends AbstractController
                 continue;
             }
 
-            $upgradeCta['measureCounts'][$tier] = $this->measureRepository->countCatalogMeasuresForProtocol(
-                $protocol,
-                $commercialPlan->getAllowedScores()
+            $upgradeCta['measureCounts'][$tier] = $this->countMeasuresForTier(
+                $plan,
+                $phase,
+                (string) $tier,
+                $commercialPlan->getAllowedScores(),
             );
         }
 
         return $upgradeCta;
+    }
+
+    /** @param int[] $allowedScores */
+    private function countMeasuresForTier(Plan $plan, CommercialPhase $phase, string $tier, array $allowedScores): int
+    {
+        $project = $plan->getProject();
+        if ($phase === CommercialPhase::ELABORATION
+            && $project
+            && $this->animationPlanSynchronizer?->supports($plan, $project)) {
+            return count($this->animationPlanSynchronizer->resolveMeasuresForTier($plan, $project, $tier));
+        }
+
+        return $this->measureRepository->countCatalogMeasuresForProtocol($plan->getProtocol(), $allowedScores);
     }
 
     private function resolveProjectTier(Project $project, CommercialPhase $phase): string

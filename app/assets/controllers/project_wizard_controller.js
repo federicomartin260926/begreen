@@ -16,6 +16,13 @@ export default class extends Controller {
     initialStep: Number,
     overviewLabel: String,
     projectLabel: String,
+    distributionMediaLabel: String,
+    techniquesLabel: String,
+    structureLabel: String,
+    shootingLabel: String,
+    processingLevelLabel: String,
+    processingInfrastructuresLabel: String,
+    usesAiLabel: String,
     generalLabel: String,
     datesLabel: String,
     fundingLabel: String,
@@ -28,6 +35,8 @@ export default class extends Controller {
     summaryNoticeUpdateLabel: String,
     noCompaniesLabel: String,
     noFundingLabel: String,
+    documentsLabel: String,
+    documentValueLabel: String,
   };
 
   connect() {
@@ -42,6 +51,7 @@ export default class extends Controller {
     this.element.addEventListener("change", this.onFormMutation);
     this.element.addEventListener("project:changed", this.onFormMutation);
     this.element.addEventListener("project-collection:changed", this.onFormMutation);
+    this.element.addEventListener("project-documents:changed", this.onFormMutation);
 
     this.stepButtonTargets.forEach((button) => {
       button.addEventListener("click", this.onStepClick);
@@ -63,6 +73,7 @@ export default class extends Controller {
     this.element.removeEventListener("change", this.onFormMutation);
     this.element.removeEventListener("project:changed", this.onFormMutation);
     this.element.removeEventListener("project-collection:changed", this.onFormMutation);
+    this.element.removeEventListener("project-documents:changed", this.onFormMutation);
 
     this.stepButtonTargets.forEach((button) => {
       button.removeEventListener("click", this.onStepClick);
@@ -253,8 +264,19 @@ export default class extends Controller {
       items.push(
         this.summaryItem(this.fieldLabel("filmingType"), this.choiceText("filmingType")),
         this.summaryItem(this.fieldLabel("filmingGenre"), this.choiceText("filmingGenre")),
-        this.summaryItem(this.groupLabel("distributionMedia"), this.checkboxGroupText("distributionMedia")),
+        this.summaryItem(this.distributionMediaLabelValue || this.groupLabel("distributionMedia"), this.checkboxGroupText("distributionMedia")),
       );
+
+      if (this.choiceValue("filmingGenre") === "animacion") {
+        items.push(
+          this.summaryItem(this.techniquesLabelValue || this.groupLabel("techniques"), this.checkboxGroupText("techniques")),
+          this.summaryItem(this.structureLabelValue || this.groupLabel("structure"), this.radioGroupText("structure")),
+          this.summaryItem(this.shootingLabelValue || this.groupLabel("shootingAnswered"), this.radioGroupText("shootingAnswered")),
+          this.summaryItem(this.processingLevelLabelValue || this.groupLabel("processingLevel"), this.radioGroupText("processingLevel")),
+          this.summaryItem(this.processingInfrastructuresLabelValue || this.groupLabel("processingInfrastructures"), this.checkboxGroupText("processingInfrastructures")),
+          this.summaryItem(this.usesAiLabelValue || this.groupLabel("usesAi"), this.radioGroupText("usesAi")),
+        );
+      }
 
       const filmingType = this.choiceValue("filmingType");
       if (filmingType === "tv_series" || filmingType === "tv_program") {
@@ -288,9 +310,11 @@ export default class extends Controller {
     ].filter(Boolean);
 
     const companiesTable = this.renderCompaniesTable();
+    const documentsTable = this.renderDocumentsTable();
     const body = [
       items.length ? this.renderPairs(items) : "",
       companiesTable ? `<div class="mt-3">${companiesTable}</div>` : "",
+      documentsTable ? `<div class="mt-3">${documentsTable}</div>` : "",
     ].filter(Boolean).join("");
 
     if (!body) {
@@ -359,6 +383,52 @@ export default class extends Controller {
       <tr>
         <td>${this.escapeHtml(row.type)}</td>
         <td>${this.escapeHtml(row.name)}</td>
+      </tr>
+    `).join("");
+
+    return this.renderResponsiveTable(headers, body);
+  }
+
+  renderDocumentsTable() {
+    const root = this.element.querySelector('[data-controller~="project-documents"]');
+    if (!root) {
+      return "";
+    }
+
+    const rows = Array.from(root.querySelectorAll("[data-project-document-row]"))
+      .map((row) => {
+        const type = row.querySelector('[name$="[type]"]');
+        const otherType = row.querySelector('[name$="[otherType]"]');
+        const kind = row.querySelector('[name$="[kind]"]')?.value || "file";
+        const file = row.querySelector('input[type="file"]');
+        const url = row.querySelector('[name$="[url]"]');
+
+        let typeLabel = this.controlDisplayValue(type);
+        if (type?.value === "other" && otherType?.value?.trim()) {
+          typeLabel = `${typeLabel}: ${otherType.value.trim()}`;
+        }
+
+        const value = kind === "link"
+          ? (url?.value?.trim() || "")
+          : (file?.files?.[0]?.name || row.dataset.existingFileName || "");
+
+        return { type: typeLabel, value };
+      })
+      .filter((row) => row.type || row.value);
+
+    if (!rows.length) {
+      return "";
+    }
+
+    const headers = [
+      this.documentsLabelValue || "Documents",
+      this.documentValueLabelValue || "File / link",
+    ];
+
+    const body = rows.map((row) => `
+      <tr>
+        <td>${this.escapeHtml(row.type || "—")}</td>
+        <td>${this.escapeHtml(row.value || "—")}</td>
       </tr>
     `).join("");
 
@@ -743,10 +813,13 @@ export default class extends Controller {
       return false;
     }
 
-    return rule.split(",").some((condition) => {
-      const [fieldName, expectedValue] = condition.split(":").map((part) => part.trim());
-      return fieldName && expectedValue && this.choiceValue(fieldName) === expectedValue;
-    });
+    return rule.split(",").some((alternative) => alternative
+      .split("&")
+      .map((condition) => condition.trim())
+      .every((condition) => {
+        const [fieldName, expectedValue] = condition.split(":").map((part) => part.trim());
+        return fieldName && expectedValue && this.choiceValue(fieldName) === expectedValue;
+      }));
   }
 
   panelForStep(step) {

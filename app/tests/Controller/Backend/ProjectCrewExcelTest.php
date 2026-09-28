@@ -50,6 +50,7 @@ final class ProjectCrewExcelTest extends KernelTestCase
             $container->get(SustainabilityPlanCollaborationService::class),
             $container->get(SustainabilityPlanImplementationPhaseService::class),
             $container->get(ProjectCompanyLogoStorage::class),
+            $container->get(\App\Service\Animation\AnimationProjectConfigurationUpdater::class),
         );
         $this->controller->setContainer($container);
     }

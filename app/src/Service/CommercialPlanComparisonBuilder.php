@@ -8,6 +8,7 @@ use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
+use App\Service\Animation\AnimationPlanSynchronizer;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class CommercialPlanComparisonBuilder
@@ -16,6 +17,7 @@ final class CommercialPlanComparisonBuilder
         private readonly CommercialPlanRepository $commercialPlanRepository,
         private readonly MeasureRepository $measureRepository,
         private readonly TranslatorInterface $translator,
+        private readonly ?AnimationPlanSynchronizer $animationPlanSynchronizer = null,
     ) {
     }
 
@@ -108,7 +110,7 @@ final class CommercialPlanComparisonBuilder
                 $plans,
                 fn (CommercialPlan $plan): array => $this->value(
                     $projectPlan?->getProtocol()
-                        ? (string) $this->measureRepository->countCatalogMeasuresForProtocol($projectPlan->getProtocol(), $plan->getAllowedScores())
+                        ? (string) $this->countMeasuresForTier($projectPlan, $plan)
                         : $this->formatScores($plan->getAllowedScores())
                 )
             )),
@@ -142,6 +144,23 @@ final class CommercialPlanComparisonBuilder
             $this->featureRow('excel', 'backend.commercial_plan_comparison.elaboration.excel', $plans, 'sustainability_plan.export.excel'),
             $this->staticRow('selection_percentage', 'backend.commercial_plan_comparison.elaboration.selection_percentage', ['basic' => 'no', 'standard' => 'no', 'pro' => 'yes']),
         ];
+    }
+
+    private function countMeasuresForTier(Plan $projectPlan, CommercialPlan $commercialPlan): int
+    {
+        $project = $projectPlan->getProject();
+        if ($project && $this->animationPlanSynchronizer?->supports($projectPlan, $project)) {
+            return count($this->animationPlanSynchronizer->resolveMeasuresForTier(
+                $projectPlan,
+                $project,
+                $commercialPlan->getCode(),
+            ));
+        }
+
+        return $this->measureRepository->countCatalogMeasuresForProtocol(
+            $projectPlan->getProtocol(),
+            $commercialPlan->getAllowedScores(),
+        );
     }
 
     /**

@@ -38,7 +38,8 @@ final class ProjectControllerFormTest extends KernelTestCase
             $request,
             $entityManager,
             $this->createMock(ActiveProjectService::class)
-        );
+        ,
+            self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
 
         $content = (string) $response->getContent();
 
@@ -73,7 +74,7 @@ final class ProjectControllerFormTest extends KernelTestCase
             ->method('setActiveProject')
             ->with(self::callback(static fn(Project $project) => $project->getId() !== null));
 
-        $response = $controller->new($request, $entityManager, $activeProjectService);
+        $response = $controller->new($request, $entityManager, $activeProjectService, self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
 
         self::assertSame(302, $response->getStatusCode());
         self::assertStringContainsString('/backend/project/', $response->getTargetUrl());
@@ -110,7 +111,8 @@ final class ProjectControllerFormTest extends KernelTestCase
             $request,
             $entityManager,
             $this->createMock(ActiveProjectService::class)
-        );
+        ,
+            self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
 
         self::assertSame(302, $response->getStatusCode());
 
@@ -150,12 +152,14 @@ final class ProjectControllerFormTest extends KernelTestCase
             $filmingProject,
             $this->createRequest('backend_project_edit', ['id' => $filmingProject->getId()]),
             $entityManager
-        );
+        ,
+            self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
         $eventResponse = $controller->edit(
             $eventProject,
             $this->createRequest('backend_project_edit', ['id' => $eventProject->getId()]),
             $entityManager
-        );
+        ,
+            self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
 
         $filmingContent = (string) $filmingResponse->getContent();
         $eventContent = (string) $eventResponse->getContent();
@@ -181,13 +185,15 @@ final class ProjectControllerFormTest extends KernelTestCase
             $this->createRequest('backend_project_new'),
             $entityManager,
             $this->createMock(ActiveProjectService::class)
-        );
+        ,
+            self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
         $translator->setLocale('en');
         $englishResponse = $controller->new(
             $this->createRequest('backend_project_new', [], 'en'),
             $entityManager,
             $this->createMock(ActiveProjectService::class)
-        );
+        ,
+            self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
 
         self::assertSame(2, substr_count((string) $spanishResponse->getContent(), 'Planificación'));
         self::assertSame(2, substr_count((string) $englishResponse->getContent(), 'Planning'));
@@ -206,7 +212,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         $controller = $this->createController();
         $request = $this->createRequest('backend_project_edit', ['id' => $project->getId()]);
 
-        $response = $controller->edit($project, $request, $entityManager);
+        $response = $controller->edit($project, $request, $entityManager, self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
         $content = (string) $response->getContent();
 
         self::assertStringContainsString('Plan actual', $content);
@@ -216,7 +222,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertStringNotContainsString('Gestionar facturación', $content);
         self::assertStringContainsString('data-project-wizard-edit-mode-value="true"', $content);
         self::assertMatchesRegularExpression('/<option value="FR" selected="selected">Francia<\/option>/', $content);
-        self::assertMatchesRegularExpression('/<option value="rodaje" selected="selected">Rodaje<\/option>/', $content);
+        self::assertMatchesRegularExpression('/<option value="rodaje" selected="selected">Audiovisual<\/option>/', $content);
     }
 
     public function testCreateRejectsMissingCountryAndProjectTypeWithTranslatedErrors(): void
@@ -238,7 +244,8 @@ final class ProjectControllerFormTest extends KernelTestCase
         $response = $this->createController()->new(
             $request,
             $entityManager,
-            $this->createMock(ActiveProjectService::class)
+            $this->createMock(ActiveProjectService::class),
+            self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class)
         );
         $content = (string) $response->getContent();
 
@@ -264,7 +271,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         $controller = $this->createController();
         $request = $this->createEditRequest($project);
 
-        $response = $controller->edit($project, $request, $entityManager);
+        $response = $controller->edit($project, $request, $entityManager, self::getContainer()->get(\App\Service\ProjectDocument\ProjectDocumentStorage::class));
 
         self::assertSame(302, $response->getStatusCode());
         self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
@@ -291,6 +298,107 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertInstanceOf(Project::class, $clonedProject);
         self::assertSame(ProjectSubscription::TIER_BASIC, $clonedProject->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
         self::assertSame(ProjectSubscription::TIER_BASIC, $clonedProject->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
+    }
+
+    public function testCloneCopiesAnimationConfigurationIndependently(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $admin = $this->createAdminUser($entityManager);
+
+        $project = $this->createProject(
+            $entityManager,
+            $admin,
+            'Proyecto Animation clon test'
+        );
+        $project
+            ->setType('rodaje')
+            ->setFilmingGenre(\App\Enum\ProjectCatalog::FILMING_GENRE_ANIMATION)
+            ->setDistributionMedia(['streaming']);
+
+        $updater = $container->get(
+            \App\Service\Animation\AnimationProjectConfigurationUpdater::class
+        );
+
+        $sourceConfiguration = $updater->updateProject(
+            project: $project,
+            techniques: ['TEC_2D_DIGITAL'],
+            structure: 'ESC_MICRO',
+            shootingAnswered: false,
+            processingLevel: 'PROC_NIVEL_BASICO',
+            processingInfrastructures: ['PROC_INFRA_EQUIPOS'],
+            usesAi: false,
+        );
+
+        self::assertNotNull($sourceConfiguration);
+        $entityManager->flush();
+
+        $sourceProjectId = $project->getId();
+        $sourceConfigurationId = $sourceConfiguration->getId();
+
+        $this->setAdminToken($admin);
+        $this->createRequest('backend_project_clone', ['id' => $project->getId()]);
+
+        $response = $this->createController()->clone($project, $entityManager);
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $clonedProject = $entityManager->getRepository(Project::class)->findOneBy(
+            ['name' => 'Proyecto Animation clon test (copia)'],
+            ['id' => 'DESC']
+        );
+
+        self::assertInstanceOf(Project::class, $clonedProject);
+        self::assertSame('rodaje', $clonedProject->getType());
+        self::assertSame(
+            \App\Enum\ProjectCatalog::FILMING_GENRE_ANIMATION,
+            $clonedProject->getFilmingGenre()
+        );
+
+        $clonedConfiguration = $clonedProject->getAnimationConfiguration();
+
+        self::assertNotNull($clonedConfiguration);
+        self::assertNotSame($sourceConfiguration, $clonedConfiguration);
+        self::assertNotSame($sourceConfigurationId, $clonedConfiguration->getId());
+        self::assertSame(['TEC_2D_DIGITAL'], $clonedConfiguration->getTechniques());
+        self::assertSame('ESC_MICRO', $clonedConfiguration->getStructure());
+        self::assertFalse($clonedConfiguration->getShootingAnswered());
+        self::assertSame('PROC_NIVEL_BASICO', $clonedConfiguration->getProcessingLevel());
+        self::assertSame(
+            ['PROC_INFRA_EQUIPOS'],
+            $clonedConfiguration->getProcessingInfrastructures()
+        );
+        self::assertFalse($clonedConfiguration->getUsesAi());
+
+        // La configuración del clon debe ser completamente independiente.
+        $updater->update(
+            $clonedConfiguration,
+            ['TEC_2D_DIGITAL'],
+            'ESC_ESTUDIO_ESPACIO',
+            false,
+            'PROC_NIVEL_BASICO',
+            ['PROC_INFRA_EQUIPOS'],
+            false,
+        );
+        $entityManager->flush();
+        $clonedProjectId = $clonedProject->getId();
+
+        $entityManager->clear();
+
+        $reloadedSource = $entityManager->getRepository(Project::class)->find($sourceProjectId);
+        $reloadedClone = $entityManager->getRepository(Project::class)->find($clonedProjectId);
+
+        self::assertInstanceOf(Project::class, $reloadedSource);
+        self::assertInstanceOf(Project::class, $reloadedClone);
+        self::assertSame(
+            'ESC_MICRO',
+            $reloadedSource->getAnimationConfiguration()?->getStructure()
+        );
+        self::assertSame(
+            'ESC_ESTUDIO_ESPACIO',
+            $reloadedClone->getAnimationConfiguration()?->getStructure()
+        );
     }
 
     public function testCreatedPageShowsBasicPlanAndUpgradeCta(): void
@@ -430,6 +538,7 @@ final class ProjectControllerFormTest extends KernelTestCase
             $container->get(\App\Service\SustainabilityPlanCollaborationService::class),
             $container->get(\App\Service\SustainabilityPlanImplementationPhaseService::class),
             $container->get(ProjectCompanyLogoStorage::class),
+            $container->get(\App\Service\Animation\AnimationProjectConfigurationUpdater::class),
         );
         $controller->setContainer($container);
 

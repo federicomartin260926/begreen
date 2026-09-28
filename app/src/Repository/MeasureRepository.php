@@ -8,24 +8,34 @@ use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Gedmo\Translatable\TranslatableListener;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\ProtocolAvailabilityResolver;
+use App\Service\Animation\AnimationCatalogImporter;
+use App\Service\Animation\AnimationProjectMeasureResolver;
 use App\Entity\Protocol;
 
 class MeasureRepository extends ServiceEntityRepository
 {
-    private ProtocolRepository $protocolRepository;
+    private ProtocolAvailabilityResolver $protocolAvailabilityResolver;
     private PlanMeasureCatalogResolver $catalogResolver;
 
-    public function __construct(ManagerRegistry $registry, ProtocolRepository $protocolRepository, PlanMeasureCatalogResolver $catalogResolver)
-    {
+    public function __construct(
+        ManagerRegistry $registry,
+        ProtocolAvailabilityResolver $protocolAvailabilityResolver,
+        PlanMeasureCatalogResolver $catalogResolver,
+        private readonly AnimationProjectMeasureResolver $animationMeasureResolver,
+    ) {
         parent::__construct($registry, Measure::class);
-        $this->protocolRepository = $protocolRepository;
+        $this->protocolAvailabilityResolver = $protocolAvailabilityResolver;
         $this->catalogResolver = $catalogResolver;
     }
 
     /** Devuelve nombres de protocolos permitidos para el tipo de proyecto. */
     public function getProtocols(Project $project): array
     {
-        return $this->protocolRepository->getNamesForProjectType($project->getType());
+        return array_map(
+            static fn (Protocol $protocol): string => (string) $protocol->getName(),
+            $this->protocolAvailabilityResolver->getAvailableProtocols($project),
+        );
     }
 
     /** @return Category[] */
@@ -254,6 +264,19 @@ class MeasureRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
+    /** @return list<Measure> */
+    public function getAnimationCatalogMeasures(Protocol $protocol): array
+    {
+        return $this->createQueryBuilder('m')
+            ->leftJoin('m.animationMetadata', 'am')->addSelect('am')
+            ->andWhere('m.protocol = :protocol')
+            ->setParameter('protocol', $protocol)
+            ->orderBy('m.sortOrder', 'ASC')
+            ->addOrderBy('m.catalogId', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     /**
      * @param int[] $allowedScores
      */
@@ -311,7 +334,28 @@ class MeasureRepository extends ServiceEntityRepository
 
     private function applyCatalogFilter(QueryBuilder $qb, Project $project): void
     {
-        $this->catalogResolver->applyCatalogFilter($qb, 'm', 'p', $project);
+        $animationEligibleMeasureIds = null;
+        if ($this->animationMeasureResolver->supports($project)) {
+            $protocol = null;
+            foreach ($this->protocolAvailabilityResolver->getAvailableProtocols($project) as $availableProtocol) {
+                if (AnimationCatalogImporter::PROTOCOL_CODE === $availableProtocol->getCode()) {
+                    $protocol = $availableProtocol;
+                    break;
+                }
+            }
+            if (!$protocol instanceof Protocol) {
+                throw new \LogicException('El protocolo Be Green My Animation no está disponible.');
+            }
+            $animationEligibleMeasureIds = $this->animationMeasureResolver->resolvePersistedIds($project, $protocol);
+        }
+
+        $this->catalogResolver->applyCatalogFilter(
+            $qb,
+            'm',
+            'p',
+            $project,
+            $animationEligibleMeasureIds,
+        );
     }
 
     /**

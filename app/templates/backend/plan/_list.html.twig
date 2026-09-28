@@ -16,7 +16,7 @@
                 <div class="implementation-measure-row d-flex flex-wrap align-items-center gap-2 gap-md-3 p-2 p-md-3 rounded-3"
                      data-measure-summary>
                     <div class="implementation-measure-row__title flex-grow-1 min-w-0 fw-semibold">
-                        {{ measure.displayNameForReview }}
+                        {{ isAnimation|default(false) ? measure.name : measure.displayNameForReview }}
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
                         <span class="badge border {{ showStar ? 'bg-warning-subtle text-warning-emphasis' : 'bg-light text-muted' }}"
@@ -25,7 +25,7 @@
                             {{ 'backend.plan.review.critical_short'|trans }}:
                             {{ pm.isCritical is same as(true) ? 'backend.common.yes'|trans : (pm.isCritical is same as(false) ? 'backend.common.no'|trans : '—') }}
                         </span>
-                        {% if measure.score is not null %}
+                        {% if not isAnimation|default(false) and measure.score is not null %}
                             <span class="badge bg-light text-dark border" title="{{ 'backend.plan.review.score_badge_title'|trans }}">
                                 {{ measure.score }} {{ 'backend.common.points'|trans }}
                             </span>
@@ -56,7 +56,8 @@
                         canUseChecklist: canUseChecklist|default(false),
                         canUseResponsibles: canUseResponsibles|default(false),
                         canUseInternalNotes: canUseInternalNotes|default(false),
-                        verificationSources: verificationSources|default([])
+                        verificationSources: verificationSources|default([]),
+                        isAnimation: isAnimation|default(false)
                     } only %}
                 </div>
             </article>

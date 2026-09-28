@@ -6,6 +6,8 @@ use App\Entity\Project;
 use App\Enum\CommercialPhase;
 use App\Enum\ProjectCatalog;
 use App\Service\CommercialPlanResolver;
+use App\Service\Animation\AnimationConfiguration;
+use InvalidArgumentException;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\CollectionType;
@@ -14,6 +16,9 @@ use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormError;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class ProjectType extends AbstractType
@@ -24,20 +29,13 @@ class ProjectType extends AbstractType
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        $genreGeneric = [
-            'backend.projects.form.filming_genre.options.ficcion' => 'ficcion',
-            'backend.projects.form.filming_genre.options.documental' => 'documental',
-            'backend.projects.form.filming_genre.options.animacion' => 'animacion',
-            'backend.projects.form.filming_genre.options.experimental' => 'experimental',
-        ];
-
-        $genreTvProgram = [
-            'backend.projects.form.filming_genre.options.informativo' => 'informativo',
-            'backend.projects.form.filming_genre.options.entretenimiento' => 'entretenimiento',
-            'backend.projects.form.filming_genre.options.cultural' => 'cultural',
-            'backend.projects.form.filming_genre.options.educativo' => 'educativo',
-            'backend.projects.form.filming_genre.options.religioso' => 'religioso',
-        ];
+        $project = $builder->getData();
+        $filmingGenreChoices = ProjectCatalog::filmingGenreChoices();
+        if ($project instanceof Project
+            && 'tv_program' === $project->getFilmingType()
+            && is_string($project->getFilmingGenre())) {
+            $filmingGenreChoices += ProjectCatalog::legacyFilmingGenreChoice($project->getFilmingGenre());
+        }
 
         $eventTypes = [
             'backend.projects.form.event_type_primary.options.cultural' => 'cultural',
@@ -72,8 +70,8 @@ class ProjectType extends AbstractType
                 'label' => 'backend.projects.form.type',
                 'placeholder' => 'backend.projects.form.type_placeholder',
                 'choices' => [
-                    'backend.aux.project_type.filming' => 'rodaje',
-                    'backend.aux.project_type.event' => 'evento',
+                    'backend.projects.form.project_kind.audiovisual' => 'rodaje',
+                    'backend.projects.form.project_kind.event' => 'evento',
                 ],
                 'choice_translation_domain' => 'messages',
                 'attr' => [
@@ -118,11 +116,12 @@ class ProjectType extends AbstractType
                 'label' => 'backend.projects.form.filming_genre.label',
                 'required' => false,
                 'placeholder' => 'backend.common.placeholder',
-                'choices' => $genreGeneric + $genreTvProgram,
+                'choices' => $filmingGenreChoices,
                 'choice_translation_domain' => 'messages',
-                'row_attr' => ['data-show-when' => 'filmingType:feature,filmingType:short,filmingType:tv_series,filmingType:tv_program'],
+                'row_attr' => ['data-show-when' => 'type:rodaje'],
                 'attr' => [
                     'data-project-target' => 'filmingGenre',
+                    'data-action' => 'change->project#change',
                 ],
             ])
             ->add('distributionMedia', ChoiceType::class, [
@@ -235,6 +234,16 @@ class ProjectType extends AbstractType
                 'prototype' => true,
                 'prototype_name' => '__company__',
             ])
+            ->add('projectDocuments', CollectionType::class, [
+                'entry_type' => ProjectDocumentType::class,
+                'entry_options' => ['label' => false],
+                'allow_add' => true,
+                'allow_delete' => true,
+                'by_reference' => false,
+                'label' => false,
+                'prototype' => true,
+                'prototype_name' => '__document__',
+            ])
             ->add('projectFundingSources', CollectionType::class, [
                 'entry_type' => ProjectFundingSourceType::class,
                 'entry_options' => ['label' => false],
@@ -271,6 +280,56 @@ class ProjectType extends AbstractType
                     'data-project-target' => 'list',
                 ],
             ]);
+
+        $configuration = $project instanceof Project
+            ? $project->getAnimationConfiguration()
+            : null;
+        $builder->add('animationConfiguration', AnimationProjectConfigurationType::class, [
+            'mapped' => false,
+            'label' => false,
+            'data' => null === $configuration ? [] : [
+                'techniques' => $configuration->getTechniques(),
+                'shootingAnswered' => $configuration->getShootingAnswered(),
+                'structure' => $configuration->getStructure(),
+                'processingLevel' => $configuration->getProcessingLevel(),
+                'processingInfrastructures' => $configuration->getProcessingInfrastructures(),
+                'usesAi' => $configuration->getUsesAi(),
+            ],
+        ]);
+
+        $builder->addEventListener(FormEvents::POST_SUBMIT, static function (FormEvent $event): void {
+            $project = $event->getData();
+            $form = $event->getForm();
+            if (!$project instanceof Project
+                || 'rodaje' !== $project->getType()
+                || ProjectCatalog::FILMING_GENRE_ANIMATION !== $project->getFilmingGenre()) {
+                return;
+            }
+
+            $animationForm = $form->get('animationConfiguration');
+            $data = $animationForm->getData();
+            if (!is_array($data)) {
+                $animationForm->addError(new FormError('backend.projects.form.validation.animation_incomplete'));
+
+                return;
+            }
+
+            try {
+                $configuration = new AnimationConfiguration(
+                    techniques: is_array($data['techniques'] ?? null) ? $data['techniques'] : [],
+                    structure: is_string($data['structure'] ?? null) ? $data['structure'] : null,
+                    shootingAnswered: is_bool($data['shootingAnswered'] ?? null) ? $data['shootingAnswered'] : null,
+                    processingInfrastructures: is_array($data['processingInfrastructures'] ?? null) ? $data['processingInfrastructures'] : [],
+                    processingLevel: is_string($data['processingLevel'] ?? null) ? $data['processingLevel'] : null,
+                    usesAi: is_bool($data['usesAi'] ?? null) ? $data['usesAi'] : null,
+                    distribution: [] === $project->getDistributionMedia() ? null : $project->getDistributionMedia(),
+                    plan: null,
+                );
+                $configuration->assertComplete(requirePlan: false);
+            } catch (InvalidArgumentException) {
+                $animationForm->addError(new FormError('backend.projects.form.validation.animation_incomplete'));
+            }
+        });
 
         if ($showEmissionSource) {
             $builder->add('emissionSourceName', ChoiceType::class, [

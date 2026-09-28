@@ -8,6 +8,7 @@ backend:
         type_required: "You must select a project type."
         filming_type_required: "You must select a filming type."
         distribution_media_required: "You must select at least one distribution medium."
+        animation_incomplete: "Complete all required Animation configuration fields."
         episodes_required: "You must enter the number of episodes for TV series and TV programs."
         episode_duration_required: "You must enter the episode duration for TV series and TV programs."
         event_type_primary_required: "You must enter the event type."

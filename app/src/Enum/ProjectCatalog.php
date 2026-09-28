@@ -6,6 +6,26 @@ final class ProjectCatalog
 {
     public const FILMING_GENRE_ANIMATION = 'animacion';
 
+    public const FILMING_GENRES = [
+        'ficcion',
+        'documental',
+        self::FILMING_GENRE_ANIMATION,
+        'experimental',
+    ];
+
+    public const LEGACY_FILMING_GENRES = [
+        'informativo',
+        'entretenimiento',
+        'cultural',
+        'educativo',
+        'religioso',
+    ];
+
+    public const PERSISTABLE_FILMING_GENRES = [
+        ...self::FILMING_GENRES,
+        ...self::LEGACY_FILMING_GENRES,
+    ];
+
     public const FILMING_TYPES = [
         'feature',
         'short',
@@ -27,6 +47,14 @@ final class ProjectCatalog
         'social_media',
         'photography',
         'radio',
+    ];
+
+    public const INTERACTIVE_DISTRIBUTION_MEDIUM = 'interactive';
+
+    /** Persistible audiovisual distribution media, including Animation interactive output. */
+    public const PERSISTABLE_DISTRIBUTION_MEDIA = [
+        ...self::DISTRIBUTION_MEDIA,
+        self::INTERACTIVE_DISTRIBUTION_MEDIUM,
     ];
 
     public const ECO_MANAGER_STATUSES = [
@@ -52,7 +80,21 @@ final class ProjectCatalog
 
     public static function distributionMediaChoices(): array
     {
-        return self::choices('backend.projects.form.distribution_media.options.', self::DISTRIBUTION_MEDIA);
+        return self::choices('backend.projects.form.distribution_media.options.', self::PERSISTABLE_DISTRIBUTION_MEDIA);
+    }
+
+    public static function filmingGenreChoices(): array
+    {
+        return self::choices('backend.projects.form.filming_genre.options.', self::FILMING_GENRES);
+    }
+
+    public static function legacyFilmingGenreChoice(string $genre): array
+    {
+        if (!in_array($genre, self::LEGACY_FILMING_GENRES, true)) {
+            return [];
+        }
+
+        return ['backend.projects.form.filming_genre.options.'.$genre => $genre];
     }
 
     public static function filmingTypeChoices(): array
@@ -77,7 +119,7 @@ final class ProjectCatalog
 
     public static function isDistributionMedia(string $value): bool
     {
-        return in_array($value, self::DISTRIBUTION_MEDIA, true);
+        return in_array($value, self::PERSISTABLE_DISTRIBUTION_MEDIA, true);
     }
 
     public static function isFilmingType(string $value): bool

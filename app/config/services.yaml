@@ -60,6 +60,15 @@ services:
 
     App\Service\PdfService: ~
 
+    App\Service\Animation\AnimationConfiguration:
+        autowire: false
+
+    App\Service\Animation\AnimationMeasure:
+        autowire: false
+
+    App\Service\Animation\AnimationCatalogEntry:
+        autowire: false
+
     App\Service\StripeInvoiceStorageService:
         arguments:
             $projectDir: '%kernel.project_dir%'
@@ -126,6 +135,8 @@ services:
             $anthropicProvider: '@App\Service\Ai\AnthropicReportProvider'
 
     App\Service\Ai\AiReportProviderInterface: '@App\Service\Ai\ConfiguredAiReportProvider'
+
+    App\Service\Animation\AnimationMeasureProvider: '@App\Service\Animation\DoctrineAnimationMeasureProvider'
 
     App\Service\Ai\AiReportStorage:
         arguments:

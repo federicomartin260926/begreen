@@ -57,6 +57,13 @@
         'data-project-index-value': form.phaseDates|length,
         'data-project-wizard-overview-label-value': 'backend.projects.form.wizard.overview_label'|trans,
         'data-project-wizard-project-label-value': 'backend.projects.form.wizard.project_label'|trans,
+        'data-project-wizard-distribution-media-label-value': 'backend.projects.form.distribution_media.label'|trans,
+        'data-project-wizard-techniques-label-value': 'backend.projects.form.animation.techniques'|trans,
+        'data-project-wizard-structure-label-value': 'backend.projects.form.animation.structure'|trans,
+        'data-project-wizard-shooting-label-value': 'backend.projects.form.animation.shooting'|trans,
+        'data-project-wizard-processing-level-label-value': 'backend.projects.form.animation.processing_level'|trans,
+        'data-project-wizard-processing-infrastructures-label-value': 'backend.projects.form.animation.processing_infrastructures'|trans,
+        'data-project-wizard-uses-ai-label-value': 'backend.projects.form.animation.uses_ai'|trans,
         'data-project-wizard-general-label-value': 'backend.projects.form.wizard.general_label'|trans,
         'data-project-wizard-dates-label-value': 'backend.projects.form.wizard.dates_label'|trans,
         'data-project-wizard-funding-label-value': 'backend.projects.form.wizard.funding_label'|trans,
@@ -67,6 +74,8 @@
         'data-project-wizard-summary-empty-label-value': 'backend.projects.form.wizard.summary_empty'|trans,
         'data-project-wizard-no-companies-label-value': 'backend.projects.form.wizard.no_companies'|trans,
         'data-project-wizard-no-funding-label-value': 'backend.projects.form.wizard.no_funding'|trans,
+        'data-project-wizard-documents-label-value': 'backend.projects.form.documents.title'|trans,
+        'data-project-wizard-document-value-label-value': 'backend.projects.form.documents.summary_value'|trans,
         'data-project-wizard-edit-mode-value': edit ? 'true' : 'false',
         'data-project-wizard-initial-step-value': wizardInitialStep,
 
@@ -185,7 +194,7 @@
               {{ form_label(form.filmingType) }}
               {{ form_widget(form.filmingType) }}
             </div>
-            <div class="col-12 col-md-4" data-project-target="filmingGenreRow" data-show-when="filmingType:feature,filmingType:short,filmingType:tv_series,filmingType:tv_program">
+            <div class="col-12 col-md-4" data-project-target="filmingGenreRow" data-show-when="type:rodaje">
               {{ form_label(form.filmingGenre) }}
               {{ form_widget(form.filmingGenre) }}
             </div>
@@ -217,6 +226,97 @@
                   </div>
                 </div>
               {% endfor %}
+            </div>
+          </div>
+
+          <div class="border-top mt-4 pt-4"
+               data-project-target="animationConfigurationRow"
+               data-show-when="type:rodaje&filmingGenre:animacion">
+            <div class="mb-3">
+              <h5 class="h5 mb-1">{{ 'backend.projects.form.animation.title'|trans }}</h5>
+              <div class="small text-muted">{{ 'backend.projects.form.animation.help'|trans }}</div>
+            </div>
+
+            {{ form_errors(form.animationConfiguration) }}
+
+            <div class="mb-4 form-label-over">
+              {{ form_label(form.animationConfiguration.techniques) }}
+              <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-2">
+                {% for techniqueChoice in form.animationConfiguration.techniques %}
+                  <div class="col">
+                    <div class="form-check">
+                      {{ form_widget(techniqueChoice, {'attr': {'class': 'form-check-input'}}) }}
+                      {{ form_label(techniqueChoice, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              {{ form_errors(form.animationConfiguration.techniques) }}
+            </div>
+
+            <div class="row g-4">
+              <div class="col-12 col-lg-6 form-label-over">
+                {{ form_label(form.animationConfiguration.shootingAnswered) }}
+                <div class="d-flex flex-wrap gap-3">
+                  {% for shootingChoice in form.animationConfiguration.shootingAnswered %}
+                    <div class="form-check">
+                      {{ form_widget(shootingChoice, {'attr': {'class': 'form-check-input'}}) }}
+                      {{ form_label(shootingChoice, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                    </div>
+                  {% endfor %}
+                </div>
+                <div class="alert alert-info small py-2 mt-2 mb-0 d-none"
+                     data-project-target="animationShootingNotice">
+                  {{ 'backend.projects.form.animation.shooting_forced_notice'|trans }}
+                </div>
+                {{ form_errors(form.animationConfiguration.shootingAnswered) }}
+              </div>
+
+              <div class="col-12 col-lg-6 form-label-over">
+                {{ form_label(form.animationConfiguration.structure) }}
+                {% for structureChoice in form.animationConfiguration.structure %}
+                  <div class="form-check mb-2">
+                    {{ form_widget(structureChoice, {'attr': {'class': 'form-check-input'}}) }}
+                    {{ form_label(structureChoice, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                  </div>
+                {% endfor %}
+                {{ form_errors(form.animationConfiguration.structure) }}
+              </div>
+
+              <div class="col-12 col-lg-6 form-label-over">
+                {{ form_label(form.animationConfiguration.processingLevel) }}
+                {% for levelChoice in form.animationConfiguration.processingLevel %}
+                  <div class="form-check mb-2">
+                    {{ form_widget(levelChoice, {'attr': {'class': 'form-check-input'}}) }}
+                    {{ form_label(levelChoice, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                  </div>
+                {% endfor %}
+                {{ form_errors(form.animationConfiguration.processingLevel) }}
+              </div>
+
+              <div class="col-12 col-lg-6 form-label-over">
+                {{ form_label(form.animationConfiguration.processingInfrastructures) }}
+                {% for infrastructureChoice in form.animationConfiguration.processingInfrastructures %}
+                  <div class="form-check mb-2">
+                    {{ form_widget(infrastructureChoice, {'attr': {'class': 'form-check-input'}}) }}
+                    {{ form_label(infrastructureChoice, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                  </div>
+                {% endfor %}
+                {{ form_errors(form.animationConfiguration.processingInfrastructures) }}
+              </div>
+
+              <div class="col-12 form-label-over">
+                {{ form_label(form.animationConfiguration.usesAi) }}
+                <div class="d-flex flex-wrap gap-3">
+                  {% for aiChoice in form.animationConfiguration.usesAi %}
+                    <div class="form-check">
+                      {{ form_widget(aiChoice, {'attr': {'class': 'form-check-input'}}) }}
+                      {{ form_label(aiChoice, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                    </div>
+                  {% endfor %}
+                </div>
+                {{ form_errors(form.animationConfiguration.usesAi) }}
+              </div>
             </div>
           </div>
         </div>
@@ -369,6 +469,152 @@
                     <i class="bi bi-plus-circle"></i> {{ 'backend.common.add'|trans }}
                 </button>
             </div>
+        </div>
+
+        {# ========= DOCUMENTACIÓN DEL PROYECTO ========= #}
+        {% set documentPrototype %}
+            {% set documentForm = form.projectDocuments.vars.prototype %}
+            <div class="card mb-2 p-3 border"
+                 data-project-document-row
+                 data-existing-document="0"
+                 data-project-document-kind="file">
+                {{ form_widget(documentForm.kind) }}
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-lg-4">
+                        {{ form_row(documentForm.type, { row_attr: { class: 'mb-0' } }) }}
+                    </div>
+
+                    <div class="col-12 col-lg-5" data-project-document-file>
+                        {{ form_row(documentForm.file, { row_attr: { class: 'mb-0' } }) }}
+                    </div>
+
+                    <div class="col-12 col-lg-5 d-none" data-project-document-link>
+                        {{ form_row(documentForm.url, { row_attr: { class: 'mb-0' } }) }}
+                    </div>
+
+                    <div class="col-12 col-lg-2 d-none" data-project-document-other>
+                        {{ form_row(documentForm.otherType, { row_attr: { class: 'mb-0' } }) }}
+                    </div>
+
+                    <div class="col-12 col-lg-1 d-flex justify-content-end">
+                        <button type="button"
+                                class="btn btn-outline-danger"
+                                data-action="project-documents#remove"
+                                aria-label="{{ 'backend.common.delete'|trans }}"
+                                title="{{ 'backend.common.delete'|trans }}">
+                            <i class="bi bi-trash" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endset %}
+
+        <div class="border-top pt-4 mt-4"
+             data-controller="project-documents"
+             data-project-documents-index-value="{{ form.projectDocuments|length }}"
+             data-project-documents-prototype-value="{{ documentPrototype|e('html_attr') }}">
+
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                <div>
+                    <h6 class="mb-1">
+                        {{ 'backend.projects.form.documents.title'|trans }}
+                        <span class="badge text-bg-light border">
+                            {{ 'backend.projects.form.documents.optional'|trans }}
+                        </span>
+                    </h6>
+                    <div class="small text-muted">
+                        {{ 'backend.projects.form.documents.help'|trans }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="small text-muted mb-3">
+                <strong>{{ 'backend.projects.form.documents.allowed_formats'|trans }}</strong>
+                PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, RTF, CSV, JPG, JPEG, PNG, WEBP, ZIP
+                · {{ 'backend.projects.form.documents.max_size'|trans({'%size%': '4 MB'}) }}
+            </div>
+
+            <div class="vstack gap-2 mb-3" data-project-documents-target="list">
+                {% for documentForm in form.projectDocuments %}
+                    {% set document = documentForm.vars.data %}
+                    {% set documentKind = document.kind|default('file') %}
+
+                    <div class="card p-3 border"
+                         data-project-document-row
+                         data-existing-document="{{ document.id ? '1' : '0' }}"
+                         data-project-document-kind="{{ documentKind }}"
+                         {% if document.originalName %}data-existing-file-name="{{ document.originalName|e('html_attr') }}"{% endif %}>
+
+                        {{ form_widget(documentForm.kind) }}
+
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-lg-4">
+                                {{ form_row(documentForm.type, { row_attr: { class: 'mb-0' } }) }}
+                            </div>
+
+                            <div class="col-12 col-lg-5 {{ documentKind != 'file' ? 'd-none' }}"
+                                 data-project-document-file>
+                                {% if document.storedName %}
+                                    <label class="form-label">
+                                        {{ 'backend.projects.form.documents.file'|trans }}
+                                    </label>
+                                    <div class="border rounded px-3 py-2 bg-light">
+                                        <i class="bi bi-file-earmark me-1"></i>
+                                        <a href="{{ path('backend_project_document_download', {
+                                            projectId: project.id,
+                                            documentId: document.id
+                                        }) }}">
+                                            {{ document.originalName }}
+                                        </a>
+                                    </div>
+                                    <div class="d-none">{{ form_widget(documentForm.file) }}</div>
+                                    {{ form_errors(documentForm.file) }}
+                                {% else %}
+                                    {{ form_row(documentForm.file, { row_attr: { class: 'mb-0' } }) }}
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12 col-lg-5 {{ documentKind != 'link' ? 'd-none' }}"
+                                 data-project-document-link>
+                                {{ form_row(documentForm.url, { row_attr: { class: 'mb-0' } }) }}
+                            </div>
+
+                            <div class="col-12 col-lg-2 {{ document.type != 'other' ? 'd-none' }}"
+                                 data-project-document-other>
+                                {{ form_row(documentForm.otherType, { row_attr: { class: 'mb-0' } }) }}
+                            </div>
+
+                            <div class="col-12 col-lg-1 d-flex justify-content-end">
+                                <button type="button"
+                                        class="btn btn-outline-danger"
+                                        data-action="project-documents#remove"
+                                        aria-label="{{ 'backend.common.delete'|trans }}"
+                                        title="{{ 'backend.common.delete'|trans }}">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button"
+                        class="btn btn-outline-success btn-sm"
+                        data-action="project-documents#addFile">
+                    <i class="bi bi-upload me-1"></i>
+                    {{ 'backend.projects.form.documents.add_file'|trans }}
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        data-action="project-documents#addLink">
+                    <i class="bi bi-link-45deg me-1"></i>
+                    {{ 'backend.projects.form.documents.add_link'|trans }}
+                </button>
+            </div>
+
+            {{ form_errors(form.projectDocuments) }}
         </div>
 
         </section>

@@ -1,0 +1,22 @@
+<section class="card border-0 shadow-sm mt-4" aria-labelledby="animation-compliance-title">
+    <div class="card-body">
+        <h3 class="h5" id="animation-compliance-title">{{ 'backend.plan.animation.compliance.title'|trans }}</h3>
+        {% if animationCompliance.hasEvaluableMeasures %}
+            <div class="display-6 fw-semibold text-success">{{ animationCompliance.percentage }}%</div>
+            <div class="progress mt-2" role="progressbar" aria-valuenow="{{ animationCompliance.percentage }}" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar bg-success" style="width: {{ animationCompliance.percentage }}%"></div>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">{{ 'backend.plan.animation.compliance.no_evaluable_measures'|trans }}</div>
+        {% endif %}
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <span class="badge bg-success">{{ 'backend.plan.animation.compliance.fulfilled'|trans }}: {{ animationCompliance.fulfilledCount }}</span>
+            <span class="badge bg-danger">{{ 'backend.plan.animation.compliance.not_fulfilled'|trans }}: {{ animationCompliance.notFulfilledCount }}</span>
+            <span class="badge bg-secondary">{{ 'backend.plan.animation.compliance.not_applicable'|trans }}: {{ animationCompliance.notApplicableCount }}</span>
+            <span class="badge bg-light text-dark border">{{ 'backend.plan.animation.compliance.pending'|trans }}: {{ animationCompliance.pendingCount }}</span>
+            <span class="badge bg-warning-subtle text-warning-emphasis border">{{ 'backend.plan.animation.compliance.in_progress'|trans }}: {{ animationCompliance.inProgressCount }}</span>
+            <span class="badge bg-light text-dark border">{{ 'backend.plan.animation.compliance.discarded'|trans }}: {{ animationCompliance.discardedCount }}</span>
+        </div>
+    </div>
+</section>
