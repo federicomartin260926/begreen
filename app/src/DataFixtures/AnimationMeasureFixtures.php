@@ -35,7 +35,7 @@ final class AnimationMeasureFixtures extends Fixture implements DependentFixture
     public function load(ObjectManager $manager): void
     {
         $path = rtrim((string) $this->params->get('kernel.project_dir'), '/')
-            .'/resources/animation/BE_GREEN_MY_ANIMATION_v42_ENTREGA_INFORMATICO.xlsx';
+            .'/public/fixtures/BE_GREEN_MY_ANIMATION_v42_ENTREGA_INFORMATICO.xlsx';
 
         $summary = $this->importer->import($this->sourceReader->read($path));
 

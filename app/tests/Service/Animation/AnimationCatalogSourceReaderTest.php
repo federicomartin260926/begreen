@@ -29,7 +29,7 @@ final class AnimationCatalogSourceReaderTest extends TestCase
 {
     use CommercialPlanTestHelpers;
 
-    private const string WORKBOOK = __DIR__.'/../../../resources/animation/BE_GREEN_MY_ANIMATION_v42_ENTREGA_INFORMATICO.xlsx';
+    private const string WORKBOOK = __DIR__.'/../../../public/fixtures/BE_GREEN_MY_ANIMATION_v42_ENTREGA_INFORMATICO.xlsx';
 
     public function testTransformationReconcilesTheCompleteActiveCatalogByStableId(): void
     {

@@ -17,6 +17,36 @@
 # Nota:
 # - El Makefile está en raíz, pero los compose siguen en app/.
 # - Se fuerza PROJECT_NAME=app para mantener nombres/volúmenes históricos.
+#
+# -----------------------------------------------------------------------------
+# DESPLIEGUE CON CAMBIOS DE SCHEMA Y/O FIXTURES — FASE DE DESARROLLO
+# -----------------------------------------------------------------------------
+# Mientras Begreen siga en fase de desarrollo, los fixtures son la fuente de
+# verdad. No se preservan datos arbitrarios de DEV/PROD y no se usan migrations.
+#
+# LOCAL:
+#   1. Si cambia el modelo: make schema-update
+#   2. make fixtures
+#      - purga y reconstruye la BD local desde fixtures
+#   3. make schema-dump
+#      - debe terminar con "Nothing to update"
+#   4. make db-dump-fixtures
+#      - genera backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql
+#   5. copiar ese dump a backups/ del VPS
+#
+# PRODUCCIÓN:
+#   1. desplegar el código con make deploy-prod-build
+#   2. make db-import-prod DUMP=backups/<dump-limpio>.sql
+#      - db-import-prod crea SIEMPRE un backup de la BD productiva justo antes
+#        de importar el dump
+#      - el dump limpio sustituye schema y datos por el estado reproducible de
+#        fixtures
+#   3. make schema-dump-prod
+#      - debe terminar con "Nothing to update"
+#   4. validar Doctrine/servicios y hacer QA funcional
+#
+# Si NO hay cambios de schema/fixtures, no es necesario regenerar/importar dump.
+# -----------------------------------------------------------------------------
 # =============================================================================
 
 PROJECT_NAME := begreen
@@ -74,6 +104,11 @@ help:
 	@echo "  make deploy-prod                git pull + up-prod + composer prod + assets + cache + schema dump"
 	@echo "  make deploy-prod-build          git pull + up-prod-build + composer prod + assets + cache + schema dump"
 	@echo "  make deploy-prod-full           Igual que deploy-prod-build, pero también ejecuta schema-update-prod"
+	@echo ""
+	@echo "  Cambios schema/fixtures:"
+	@echo "    LOCAL: fixtures -> schema-dump -> db-dump-fixtures"
+	@echo "    PROD:  deploy-prod-build -> db-import-prod -> schema-dump-prod"
+	@echo "    Ver procedimiento completo documentado en la cabecera del Makefile."
 	@echo ""
 	@echo "PROD - utilidades"
 	@echo "  make down-prod                  Baja prod"
@@ -176,7 +211,7 @@ doctor:
 	$(PHP_DEV) ./vendor/bin/phpunit --list-tests
 
 prepare-private-storage:
-	$(COMPOSE_DEV) exec -u root php sh -lc 'mkdir -p /app/var/private/stripe-invoices && chown -R www-data:www-data /app/var/private && chmod -R u+rwX,g+rwX /app/var/private'
+	$(COMPOSE_DEV) exec -u root php sh -lc 'mkdir -p /app/var/private/stripe-invoices /app/var/storage/project-documents && chown -R www-data:www-data /app/var/private && chown www-data:www-data /app/var/storage /app/var/storage/project-documents && chmod -R u+rwX,g+rwX /app/var/private && chmod 750 /app/var/storage /app/var/storage/project-documents'
 
 # =============================================================================
 # DEV WORKFLOWS
@@ -289,7 +324,7 @@ db-import-prod:
 	@echo "Import completed: $(DUMP)"
 
 prepare-private-storage-prod:
-	$(COMPOSE_PROD) exec -u root php sh -lc 'mkdir -p /app/var/private/stripe-invoices && chown -R www-data:www-data /app/var/private && chmod -R u+rwX,g+rwX /app/var/private'
+	$(COMPOSE_PROD) exec -u root php sh -lc 'mkdir -p /app/var/private/stripe-invoices /app/var/storage/project-documents && chown -R www-data:www-data /app/var/private && chown www-data:www-data /app/var/storage /app/var/storage/project-documents && chmod -R u+rwX,g+rwX /app/var/private && chmod 750 /app/var/storage /app/var/storage/project-documents'
 
 # =============================================================================
 # PROD WORKFLOWS

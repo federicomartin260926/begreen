@@ -75,6 +75,13 @@ make console ARGS='app:extract-measure-template-v31 public/fixtures/be_green_my_
 make console ARGS='app:send-test-email test@example.com'
 ```
 
+Los catálogos XLSX versionados de medidas se mantienen juntos en
+`app/public/fixtures/`:
+
+- `be_green_my_film_measures.xlsx`
+- `be_green_my_event_measures.xlsx`
+- `BE_GREEN_MY_ANIMATION_v42_ENTREGA_INFORMATICO.xlsx`
+
 Para operaciones recurrentes también existen estos targets:
 
 ```bash
