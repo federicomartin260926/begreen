@@ -147,6 +147,46 @@ final class BgosControllerTest extends KernelTestCase
             '/backend/emission/new-transport?bgosDate=2026-09-17&amp;bgosView=day&amp;bgosCategory=transport&amp;bgosSubcategory=freight',
             $content,
         );
+        self::assertStringNotContainsString('data-bgos-daily-breakdown=', $content);
+    }
+
+    public function testAgendaRendersCalendarMatrixForWeekMonthAndTotal(): void
+    {
+        [$controller, $entityManager, $project, $activeProjectService] = $this->context();
+
+        $project->addPhaseDate(
+            (new ProjectPhaseDate())
+                ->setPhase('actividad')
+                ->setStartDate(new \DateTimeImmutable('2026-09-10'))
+                ->setEndDate(new \DateTimeImmutable('2026-09-20'))
+        );
+        $this->persistConfig(
+            $entityManager,
+            $project,
+            'transport',
+            'freight',
+            'Transporte de materiales',
+        )->setActivityFrequency(BgosSubcategoryConfig::FREQUENCY_DAILY);
+        $entityManager->flush();
+
+        $week = $this->agendaContent($controller, $activeProjectService, 'week', '2026-09-10');
+        self::assertStringContainsString('data-bgos-daily-breakdown="transport"', $week);
+        foreach (range(10, 16) as $day) {
+            self::assertStringContainsString(
+                sprintf('data-bgos-calendar-date="2026-09-%02d"', $day),
+                $week,
+            );
+        }
+        self::assertSame(7, substr_count($week, 'data-bgos-calendar-date='));
+
+        $month = $this->agendaContent($controller, $activeProjectService, 'month', '2026-09-10');
+        self::assertStringContainsString('data-bgos-daily-breakdown="transport"', $month);
+        self::assertStringContainsString('data-bgos-calendar-date="2026-09-30"', $month);
+
+        $total = $this->agendaContent($controller, $activeProjectService, 'total', '2026-09-10');
+        self::assertStringContainsString('data-bgos-daily-breakdown="transport"', $total);
+        self::assertStringContainsString('data-bgos-calendar-date="2026-09-20"', $total);
+        self::assertStringNotContainsString('data-bgos-calendar-date="2026-09-21"', $total);
     }
 
     public function testSaveCreatesThenUpdatesTheSameConfigWithAllFrequenciesAndActiveState(): void
@@ -445,6 +485,32 @@ final class BgosControllerTest extends KernelTestCase
         self::getContainer()->get('request_stack')->push($request);
 
         return $request;
+    }
+
+    private function agendaContent(
+        BgosController $controller,
+        ActiveProjectService $activeProjectService,
+        string $view,
+        string $date,
+    ): string {
+        $request = new Request([
+            'view' => $view,
+            'date' => $date,
+        ], [], [
+            '_route' => 'backend_bgos_index',
+        ]);
+        $request->setLocale('es');
+        $request->setSession(new Session(new MockArraySessionStorage()));
+        self::getContainer()->get('request_stack')->push($request);
+
+        return (string) $controller->index(
+            $activeProjectService,
+            self::getContainer()->get(BgosPeriodWindowResolver::class),
+            self::getContainer()->get(BgosPeriodService::class),
+            self::getContainer()->get(TransportUiCatalog::class),
+            self::getContainer()->get(\App\Repository\BgosCrewTransportJourneyRepository::class),
+            $request,
+        )->getContent();
     }
 
     private function configRequest(?string $open = null): Request

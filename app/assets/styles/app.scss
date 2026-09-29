@@ -3573,6 +3573,147 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
     font-size: .82rem;
 }
 
+.bgos-daily-breakdown {
+    width: 100%;
+    margin: .8rem 0 1rem;
+    overflow-x: auto;
+    border: 1px solid #dfe5e9;
+    border-radius: .55rem;
+    background: #fff;
+    overscroll-behavior-inline: contain;
+}
+
+.bgos-daily-breakdown__table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .72rem;
+
+    th,
+    td {
+        border-right: 1px solid #e7ebee;
+        border-bottom: 1px solid #e7ebee;
+    }
+
+    tr:last-child > * {
+        border-bottom: 0;
+    }
+
+    tr > *:last-child {
+        border-right: 0;
+    }
+}
+
+.bgos-daily-breakdown__row-heading {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 13rem;
+    min-width: 13rem;
+    max-width: 13rem;
+    padding: .55rem .65rem;
+    background: #f8faf9;
+    color: #32414b;
+    font-weight: 700;
+    text-align: left;
+}
+
+thead .bgos-daily-breakdown__row-heading {
+    z-index: 3;
+}
+
+.bgos-daily-breakdown__day-heading {
+    width: 5.25rem;
+    min-width: 5.25rem;
+    padding: .45rem .3rem;
+    background: #f8faf9;
+    color: #3d4b54;
+    text-align: center;
+}
+
+.bgos-daily-breakdown__date,
+.bgos-daily-breakdown__phase {
+    display: block;
+}
+
+.bgos-daily-breakdown__date {
+    font-size: .75rem;
+    font-weight: 800;
+}
+
+.bgos-daily-breakdown__phase {
+    min-height: 1.8em;
+    margin-top: .2rem;
+    color: #687681;
+    font-size: .61rem;
+    font-weight: 600;
+    line-height: 1.15;
+}
+
+.bgos-daily-breakdown__cell {
+    width: 5.25rem;
+    min-width: 5.25rem;
+    height: 3.25rem;
+    padding: .4rem .25rem;
+    color: #65727c;
+    text-align: center;
+    vertical-align: middle;
+
+    > small {
+        display: block;
+        margin-top: .15rem;
+        line-height: 1.1;
+    }
+}
+
+.bgos-daily-breakdown__status {
+    display: inline-block;
+    width: .72rem;
+    height: .72rem;
+    border: 2px solid #89949c;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.bgos-daily-breakdown__cell--complete .bgos-daily-breakdown__status {
+    border-color: #198754;
+    background: #198754;
+}
+
+.bgos-daily-breakdown__cell--pending .bgos-daily-breakdown__status {
+    border-color: #d68b00;
+    background: #f6b800;
+}
+
+.bgos-daily-breakdown__cell--future .bgos-daily-breakdown__status {
+    border-color: #9aa5ad;
+    background: #eef1f3;
+}
+
+.bgos-daily-breakdown__cell--not_applicable .bgos-daily-breakdown__status {
+    border-color: #a8b0b6;
+    background: linear-gradient(
+        135deg,
+        transparent 42%,
+        #a8b0b6 43%,
+        #a8b0b6 57%,
+        transparent 58%
+    );
+}
+
+.bgos-daily-breakdown__cell--unconfigured .bgos-daily-breakdown__status,
+.bgos-daily-breakdown__cell--no_data .bgos-daily-breakdown__status {
+    border-color: #adb6bc;
+    border-style: dashed;
+}
+
+.bgos-daily-breakdown__emissions {
+    color: #34434c;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
 
 /* ---------------------------------------------------------
  * Configuración

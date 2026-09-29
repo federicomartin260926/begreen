@@ -57,6 +57,18 @@ final class BgosPeriodService
             $periodEnd,
         );
 
+        $crewDaysByDate = $this->indexByDate($crewDays);
+        $crewJourneysByDate = $this->indexByDate($crewJourneys);
+        $todayDate = \DateTimeImmutable::createFromInterface($today)->setTime(0, 0);
+        $futureCompletion = $this->completionAggregator->aggregate([
+            new BgosCompletionResult(
+                BgosCompletionResult::STATUS_FUTURE,
+                0,
+                0,
+                0,
+            ),
+        ]);
+
         $crewSummary = $this->crewTransportCompletionService->summarize(
             $crewDays,
             $crewJourneys,
@@ -86,6 +98,36 @@ final class BgosPeriodService
                 if ($subcategory['active']) {
                     $subcategory['completion'] = $crewCompletion;
                     $subcategory['trackingStatus'] = $crewSummary['status'];
+
+                    foreach ($period['calendarDays'] as $calendarDay) {
+                        $dateKey = $calendarDay['key'];
+
+                        if ($calendarDay['date'] > $todayDate) {
+                            $subcategory['dailyBreakdown'][$dateKey]['completion'] =
+                                $futureCompletion;
+                            $subcategory['dailyBreakdown'][$dateKey]['trackingStatus'] =
+                                BgosCompletionResult::STATUS_FUTURE;
+
+                            continue;
+                        }
+
+                        $dailyCrewSummary = $this->crewTransportCompletionService->summarize(
+                            $crewDaysByDate[$dateKey] ?? [],
+                            $crewJourneysByDate[$dateKey] ?? [],
+                        );
+
+                        $subcategory['dailyBreakdown'][$dateKey]['completion'] =
+                            $this->completionAggregator->aggregate([
+                                new BgosCompletionResult(
+                                    $dailyCrewSummary['status'],
+                                    $dailyCrewSummary['expectedCount'],
+                                    $dailyCrewSummary['completedCount'],
+                                    $dailyCrewSummary['pendingCount'],
+                                ),
+                            ]);
+                        $subcategory['dailyBreakdown'][$dateKey]['trackingStatus'] =
+                            $dailyCrewSummary['status'];
+                    }
                 }
             }
             unset($subcategory);
@@ -112,6 +154,24 @@ final class BgosPeriodService
         $period['crewRoster'] = $this->crewRosterService->build($project);
 
         return $period;
+    }
+
+    /** @return array<string, list<object>> */
+    private function indexByDate(iterable $items): array
+    {
+        $indexed = [];
+
+        foreach ($items as $item) {
+            $date = $item->getDate();
+
+            if (!$date instanceof \DateTimeInterface) {
+                continue;
+            }
+
+            $indexed[$date->format('Y-m-d')][] = $item;
+        }
+
+        return $indexed;
     }
 
     /**

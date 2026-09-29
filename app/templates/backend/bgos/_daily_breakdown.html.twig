@@ -1,0 +1,71 @@
+<div class="bgos-daily-breakdown"
+     data-bgos-daily-breakdown="{{ category.key }}">
+    <table class="bgos-daily-breakdown__table">
+        <thead>
+            <tr>
+                <th class="bgos-daily-breakdown__row-heading" scope="col">
+                    {{ 'backend.bgos.agenda.period'|trans }}
+                </th>
+
+                {% for calendarDay in period.calendarDays %}
+                    <th scope="col"
+                        data-bgos-calendar-date="{{ calendarDay.key }}"
+                        class="bgos-daily-breakdown__day-heading">
+                        <span class="bgos-daily-breakdown__date">
+                            {{ calendarDay.date|date('d/m') }}
+                        </span>
+
+                        {% if calendarDay.phaseLabelKey %}
+                            <small class="bgos-daily-breakdown__phase bgos-daily-breakdown__phase--{{ calendarDay.phaseKey }}">
+                                {{ calendarDay.phaseLabelKey|trans }}
+                            </small>
+                        {% endif %}
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for subcategory in category.subcategories %}
+                {% if subcategory.configured
+                    or subcategory.completion.expectedCount > 0
+                    or subcategory.totalKgCo2e is not null
+                    or subcategory.crewTracking is defined
+                %}
+                    <tr>
+                        <th class="bgos-daily-breakdown__row-heading" scope="row">
+                            {{ subcategory.labelKey
+                                ? subcategory.labelKey|trans
+                                : subcategory.label }}
+                        </th>
+
+                        {% for calendarDay in period.calendarDays %}
+                            {% set daily = subcategory.dailyBreakdown[calendarDay.key] %}
+                            {% set dailyPct = daily.completion.completionPercentage %}
+
+                            <td class="bgos-daily-breakdown__cell bgos-daily-breakdown__cell--{{ daily.trackingStatus }}"
+                                data-bgos-daily-status="{{ daily.trackingStatus }}"
+                                data-bgos-daily-date="{{ calendarDay.key }}">
+                                <span class="bgos-daily-breakdown__status"
+                                      title="{{ ('backend.bgos.agenda.status.' ~ daily.trackingStatus)|trans }}">
+                                    <span class="visually-hidden">
+                                        {{ ('backend.bgos.agenda.status.' ~ daily.trackingStatus)|trans }}
+                                    </span>
+                                </span>
+
+                                {% if dailyPct is not null %}
+                                    <small>{{ dailyPct|round }}%</small>
+                                {% endif %}
+
+                                {% if daily.totalKgCo2e is not null %}
+                                    <small class="bgos-daily-breakdown__emissions">
+                                        {{ daily.totalKgCo2e|number_format(2, ',', '.') }} kg
+                                    </small>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

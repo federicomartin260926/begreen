@@ -22,6 +22,7 @@ final class BgosPeriodAssembler
      * @return array{
      *     periodStart: \DateTimeImmutable,
      *     periodEnd: \DateTimeImmutable,
+     *     calendarDays: list<array{key:string, date:\DateTimeImmutable, phaseKey:?string, phaseLabelKey:?string}>,
      *     totalKgCo2e: ?float,
      *     categories: list<array<string, mixed>>
      * }
@@ -44,6 +45,7 @@ final class BgosPeriodAssembler
             throw new \InvalidArgumentException('BGoS period end cannot be before start.');
         }
 
+        $calendarDays = $this->calendarDays($project, $periodStart, $periodEnd);
         $categories = [];
         $globalEmission = 0.0;
         $hasGlobalEmission = false;
@@ -68,22 +70,14 @@ final class BgosPeriodAssembler
                         && $record->subcategoryKey === $definition['subcategoryKey']
                 ));
 
-                $completionResults = [];
-
-                foreach ($project->getPhaseDates() as $phase) {
-                    $result = $this->completionCalculator->calculate(
-                        $config,
-                        $phase,
-                        $periodStart,
-                        $periodEnd,
-                        $today,
-                        $matchingDailyRecords,
-                    );
-
-                    if (null !== $result) {
-                        $completionResults[] = $result;
-                    }
-                }
+                $completionResults = $this->completionResults(
+                    $project,
+                    $config,
+                    $periodStart,
+                    $periodEnd,
+                    $today,
+                    $matchingDailyRecords,
+                );
 
                 $completion = $this->completionAggregator->aggregate($completionResults);
                 $trackingStatus = $configured
@@ -107,6 +101,36 @@ final class BgosPeriodAssembler
                     ));
 
                 $subcategoryEmission = $this->sumEmission($emissionRecords);
+                $dailyBreakdown = [];
+                $dailyRecordsByDate = [];
+
+                foreach ($matchingDailyRecords as $dailyRecord) {
+                    $dailyRecordsByDate[$dailyRecord->date->format('Y-m-d')][] = $dailyRecord;
+                }
+
+                foreach ($calendarDays as $calendarDay) {
+                    $day = $calendarDay['date'];
+                    $dayRecords = $dailyRecordsByDate[$calendarDay['key']] ?? [];
+                    $dayCompletionResults = $this->completionResults(
+                        $project,
+                        $config,
+                        $day,
+                        $day,
+                        $today,
+                        $dayRecords,
+                    );
+                    $dayCompletion = $this->completionAggregator->aggregate(
+                        $dayCompletionResults
+                    );
+
+                    $dailyBreakdown[$calendarDay['key']] = [
+                        'trackingStatus' => $configured
+                            ? $this->trackingStatus($dayCompletionResults, $dayCompletion)
+                            : 'unconfigured',
+                        'completion' => $dayCompletion,
+                        'totalKgCo2e' => $this->sumEmission($dayRecords),
+                    ];
+                }
 
                 if (null !== $subcategoryEmission) {
                     $categoryEmission += $subcategoryEmission;
@@ -125,6 +149,7 @@ final class BgosPeriodAssembler
                     'totalKgCo2e' => $subcategoryEmission,
                     'completion' => $completion,
                     'dailyRecords' => $emissionRecords,
+                    'dailyBreakdown' => $dailyBreakdown,
                 ];
             }
 
@@ -151,9 +176,88 @@ final class BgosPeriodAssembler
         return [
             'periodStart' => $periodStart,
             'periodEnd' => $periodEnd,
+            'calendarDays' => $calendarDays,
             'totalKgCo2e' => $hasGlobalEmission ? $globalEmission : null,
             'categories' => $categories,
         ];
+    }
+
+    /**
+     * @param list<BgosDailyRecord> $dailyRecords
+     * @return list<BgosCompletionResult>
+     */
+    private function completionResults(
+        Project $project,
+        BgosSubcategoryConfig $config,
+        \DateTimeImmutable $periodStart,
+        \DateTimeImmutable $periodEnd,
+        \DateTimeImmutable $today,
+        array $dailyRecords,
+    ): array {
+        $results = [];
+
+        foreach ($project->getPhaseDates() as $phase) {
+            $result = $this->completionCalculator->calculate(
+                $config,
+                $phase,
+                $periodStart,
+                $periodEnd,
+                $today,
+                $dailyRecords,
+            );
+
+            if (null !== $result) {
+                $results[] = $result;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * @return list<array{key:string, date:\DateTimeImmutable, phaseKey:?string, phaseLabelKey:?string}>
+     */
+    private function calendarDays(
+        Project $project,
+        \DateTimeImmutable $periodStart,
+        \DateTimeImmutable $periodEnd,
+    ): array {
+        $days = [];
+
+        for ($date = $periodStart; $date <= $periodEnd; $date = $date->modify('+1 day')) {
+            $phaseKey = null;
+
+            foreach ($project->getPhaseDates() as $phase) {
+                $phaseStart = $phase->getStartDate();
+                $phaseEnd = $phase->getEndDate();
+
+                if (null === $phaseStart || null === $phaseEnd) {
+                    continue;
+                }
+
+                if (
+                    $date >= $this->normalizeDate($phaseStart)
+                    && $date <= $this->normalizeDate($phaseEnd)
+                ) {
+                    $candidatePhaseKey = $phase->getPhase();
+                    $phaseKey = is_string($candidatePhaseKey)
+                        ? $candidatePhaseKey
+                        : null;
+                    break;
+                }
+            }
+
+            $days[] = [
+                'key' => $date->format('Y-m-d'),
+                'date' => $date,
+                'phaseKey' => $phaseKey,
+                'phaseLabelKey' => null === $phaseKey
+                    ? null
+                    : $project->getPhaseLabel($phaseKey),
+            ];
+        }
+
+        return $days;
     }
 
     /**

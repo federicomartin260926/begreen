@@ -44,6 +44,48 @@ final class BgosPeriodAssemblerTest extends TestCase
         self::assertSame(60.0, $people['totalKgCo2e']);
         self::assertSame(100.0, $people['completion']->completionPercentage());
         self::assertCount(2, $people['dailyRecords']);
+        self::assertSame(30.0, $people['dailyBreakdown']['2026-09-10']['totalKgCo2e']);
+        self::assertSame(30.0, $people['dailyBreakdown']['2026-09-11']['totalKgCo2e']);
+    }
+
+    public function testBuildsInclusiveDailyBreakdownWithTrackingSemantics(): void
+    {
+        $project = $this->project();
+
+        $period = $this->assembler()->build(
+            $project,
+            $this->catalog(),
+            $this->configs([
+                $this->config($project, 'people', BgosSubcategoryConfig::FREQUENCY_DAILY),
+                $this->config($project, 'freight', BgosSubcategoryConfig::FREQUENCY_PUNCTUAL),
+            ]),
+            [$this->record('2026-09-10', 15.0)],
+            new \DateTimeImmutable('2026-09-10'),
+            new \DateTimeImmutable('2026-09-13'),
+            new \DateTimeImmutable('2026-09-12'),
+        );
+
+        self::assertSame(
+            ['2026-09-10', '2026-09-11', '2026-09-12', '2026-09-13'],
+            array_column($period['calendarDays'], 'key'),
+        );
+        self::assertSame(
+            ['actividad', 'actividad', 'actividad', 'actividad'],
+            array_column($period['calendarDays'], 'phaseKey'),
+        );
+
+        $transport = $this->category($period['categories'], 'transport');
+        $people = $this->subcategory($transport['subcategories'], 'people');
+        self::assertSame('complete', $people['dailyBreakdown']['2026-09-10']['trackingStatus']);
+        self::assertSame('pending', $people['dailyBreakdown']['2026-09-11']['trackingStatus']);
+        self::assertSame('pending', $people['dailyBreakdown']['2026-09-12']['trackingStatus']);
+        self::assertSame('future', $people['dailyBreakdown']['2026-09-13']['trackingStatus']);
+        self::assertSame(15.0, $people['dailyBreakdown']['2026-09-10']['totalKgCo2e']);
+        self::assertNull($people['dailyBreakdown']['2026-09-11']['totalKgCo2e']);
+
+        $freight = $this->subcategory($transport['subcategories'], 'freight');
+        self::assertSame('no_data', $freight['dailyBreakdown']['2026-09-11']['trackingStatus']);
+        self::assertNotSame('pending', $freight['dailyBreakdown']['2026-09-11']['trackingStatus']);
     }
 
     public function testFullProjectEmissionCanIncludeRecordsOutsideTrackingPeriod(): void
@@ -136,6 +178,7 @@ final class BgosPeriodAssemblerTest extends TestCase
         self::assertTrue($freight['active']);
         self::assertFalse($freight['configured']);
         self::assertSame('unconfigured', $freight['trackingStatus']);
+        self::assertSame('unconfigured', $freight['dailyBreakdown']['2026-09-10']['trackingStatus']);
         self::assertNull($freight['totalKgCo2e']);
         self::assertSame(0, $freight['completion']->expectedCount);
         self::assertNull($freight['completion']->completionPercentage());
@@ -170,6 +213,10 @@ final class BgosPeriodAssemblerTest extends TestCase
         self::assertSame(
             BgosCompletionResult::STATUS_NOT_APPLICABLE,
             $people['trackingStatus'],
+        );
+        self::assertSame(
+            BgosCompletionResult::STATUS_NOT_APPLICABLE,
+            $people['dailyBreakdown']['2026-09-10']['trackingStatus'],
         );
         self::assertSame(12.5, $people['totalKgCo2e']);
         self::assertSame(0, $people['completion']->expectedCount);

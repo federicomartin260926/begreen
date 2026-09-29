@@ -75,6 +75,35 @@ final class BgosPeriodServiceTest extends KernelTestCase
             [$ana->getId(), $luis->getId(), $marta->getId()],
             $tracking['trackedMemberIds'],
         );
+
+        $people = $this->peopleSubcategory($period);
+        self::assertSame('complete', $people['dailyBreakdown']['2026-09-23']['trackingStatus']);
+        self::assertSame(2, $people['dailyBreakdown']['2026-09-23']['completion']->expectedCount);
+        self::assertSame('pending', $people['dailyBreakdown']['2026-09-24']['trackingStatus']);
+        self::assertSame(2, $people['dailyBreakdown']['2026-09-24']['completion']->expectedCount);
+        self::assertSame(1, $people['dailyBreakdown']['2026-09-24']['completion']->pendingCount);
+
+        $futurePeriod = self::getContainer()->get(BgosPeriodService::class)->build(
+            $project,
+            new \DateTimeImmutable('2026-09-23'),
+            new \DateTimeImmutable('2026-09-24'),
+            new \DateTimeImmutable('2026-09-23'),
+        );
+
+        $futurePeople = $this->peopleSubcategory($futurePeriod);
+
+        self::assertSame(
+            'future',
+            $futurePeople['dailyBreakdown']['2026-09-24']['trackingStatus'],
+        );
+        self::assertSame(
+            0,
+            $futurePeople['dailyBreakdown']['2026-09-24']['completion']->expectedCount,
+        );
+        self::assertSame(
+            0,
+            $futurePeople['dailyBreakdown']['2026-09-24']['completion']->pendingCount,
+        );
     }
 
     private function member(Project $project, string $name): CrewMember
@@ -112,13 +141,21 @@ final class BgosPeriodServiceTest extends KernelTestCase
      */
     private function peopleTracking(array $period): array
     {
+        return $this->peopleSubcategory($period)['crewTracking'];
+    }
+
+    /** @param array<string, mixed> $period
+     *  @return array<string, mixed>
+     */
+    private function peopleSubcategory(array $period): array
+    {
         foreach ($period['categories'] as $category) {
             if ('transport' !== $category['key']) {
                 continue;
             }
             foreach ($category['subcategories'] as $subcategory) {
                 if ('people' === $subcategory['key']) {
-                    return $subcategory['crewTracking'];
+                    return $subcategory;
                 }
             }
         }

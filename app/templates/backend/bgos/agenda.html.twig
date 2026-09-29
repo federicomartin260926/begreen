@@ -767,6 +767,13 @@
                                         {% endif %}
                                     {% endfor %}
 
+                                    {% if window.view != 'day' and hasVisibleSubcategory %}
+                                        {% include 'backend/bgos/_daily_breakdown.html.twig' with {
+                                            category: category,
+                                            period: period
+                                        } only %}
+                                    {% endif %}
+
                                     {% if category.key == 'transport' and window.view == 'day' %}
                                         {% set hasVisibleSubcategory = true %}
                                         {% include 'backend/bgos/_crew_transport_journeys.html.twig' %}
