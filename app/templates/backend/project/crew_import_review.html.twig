@@ -15,6 +15,17 @@
 {% endblock %}
 
 {% block body %}
+{% set assignmentCatalog = {} %}
+{% for department in catalog %}
+    {% set positions = [] %}
+    {% for position in department.positions %}
+        {% set positions = positions|merge([{
+            id: position.id,
+            label: position.name.es ~ ' / ' ~ position.name.en
+        }]) %}
+    {% endfor %}
+    {% set assignmentCatalog = assignmentCatalog|merge({('department_' ~ department.id): positions}) %}
+{% endfor %}
 <div class="container-fluid px-0 backend-client-shell">
     <div class="mb-4">
         <h2 class="mb-1">{{ 'backend.projects.crew.import.review.heading'|trans }}</h2>
@@ -31,7 +42,10 @@
         </div>
     {% endif %}
 
-    <form method="post" action="{{ path('backend_project_crew_import_confirm', {id: project.id, token: token}) }}">
+    <form method="post"
+          action="{{ path('backend_project_crew_import_confirm', {id: project.id, token: token}) }}"
+          data-controller="crew-assignment"
+          data-crew-assignment-catalog-value="{{ assignmentCatalog|json_encode|e('html_attr') }}">
         <input type="hidden" name="_token" value="{{ csrf_token(csrfId) }}">
 
         {% for person in proposal.people %}
@@ -41,6 +55,14 @@
             {% set included = submitted.include is defined ? submitted.include : defaultIncluded %}
             {% set action = submitted.action|default(person.action in ['create', 'associate'] ? person.action : '') %}
             {% set existingId = submitted.existingCrewMemberId|default(person.existingCrewMemberId) %}
+            {% set hasUnresolvedAssignments = false %}
+            {% for assignment in person.assignments %}
+                {% if assignment.resolutionStatus not in ['none', 'resolved']
+                    or (assignment.originalDepartment is not empty and assignment.departmentId is null)
+                    or (assignment.originalPosition is not empty and assignment.positionId is null) %}
+                    {% set hasUnresolvedAssignments = true %}
+                {% endif %}
+            {% endfor %}
 
             <section class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-start gap-3">
@@ -51,9 +73,18 @@
                             {{ person.sourceReferences is not empty ? person.sourceReferences|join(', ') : person.sourceRows|join(', ') }}
                         </div>
                     </div>
-                    <span class="badge text-bg-secondary">
-                        {{ ('backend.projects.crew.import.review.person_status.' ~ person.action)|trans }}
-                    </span>
+                    <div class="d-flex flex-wrap justify-content-end gap-2">
+                        <span class="badge text-bg-secondary">
+                            {{ ('backend.projects.crew.import.review.person_status.' ~ person.action)|trans }}
+                        </span>
+                        {% if person.action == 'conflict' %}
+                            <span class="badge text-bg-danger">{{ 'backend.projects.crew.import.review.reconciliation_status.conflict'|trans }}</span>
+                        {% elseif person.action == 'review' or hasUnresolvedAssignments %}
+                            <span class="badge text-bg-warning">{{ 'backend.projects.crew.import.review.reconciliation_status.review'|trans }}</span>
+                        {% else %}
+                            <span class="badge text-bg-success">{{ 'backend.projects.crew.import.review.reconciliation_status.reconciled'|trans }}</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="form-check form-switch mb-3">
@@ -125,13 +156,16 @@
                         {% set submittedAssignment = submitted.assignments[assignmentIndex]|default({}) %}
                         {% set departmentId = submittedAssignment.departmentId|default(assignment.departmentId) %}
                         {% set positionId = submittedAssignment.positionId|default(assignment.positionId) %}
-                        <div class="border rounded p-3 mb-3">
+                        {% set assignmentNeedsReview = assignment.resolutionStatus not in ['none', 'resolved']
+                            or (assignment.originalDepartment is not empty and not departmentId)
+                            or (assignment.originalPosition is not empty and not positionId) %}
+                        <div class="border rounded p-3 mb-3" data-crew-assignment-target="assignment">
                             <div class="row g-3">
                                 <div class="col-12 col-lg-4">
                                     <div class="small text-uppercase text-muted mb-2">{{ 'backend.projects.crew.import.review.document'|trans }}</div>
                                     <div><strong>{{ 'backend.projects.crew.form.department'|trans }}:</strong> {{ assignment.originalDepartment ?: '—' }}</div>
                                     <div><strong>{{ 'backend.projects.crew.form.position'|trans }}:</strong> {{ assignment.originalPosition ?: '—' }}</div>
-                                    <div><strong>{{ 'backend.projects.crew.import.review.status'|trans }}:</strong>
+                                    <div><strong>{{ 'backend.projects.crew.import.review.document_interpretation'|trans }}:</strong>
                                         {{ ('backend.projects.crew.import.review.assignment_status.' ~ assignment.resolutionStatus)|trans }}
                                     </div>
                                 </div>
@@ -141,7 +175,9 @@
                                         <div class="col-12 col-md-6">
                                             <label class="form-label" for="person_{{ personIndex }}_assignment_{{ assignmentIndex }}_department">{{ 'backend.projects.crew.form.department'|trans }}</label>
                                             <select class="form-select" id="person_{{ personIndex }}_assignment_{{ assignmentIndex }}_department"
-                                                    name="people[{{ personIndex }}][assignments][{{ assignmentIndex }}][departmentId]">
+                                                    name="people[{{ personIndex }}][assignments][{{ assignmentIndex }}][departmentId]"
+                                                    data-crew-assignment-role="department"
+                                                    data-action="change->crew-assignment#departmentChanged">
                                                 <option value="">—</option>
                                                 {% for department in catalog %}
                                                     <option value="{{ department.id }}" {% if departmentId == department.id %}selected{% endif %}>
@@ -153,22 +189,32 @@
                                         <div class="col-12 col-md-6">
                                             <label class="form-label" for="person_{{ personIndex }}_assignment_{{ assignmentIndex }}_position">{{ 'backend.projects.crew.form.position'|trans }}</label>
                                             <select class="form-select" id="person_{{ personIndex }}_assignment_{{ assignmentIndex }}_position"
-                                                    name="people[{{ personIndex }}][assignments][{{ assignmentIndex }}][positionId]">
+                                                    name="people[{{ personIndex }}][assignments][{{ assignmentIndex }}][positionId]"
+                                                    data-crew-assignment-role="position">
                                                 <option value="">—</option>
                                                 {% for department in catalog %}
-                                                    <optgroup label="{{ department.name.es }} / {{ department.name.en }}">
+                                                    {% if department.id == departmentId %}
                                                         {% for position in department.positions %}
                                                             <option value="{{ position.id }}" {% if positionId == position.id %}selected{% endif %}>
                                                                 {{ position.name.es }} / {{ position.name.en }}
                                                             </option>
                                                         {% endfor %}
-                                                    </optgroup>
+                                                    {% endif %}
                                                 {% endfor %}
                                             </select>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                            {% if assignmentNeedsReview %}
+                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small">
+                                    {% if assignment.originalPosition is not empty and departmentId and not positionId %}
+                                        {{ 'backend.projects.crew.import.review.position_requires_review'|trans }}
+                                    {% else %}
+                                        {{ 'backend.projects.crew.import.review.assignment_requires_review'|trans }}
+                                    {% endif %}
+                                </div>
+                            {% endif %}
                         </div>
                     {% endfor %}
                 </div>

@@ -365,6 +365,79 @@ final class CrewImportHttpFlowTest extends KernelTestCase
         self::assertCount(0, self::getContainer()->get(CrewMemberRepository::class)->findByProject($this->project));
     }
 
+    public function testReviewShowsReconciliationStatesAndPendingPosition(): void
+    {
+        $department = self::getContainer()->get(CrewDepartmentRepository::class)->findOneBy([
+            'scope' => CrewDepartment::SCOPE_FILMING,
+            'name' => 'ARTE',
+        ]);
+        $position = self::getContainer()->get(CrewPositionRepository::class)->findOneBy([
+            'crewDepartment' => $department,
+            'name' => 'Director/a de arte',
+        ]);
+        self::assertNotNull($department);
+        self::assertNotNull($position);
+        $proposal = new CrewImportProposal((int) $this->project->getId(), CrewImportExtraction::OFFICIAL_TEMPLATE, [
+            new CrewImportPersonProposal(
+                [2], 'Resolved Person', 'Resolved', 'Person', '', '', null,
+                CrewImportPersonProposal::CREATE, false, [],
+                [new CrewImportAssignmentProposal(2, 'ARTE', 'Director/a de arte', $department->getId(), $position->getId(), CrewImportAssignmentProposal::RESOLVED)]
+            ),
+            new CrewImportPersonProposal(
+                [3], 'Partial Person', 'Partial', 'Person', '', '', null,
+                CrewImportPersonProposal::REVIEW, true, [],
+                [new CrewImportAssignmentProposal(3, 'POSTPRODUCCIÓN', 'POSTPRODUCCIÓN', $department->getId(), null, CrewImportAssignmentProposal::RESOLVED)]
+            ),
+            new CrewImportPersonProposal(
+                [4], 'Conflict Person', 'Conflict', 'Person', '', '', null,
+                CrewImportPersonProposal::CONFLICT, true, [], []
+            ),
+        ]);
+        $token = $this->storage->store($proposal, (int) $this->user->getId(), $this->session->getId());
+        $this->tokens[] = $token;
+        $request = $this->request('backend_project_crew_import_review');
+        $request->attributes->set('token', $token);
+        $request->attributes->set('_route_params', ['id' => $this->project->getId(), 'token' => $token]);
+
+        $response = $this->controller->reviewCrewImport(
+            $this->project,
+            $token,
+            $request,
+            $this->storage,
+            self::getContainer()->get(CrewCatalogContextProvider::class),
+            self::getContainer()->get(CrewMemberRepository::class),
+        );
+        $content = (string) $response->getContent();
+
+        self::assertStringContainsString('Conciliado', $content);
+        self::assertStringContainsString('Revisión necesaria', $content);
+        self::assertStringContainsString('Cargo pendiente de revisión', $content);
+        self::assertStringContainsString('Conflicto', $content);
+        self::assertStringContainsString('Lectura del documento', $content);
+        self::assertSame(1, preg_match('/data-crew-assignment-catalog-value="([^"]+)"/', $content, $catalogMatch));
+        $catalog = json_decode(
+            html_entity_decode($catalogMatch[1], ENT_QUOTES | ENT_HTML5),
+            true,
+            32,
+            JSON_THROW_ON_ERROR,
+        );
+        $departmentPositions = null;
+        foreach ($catalog as $positions) {
+            if (in_array($position->getId(), array_column($positions, 'id'), true)) {
+                $departmentPositions = $positions;
+                break;
+            }
+        }
+        self::assertNotNull($departmentPositions);
+        self::assertSame(1, preg_match('/<select[^>]+id="person_0_assignment_0_position"[^>]*>(.*?)<\/select>/s', $content, $selectMatch));
+        preg_match_all('/<option value="(\d+)"/', $selectMatch[1], $optionMatches);
+        $renderedPositionIds = array_map('intval', $optionMatches[1]);
+        self::assertSame(
+            array_column($departmentPositions, 'id'),
+            $renderedPositionIds,
+        );
+    }
+
     public function testCancelDeletesStorageWithoutPersistingCrew(): void
     {
         $proposal = new CrewImportProposal((int) $this->project->getId(), CrewImportExtraction::OFFICIAL_TEMPLATE, [

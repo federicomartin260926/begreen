@@ -647,6 +647,9 @@ backend:
           document: "Documento"
           begreen: "BeGreen"
           status: "Estado"
+          document_interpretation: "Lectura del documento"
+          position_requires_review: "Cargo pendiente de revisión"
+          assignment_requires_review: "Asignación pendiente de revisión"
           confirm: "Confirmar importación"
           cancel: "Cancelar importación"
           empty: "El archivo no contiene personas para importar."
@@ -656,6 +659,10 @@ backend:
             review: "Revisar"
             conflict: "Conflicto"
             omit: "Omitida"
+          reconciliation_status:
+            reconciled: "Conciliado"
+            review: "Revisión necesaria"
+            conflict: "Conflicto"
           assignment_status:
             none: "Vacío"
             resolved: "Reconocido"

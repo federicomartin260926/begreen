@@ -645,6 +645,9 @@ backend:
           document: "Document"
           begreen: "BeGreen"
           status: "Status"
+          document_interpretation: "Document interpretation"
+          position_requires_review: "Position requires review"
+          assignment_requires_review: "Assignment requires review"
           confirm: "Confirm import"
           cancel: "Cancel import"
           empty: "The file contains no people to import."
@@ -654,6 +657,10 @@ backend:
             review: "Review"
             conflict: "Conflict"
             omit: "Omitted"
+          reconciliation_status:
+            reconciled: "Reconciled"
+            review: "Review required"
+            conflict: "Conflict"
           assignment_status:
             none: "Empty"
             resolved: "Recognized"

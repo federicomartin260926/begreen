@@ -53,6 +53,7 @@ import MeasureBlockFilterController from './controllers/measure_block_filter_con
 import DescriptionToggleController from './controllers/description_toggle_controller.js';
 import DownloadStateController from './controllers/download_state_controller.js';
 import BgosJourneyController from './controllers/bgos_journey_controller.js';
+import CrewAssignmentController from './controllers/crew_assignment_controller.js';
 
 const application = Application.start();
 application.register('project', ProjectController);
@@ -82,6 +83,7 @@ application.register('measure-block-filter', MeasureBlockFilterController);
 application.register('description-toggle', DescriptionToggleController);
 application.register('download-state', DownloadStateController);
 application.register('bgos-journey', BgosJourneyController);
+application.register('crew-assignment', CrewAssignmentController);
 
 // 7) bootstrap-select (CSS estático + JS dinámico para asegurar window.bootstrap listo)
 import 'bootstrap-select/dist/css/bootstrap-select.min.css';
