@@ -13,6 +13,10 @@ use App\Repository\CrewPositionRepository;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Service\ActiveProjectService;
 use App\Service\CrewCatalogScopeResolver;
+use App\Service\CrewImport\CrewImportApplier;
+use App\Service\CrewImport\CrewImportProposalBuilder;
+use App\Service\CrewImport\CrewImportSpreadsheetExtractor;
+use App\Service\CrewImport\Dto\CrewImportAssignmentProposal;
 use App\Service\ProjectCompanyLogoStorage;
 use App\Service\ProjectFeatureGate;
 use App\Service\StripeInvoiceStorageService;
@@ -32,6 +36,9 @@ final class ProjectCrewExcelTest extends KernelTestCase
     private Connection $connection;
     private EntityManagerInterface $entityManager;
     private ProjectController $controller;
+    private CrewImportSpreadsheetExtractor $extractor;
+    private CrewImportProposalBuilder $proposalBuilder;
+    private CrewImportApplier $applier;
     /** @var string[] */
     private array $temporaryFiles = [];
 
@@ -41,6 +48,9 @@ final class ProjectCrewExcelTest extends KernelTestCase
         $container = self::getContainer();
         $this->connection = $container->get('doctrine')->getConnection();
         $this->entityManager = $container->get(EntityManagerInterface::class);
+        $this->extractor = $container->get(CrewImportSpreadsheetExtractor::class);
+        $this->proposalBuilder = $container->get(CrewImportProposalBuilder::class);
+        $this->applier = $container->get(CrewImportApplier::class);
         $this->connection->beginTransaction();
         $this->controller = new ProjectController(
             $container->get('translator'),
@@ -293,17 +303,25 @@ final class ProjectCrewExcelTest extends KernelTestCase
             true
         );
 
-        $method = new \ReflectionMethod(ProjectController::class, 'processCrewFile');
-        /** @var array{bool, string[]} $result */
-        $result = $method->invoke(
-            $this->controller,
-            $file,
-            $project,
-            $this->entityManager,
-            self::getContainer()->get(CrewCatalogScopeResolver::class)
-        );
+        $extraction = $this->extractor->extract($file->getPathname());
+        $proposal = $this->proposalBuilder->proposal($project, $extraction);
+        $messages = [];
+        foreach ($proposal->people as $person) {
+            foreach ($person->assignments as $assignment) {
+                $messages[] = match ($assignment->resolutionStatus) {
+                    CrewImportAssignmentProposal::UNKNOWN_DEPARTMENT,
+                    CrewImportAssignmentProposal::UNKNOWN_POSITION => 'no encontrado',
+                    CrewImportAssignmentProposal::AMBIGUOUS_POSITION => 'varios departamentos',
+                    CrewImportAssignmentProposal::POSITION_DEPARTMENT_MISMATCH => 'no pertenece',
+                    default => '',
+                };
+            }
+        }
+        $messages = array_values(array_filter($messages));
+        $result = [$proposal->isApplicable(), $messages];
 
         if ($result[0] && $flush) {
+            $this->applier->apply($project, $proposal);
             $this->entityManager->flush();
         }
 

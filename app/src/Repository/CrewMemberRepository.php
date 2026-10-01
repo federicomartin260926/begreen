@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\CrewMember;
+use App\Entity\Project;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -16,5 +17,9 @@ class CrewMemberRepository extends ServiceEntityRepository
         parent::__construct($registry, CrewMember::class);
     }
 
-    // Métodos personalizados si se necesitan más adelante
+    /** @return CrewMember[] */
+    public function findByProject(Project $project): array
+    {
+        return $this->findBy(['project' => $project], ['id' => 'ASC']);
+    }
 }

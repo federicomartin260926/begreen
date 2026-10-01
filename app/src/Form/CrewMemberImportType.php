@@ -24,7 +24,7 @@ class CrewMemberImportType extends AbstractType
                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             'application/vnd.ms-excel',
                         ],
-                        'mimeTypesMessage' => 'Por favor, sube un archivo Excel válido (.xlsx)',
+                        'mimeTypesMessage' => 'Por favor, sube un archivo Excel válido (.xls o .xlsx)',
                     ])
                 ]
             ]);
