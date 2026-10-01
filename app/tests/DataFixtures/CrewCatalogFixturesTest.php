@@ -3,11 +3,15 @@
 namespace App\Tests\DataFixtures;
 
 use App\DataFixtures\CrewCatalogFixtures;
+use App\DataFixtures\CrewCatalogEnglish;
 use App\DataFixtures\MeasureDepartmentFixtures;
 use App\Entity\CrewDepartment;
+use App\Entity\CrewPosition;
 use App\Entity\Department;
 use Doctrine\Persistence\ObjectManager;
 use Doctrine\Persistence\ObjectRepository;
+use Gedmo\Translatable\Entity\Repository\TranslationRepository;
+use Gedmo\Translatable\Entity\Translation;
 use PHPUnit\Framework\TestCase;
 
 final class CrewCatalogFixturesTest extends TestCase
@@ -28,6 +32,7 @@ final class CrewCatalogFixturesTest extends TestCase
     {
         $departments = [];
         $measureDepartments = [];
+        $englishTranslations = [];
         $repository = $this->createMock(ObjectRepository::class);
         $repository->method('findOneBy')
             ->willReturnCallback(function (array $criteria) use (&$measureDepartments): Department {
@@ -45,10 +50,24 @@ final class CrewCatalogFixturesTest extends TestCase
             });
 
         $manager = $this->createMock(ObjectManager::class);
-        $manager->expects(self::once())
+        $translationRepository = $this->createMock(TranslationRepository::class);
+        $translationRepository->expects(self::exactly(572))
+            ->method('translate')
+            ->willReturnCallback(function (object $entity, string $field, string $locale, ?string $value) use (&$englishTranslations): void {
+                self::assertContains($entity::class, [CrewDepartment::class, CrewPosition::class]);
+                self::assertSame('name', $field);
+                self::assertSame('en', $locale);
+                self::assertNotSame('', trim((string) $value));
+                self::assertArrayNotHasKey(spl_object_id($entity), $englishTranslations);
+                $englishTranslations[spl_object_id($entity)] = $value;
+            });
+
+        $manager->expects(self::exactly(2))
             ->method('getRepository')
-            ->with(Department::class)
-            ->willReturn($repository);
+            ->willReturnMap([
+                [Department::class, $repository],
+                [Translation::class, $translationRepository],
+            ]);
         $manager->expects(self::exactly(69))
             ->method('persist')
             ->with(self::callback(function (object $entity) use (&$departments): bool {
@@ -77,6 +96,7 @@ final class CrewCatalogFixturesTest extends TestCase
 
             self::assertArrayNotHasKey($department->getName(), $departmentNames[$scope]);
             self::assertSame($nextSortOrder[$scope], $department->getSortOrder());
+            self::assertArrayHasKey(spl_object_id($department), $englishTranslations);
 
             $departmentNames[$scope][$department->getName()] = true;
             $departmentsByScopeAndName[$scope][$department->getName()] = $department;
@@ -100,6 +120,7 @@ final class CrewCatalogFixturesTest extends TestCase
                 self::assertSame($department, $position->getCrewDepartment());
                 self::assertArrayNotHasKey($position->getName(), $positionNames);
                 self::assertSame($nextPositionSortOrder, $position->getSortOrder());
+                self::assertArrayHasKey(spl_object_id($position), $englishTranslations);
 
                 $positionNames[$position->getName()] = true;
                 $nextPositionSortOrder += 10;
@@ -109,6 +130,7 @@ final class CrewCatalogFixturesTest extends TestCase
 
         self::assertSame(self::EXPECTED_TOTALS, $totals);
         self::assertSame(self::EXPECTED_MAPPING_TOTALS, $mappingTotals);
+        self::assertCount(69 + 503, $englishTranslations);
 
         self::assertSame(
             'Arte',
@@ -177,6 +199,30 @@ final class CrewCatalogFixturesTest extends TestCase
         self::assertSame(
             [MeasureDepartmentFixtures::class],
             (new CrewCatalogFixtures())->getDependencies()
+        );
+    }
+
+    public function testRepeatedPositionTranslationsCanBeOverriddenByContext(): void
+    {
+        self::assertSame(
+            'Floor Manager',
+            CrewCatalogEnglish::position(CrewDepartment::SCOPE_FILMING, 'PRODUCCIÓN', 'Regidor/a')
+        );
+        self::assertSame(
+            'Stage Manager',
+            CrewCatalogEnglish::position(CrewDepartment::SCOPE_EVENT, 'DIRECCIÓN Y SHOW', 'Regidor/a')
+        );
+        self::assertSame(
+            'Composer',
+            CrewCatalogEnglish::position(CrewDepartment::SCOPE_ANIMATION, 'SONIDO Y MÚSICA', 'Compositor/a')
+        );
+        self::assertSame(
+            'Compositor',
+            CrewCatalogEnglish::position(
+                CrewDepartment::SCOPE_ANIMATION,
+                'ILUMINACIÓN, RENDER Y COMPOSICIÓN',
+                'Compositor/a'
+            )
         );
     }
 

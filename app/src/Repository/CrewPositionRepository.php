@@ -26,6 +26,20 @@ class CrewPositionRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * Reads the persisted base value through scalar hydration, so Gedmo cannot
+     * replace it with the listener's current locale during entity hydration.
+     */
+    public function canonicalName(int $id): string
+    {
+        return trim((string) $this->createQueryBuilder('p')
+            ->select('p.name')
+            ->andWhere('p.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getSingleScalarResult());
+    }
+
     public function nextSortOrderForDepartment(CrewDepartment $crewDepartment): int
     {
         $max = (int) $this->createQueryBuilder('p')

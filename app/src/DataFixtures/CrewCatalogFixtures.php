@@ -9,6 +9,8 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
+use Gedmo\Translatable\Entity\Repository\TranslationRepository;
+use Gedmo\Translatable\Entity\Translation;
 
 final class CrewCatalogFixtures extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
@@ -951,6 +953,10 @@ final class CrewCatalogFixtures extends Fixture implements DependentFixtureInter
     public function load(ObjectManager $manager): void
     {
         $departmentRepository = $manager->getRepository(Department::class);
+        $translationRepository = $manager->getRepository(Translation::class);
+        if (!$translationRepository instanceof TranslationRepository) {
+            throw new \LogicException('The crew catalog translation repository is not available.');
+        }
 
         foreach (self::CATALOGS as $scope => $departments) {
             foreach ($departments as $departmentIndex => $definition) {
@@ -960,12 +966,24 @@ final class CrewCatalogFixtures extends Fixture implements DependentFixtureInter
                     ->setSortOrder(($departmentIndex + 1) * 10);
 
                 foreach ($definition['positions'] as $positionIndex => $positionName) {
-                    $department->addPosition(
-                        (new CrewPosition())
-                            ->setName($positionName)
-                            ->setSortOrder(($positionIndex + 1) * 10)
+                    $position = (new CrewPosition())
+                        ->setName($positionName)
+                        ->setSortOrder(($positionIndex + 1) * 10);
+                    $department->addPosition($position);
+                    $translationRepository->translate(
+                        $position,
+                        'name',
+                        'en',
+                        CrewCatalogEnglish::position($scope, $definition['department'], $positionName)
                     );
                 }
+
+                $translationRepository->translate(
+                    $department,
+                    'name',
+                    'en',
+                    CrewCatalogEnglish::department($scope, $definition['department'])
+                );
 
                 $measureProjectType = CrewDepartment::SCOPE_EVENT === $scope
                     ? CrewDepartment::SCOPE_EVENT
