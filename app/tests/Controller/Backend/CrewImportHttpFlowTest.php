@@ -19,6 +19,7 @@ use App\Service\CrewImport\CrewImportProposalStorage;
 use App\Service\CrewImport\CrewImportSpreadsheetExtractor;
 use App\Service\CrewImport\CrewImportFreeSpreadsheetExtractor;
 use App\Service\CrewImport\CrewImportPdfTextExtractor;
+use App\Service\CrewImport\CrewImportAiBatchInterpreter;
 use App\Service\CrewImport\CrewImportAiInterpreterInterface;
 use App\Service\CrewImport\CrewImportInterpretedRowsAdapter;
 use App\Service\CrewImport\Dto\CrewImportInterpretedRow;
@@ -142,6 +143,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             $container->get(CrewImportFreeSpreadsheetExtractor::class),
             $container->get(CrewImportPdfTextExtractor::class),
             $officialInterpreter,
+            new CrewImportAiBatchInterpreter($officialInterpreter),
             $container->get(CrewImportInterpretedRowsAdapter::class),
             $container->get(CrewImportProposalBuilder::class),
             $this->storage,
@@ -226,10 +228,11 @@ final class CrewImportHttpFlowTest extends KernelTestCase
         $interpreter = $this->createMock(CrewImportAiInterpreterInterface::class);
         $interpreter->expects(self::once())
             ->method('interpret')
-            ->with($this->project, self::isInstanceOf(\App\Service\CrewImport\Dto\CrewImportTabularDocument::class))
+            ->with($this->project, self::callback(static fn ($document): bool => $document instanceof \App\Service\CrewImport\Dto\CrewImportTabularDocument
+                && $document->sheets[0]->targetRows !== null))
             ->willReturn([
                 new CrewImportInterpretedRow(
-                    'People!27',
+                    'Worksheet!2',
                     'Synthetic Person',
                     'Synthetic',
                     'Person',
@@ -256,6 +259,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
             self::getContainer()->get(CrewImportPdfTextExtractor::class),
             $interpreter,
+            new CrewImportAiBatchInterpreter($interpreter),
             self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
             self::getContainer()->get(CrewImportProposalBuilder::class),
             $this->storage,
@@ -272,7 +276,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             $this->session->getId()
         );
         self::assertSame(CrewImportPersonProposal::REVIEW, $proposal->people[0]->action);
-        self::assertSame(['People!27'], $proposal->people[0]->sourceReferences);
+        self::assertSame(['Worksheet!2'], $proposal->people[0]->sourceReferences);
 
         $reviewRequest = $this->request('backend_project_crew_import_review');
         $reviewRequest->attributes->set('token', $matches[1]);
@@ -285,7 +289,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             self::getContainer()->get(CrewCatalogContextProvider::class),
             self::getContainer()->get(CrewMemberRepository::class),
         );
-        self::assertStringContainsString('People!27', (string) $review->getContent());
+        self::assertStringContainsString('Worksheet!2', (string) $review->getContent());
     }
 
     public function testPdfRuntimeFailureDoesNotCallAiOrCreateCrew(): void
@@ -307,6 +311,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
             self::getContainer()->get(CrewImportPdfTextExtractor::class),
             $interpreter,
+            new CrewImportAiBatchInterpreter($interpreter),
             self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
             self::getContainer()->get(CrewImportProposalBuilder::class),
             $this->storage,
@@ -483,6 +488,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
             self::getContainer()->get(CrewImportPdfTextExtractor::class),
             $this->aiInterpreter,
+            new CrewImportAiBatchInterpreter($this->aiInterpreter),
             self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
             self::getContainer()->get(CrewImportProposalBuilder::class),
             $this->storage,
@@ -509,6 +515,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
             self::getContainer()->get(CrewImportPdfTextExtractor::class),
             $this->aiInterpreter,
+            new CrewImportAiBatchInterpreter($this->aiInterpreter),
             self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
             self::getContainer()->get(CrewImportProposalBuilder::class),
             $this->storage,
@@ -543,6 +550,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
             self::getContainer()->get(CrewImportPdfTextExtractor::class),
             $this->aiInterpreter,
+            new CrewImportAiBatchInterpreter($this->aiInterpreter),
             self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
             self::getContainer()->get(CrewImportProposalBuilder::class),
             $this->storage,

@@ -19,6 +19,7 @@ use App\Service\CrewImport\CrewImportProposalStorage;
 use App\Service\CrewImport\CrewImportSpreadsheetExtractor;
 use App\Service\CrewImport\CrewImportFreeSpreadsheetExtractor;
 use App\Service\CrewImport\CrewImportPdfTextExtractor;
+use App\Service\CrewImport\CrewImportAiBatchInterpreter;
 use App\Service\CrewImport\CrewImportAiInterpreterInterface;
 use App\Service\CrewImport\CrewImportInterpretedRowsAdapter;
 use App\Exception\CrewImport\CrewImportProposalStorageException;
@@ -1265,6 +1266,7 @@ class ProjectController extends AbstractController
         CrewImportFreeSpreadsheetExtractor $freeSpreadsheetExtractor,
         CrewImportPdfTextExtractor $pdfTextExtractor,
         CrewImportAiInterpreterInterface $aiInterpreter,
+        CrewImportAiBatchInterpreter $batchInterpreter,
         CrewImportInterpretedRowsAdapter $interpretedRowsAdapter,
         CrewImportProposalBuilder $proposalBuilder,
         CrewImportProposalStorage $storage,
@@ -1298,7 +1300,7 @@ class ProjectController extends AbstractController
                 $extraction = $extractor->extract($file->getPathname());
                 if (!$extraction->isOfficialTemplate()) {
                     $document = $freeSpreadsheetExtractor->extract($file->getPathname());
-                    $extraction = $interpretedRowsAdapter->toExtraction($aiInterpreter->interpret($project, $document));
+                    $extraction = $interpretedRowsAdapter->toExtraction($batchInterpreter->interpret($project, $document));
                 }
             } else {
                 $text = $pdfTextExtractor->extract($file->getPathname());

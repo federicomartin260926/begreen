@@ -159,6 +159,8 @@ final readonly class CrewImportAiInterpreter implements CrewImportAiInterpreterI
         return <<<'PROMPT'
 You structure crew-list source content into the strict supplied JSON schema.
 Never invent, merge, remove, or duplicate people. Preserve sourceReference and fullName.
+For batched spreadsheets, contextRows only describe structure or sections. Return people only from targetRows.
+Return each spreadsheet sourceReference exactly as supplied on its target row.
 Never invent or correct email/phone values, and never add country prefixes.
 Name splitting is only a proposal. Interpret Spanish and English role labels.
 Classify every person as crew, non_crew, or unknown. Keep ambiguous people as unknown.
