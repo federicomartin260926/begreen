@@ -53,6 +53,7 @@ PROJECT_NAME := begreen
 
 COMPOSE_DEV := docker compose -p $(PROJECT_NAME) --env-file app/.env --env-file app/.env.local -f app/docker-compose.yml -f app/docker-compose.dev.yml
 COMPOSE_PROD := docker compose -p $(PROJECT_NAME) --env-file app/.env --env-file app/.env.prod -f app/docker-compose.yml -f app/docker-compose.prod.yml
+COMPOSE_DEV_VPS := docker compose -p $(PROJECT_NAME) --env-file app/.env --env-file app/.env.local -f app/docker-compose.yml -f app/docker-compose.dev.yml -f app/docker-compose.vps.yml
 
 PHP_DEV := $(COMPOSE_DEV) exec php
 PHP_PROD := $(COMPOSE_PROD) exec php
@@ -242,6 +243,40 @@ dev-reset-fixtures:
 	$(MAKE) cache-clear
 	$(MAKE) schema-update
 	$(MAKE) fixtures
+
+# =============================================================================
+# SHARED DEV VPS
+# =============================================================================
+
+.PHONY: dev-vps-up dev-vps-up-build dev-vps-down dev-vps-ps dev-vps-update dev-vps-update-build
+
+dev-vps-up:
+	$(COMPOSE_DEV_VPS) up -d
+	$(MAKE) prepare-private-storage
+
+dev-vps-up-build:
+	$(COMPOSE_DEV_VPS) up -d --build
+	$(MAKE) prepare-private-storage
+
+dev-vps-down:
+	$(COMPOSE_DEV_VPS) down
+
+dev-vps-ps:
+	$(COMPOSE_DEV_VPS) ps
+
+dev-vps-update:
+	git pull
+	$(MAKE) dev-vps-up
+	$(MAKE) composer-install
+	$(MAKE) assets-build
+	$(MAKE) cache-clear
+
+dev-vps-update-build:
+	git pull
+	$(MAKE) dev-vps-up-build
+	$(MAKE) composer-install
+	$(MAKE) assets-build
+	$(MAKE) cache-clear
 
 # =============================================================================
 # PROD COMMANDS

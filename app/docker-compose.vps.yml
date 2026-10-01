@@ -1,0 +1,10 @@
+services:
+  nginx:
+    networks:
+      - default
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: proxy
