@@ -1,0 +1,190 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.projects.crew.import.review.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item">
+        <a class="text-decoration-none" href="{{ path('backend_project_edit_crew', {id: project.id}) }}">
+            {{ 'backend.projects.crew.breadcrumb'|trans }}
+        </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+        {{ 'backend.projects.crew.import.review.title'|trans }}
+    </li>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0 backend-client-shell">
+    <div class="mb-4">
+        <h2 class="mb-1">{{ 'backend.projects.crew.import.review.heading'|trans }}</h2>
+        <p class="text-muted mb-0">{{ 'backend.projects.crew.import.review.help'|trans }}</p>
+    </div>
+
+    {% if errors %}
+        <div class="alert alert-danger" role="alert">
+            <ul class="mb-0">
+                {% for error in errors %}
+                    <li>{{ error|trans }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="post" action="{{ path('backend_project_crew_import_confirm', {id: project.id, token: token}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfId) }}">
+
+        {% for person in proposal.people %}
+            {% set personIndex = loop.index0 %}
+            {% set submitted = reviewInput[personIndex]|default({}) %}
+            {% set defaultIncluded = true %}
+            {% set included = submitted.include is defined ? submitted.include : defaultIncluded %}
+            {% set action = submitted.action|default(person.action in ['create', 'associate'] ? person.action : '') %}
+            {% set existingId = submitted.existingCrewMemberId|default(person.existingCrewMemberId) %}
+
+            <section class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                        <strong>{{ person.originalFullName ?: '—' }}</strong>
+                        <div class="small text-muted">
+                            {{ 'backend.projects.crew.import.review.source_rows'|trans }}:
+                            {{ person.sourceRows|join(', ') }}
+                        </div>
+                    </div>
+                    <span class="badge text-bg-secondary">
+                        {{ ('backend.projects.crew.import.review.person_status.' ~ person.action)|trans }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input type="hidden" name="people[{{ personIndex }}][include]" value="0">
+                        <input class="form-check-input" type="checkbox" value="1"
+                               id="person_{{ personIndex }}_include"
+                               name="people[{{ personIndex }}][include]"
+                               {% if included %}checked{% endif %}>
+                        <label class="form-check-label" for="person_{{ personIndex }}_include">
+                            {{ 'backend.projects.crew.import.review.include'|trans }}
+                        </label>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="person_{{ personIndex }}_name">{{ 'backend.projects.crew.form.name'|trans }}</label>
+                            <input class="form-control" id="person_{{ personIndex }}_name" maxlength="100"
+                                   name="people[{{ personIndex }}][name]" value="{{ submitted.name|default(person.name) }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="person_{{ personIndex }}_lastName">{{ 'backend.projects.crew.form.last_name'|trans }}</label>
+                            <input class="form-control" id="person_{{ personIndex }}_lastName" maxlength="255"
+                                   name="people[{{ personIndex }}][lastName]" value="{{ submitted.lastName|default(person.lastName) }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="person_{{ personIndex }}_email">{{ 'backend.projects.crew.form.email'|trans }}</label>
+                            <input class="form-control" type="email" id="person_{{ personIndex }}_email" maxlength="150"
+                                   name="people[{{ personIndex }}][email]" value="{{ submitted.email|default(person.email) }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="person_{{ personIndex }}_phone">{{ 'backend.projects.crew.form.phone'|trans }}</label>
+                            <input class="form-control" id="person_{{ personIndex }}_phone" maxlength="20"
+                                   name="people[{{ personIndex }}][phone]" value="{{ submitted.phone|default(person.phone) }}">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="person_{{ personIndex }}_action">{{ 'backend.projects.crew.import.review.action'|trans }}</label>
+                            <select class="form-select" id="person_{{ personIndex }}_action" name="people[{{ personIndex }}][action]">
+                                <option value="">{{ 'backend.projects.crew.import.review.choose'|trans }}</option>
+                                <option value="create" {% if action == 'create' %}selected{% endif %}>{{ 'backend.projects.crew.import.review.create'|trans }}</option>
+                                <option value="associate" {% if action == 'associate' %}selected{% endif %}>{{ 'backend.projects.crew.import.review.associate'|trans }}</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="person_{{ personIndex }}_existing">{{ 'backend.projects.crew.import.review.existing_member'|trans }}</label>
+                            <select class="form-select" id="person_{{ personIndex }}_existing" name="people[{{ personIndex }}][existingCrewMemberId]">
+                                <option value="">{{ 'backend.projects.crew.import.review.choose'|trans }}</option>
+                                {% for member in existingCrewMembers %}
+                                    <option value="{{ member.id }}" {% if existingId == member.id %}selected{% endif %}>
+                                        {{ member }}{% if member.email %} — {{ member.email }}{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    {% if person.warningCodes %}
+                        <div class="alert alert-warning py-2">
+                            {% for warning in person.warningCodes %}
+                                <div>{{ ('backend.projects.crew.import.review.warnings.' ~ warning)|trans }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% for assignment in person.assignments %}
+                        {% set assignmentIndex = loop.index0 %}
+                        {% set submittedAssignment = submitted.assignments[assignmentIndex]|default({}) %}
+                        {% set departmentId = submittedAssignment.departmentId|default(assignment.departmentId) %}
+                        {% set positionId = submittedAssignment.positionId|default(assignment.positionId) %}
+                        <div class="border rounded p-3 mb-3">
+                            <div class="row g-3">
+                                <div class="col-12 col-lg-4">
+                                    <div class="small text-uppercase text-muted mb-2">{{ 'backend.projects.crew.import.review.document'|trans }}</div>
+                                    <div><strong>{{ 'backend.projects.crew.form.department'|trans }}:</strong> {{ assignment.originalDepartment ?: '—' }}</div>
+                                    <div><strong>{{ 'backend.projects.crew.form.position'|trans }}:</strong> {{ assignment.originalPosition ?: '—' }}</div>
+                                    <div><strong>{{ 'backend.projects.crew.import.review.status'|trans }}:</strong>
+                                        {{ ('backend.projects.crew.import.review.assignment_status.' ~ assignment.resolutionStatus)|trans }}
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-8">
+                                    <div class="small text-uppercase text-muted mb-2">{{ 'backend.projects.crew.import.review.begreen'|trans }}</div>
+                                    <div class="row g-2">
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label" for="person_{{ personIndex }}_assignment_{{ assignmentIndex }}_department">{{ 'backend.projects.crew.form.department'|trans }}</label>
+                                            <select class="form-select" id="person_{{ personIndex }}_assignment_{{ assignmentIndex }}_department"
+                                                    name="people[{{ personIndex }}][assignments][{{ assignmentIndex }}][departmentId]">
+                                                <option value="">—</option>
+                                                {% for department in catalog %}
+                                                    <option value="{{ department.id }}" {% if departmentId == department.id %}selected{% endif %}>
+                                                        {{ department.name.es }} / {{ department.name.en }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label" for="person_{{ personIndex }}_assignment_{{ assignmentIndex }}_position">{{ 'backend.projects.crew.form.position'|trans }}</label>
+                                            <select class="form-select" id="person_{{ personIndex }}_assignment_{{ assignmentIndex }}_position"
+                                                    name="people[{{ personIndex }}][assignments][{{ assignmentIndex }}][positionId]">
+                                                <option value="">—</option>
+                                                {% for department in catalog %}
+                                                    <optgroup label="{{ department.name.es }} / {{ department.name.en }}">
+                                                        {% for position in department.positions %}
+                                                            <option value="{{ position.id }}" {% if positionId == position.id %}selected{% endif %}>
+                                                                {{ position.name.es }} / {{ position.name.en }}
+                                                            </option>
+                                                        {% endfor %}
+                                                    </optgroup>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% else %}
+            <div class="alert alert-info">{{ 'backend.projects.crew.import.review.empty'|trans }}</div>
+        {% endfor %}
+
+        <div class="d-flex justify-content-end mb-2">
+            <button class="btn btn-primary" type="submit">{{ 'backend.projects.crew.import.review.confirm'|trans }}</button>
+        </div>
+    </form>
+
+    <form method="post" action="{{ path('backend_project_crew_import_cancel', {id: project.id, token: token}) }}" class="d-flex justify-content-end">
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfId) }}">
+        <button class="btn btn-outline-secondary" type="submit">{{ 'backend.projects.crew.import.review.cancel'|trans }}</button>
+    </form>
+</div>
+{% endblock %}

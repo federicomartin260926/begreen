@@ -149,6 +149,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="{{ path('backend_project_import_crew', {id: project.id}) }}" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="_token" value="{{ csrf_token('crew_import_upload_' ~ project.id) }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="importCrewModalLabel">{{ 'backend.projects.crew.import_modal.title'|trans }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>

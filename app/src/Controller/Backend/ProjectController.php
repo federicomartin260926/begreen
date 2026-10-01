@@ -4,7 +4,7 @@ namespace App\Controller\Backend;
 
 use App\Entity\{CrewDepartment, CrewPosition, EmissionRecord, Plan, Project, ProjectCompany, ProjectFundingSource, ProjectMembership, ProjectPhaseDate, User};
 use App\Form\{ProjectType, CrewMemberCollectionType};
-use App\Repository\{CrewDepartmentRepository, CrewPositionRepository, ProjectBillingDocumentRepository, ProjectRepository, EmissionRecordRepository, PlanRepository};
+use App\Repository\{CrewDepartmentRepository, CrewMemberRepository, CrewPositionRepository, ProjectBillingDocumentRepository, ProjectRepository, EmissionRecordRepository, PlanRepository};
 use App\Security\ProjectVoter;
 use App\Enum\CommercialPhase;
 use App\Enum\ProjectCatalog;
@@ -12,10 +12,13 @@ use App\Service\ActiveProjectService;
 use App\Service\Animation\AnimationProjectConfigurationUpdater;
 use App\Service\CrewCatalogScopeResolver;
 use App\Service\CrewImport\CrewImportApplier;
+use App\Service\CrewImport\CrewCatalogContextProvider;
+use App\Service\CrewImport\CrewImportConfirmationBuilder;
 use App\Service\CrewImport\CrewImportProposalBuilder;
+use App\Service\CrewImport\CrewImportProposalStorage;
 use App\Service\CrewImport\CrewImportSpreadsheetExtractor;
-use App\Service\CrewImport\CrewImportWarning;
-use App\Service\CrewImport\Dto\CrewImportAssignmentProposal;
+use App\Exception\CrewImport\CrewImportProposalStorageException;
+use App\Exception\CrewImport\CrewImportReviewValidationException;
 use App\Service\CrewImport\Dto\CrewImportExtraction;
 use App\Service\CrewImport\Dto\CrewImportProposal;
 use App\Entity\ProjectSubscription;
@@ -1251,17 +1254,24 @@ class ProjectController extends AbstractController
     public function importCrew(
         Project $project,
         Request $request,
-        EntityManagerInterface $em,
-        CrewCatalogScopeResolver $scopeResolver,
         CrewImportSpreadsheetExtractor $extractor,
         CrewImportProposalBuilder $proposalBuilder,
-        CrewImportApplier $applier,
+        CrewImportProposalStorage $storage,
     ): RedirectResponse {
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
 
+        if (!$this->isCsrfTokenValid('crew_import_upload_'.$project->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException();
+        }
+
         $file = $request->files->get('crewFile');
-        if (!$file) {
+        if (!$file instanceof UploadedFile) {
             $this->addFlash('danger', 'backend.projects.flash.crew_import_no_file');
+            return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
+        }
+
+        if (!$this->isValidCrewImportUpload($file)) {
+            $this->addFlash('danger', $this->t->trans('backend.projects.crew.import.errors.bad_format'));
             return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
         }
 
@@ -1276,65 +1286,183 @@ class ProjectController extends AbstractController
         }
 
         $proposal = $proposalBuilder->proposal($project, $extraction);
-        $messages = $this->crewImportMessages($proposal, $scopeResolver->resolve($project));
-        if (!$proposal->isApplicable()) {
-            foreach ($messages as $msg) {
-                $this->addFlash('danger', $msg);
-            }
-        } else {
-            $applier->apply($project, $proposal);
-            $em->flush();
-            $this->addFlash('success', 'backend.projects.flash.crew_import_ok');
-            // avisos no bloqueantes
-            foreach ($messages as $warn) {
-                $this->addFlash('warning', $warn);
-            }
+        try {
+            $token = $storage->store($proposal, $this->currentUserId(), $this->sessionId($request));
+        } catch (CrewImportProposalStorageException) {
+            $this->addFlash('danger', 'backend.projects.crew.import.errors.storage_failed');
+
+            return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
+        }
+
+        return $this->redirectToRoute('backend_project_crew_import_review', [
+            'id' => $project->getId(),
+            'token' => $token,
+        ]);
+    }
+
+    #[Route('/{id}/crew/import/{token}/review', name: 'crew_import_review', requirements: ['token' => '[a-f0-9]{64}'], methods: ['GET'])]
+    public function reviewCrewImport(
+        Project $project,
+        string $token,
+        Request $request,
+        CrewImportProposalStorage $storage,
+        CrewCatalogContextProvider $catalogContextProvider,
+        CrewMemberRepository $crewMemberRepository,
+    ): Response {
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $proposal = $this->loadCrewImportProposal($storage, $token, $project, $request);
+
+        return $this->renderCrewImportReview(
+            $project,
+            $token,
+            $proposal,
+            $catalogContextProvider,
+            $crewMemberRepository,
+        );
+    }
+
+    #[Route('/{id}/crew/import/{token}/confirm', name: 'crew_import_confirm', requirements: ['token' => '[a-f0-9]{64}'], methods: ['POST'])]
+    public function confirmCrewImport(
+        Project $project,
+        string $token,
+        Request $request,
+        EntityManagerInterface $em,
+        CrewImportProposalStorage $storage,
+        CrewImportConfirmationBuilder $confirmationBuilder,
+        CrewImportApplier $applier,
+        CrewCatalogContextProvider $catalogContextProvider,
+        CrewMemberRepository $crewMemberRepository,
+    ): Response {
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        if (!$this->isCsrfTokenValid($this->crewImportReviewCsrfId($project, $token), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $proposal = $this->loadCrewImportProposal($storage, $token, $project, $request);
+        $reviewInput = ['people' => $request->request->all('people')];
+        try {
+            $confirmed = $confirmationBuilder->build($proposal, $project, $reviewInput);
+        } catch (CrewImportReviewValidationException $exception) {
+            return $this->renderCrewImportReview(
+                $project,
+                $token,
+                $proposal,
+                $catalogContextProvider,
+                $crewMemberRepository,
+                $exception->errors,
+                $reviewInput['people'],
+            );
+        }
+
+        $applier->apply($project, $confirmed);
+        $em->flush();
+        $storage->delete($token, (int) $project->getId(), $this->currentUserId(), $this->sessionId($request));
+        $this->addFlash('success', 'backend.projects.flash.crew_import_ok');
+
+        return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
+    }
+
+    #[Route('/{id}/crew/import/{token}/cancel', name: 'crew_import_cancel', requirements: ['token' => '[a-f0-9]{64}'], methods: ['POST'])]
+    public function cancelCrewImport(
+        Project $project,
+        string $token,
+        Request $request,
+        CrewImportProposalStorage $storage,
+    ): RedirectResponse {
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        if (!$this->isCsrfTokenValid($this->crewImportReviewCsrfId($project, $token), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException();
+        }
+
+        try {
+            $storage->delete($token, (int) $project->getId(), $this->currentUserId(), $this->sessionId($request));
+        } catch (CrewImportProposalStorageException $exception) {
+            throw $this->createNotFoundException('Crew import proposal is not available.', $exception);
         }
 
         return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
     }
 
-    /** @return list<string> */
-    private function crewImportMessages(CrewImportProposal $proposal, string $scope): array
-    {
-        $messages = [];
-        foreach ($proposal->people as $person) {
-            if (in_array(CrewImportWarning::NAME_REQUIRED, $person->warningCodes, true)) {
-                $messages[] = $this->t->trans('backend.projects.crew.import.errors.name_required', [
-                    '%line%' => $person->sourceRows[0] ?? 0,
-                ]);
-            }
-            if (in_array(CrewImportWarning::PERSON_IDENTITY_CONFLICT, $person->warningCodes, true)) {
-                $messages[] = sprintf(
-                    'Líneas %s: conflicto de identidad entre email y teléfono.',
-                    implode(', ', $person->sourceRows)
-                );
-            }
-            if (in_array(CrewImportWarning::DUPLICATE_IN_FILE, $person->warningCodes, true)) {
-                $messages[] = sprintf('Filas %s: persona repetida en el archivo.', implode(', ', $person->sourceRows));
-            }
+    private function loadCrewImportProposal(
+        CrewImportProposalStorage $storage,
+        string $token,
+        Project $project,
+        Request $request,
+    ): CrewImportProposal {
+        try {
+            return $storage->load($token, (int) $project->getId(), $this->currentUserId(), $this->sessionId($request));
+        } catch (CrewImportProposalStorageException $exception) {
+            throw $this->createNotFoundException('Crew import proposal is not available.', $exception);
+        }
+    }
 
-            foreach ($person->assignments as $assignment) {
-                $params = [
-                    '%line%' => $assignment->sourceRow,
-                    '%dept%' => $assignment->originalDepartment,
-                    '%pos%' => $assignment->originalPosition,
-                    '%type%' => $scope,
-                ];
-                $key = match ($assignment->resolutionStatus) {
-                    CrewImportAssignmentProposal::UNKNOWN_DEPARTMENT => 'backend.projects.crew.import.errors.department_not_found',
-                    CrewImportAssignmentProposal::UNKNOWN_POSITION => 'backend.projects.crew.import.errors.position_not_found',
-                    CrewImportAssignmentProposal::AMBIGUOUS_POSITION => 'backend.projects.crew.import.errors.position_ambiguous',
-                    CrewImportAssignmentProposal::POSITION_DEPARTMENT_MISMATCH => 'backend.projects.crew.import.errors.position_department_mismatch',
-                    default => null,
-                };
-                if ($key !== null) {
-                    $messages[] = $this->t->trans($key, $params);
-                }
-            }
+    /** @param list<string> $errors @param array<int|string, mixed> $reviewInput */
+    private function renderCrewImportReview(
+        Project $project,
+        string $token,
+        CrewImportProposal $proposal,
+        CrewCatalogContextProvider $catalogContextProvider,
+        CrewMemberRepository $crewMemberRepository,
+        array $errors = [],
+        array $reviewInput = [],
+    ): Response {
+        return $this->render('backend/project/crew_import_review.html.twig', [
+            'project' => $project,
+            'token' => $token,
+            'proposal' => $proposal,
+            'catalog' => $catalogContextProvider->provide($project),
+            'existingCrewMembers' => $crewMemberRepository->findByProject($project),
+            'errors' => $errors,
+            'reviewInput' => $reviewInput,
+            'csrfId' => $this->crewImportReviewCsrfId($project, $token),
+        ]);
+    }
+
+    private function isValidCrewImportUpload(UploadedFile $file): bool
+    {
+        if (!$file->isValid() || !is_readable($file->getPathname())) {
+            return false;
         }
 
-        return array_values(array_unique($messages));
+        $size = $file->getSize();
+        if (!is_int($size) || $size <= 0 || $size > 2 * 1024 * 1024) {
+            return false;
+        }
+
+        return in_array(
+            strtolower($file->getClientOriginalExtension()),
+            ['xls', 'xlsx'],
+            true
+        );
+    }
+
+    private function currentUserId(): int
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User || ($id = $user->getId()) === null || $id <= 0) {
+            throw $this->createAccessDeniedException();
+        }
+
+        return $id;
+    }
+
+    private function sessionId(Request $request): string
+    {
+        $session = $request->getSession();
+        if (!$session->isStarted()) {
+            $session->start();
+        }
+        $sessionId = $session->getId();
+        if ($sessionId === '') {
+            throw $this->createAccessDeniedException();
+        }
+
+        return $sessionId;
+    }
+
+    private function crewImportReviewCsrfId(Project $project, string $token): string
+    {
+        return 'crew_import_review_'.$project->getId().'_'.$token;
     }
 
     #[Route('/{id}/delete', name: 'delete', methods: ['POST'])]
