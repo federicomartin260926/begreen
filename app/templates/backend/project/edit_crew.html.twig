@@ -148,16 +148,31 @@
 <div class="modal fade" id="importCrewModal" tabindex="-1" aria-labelledby="importCrewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="{{ path('backend_project_import_crew', {id: project.id}) }}" method="post" enctype="multipart/form-data">
+            <form action="{{ path('backend_project_import_crew', {id: project.id}) }}"
+                  method="post"
+                  enctype="multipart/form-data"
+                  data-controller="crew-import"
+                  data-action="submit->crew-import#submit"
+                  data-crew-import-processing-text-value="{{ 'backend.projects.crew.import_modal.processing'|trans }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('crew_import_upload_' ~ project.id) }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="importCrewModalLabel">{{ 'backend.projects.crew.import_modal.title'|trans }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ 'backend.common.close'|trans }}"></button>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            data-crew-import-target="close"
+                            aria-label="{{ 'backend.common.close'|trans }}"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="crewFile" class="form-label">{{ 'backend.projects.crew.import_modal.file_label'|trans }}</label>
-                        <input type="file" name="crewFile" id="crewFile" class="form-control" required accept=".xlsx,.xls,.pdf">
+                        <input type="file"
+                               name="crewFile"
+                               id="crewFile"
+                               class="form-control"
+                               required
+                               accept=".xlsx,.xls,.pdf"
+                               data-crew-import-target="file">
                         <div class="form-text">{{ 'backend.projects.crew.import_modal.help'|trans }}</div>
                         <div class="form-text">
                             <a href="{{ path('backend_project_template_download') }}" class="btn btn-outline-primary btn-sm mt-2" download>
@@ -165,13 +180,30 @@
                             </a>
                         </div>
                     </div>
+
+                    <div class="alert alert-info d-none mb-0"
+                         role="status"
+                         aria-live="polite"
+                         data-crew-import-target="status">
+                        {{ 'backend.projects.crew.import_modal.processing_help'|trans }}
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal"
+                            data-crew-import-target="cancel">
                         {{ 'backend.common.cancel'|trans }}
                     </button>
-                    <button type="submit" class="btn btn-primary">
-                        {{ 'backend.projects.crew.import_modal.submit'|trans }}
+                    <button type="submit"
+                            class="btn btn-primary"
+                            data-crew-import-target="submit">
+                        <span class="spinner-border spinner-border-sm me-1 d-none"
+                              aria-hidden="true"
+                              data-crew-import-target="spinner"></span>
+                        <span data-crew-import-target="submitLabel">
+                            {{ 'backend.projects.crew.import_modal.submit'|trans }}
+                        </span>
                     </button>
                 </div>
             </form>

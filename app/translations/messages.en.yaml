@@ -594,6 +594,8 @@ backend:
         help: "The official template is processed directly. Other spreadsheets and PDFs use AI-assisted interpretation and always require review."
         download_template: "Download template"
         submit: "Process"
+        processing: "Processing…"
+        processing_help: "Processing the file. This may take a few seconds; please wait until the review appears."
       template:
         sheet_title: "Crew"
         headers:

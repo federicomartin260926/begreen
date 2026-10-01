@@ -596,6 +596,8 @@ backend:
         help: "La plantilla oficial se procesa directamente. Otros Excel y PDF se interpretan con asistencia de IA y siempre pasan por revisión."
         download_template: "Descargar plantilla"
         submit: "Procesar"
+        processing: "Procesando…"
+        processing_help: "Procesando el archivo. Puede tardar unos segundos; espera hasta que aparezca la revisión."
       template:
         sheet_title: "Equipo Técnico"
         headers:
