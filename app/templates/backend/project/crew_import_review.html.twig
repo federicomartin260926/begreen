@@ -37,7 +37,7 @@
         {% for person in proposal.people %}
             {% set personIndex = loop.index0 %}
             {% set submitted = reviewInput[personIndex]|default({}) %}
-            {% set defaultIncluded = true %}
+            {% set defaultIncluded = 'AI_NON_CREW' not in person.warningCodes %}
             {% set included = submitted.include is defined ? submitted.include : defaultIncluded %}
             {% set action = submitted.action|default(person.action in ['create', 'associate'] ? person.action : '') %}
             {% set existingId = submitted.existingCrewMemberId|default(person.existingCrewMemberId) %}
@@ -48,7 +48,7 @@
                         <strong>{{ person.originalFullName ?: '—' }}</strong>
                         <div class="small text-muted">
                             {{ 'backend.projects.crew.import.review.source_rows'|trans }}:
-                            {{ person.sourceRows|join(', ') }}
+                            {{ person.sourceReferences is not empty ? person.sourceReferences|join(', ') : person.sourceRows|join(', ') }}
                         </div>
                     </div>
                     <span class="badge text-bg-secondary">

@@ -45,6 +45,9 @@ final class CrewImportProposalCodec
         CrewImportWarning::POSITION_DEPARTMENT_MISMATCH,
         CrewImportWarning::PERSON_IDENTITY_CONFLICT,
         CrewImportWarning::DUPLICATE_IN_FILE,
+        CrewImportWarning::AI_CATALOG_MISMATCH,
+        CrewImportWarning::AI_ROW_UNKNOWN,
+        CrewImportWarning::AI_NON_CREW,
     ];
 
     /** @return array<string, mixed> */
@@ -146,6 +149,19 @@ final class CrewImportProposalCodec
                 $sourceRows[] = $row;
             }
 
+            $sourceReferencesData = array_key_exists('sourceReferences', $personData)
+                ? $this->list($personData, 'sourceReferences', self::MAX_SOURCE_ROWS_PER_PERSON)
+                : [];
+            $sourceReferences = [];
+            foreach ($sourceReferencesData as $reference) {
+                if (!is_string($reference) || mb_strlen($reference) > 128) {
+                    throw new CrewImportProposalCodecException('Invalid crew import source reference.');
+                }
+                if ($reference !== '' && !in_array($reference, $sourceReferences, true)) {
+                    $sourceReferences[] = $reference;
+                }
+            }
+
             $action = $this->string($personData, 'action', 32);
             if (!in_array($action, self::ACTIONS, true)) {
                 throw new CrewImportProposalCodecException('Invalid crew import person action.');
@@ -210,6 +226,7 @@ final class CrewImportProposalCodec
                 $this->bool($personData, 'reviewRequired'),
                 $warningCodes,
                 $assignments,
+                $sourceReferences,
             );
         }
 

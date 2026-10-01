@@ -144,7 +144,7 @@
     {{ form_end(form) }}
 </div>
 
-{# Modal para carga desde Excel #}
+{# Modal para carga asistida de equipo #}
 <div class="modal fade" id="importCrewModal" tabindex="-1" aria-labelledby="importCrewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -157,7 +157,8 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="crewFile" class="form-label">{{ 'backend.projects.crew.import_modal.file_label'|trans }}</label>
-                        <input type="file" name="crewFile" id="crewFile" class="form-control" required accept=".xlsx,.xls">
+                        <input type="file" name="crewFile" id="crewFile" class="form-control" required accept=".xlsx,.xls,.pdf">
+                        <div class="form-text">{{ 'backend.projects.crew.import_modal.help'|trans }}</div>
                         <div class="form-text">
                             <a href="{{ path('backend_project_template_download') }}" class="btn btn-outline-primary btn-sm mt-2" download>
                                 <i class="bi bi-download"></i> {{ 'backend.projects.crew.import_modal.download_template'|trans }}

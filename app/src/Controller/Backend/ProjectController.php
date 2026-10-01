@@ -17,8 +17,15 @@ use App\Service\CrewImport\CrewImportConfirmationBuilder;
 use App\Service\CrewImport\CrewImportProposalBuilder;
 use App\Service\CrewImport\CrewImportProposalStorage;
 use App\Service\CrewImport\CrewImportSpreadsheetExtractor;
+use App\Service\CrewImport\CrewImportFreeSpreadsheetExtractor;
+use App\Service\CrewImport\CrewImportPdfTextExtractor;
+use App\Service\CrewImport\CrewImportAiInterpreterInterface;
+use App\Service\CrewImport\CrewImportInterpretedRowsAdapter;
 use App\Exception\CrewImport\CrewImportProposalStorageException;
 use App\Exception\CrewImport\CrewImportReviewValidationException;
+use App\Exception\CrewImport\CrewImportExtractionException;
+use App\Exception\Ai\AiReportException;
+use App\Exception\Ai\AiProviderNotConfiguredException;
 use App\Service\CrewImport\Dto\CrewImportExtraction;
 use App\Service\CrewImport\Dto\CrewImportProposal;
 use App\Entity\ProjectSubscription;
@@ -1255,6 +1262,10 @@ class ProjectController extends AbstractController
         Project $project,
         Request $request,
         CrewImportSpreadsheetExtractor $extractor,
+        CrewImportFreeSpreadsheetExtractor $freeSpreadsheetExtractor,
+        CrewImportPdfTextExtractor $pdfTextExtractor,
+        CrewImportAiInterpreterInterface $aiInterpreter,
+        CrewImportInterpretedRowsAdapter $interpretedRowsAdapter,
         CrewImportProposalBuilder $proposalBuilder,
         CrewImportProposalStorage $storage,
     ): RedirectResponse {
@@ -1270,16 +1281,43 @@ class ProjectController extends AbstractController
             return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
         }
 
+        $uploadSize = $file->getSize();
+        if (is_int($uploadSize) && $uploadSize > 5 * 1024 * 1024) {
+            $this->addFlash('danger', $this->t->trans('backend.projects.crew.import.errors.too_large'));
+            return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
+        }
+
         if (!$this->isValidCrewImportUpload($file)) {
             $this->addFlash('danger', $this->t->trans('backend.projects.crew.import.errors.bad_format'));
             return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
         }
 
-        $extraction = $extractor->extract($file->getPathname());
-        if (!$extraction->isOfficialTemplate()) {
-            $errorKey = $extraction->status === CrewImportExtraction::READ_ERROR
-                ? 'backend.projects.crew.import.errors.read_failed'
-                : 'backend.projects.crew.import.errors.bad_format';
+        $extension = strtolower($file->getClientOriginalExtension());
+        try {
+            if (in_array($extension, ['xls', 'xlsx'], true)) {
+                $extraction = $extractor->extract($file->getPathname());
+                if (!$extraction->isOfficialTemplate()) {
+                    $document = $freeSpreadsheetExtractor->extract($file->getPathname());
+                    $extraction = $interpretedRowsAdapter->toExtraction($aiInterpreter->interpret($project, $document));
+                }
+            } else {
+                $text = $pdfTextExtractor->extract($file->getPathname());
+                $extraction = $interpretedRowsAdapter->toExtraction($aiInterpreter->interpret($project, $text));
+            }
+        } catch (CrewImportExtractionException $exception) {
+            $errorKey = match ($exception->reason) {
+                'pdf_runtime_unavailable' => 'backend.projects.crew.import.errors.pdf_unavailable',
+                'pdf_empty' => 'backend.projects.crew.import.errors.pdf_empty',
+                'spreadsheet_limits', 'pdf_limits' => 'backend.projects.crew.import.errors.too_large',
+                default => 'backend.projects.crew.import.errors.read_failed',
+            };
+            $this->addFlash('danger', $this->t->trans($errorKey));
+
+            return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
+        } catch (AiReportException $exception) {
+            $errorKey = $exception instanceof AiProviderNotConfiguredException
+                ? 'backend.projects.crew.import.errors.ai_unavailable'
+                : 'backend.projects.crew.import.errors.ai_invalid';
             $this->addFlash('danger', $this->t->trans($errorKey));
 
             return $this->redirectToRoute('backend_project_edit_crew', ['id' => $project->getId()]);
@@ -1425,15 +1463,28 @@ class ProjectController extends AbstractController
         }
 
         $size = $file->getSize();
-        if (!is_int($size) || $size <= 0 || $size > 2 * 1024 * 1024) {
+        if (!is_int($size) || $size <= 0 || $size > 5 * 1024 * 1024) {
             return false;
         }
 
-        return in_array(
-            strtolower($file->getClientOriginalExtension()),
-            ['xls', 'xlsx'],
-            true
-        );
+        $extension = strtolower($file->getClientOriginalExtension());
+        if (!in_array($extension, ['xls', 'xlsx', 'pdf'], true)) {
+            return false;
+        }
+
+        $mime = $file->getMimeType();
+        $allowedMimes = $extension === 'pdf'
+            ? ['application/pdf']
+            : [
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/zip',
+                'application/x-ole-storage',
+                'application/cdfv2',
+                'application/octet-stream',
+            ];
+
+        return is_string($mime) && in_array(strtolower($mime), $allowedMimes, true);
     }
 
     private function currentUserId(): int

@@ -14,6 +14,7 @@ final readonly class CrewImportPersonProposal implements \JsonSerializable
      * @param list<int> $sourceRows
      * @param list<string> $warningCodes
      * @param list<CrewImportAssignmentProposal> $assignments
+     * @param list<string> $sourceReferences
      */
     public function __construct(
         public array $sourceRows,
@@ -27,6 +28,7 @@ final readonly class CrewImportPersonProposal implements \JsonSerializable
         public bool $reviewRequired,
         public array $warningCodes,
         public array $assignments,
+        public array $sourceReferences = [],
     ) {
     }
 

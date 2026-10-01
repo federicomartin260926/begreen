@@ -49,6 +49,7 @@ final class CrewImportProposalStorageTest extends TestCase
         self::assertStringContainsString('"sessionHash"', $storedJson);
 
         $loaded = $storage->load($token, 12, 45, 'session-one');
+        self::assertSame(['People!27'], $loaded->people[0]->sourceReferences);
 
         self::assertSame(
             $this->codec->toJson($proposal),
@@ -78,6 +79,10 @@ final class CrewImportProposalStorageTest extends TestCase
         $invalidId = $data;
         $invalidId['people'][0]['assignments'][0]['departmentId'] = '10';
         $this->assertCodecRejects($invalidId);
+
+        $legacy = $data;
+        unset($legacy['people'][0]['sourceReferences']);
+        self::assertSame([], $this->codec->fromArray($legacy)->people[0]->sourceReferences);
     }
 
     public function testStorageRejectsProjectUserAndSessionMismatches(): void
@@ -223,6 +228,7 @@ final class CrewImportProposalStorageTest extends TestCase
                             [],
                         ),
                     ],
+                    ['People!27'],
                 ),
             ],
         );

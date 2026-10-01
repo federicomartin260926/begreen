@@ -6,7 +6,7 @@ ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_HOME=/tmp/composer
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl unzip zip ca-certificates \
+    git curl unzip zip ca-certificates poppler-utils \
     libicu-dev libzip-dev libxml2-dev libonig-dev \
     libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
     libcurl4-openssl-dev nodejs npm \

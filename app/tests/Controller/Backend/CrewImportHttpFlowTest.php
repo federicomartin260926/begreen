@@ -17,6 +17,11 @@ use App\Service\CrewImport\CrewImportConfirmationBuilder;
 use App\Service\CrewImport\CrewImportProposalBuilder;
 use App\Service\CrewImport\CrewImportProposalStorage;
 use App\Service\CrewImport\CrewImportSpreadsheetExtractor;
+use App\Service\CrewImport\CrewImportFreeSpreadsheetExtractor;
+use App\Service\CrewImport\CrewImportPdfTextExtractor;
+use App\Service\CrewImport\CrewImportAiInterpreterInterface;
+use App\Service\CrewImport\CrewImportInterpretedRowsAdapter;
+use App\Service\CrewImport\Dto\CrewImportInterpretedRow;
 use App\Service\CrewImport\Dto\CrewImportExtraction;
 use App\Service\CrewImport\Dto\CrewImportAssignmentProposal;
 use App\Service\CrewImport\Dto\CrewImportPersonProposal;
@@ -38,6 +43,7 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use App\Exception\Ai\AiInvalidStructureException;
 
 final class CrewImportHttpFlowTest extends KernelTestCase
 {
@@ -48,6 +54,7 @@ final class CrewImportHttpFlowTest extends KernelTestCase
     private User $user;
     private Project $project;
     private Session $session;
+    private CrewImportAiInterpreterInterface $aiInterpreter;
     /** @var list<string> */
     private array $temporaryFiles = [];
     /** @var list<string> */
@@ -62,6 +69,8 @@ final class CrewImportHttpFlowTest extends KernelTestCase
         $this->connection->beginTransaction();
         $this->entityManager = $container->get(EntityManagerInterface::class);
         $this->storage = $container->get(CrewImportProposalStorage::class);
+        $this->aiInterpreter = $this->createStub(CrewImportAiInterpreterInterface::class);
+        $this->aiInterpreter->method('interpret')->willThrowException(new AiInvalidStructureException('Synthetic AI failure.'));
         $this->user = (new User())
             ->setName('Crew')
             ->setSurnames('Reviewer')
@@ -118,6 +127,8 @@ final class CrewImportHttpFlowTest extends KernelTestCase
     public function testOfficialImportAlwaysReviewsThenConfirmPersistsAndDeletesStorage(): void
     {
         $container = self::getContainer();
+        $officialInterpreter = $this->createMock(CrewImportAiInterpreterInterface::class);
+        $officialInterpreter->expects(self::never())->method('interpret');
         $request = $this->request('backend_project_import_crew', Request::METHOD_POST);
         $request->request->set('_token', $this->csrf('crew_import_upload_'.$this->project->getId()));
         $request->files->set('crewFile', $this->spreadsheet([
@@ -128,6 +139,10 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             $this->project,
             $request,
             $container->get(CrewImportSpreadsheetExtractor::class),
+            $container->get(CrewImportFreeSpreadsheetExtractor::class),
+            $container->get(CrewImportPdfTextExtractor::class),
+            $officialInterpreter,
+            $container->get(CrewImportInterpretedRowsAdapter::class),
             $container->get(CrewImportProposalBuilder::class),
             $this->storage,
         );
@@ -204,6 +219,145 @@ final class CrewImportHttpFlowTest extends KernelTestCase
         self::assertCount(1, $members);
         self::assertSame($position->getId(), $members[0]->getAssignments()->first()?->getCrewPosition()?->getId());
         $this->assertStorageMissing($token);
+    }
+
+    public function testFreeSpreadsheetUsesAiAndEndsInReviewWithoutPersistingCrew(): void
+    {
+        $interpreter = $this->createMock(CrewImportAiInterpreterInterface::class);
+        $interpreter->expects(self::once())
+            ->method('interpret')
+            ->with($this->project, self::isInstanceOf(\App\Service\CrewImport\Dto\CrewImportTabularDocument::class))
+            ->willReturn([
+                new CrewImportInterpretedRow(
+                    'People!27',
+                    'Synthetic Person',
+                    'Synthetic',
+                    'Person',
+                    'synthetic@example.test',
+                    '600000001',
+                    '',
+                    '',
+                    CrewImportInterpretedRow::UNKNOWN,
+                    null,
+                    null,
+                ),
+            ]);
+        $request = $this->request('backend_project_import_crew', Request::METHOD_POST);
+        $request->request->set('_token', $this->csrf('crew_import_upload_'.$this->project->getId()));
+        $request->files->set('crewFile', $this->spreadsheetWithHeaders(
+            ['Person label', 'Contact channel', 'Unrelated'],
+            [['Synthetic Person', 'synthetic@example.test', 'value']]
+        ));
+
+        $response = $this->controller->importCrew(
+            $this->project,
+            $request,
+            self::getContainer()->get(CrewImportSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportPdfTextExtractor::class),
+            $interpreter,
+            self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
+            self::getContainer()->get(CrewImportProposalBuilder::class),
+            $this->storage,
+        );
+
+        self::assertMatchesRegularExpression('~/crew/import/[a-f0-9]{64}/review$~', $response->getTargetUrl());
+        preg_match('~/crew/import/([a-f0-9]{64})/review$~', $response->getTargetUrl(), $matches);
+        $this->tokens[] = $matches[1];
+        self::assertCount(0, self::getContainer()->get(CrewMemberRepository::class)->findByProject($this->project));
+        $proposal = $this->storage->load(
+            $matches[1],
+            (int) $this->project->getId(),
+            (int) $this->user->getId(),
+            $this->session->getId()
+        );
+        self::assertSame(CrewImportPersonProposal::REVIEW, $proposal->people[0]->action);
+        self::assertSame(['People!27'], $proposal->people[0]->sourceReferences);
+
+        $reviewRequest = $this->request('backend_project_crew_import_review');
+        $reviewRequest->attributes->set('token', $matches[1]);
+        $reviewRequest->attributes->set('_route_params', ['id' => $this->project->getId(), 'token' => $matches[1]]);
+        $review = $this->controller->reviewCrewImport(
+            $this->project,
+            $matches[1],
+            $reviewRequest,
+            $this->storage,
+            self::getContainer()->get(CrewCatalogContextProvider::class),
+            self::getContainer()->get(CrewMemberRepository::class),
+        );
+        self::assertStringContainsString('People!27', (string) $review->getContent());
+    }
+
+    public function testPdfRuntimeFailureDoesNotCallAiOrCreateCrew(): void
+    {
+        $interpreter = $this->createMock(CrewImportAiInterpreterInterface::class);
+        $interpreter->expects(self::never())->method('interpret');
+        $path = tempnam(sys_get_temp_dir(), 'crew_http_pdf_');
+        self::assertNotFalse($path);
+        file_put_contents($path, "%PDF-1.4\nsynthetic\n");
+        $this->temporaryFiles[] = $path;
+        $request = $this->request('backend_project_import_crew', Request::METHOD_POST);
+        $request->request->set('_token', $this->csrf('crew_import_upload_'.$this->project->getId()));
+        $request->files->set('crewFile', new UploadedFile($path, 'crew.pdf', 'application/pdf', null, true));
+
+        $response = $this->controller->importCrew(
+            $this->project,
+            $request,
+            self::getContainer()->get(CrewImportSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportPdfTextExtractor::class),
+            $interpreter,
+            self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
+            self::getContainer()->get(CrewImportProposalBuilder::class),
+            $this->storage,
+        );
+
+        self::assertStringNotContainsString('/review', $response->getTargetUrl());
+        self::assertCount(0, self::getContainer()->get(CrewMemberRepository::class)->findByProject($this->project));
+    }
+
+    public function testNonCrewIsVisibleAndExcludedByDefaultInReview(): void
+    {
+        $extraction = self::getContainer()->get(CrewImportInterpretedRowsAdapter::class)->toExtraction([
+            new CrewImportInterpretedRow(
+                'Vendors!5',
+                'Synthetic Contact',
+                'Synthetic',
+                'Contact',
+                'contact@example.test',
+                '',
+                '',
+                '',
+                CrewImportInterpretedRow::NON_CREW,
+                null,
+                null,
+            ),
+        ]);
+        $proposal = self::getContainer()->get(CrewImportProposalBuilder::class)->proposal($this->project, $extraction);
+        $token = $this->storage->store(
+            $proposal,
+            (int) $this->user->getId(),
+            $this->session->getId()
+        );
+        $this->tokens[] = $token;
+        $request = $this->request('backend_project_crew_import_review');
+        $request->attributes->set('token', $token);
+        $request->attributes->set('_route_params', ['id' => $this->project->getId(), 'token' => $token]);
+
+        $response = $this->controller->reviewCrewImport(
+            $this->project,
+            $token,
+            $request,
+            $this->storage,
+            self::getContainer()->get(CrewCatalogContextProvider::class),
+            self::getContainer()->get(CrewMemberRepository::class),
+        );
+        $content = (string) $response->getContent();
+
+        self::assertStringContainsString('Vendors!5', $content);
+        self::assertStringContainsString('parece no pertenecer al equipo técnico', $content);
+        self::assertDoesNotMatchRegularExpression('/id="person_0_include"[^>]*checked/', $content);
+        self::assertCount(0, self::getContainer()->get(CrewMemberRepository::class)->findByProject($this->project));
     }
 
     public function testCancelDeletesStorageWithoutPersistingCrew(): void
@@ -326,6 +480,10 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             $this->project,
             $request,
             self::getContainer()->get(CrewImportSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportPdfTextExtractor::class),
+            $this->aiInterpreter,
+            self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
             self::getContainer()->get(CrewImportProposalBuilder::class),
             $this->storage,
         );
@@ -348,6 +506,10 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             $this->project,
             $request,
             self::getContainer()->get(CrewImportSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportPdfTextExtractor::class),
+            $this->aiInterpreter,
+            self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
             self::getContainer()->get(CrewImportProposalBuilder::class),
             $this->storage,
         );
@@ -378,6 +540,10 @@ final class CrewImportHttpFlowTest extends KernelTestCase
             $this->project,
             $request,
             self::getContainer()->get(CrewImportSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportFreeSpreadsheetExtractor::class),
+            self::getContainer()->get(CrewImportPdfTextExtractor::class),
+            $this->aiInterpreter,
+            self::getContainer()->get(CrewImportInterpretedRowsAdapter::class),
             self::getContainer()->get(CrewImportProposalBuilder::class),
             $this->storage,
         );

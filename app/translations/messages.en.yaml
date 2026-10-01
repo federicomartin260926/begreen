@@ -571,7 +571,7 @@ backend:
       title: "Edit crew"
       breadcrumb: "Crew"
       h2: "Project crew for “%project%”"
-      import_btn: "Import crew from Excel"
+      import_btn: "Import crew"
       form:
         name: "First name"
         name_ph: "Crew member first name"
@@ -589,8 +589,9 @@ backend:
         add_member: "Add member"
         remove_member: "Remove member"
       import_modal:
-        title: "Import crew from Excel"
-        file_label: "Select the .xlsx file"
+        title: "Import crew"
+        file_label: "Select an XLS, XLSX or PDF file"
+        help: "The official template is processed directly. Other spreadsheets and PDFs use AI-assisted interpretation and always require review."
         download_template: "Download template"
         submit: "Process"
       template:
@@ -618,13 +619,18 @@ backend:
         errors:
           no_file: "File not received."
           read_failed: "The Excel file could not be read."
-          bad_format: "The Excel file has an invalid format. Make sure it includes the columns: Name, Last Name, Position, Department, Email, Phone."
+          bad_format: "The file is not a valid XLS, XLSX or PDF."
           name_required: "Line %line%: First name is required."
           department_not_found: "Line %line%: Department “%dept%” was not found in the “%type%” catalog."
           position_not_found: "Line %line%: Position “%pos%” in “%dept%” not found."
           position_ambiguous: "Line %line%: Position “%pos%” exists in several departments. Specify the department."
           position_department_mismatch: "Line %line%: Position “%pos%” does not belong to department “%dept%”."
           storage_failed: "The import review could not be prepared."
+          too_large: "The file exceeds the permitted limits."
+          pdf_empty: "The PDF contains no usable text."
+          pdf_unavailable: "PDF reading is temporarily unavailable."
+          ai_unavailable: "The assisted interpretation service is unavailable."
+          ai_invalid: "The list could not be interpreted into a valid format."
         review:
           title: "Review crew import"
           heading: "Review crew before importing"
@@ -663,6 +669,9 @@ backend:
             POSITION_DEPARTMENT_MISMATCH: "The position does not belong to the supplied department."
             PERSON_IDENTITY_CONFLICT: "The person's identifiers conflict."
             DUPLICATE_IN_FILE: "The person appears in several rows of the file."
+            AI_CATALOG_MISMATCH: "The suggested department or position was invalid and must be reviewed."
+            AI_ROW_UNKNOWN: "It was not possible to determine whether this person belongs to the crew."
+            AI_NON_CREW: "This person appears not to belong to the crew and is excluded by default."
           errors:
             invalid: "The proposal is no longer valid for this project."
             structure: "The submitted data does not match the original proposal."

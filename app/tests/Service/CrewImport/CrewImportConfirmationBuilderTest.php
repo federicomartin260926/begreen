@@ -177,6 +177,10 @@ final class CrewImportConfirmationBuilderTest extends KernelTestCase
         $invalidEmail = $this->input('create', null, $department, $position);
         $invalidEmail['people'][0]['email'] = 'not-an-email';
         $this->expectValidation(fn () => $this->builder->build($stored, $project, $invalidEmail));
+
+        $tamperedSource = $this->input('create', null, $department, $position);
+        $tamperedSource['people'][0]['sourceReferences'] = ['Forged!999'];
+        $this->expectValidation(fn () => $this->builder->build($stored, $project, $tamperedSource));
     }
 
     public function testRejectsPersonalFieldsThatExceedPersistentCrewMemberLimits(): void

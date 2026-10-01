@@ -55,6 +55,7 @@ final readonly class CrewImportProposalBuilder
                     $assignmentKeys[$key] = true;
                 }
                 $warnings = [...$warnings, ...$assignment->warningCodes];
+                $warnings = [...$warnings, ...$row->warningCodes];
             }
 
             $data = $this->lastNonEmptyPersonalData($group['rows']);
@@ -77,9 +78,18 @@ final readonly class CrewImportProposalBuilder
             }
 
             $warnings = array_values(array_unique($warnings));
+            $sourceReferences = [];
+            foreach ($group['rows'] as $row) {
+                if ($row->sourceReference !== '' && !in_array($row->sourceReference, $sourceReferences, true)) {
+                    $sourceReferences[] = $row->sourceReference;
+                }
+            }
             $conflict = in_array(CrewImportWarning::PERSON_IDENTITY_CONFLICT, $warnings, true);
             $reviewRequired = $conflict
                 || in_array(CrewImportWarning::NAME_REQUIRED, $warnings, true)
+                || in_array(CrewImportWarning::AI_CATALOG_MISMATCH, $warnings, true)
+                || in_array(CrewImportWarning::AI_ROW_UNKNOWN, $warnings, true)
+                || in_array(CrewImportWarning::AI_NON_CREW, $warnings, true)
                 || count(array_filter($assignments, static fn (CrewImportAssignmentProposal $item): bool => !$item->isResolved())) > 0;
             $existingId = count($matchedIds) === 1 ? (int) array_key_first($matchedIds) : null;
             $action = $conflict
@@ -100,24 +110,28 @@ final readonly class CrewImportProposalBuilder
                 $reviewRequired,
                 $warnings,
                 $assignments,
+                $sourceReferences,
             );
         }
 
         return new CrewImportProposal($projectId, $extraction->status, $people);
     }
 
-    /** @return array{departments: array<string, list<array>>, positions: array<string, list<array>>, positionsByDepartment: array<int, array<string, list<array>>>} */
+    /** @return array{departments: array<string, list<array>>, positions: array<string, list<array>>, positionsByDepartment: array<int, array<string, list<array>>>, byId: array<int, array{positions: array<int, true>}>} */
     private function catalog(Project $project): array
     {
         $departments = [];
         $positions = [];
         $positionsByDepartment = [];
+        $byId = [];
 
         foreach ($this->catalogContextProvider->provide($project) as $department) {
+            $byId[$department['id']] = ['positions' => []];
             foreach (['es', 'en'] as $locale) {
                 $departments[self::normalizeLabel($department['name'][$locale])][$department['id']] = $department;
             }
             foreach ($department['positions'] as $position) {
+                $byId[$department['id']]['positions'][$position['id']] = true;
                 foreach (['es', 'en'] as $locale) {
                     $key = self::normalizeLabel($position['name'][$locale]);
                     $positions[$key][$position['id']] = [
@@ -132,12 +146,42 @@ final readonly class CrewImportProposalBuilder
             }
         }
 
-        return ['departments' => $departments, 'positions' => $positions, 'positionsByDepartment' => $positionsByDepartment];
+        return ['departments' => $departments, 'positions' => $positions, 'positionsByDepartment' => $positionsByDepartment, 'byId' => $byId];
     }
 
-    /** @param array{departments: array, positions: array, positionsByDepartment: array} $catalog */
+    /** @param array{departments: array, positions: array, positionsByDepartment: array, byId: array} $catalog */
     private function resolveAssignment(CrewImportRow $row, array $catalog): CrewImportAssignmentProposal
     {
+        if ($row->candidateDepartmentId !== null || $row->candidatePositionId !== null) {
+            if (
+                $row->candidateDepartmentId === null
+                || !isset($catalog['byId'][$row->candidateDepartmentId])
+                || (
+                    $row->candidatePositionId !== null
+                    && !isset($catalog['byId'][$row->candidateDepartmentId]['positions'][$row->candidatePositionId])
+                )
+            ) {
+                return new CrewImportAssignmentProposal(
+                    $row->sourceRow,
+                    $row->department,
+                    $row->position,
+                    null,
+                    null,
+                    CrewImportAssignmentProposal::POSITION_DEPARTMENT_MISMATCH,
+                    [CrewImportWarning::AI_CATALOG_MISMATCH],
+                );
+            }
+
+            return new CrewImportAssignmentProposal(
+                $row->sourceRow,
+                $row->department,
+                $row->position,
+                $row->candidateDepartmentId,
+                $row->candidatePositionId,
+                CrewImportAssignmentProposal::RESOLVED,
+            );
+        }
+
         if ($row->department === '' && $row->position === '') {
             return new CrewImportAssignmentProposal($row->sourceRow, '', '', null, null, CrewImportAssignmentProposal::NONE);
         }

@@ -80,6 +80,7 @@ final class CrewImportCoreTest extends KernelTestCase
         self::assertSame([], $unitOfWork->getScheduledEntityUpdates());
         self::assertTrue($proposal->isApplicable());
         self::assertSame(CrewImportPersonProposal::CREATE, $proposal->people[0]->action);
+        self::assertSame([], $proposal->people[0]->sourceReferences);
         self::assertIsInt($proposal->people[0]->assignments[0]->departmentId);
         self::assertIsInt($proposal->people[0]->assignments[0]->positionId);
         self::assertJson((string) json_encode($proposal, JSON_THROW_ON_ERROR));

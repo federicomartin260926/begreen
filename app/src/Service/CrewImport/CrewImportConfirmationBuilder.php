@@ -147,6 +147,7 @@ final readonly class CrewImportConfirmationBuilder
                     ? [CrewImportWarning::DUPLICATE_IN_FILE]
                     : [],
                 $assignments,
+                $storedPerson->sourceReferences,
             );
         }
 

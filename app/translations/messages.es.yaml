@@ -573,7 +573,7 @@ backend:
       title: "Editar equipo técnico"
       breadcrumb: "Equipo técnico"
       h2: "Equipo técnico del proyecto «%project%»"
-      import_btn: "Cargar equipo desde Excel"
+      import_btn: "Importar equipo"
       form:
         name: "Nombre"
         name_ph: "Nombre del miembro"
@@ -591,8 +591,9 @@ backend:
         add_member: "Añadir miembro"
         remove_member: "Eliminar miembro"
       import_modal:
-        title: "Importar equipo técnico desde Excel"
-        file_label: "Selecciona el archivo .xlsx"
+        title: "Importar equipo técnico"
+        file_label: "Selecciona un archivo XLS, XLSX o PDF"
+        help: "La plantilla oficial se procesa directamente. Otros Excel y PDF se interpretan con asistencia de IA y siempre pasan por revisión."
         download_template: "Descargar plantilla"
         submit: "Procesar"
       template:
@@ -620,13 +621,18 @@ backend:
         errors:
           no_file: "Archivo no recibido."
           read_failed: "No se pudo leer el Excel."
-          bad_format: "El archivo Excel no tiene el formato correcto. Asegúrate de incluir las columnas: Nombre, Apellido, Cargo, Departamento, Email, Teléfono."
+          bad_format: "El archivo no es un XLS, XLSX o PDF válido."
           name_required: "Línea %line%: El nombre es obligatorio."
           department_not_found: "Línea %line%: Departamento «%dept%» no encontrado para el catálogo «%type%»."
           position_not_found: "Línea %line%: Cargo «%pos%» en «%dept%» no encontrado."
           position_ambiguous: "Línea %line%: El cargo «%pos%» existe en varios departamentos. Especifica el departamento."
           position_department_mismatch: "Línea %line%: El cargo «%pos%» no pertenece al departamento «%dept%»."
           storage_failed: "No se pudo preparar la revisión de la importación."
+          too_large: "El archivo supera los límites permitidos."
+          pdf_empty: "El PDF no contiene texto utilizable."
+          pdf_unavailable: "La lectura de PDF no está disponible temporalmente."
+          ai_unavailable: "El servicio de interpretación asistida no está disponible."
+          ai_invalid: "No se pudo interpretar la lista con un formato válido."
         review:
           title: "Revisar importación de equipo"
           heading: "Revisar equipo antes de importar"
@@ -665,6 +671,9 @@ backend:
             POSITION_DEPARTMENT_MISMATCH: "El cargo no pertenece al departamento indicado."
             PERSON_IDENTITY_CONFLICT: "Hay un conflicto entre los identificadores de la persona."
             DUPLICATE_IN_FILE: "La persona aparece en varias filas del archivo."
+            AI_CATALOG_MISMATCH: "La sugerencia de departamento o cargo no era válida y debe revisarse."
+            AI_ROW_UNKNOWN: "No se ha podido determinar si esta persona pertenece al equipo técnico."
+            AI_NON_CREW: "Esta persona parece no pertenecer al equipo técnico y está excluida por defecto."
           errors:
             invalid: "La propuesta ya no es válida para este proyecto."
             structure: "Los datos enviados no corresponden con la propuesta original."

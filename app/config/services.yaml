@@ -136,6 +136,9 @@ services:
 
     App\Service\Ai\AiReportProviderInterface: '@App\Service\Ai\ConfiguredAiReportProvider'
 
+    App\Service\CrewImport\CrewImportAiProviderInterface: '@App\Service\CrewImport\ConfiguredCrewImportAiProvider'
+    App\Service\CrewImport\CrewImportAiInterpreterInterface: '@App\Service\CrewImport\CrewImportAiInterpreter'
+
     App\Service\Animation\AnimationMeasureProvider: '@App\Service\Animation\DoctrineAnimationMeasureProvider'
 
     App\Service\Ai\AiReportStorage:
