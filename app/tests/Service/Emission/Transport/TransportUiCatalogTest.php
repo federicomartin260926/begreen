@@ -14,9 +14,9 @@ final class TransportUiCatalogTest extends TestCase
         $catalog = new TransportUiCatalog();
 
         self::assertSame([
-            'local' => ['car', 'taxi', 'urban_bus', 'metro', 'tram', 'commuter_train'],
-            'travel' => ['plane', 'long_distance_train', 'passenger_ferry'],
-            'freight' => ['freight_van', 'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship'],
+            'local' => ['car', 'taxi', 'passenger_van', 'urban_bus', 'metro', 'tram', 'commuter_train', 'motorcycle', 'bicycle', 'scooter', 'walk'],
+            'travel' => ['plane', 'long_distance_train', 'coach', 'passenger_ferry'],
+            'freight' => ['freight_van', 'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship', 'courier'],
         ], $catalog->categories());
 
         $catalogValues = [$catalog->categories(), $catalog->methodsByMode()];
@@ -33,6 +33,10 @@ final class TransportUiCatalogTest extends TestCase
         self::assertNotContains('distance_consumption', $catalog->methods());
         self::assertNotContains('fuel_and_electricity', $catalog->methods());
         self::assertNotContains('electricity', $catalog->methods());
+        self::assertNotContains('route_weight', $catalog->methodsByMode()['freight_train']);
+        self::assertNotContains('route_weight', $catalog->methodsByMode()['air_freight']);
+        self::assertNotContains('route_weight', $catalog->methodsByMode()['freight_ship']);
+        self::assertContains('route', $catalog->methodsByMode()['coach']);
 
         array_walk_recursive($configuration, static fn (mixed $value) => self::assertIsString($value));
     }
@@ -46,7 +50,8 @@ final class TransportUiCatalogTest extends TestCase
             foreach ($modes as $mode) {
                 foreach ($catalog->methodsByMode()[$mode] as $method) {
                     $vehicleType = 'petrol';
-                    $country = in_array($method, $catalog->configuration()['outsideSpainOnlyMethodsByMode'][$mode] ?? [], true)
+                    $country = in_array($mode, $catalog->configuration()['outsideSpainOnlyModes'], true)
+                        || in_array($method, $catalog->configuration()['outsideSpainOnlyMethodsByMode'][$mode] ?? [], true)
                         ? 'FR'
                         : 'ES';
                     $input = new TransportEmissionInput(
@@ -62,6 +67,7 @@ final class TransportUiCatalogTest extends TestCase
                             'car' === $mode
                             || ('taxi' === $mode && in_array($method, ['distance', 'route'], true))
                         ) ? $vehicleType : null,
+                        fuel: 'fuel' === $method ? 'petrol' : null,
                     );
 
                     self::assertTrue($mapper->supportsUiCombination($input), sprintf('%s/%s/%s', $category, $mode, $method));
@@ -94,14 +100,29 @@ final class TransportUiCatalogTest extends TestCase
         self::assertFalse($catalog->supports($this->input('local', 'taxi', 'route', 'FR')));
         self::assertFalse($catalog->supports($this->input('local', 'car', 'distance', 'ES', 'bev')));
         self::assertTrue($catalog->supports($this->input('local', 'car', 'distance', 'FR', 'bev')));
+        self::assertFalse($catalog->supports($this->input('local', 'motorcycle', 'distance', 'ES')));
+        self::assertTrue($catalog->supports($this->input('local', 'motorcycle', 'distance', 'FR')));
+        self::assertTrue($catalog->supports($this->input('freight', 'freight_van', 'fuel', 'FR', fuel: 'cng')));
+        self::assertFalse($catalog->supports($this->input('freight', 'freight_van', 'fuel', 'FR', fuel: 'lng')));
+        self::assertTrue($catalog->supports($this->input('freight', 'rigid_truck', 'fuel', 'ES', fuel: 'cng')));
+        self::assertFalse($catalog->supports($this->input('freight', 'rigid_truck', 'fuel', 'FR', fuel: 'cng')));
+        self::assertTrue($catalog->supports($this->input('freight', 'articulated_truck', 'fuel', 'ES', fuel: 'lng')));
+        self::assertFalse($catalog->supports($this->input('freight', 'articulated_truck', 'fuel', 'FR', fuel: 'lng')));
+        self::assertFalse($catalog->supports($this->input('freight', 'rigid_truck', 'fuel', 'ES', fuel: 'unknown')));
     }
 
-    private function input(string $category, string $mode, string $method, string $country, ?string $vehicleType = null): TransportEmissionInput
-    {
+    private function input(
+        string $category,
+        string $mode,
+        string $method,
+        string $country,
+        ?string $vehicleType = null,
+        ?string $fuel = null,
+    ): TransportEmissionInput {
         return new TransportEmissionInput(
             $category, $mode, $method, $country,
             new \DateTimeImmutable('2026-01-15'), new \DateTimeImmutable('2026-01-15'), '1', 'km',
-            vehicleType: $vehicleType,
+            vehicleType: $vehicleType, fuel: $fuel,
         );
     }
 }

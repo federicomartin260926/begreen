@@ -65,6 +65,7 @@ final class TransportEmissionCalculatorTest extends TestCase
             'freight_train', 'weight_distance', 'ES', '10', 'mi', repetitions: '2', weightValue: '1000', weightUnit: 'kg',
         );
         self::assertSame('32.18688', $weightDistance->normalizedActivityValue);
+
     }
 
     public function testFuelUsGallonsUseDecimalArithmeticAndRepetitions(): void
@@ -96,7 +97,7 @@ final class TransportEmissionCalculatorTest extends TestCase
             $this->calculate('car', 'fuel', 'ES', '10', 'm³', vehicleType: 'petrol', fuel: 'petrol')->status,
         );
         self::assertSame(
-            TransportEmissionResult::STATUS_UNSUPPORTED,
+            TransportEmissionResult::STATUS_DIRECT_ZERO,
             $this->calculate('walk', 'distance', 'ES', '5', 'km')->status,
         );
         self::assertSame(
@@ -181,12 +182,59 @@ final class TransportEmissionCalculatorTest extends TestCase
     public function testMotorcycleFuelUsesOnlyAnUnambiguousCatalogMapping(): void
     {
         $outside = $this->calculate('motorcycle', 'fuel', 'FR', '2', 'l', fuel: 'petrol');
-        self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $outside->status);
-        self::assertNull($outside->criteria);
+        self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $outside->status);
+        self::assertSame('Moto promedio', $outside->criteria['activity']);
 
         self::assertSame(
             TransportEmissionResult::STATUS_UNSUPPORTED,
             $this->calculate('motorcycle', 'fuel', 'ES', '2', 'l', fuel: 'petrol')->status,
+        );
+    }
+
+    public function testRecoveredZeroEmissionModesProduceAValidOperationalZero(): void
+    {
+        foreach (['bicycle', 'scooter', 'walk'] as $mode) {
+            $result = $this->calculate($mode, 'distance', 'ES', '5', 'km');
+
+            self::assertSame(TransportEmissionResult::STATUS_DIRECT_ZERO, $result->status);
+            self::assertSame('0', $result->generatedKgCo2e);
+            self::assertSame('operational_zero', $result->source);
+        }
+    }
+
+    public function testRecoveredCoachUsesTheExistingPassengerKilometreCalculation(): void
+    {
+        $result = $this->calculate('coach', 'distance', 'ES', '10', 'km', passengers: '3');
+
+        self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $result->status);
+        self::assertSame('30', $result->normalizedActivityValue);
+        self::assertSame('Autocar (larga distancia)', $result->criteria['activity']);
+    }
+
+    public function testRecoveredRoadFreightFuelsRespectGeographicRestrictions(): void
+    {
+        foreach ([
+            ['freight_van', 'ES', 'petrol', 'l', TransportEmissionResult::STATUS_CALCULATED],
+            ['rigid_truck', 'ES', 'hvo', 'l', TransportEmissionResult::STATUS_CALCULATED],
+            ['freight_van', 'FR', 'cng', 'l', TransportEmissionResult::STATUS_CALCULATED],
+            ['rigid_truck', 'ES', 'cng', 'kg', TransportEmissionResult::STATUS_CALCULATED],
+            ['rigid_truck', 'FR', 'cng', 'l', TransportEmissionResult::STATUS_UNSUPPORTED],
+            ['articulated_truck', 'ES', 'lng', 'kg', TransportEmissionResult::STATUS_CALCULATED],
+            ['articulated_truck', 'FR', 'lng', 'l', TransportEmissionResult::STATUS_UNSUPPORTED],
+        ] as [$mode, $country, $fuel, $unit, $status]) {
+            self::assertSame($status, $this->calculate($mode, 'fuel', $country, '2', $unit, fuel: $fuel)->status);
+        }
+    }
+
+    public function testCourierOnlyAcceptsDirectOperatorEmissions(): void
+    {
+        self::assertSame(
+            TransportEmissionResult::STATUS_DIRECT_OPERATOR_EMISSION,
+            $this->calculate('courier', 'operator', 'ES', '2', 'kg_co2e')->status,
+        );
+        self::assertSame(
+            TransportEmissionResult::STATUS_UNSUPPORTED,
+            $this->calculate('courier', 'weight_distance', 'ES', '2', 'km', weightValue: '1', weightUnit: 'kg')->status,
         );
     }
 

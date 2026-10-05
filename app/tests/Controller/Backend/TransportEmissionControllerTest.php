@@ -81,7 +81,10 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('name="startedAt"', $content);
         self::assertStringContainsString('value="ESP"', $content);
         self::assertStringContainsString('España', $content);
-        foreach (['distance_consumption', 'fuel_and_electricity', 'passenger_van', 'minibus', 'motorcycle', 'bicycle', 'scooter', 'walk', 'courier', 'cargo_bike'] as $unsupportedOption) {
+        foreach (['passenger_van', 'motorcycle', 'bicycle', 'scooter', 'walk', 'coach', 'courier'] as $supportedOption) {
+            self::assertStringContainsString($supportedOption, $content);
+        }
+        foreach (['distance_consumption', 'fuel_and_electricity', 'minibus', 'cargo_bike'] as $unsupportedOption) {
             self::assertStringNotContainsString($unsupportedOption, $content);
         }
         self::assertStringNotContainsString('name="secondaryActivityValue"', $content);
@@ -322,6 +325,22 @@ final class TransportEmissionControllerTest extends KernelTestCase
         );
 
         self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testManipulatedPostCannotUseMotorcycleInSpain(): void
+    {
+        $context = $this->context();
+        $post = $this->validPost();
+        $post['mode'] = 'motorcycle';
+        unset($post['vehicleType']);
+
+        $request = $this->request('POST', $post);
+        $request->request->set('_token', $this->csrfToken('transport_emission_v20_create'));
+
+        $response = $this->create($request, $context, persistCalls: 0);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertStringContainsString('todavía no está soportada', (string) $response->getContent());
     }
 
     public function testEndDateBeforeStartDateReturns422WithoutPersisting(): void

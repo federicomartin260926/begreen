@@ -153,16 +153,19 @@ export default class extends Controller {
   }
 
   categoryChanged() {
+    this.clearRouteCalculation();
     this.refreshModes(this.modeTarget.value);
     this.modeChanged();
   }
 
   modeChanged() {
+    this.clearRouteCalculation();
     this.refreshMethods(this.methodTarget.value);
     this.renderFields(true);
   }
 
   methodChanged() {
+    this.clearRouteCalculation();
     this.renderFields(true);
   }
 
@@ -173,7 +176,8 @@ export default class extends Controller {
 
   countryChanged(event) {
     if (event?.target?.name === 'country') {
-      this.renderFields(false);
+      this.clearRouteCalculation();
+      this.refreshModes(this.modeTarget.value);
       this.refreshMethods(this.methodTarget.value);
       this.renderFields(false);
       return;
@@ -329,7 +333,10 @@ export default class extends Controller {
   }
 
   refreshModes(preferred) {
-    const modes = this.configValue.categories[this.category] || [];
+    let modes = this.configValue.categories[this.category] || [];
+    const country = this.countryCode;
+    modes = modes.filter((mode) => !(this.configValue.outsideSpainOnlyModes.includes(mode)
+      && (!country || this.isSpain)));
     this.fillSelect(this.modeTarget, modes, modes.includes(preferred) ? preferred : modes[0], false);
   }
 
@@ -376,7 +383,11 @@ export default class extends Controller {
     const showFuelChoice = method === 'fuel' && !isCar;
     this.toggle(this.fuelFieldsTarget, showFuelChoice, clearInactive);
     if (showFuelChoice) {
-      const fuels = this.configValue.fuelsByMode[mode] || [];
+      let fuels = this.configValue.fuelsByMode[mode] || [];
+      if (!this.isSpain) {
+        const spainOnlyFuels = this.configValue.spainOnlyFuelsByMode[mode] || [];
+        fuels = fuels.filter((fuel) => !spainOnlyFuels.includes(fuel));
+      }
       const preferredFuel = clearInactive ? null : (this.fuelTarget.value || this.initialValue.fuel);
       this.fillSelect(this.fuelTarget, fuels, preferredFuel);
       this.fuelTarget.required = true;
@@ -434,6 +445,37 @@ export default class extends Controller {
     this.queuePreview();
   }
 
+  clearRouteCalculation() {
+    this.routeRequestId = (this.routeRequestId ?? 0) + 1;
+    this.routeRequest?.abort();
+    this.routeRequest = undefined;
+    clearTimeout(this.originSearchTimer);
+    clearTimeout(this.destinationSearchTimer);
+    this.originSearchRequestId = (this.originSearchRequestId ?? 0) + 1;
+    this.destinationSearchRequestId = (this.destinationSearchRequestId ?? 0) + 1;
+    this.originSearchRequest?.abort();
+    this.destinationSearchRequest?.abort();
+    this.originSearchRequest = undefined;
+    this.destinationSearchRequest = undefined;
+
+    if (this.activityValueTarget.dataset.oneWayDistance !== undefined) {
+      this.activityValueTarget.value = '';
+      delete this.activityValueTarget.dataset.oneWayDistance;
+    }
+
+    [this.originTarget, this.destinationTarget].forEach((input) => {
+      delete input.dataset.lat;
+      delete input.dataset.lon;
+    });
+    this.syncCoordinates();
+    this.originSuggestionsTarget.replaceChildren();
+    this.destinationSuggestionsTarget.replaceChildren();
+    this.routeMessageTarget.textContent = '';
+    this.routeMessageTarget.className = 'small mb-3';
+    this.routeButtonTarget.disabled = false;
+    this.routeButtonTarget.textContent = this.i18nValue.calculateDistance;
+  }
+
   syncCoordinates() {
     this.originLatitudeTarget.value = this.originTarget.dataset.lat || '';
     this.originLongitudeTarget.value = this.originTarget.dataset.lon || '';
@@ -486,8 +528,11 @@ export default class extends Controller {
   }
 
   get isSpain() {
-    const country = this.element.querySelector('[name="country"]')?.value.trim().toUpperCase();
-    return ['ES', 'ESP'].includes(country);
+    return ['ES', 'ESP'].includes(this.countryCode);
+  }
+
+  get countryCode() {
+    return this.element.querySelector('[name="country"]')?.value.trim().toUpperCase() || '';
   }
 
   get canUseOrs() {

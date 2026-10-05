@@ -6,28 +6,35 @@ final class TransportUiCatalog
 {
     /** @var array<string, list<string>> */
     private const CATEGORY_MODES = [
-        'local' => ['car', 'taxi', 'urban_bus', 'metro', 'tram', 'commuter_train'],
-        'travel' => ['plane', 'long_distance_train', 'passenger_ferry'],
-        'freight' => ['freight_van', 'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship'],
+        'local' => ['car', 'taxi', 'passenger_van', 'urban_bus', 'metro', 'tram', 'commuter_train', 'motorcycle', 'bicycle', 'scooter', 'walk'],
+        'travel' => ['plane', 'long_distance_train', 'coach', 'passenger_ferry'],
+        'freight' => ['freight_van', 'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship', 'courier'],
     ];
 
     /** @var array<string, list<string>> */
     private const MODE_METHODS = [
         'car' => ['fuel', 'distance'],
         'taxi' => ['distance', 'operator', 'route'],
+        'passenger_van' => ['fuel', 'distance'],
         'urban_bus' => ['distance', 'route', 'route_stops', 'operator'],
         'metro' => ['passenger_distance', 'operator'],
         'tram' => ['passenger_distance', 'operator'],
         'commuter_train' => ['passenger_distance', 'operator'],
+        'motorcycle' => ['fuel', 'distance'],
+        'bicycle' => ['distance'],
+        'scooter' => ['distance'],
+        'walk' => ['distance'],
         'plane' => ['passenger_distance', 'operator'],
         'long_distance_train' => ['passenger_distance', 'operator'],
+        'coach' => ['distance', 'route', 'operator'],
         'passenger_ferry' => ['passenger_distance', 'operator'],
-        'freight_van' => ['distance', 'weight_distance', 'tonne_km'],
-        'rigid_truck' => ['distance', 'weight_distance', 'tonne_km'],
-        'articulated_truck' => ['distance', 'weight_distance', 'tonne_km'],
+        'freight_van' => ['fuel', 'distance', 'weight_distance', 'tonne_km'],
+        'rigid_truck' => ['fuel', 'distance', 'weight_distance', 'tonne_km'],
+        'articulated_truck' => ['fuel', 'distance', 'weight_distance', 'tonne_km'],
         'freight_train' => ['weight_distance', 'tonne_km'],
         'air_freight' => ['weight_distance', 'tonne_km'],
         'freight_ship' => ['weight_distance', 'tonne_km'],
+        'courier' => ['operator'],
     ];
 
     /** @var array<string, list<string>> */
@@ -84,15 +91,31 @@ final class TransportUiCatalog
     /** @var array<string, list<string>> */
     private const FUELS_BY_MODE = [
         'car' => ['petrol', 'diesel', 'lpg', 'cng'],
+        'passenger_van' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng'],
+        'motorcycle' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol'],
+        'freight_van' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng', 'lng'],
+        'rigid_truck' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng', 'lng'],
+        'articulated_truck' => ['petrol', 'diesel', 'hvo', 'biodiesel', 'bioethanol', 'lpg', 'cng', 'lng'],
+    ];
+
+    /** @var list<string> */
+    private const OUTSIDE_SPAIN_ONLY_MODES = ['motorcycle'];
+
+    /** @var array<string, list<string>> */
+    private const SPAIN_ONLY_FUELS_BY_MODE = [
+        'freight_van' => ['lng'],
+        'rigid_truck' => ['cng', 'lng'],
+        'articulated_truck' => ['cng', 'lng'],
     ];
 
     /** @var list<string> */
     private const PASSENGERS_BY_DISTANCE_MODES = [
         'urban_bus',
+        'coach',
     ];
 
     /** @var list<string> */
-    private const ORS_ROAD_MODES = ['taxi', 'urban_bus'];
+    private const ORS_ROAD_MODES = ['taxi', 'urban_bus', 'coach'];
 
     /** @var array<string, list<string>> */
     private const SPAIN_ONLY_METHODS_BY_MODE = [
@@ -145,6 +168,8 @@ final class TransportUiCatalog
             'taxiSpainVehicleTypes' => self::TAXI_SPAIN_VEHICLE_TYPES,
             'carSizes' => self::CAR_SIZES,
             'fuelsByMode' => self::FUELS_BY_MODE,
+            'outsideSpainOnlyModes' => self::OUTSIDE_SPAIN_ONLY_MODES,
+            'spainOnlyFuelsByMode' => self::SPAIN_ONLY_FUELS_BY_MODE,
             'thermalFuels' => ['petrol', 'diesel'],
             'tripTypes' => ['one_way', 'round_trip', 'multiple'],
             'passengersByDistanceModes' => self::PASSENGERS_BY_DISTANCE_MODES,
@@ -162,6 +187,11 @@ final class TransportUiCatalog
             return false;
         }
 
+        $isSpain = 'ES' === strtoupper(trim($input->country));
+        if ($isSpain && in_array($input->mode, self::OUTSIDE_SPAIN_ONLY_MODES, true)) {
+            return false;
+        }
+
         if ('car' === $input->mode) {
             if ('ES' === strtoupper(trim($input->country))
                 && !in_array($input->vehicleType, self::CAR_SPAIN_VEHICLE_TYPES, true)
@@ -172,7 +202,6 @@ final class TransportUiCatalog
             return in_array($input->method, self::CAR_TYPE_METHODS[$input->vehicleType] ?? [], true);
         }
 
-        $isSpain = 'ES' === strtoupper(trim($input->country));
         if (!$isSpain && in_array($input->method, self::SPAIN_ONLY_METHODS_BY_MODE[$input->mode] ?? [], true)) {
             return false;
         }
@@ -185,6 +214,15 @@ final class TransportUiCatalog
             && in_array($input->method, ['distance', 'route'], true)
         ) {
             return in_array($input->vehicleType, self::TAXI_SPAIN_VEHICLE_TYPES, true);
+        }
+
+        if ('fuel' === $input->method) {
+            if (!in_array($input->fuel, self::FUELS_BY_MODE[$input->mode] ?? [], true)) {
+                return false;
+            }
+            if (!$isSpain && in_array($input->fuel, self::SPAIN_ONLY_FUELS_BY_MODE[$input->mode] ?? [], true)) {
+                return false;
+            }
         }
 
         return true;

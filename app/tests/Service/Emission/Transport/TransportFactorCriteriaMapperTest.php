@@ -88,7 +88,13 @@ final class TransportFactorCriteriaMapperTest extends TestCase
             array_values(array_intersect_key($this->map('FR', 'car', 'distance', 'petrol', 'small'), array_flip(['activity', 'fuel']))),
         );
         self::assertNull($this->mapper->map($this->input('FR', 'car', 'distance', vehicleType: 'lpg', carSize: 'small')));
-        self::assertNull($this->mapper->map($this->input('FR', 'motorcycle', 'fuel', fuel: 'petrol')));
+        self::assertSame('Moto promedio', $this->map('FR', 'motorcycle', 'fuel', fuel: 'petrol')['activity']);
+        self::assertNull($this->mapper->map($this->input('ES', 'motorcycle', 'fuel', fuel: 'petrol')));
+        self::assertSame('Autocar (larga distancia)', $this->map('ES', 'coach', 'distance')['activity']);
+        self::assertSame('Gasolina', $this->map('ES', 'freight_van', 'fuel', fuel: 'petrol')['fuel']);
+        self::assertSame('Biodiésel HVO', $this->map('ES', 'rigid_truck', 'fuel', fuel: 'hvo')['fuel']);
+        self::assertNull($this->mapper->map($this->input('FR', 'rigid_truck', 'fuel', fuel: 'cng')));
+        self::assertNull($this->mapper->map($this->input('FR', 'articulated_truck', 'fuel', fuel: 'lng')));
     }
 
     public function testMapperRejectsCategoryModeAndModeMethodOutsideTheUiContract(): void
