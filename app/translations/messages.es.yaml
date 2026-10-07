@@ -3523,6 +3523,7 @@ pdf_grouped_visual:
 "backend.emission.material_v1.fields.country": "País"
 "backend.emission.material_v1.fields.family": "Familia"
 "backend.emission.material_v1.fields.material": "Material"
+"backend.emission.material_v1.fields.clothing_group": "Grupo"
 "backend.emission.material_v1.fields.subproduct": "Tipo o subproducto"
 "backend.emission.material_v1.fields.origin": "Origen o estado"
 "backend.emission.material_v1.fields.method": "Método de medición"

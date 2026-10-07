@@ -48,7 +48,8 @@ final class MaterialEmissionController extends AbstractController
         'thicknessMeters', 'unitCount', 'pieceWeightKg', 'grammageGm2',
         'paperFormat', 'sheetsPerPackage', 'cardboardType',
         'batteryChemistry', 'batterySize', 'sustainabilitySeal',
-        'cardboardStructure', 'metalMaterial', 'metalForm', 'family', 'notes',
+        'cardboardStructure', 'metalMaterial', 'metalForm', 'clothingGroup',
+        'family', 'notes',
     ];
 
     #[Route('/material/preview', name: 'backend_emission_material_v1_preview', methods: ['POST'])]
@@ -158,7 +159,7 @@ final class MaterialEmissionController extends AbstractController
         }
 
         try {
-            $storedValues = $this->snapshotValues($snapshot, $record);
+            $storedValues = $this->snapshotValues($snapshot, $record, $catalog);
         } catch (\JsonException|\UnexpectedValueException) {
             throw $this->createNotFoundException('Invalid material v1 snapshot.');
         }
@@ -215,7 +216,7 @@ final class MaterialEmissionController extends AbstractController
         }
 
         try {
-            $values = $this->snapshotValues($snapshot, $record);
+            $values = $this->snapshotValues($snapshot, $record, $catalog);
         } catch (\JsonException|\UnexpectedValueException) {
             throw $this->createNotFoundException('Invalid material v1 snapshot.');
         }
@@ -283,9 +284,12 @@ final class MaterialEmissionController extends AbstractController
     }
 
     /** @return array<string, mixed> */
-    private function snapshotValues(MaterialEmissionSnapshot $snapshot, EmissionRecord $record): array
+    private function snapshotValues(MaterialEmissionSnapshot $snapshot, EmissionRecord $record, MaterialUiCatalog $catalog): array
     {
         $values = $snapshot->inputToArray($snapshot->decodeInput((string) $record->getCalculationDetails()));
+        if ('clothing' === $values['family'] && null === $values['clothingGroup']) {
+            $values['clothingGroup'] = $catalog->clothingGroupForSubproduct($values['subproduct']);
+        }
         $values['notes'] = $record->getNotes();
 
         return $values;

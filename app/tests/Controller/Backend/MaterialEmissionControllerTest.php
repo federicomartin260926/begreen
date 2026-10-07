@@ -76,9 +76,47 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         ], $catalog['cardboardStructures']);
         self::assertSame(['Acero', 'Hierro', 'Aluminio', 'Cobre', 'Acero inoxidable', 'Latón', 'Zinc', 'Otro metal', 'Desconocido'], $catalog['metalMaterials']);
         self::assertSame(['Perfiles', 'Rieles', 'Tubos', 'Chapas / placas', 'Barras / varillas', 'Mallas / rejillas', 'Herrajes / piezas', 'Estructura mixta', 'Otra forma', 'Desconocido'], $catalog['metalForms']);
-        foreach (['sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm'] as $field) {
+        foreach (['sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm', 'clothingGroup'] as $field) {
             self::assertStringContainsString(sprintf('name="%s"', $field), $content);
         }
+
+        self::assertSame([
+            'Parte de arriba',
+            'Parte de abajo',
+            'Vestidos y prendas completas',
+            'Calzado',
+            'Accesorios',
+            'Ropa interior y baño',
+            'Otros',
+        ], array_column($catalog['clothingGroups'], 'value'));
+
+        $clothingFamily = current(array_filter($catalog['families'], static fn (array $family): bool => 'clothing' === $family['value']));
+        $realSubproducts = array_column($clothingFamily['activities'][0]['subproducts'], 'value');
+        $groupedSubproducts = [];
+        $groupBySubproduct = [];
+        foreach ($catalog['clothingGroups'] as $group) {
+            foreach ($group['subproducts'] as $subproduct) {
+                $groupedSubproducts[] = $subproduct['value'];
+                $groupBySubproduct[$subproduct['value']] = $group['value'];
+            }
+        }
+        sort($realSubproducts);
+        sort($groupedSubproducts);
+        $realSubproducts = array_values(array_filter(
+            $realSubproducts,
+            static fn (string $subproduct): bool => MaterialUiCatalog::ACTIVITY_CLOTHING !== $subproduct,
+        ));
+        self::assertCount(59, $groupedSubproducts);
+        self::assertNotContains(MaterialUiCatalog::ACTIVITY_CLOTHING, $groupedSubproducts);
+        self::assertSame($realSubproducts, $groupedSubproducts);
+        self::assertCount(count($groupedSubproducts), array_unique($groupedSubproducts));
+        self::assertSame('Parte de arriba', $groupBySubproduct['Camiseta manga corta']);
+        self::assertSame('Parte de abajo', $groupBySubproduct['Pantalón']);
+        self::assertSame('Vestidos y prendas completas', $groupBySubproduct['Vestido']);
+        self::assertSame('Calzado', $groupBySubproduct['Zapatillas deportivas']);
+        self::assertSame('Accesorios', $groupBySubproduct['Bolso']);
+        self::assertSame('Ropa interior y baño', $groupBySubproduct['Sujetador']);
+        self::assertSame('Otros', $groupBySubproduct['Cardigan']);
     }
 
     public function testRequestMapperAndSnapshotPreserveStructuredMetadata(): void
@@ -105,6 +143,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
             'metalMaterial' => 'Acero inoxidable',
             'metalForm' => 'Chapas / placas',
         ]));
+        $clothingInput = $mapper->map($this->request('POST', $this->clothingPost()));
 
         self::assertSame('cardboard', $cardboardInput->family);
         self::assertSame('metal', $metalInput->family);
@@ -112,20 +151,31 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame('Cartón corrugado de 5 capas', $cardboardInput->cardboardStructure);
         self::assertSame('Acero inoxidable', $metalInput->metalMaterial);
         self::assertSame('Chapas / placas', $metalInput->metalForm);
+        self::assertSame('Parte de arriba', $clothingInput->clothingGroup);
 
         $storedCardboard = $snapshot->inputToArray($cardboardInput);
         $storedMetal = $snapshot->inputToArray($metalInput);
+        $storedClothing = $snapshot->inputToArray($clothingInput);
         self::assertSame('PEFC', $storedCardboard['sustainabilitySeal']);
         self::assertSame('Cartón corrugado de 5 capas', $storedCardboard['cardboardStructure']);
         self::assertSame('Acero inoxidable', $storedMetal['metalMaterial']);
         self::assertSame('Chapas / placas', $storedMetal['metalForm']);
+        self::assertSame('Parte de arriba', $storedClothing['clothingGroup']);
 
         $decodedCardboard = $snapshot->decodeInput($snapshot->encode($cardboardInput, $this->calculator()->calculate($cardboardInput)));
         $decodedMetal = $snapshot->decodeInput($snapshot->encode($metalInput, $this->calculator()->calculate($metalInput)));
+        $withGroup = $this->calculator()->calculate($clothingInput);
+        $decodedClothing = $snapshot->decodeInput($snapshot->encode($clothingInput, $withGroup));
         self::assertSame('PEFC', $decodedCardboard->sustainabilitySeal);
         self::assertSame('Cartón corrugado de 5 capas', $decodedCardboard->cardboardStructure);
         self::assertSame('Acero inoxidable', $decodedMetal->metalMaterial);
         self::assertSame('Chapas / placas', $decodedMetal->metalForm);
+        self::assertSame('Parte de arriba', $decodedClothing->clothingGroup);
+
+        $clothingWithoutGroup = $mapper->map($this->request('POST', array_diff_key($this->clothingPost(), ['clothingGroup' => true])));
+        $withoutGroup = $this->calculator()->calculate($clothingWithoutGroup);
+        self::assertSame($withGroup->normalizedAmount, $withoutGroup->normalizedAmount);
+        self::assertSame($withGroup->emissionKgCo2e, $withoutGroup->emissionKgCo2e);
     }
 
     public function testSnapshotDecodesLegacyInputWithoutNewStructuredMetadata(): void
@@ -142,6 +192,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
             $data['input']['cardboardStructure'],
             $data['input']['metalMaterial'],
             $data['input']['metalForm'],
+            $data['input']['clothingGroup'],
         );
 
         $decoded = $snapshot->decodeInput(json_encode($data, JSON_THROW_ON_ERROR));
@@ -150,6 +201,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertNull($decoded->cardboardStructure);
         self::assertNull($decoded->metalMaterial);
         self::assertNull($decoded->metalForm);
+        self::assertNull($decoded->clothingGroup);
         self::assertSame(MaterialUiCatalog::ACTIVITY_WOOD, $decoded->activity);
         self::assertSame('Producción de materia prima', $decoded->origin);
         self::assertSame('weight', $decoded->measurementMethod);
@@ -281,6 +333,44 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame(1, preg_match('/data-material-v1-form-initial-value="([^"]+)"/', $content, $matches));
         $initial = json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
         self::assertSame('FSC', $initial['sustainabilitySeal']);
+    }
+
+    public function testEditAndDuplicateInferClothingGroupForLegacySnapshot(): void
+    {
+        $context = $this->context();
+        $record = $this->legacyClothingRecord($context);
+        $controller = $this->controller();
+        $catalog = new MaterialUiCatalog();
+        $ignored = null;
+
+        $edit = $controller->edit(
+            $record,
+            $this->request('GET'),
+            $context['active'],
+            $context['categories'],
+            $context['projects'],
+            new MaterialEmissionRequestMapper($catalog),
+            $this->recordService(0, $ignored),
+            new MaterialEmissionSnapshot(),
+            $catalog,
+            $this->storage(),
+            $this->attachmentManager(),
+        );
+        $editInitial = $this->initialFormValues((string) $edit->getContent());
+        self::assertSame('Parte de arriba', $editInitial['clothingGroup']);
+        self::assertSame('Camiseta manga corta', $editInitial['subproduct']);
+
+        $duplicate = $controller->duplicate(
+            $record,
+            $this->request('GET'),
+            $context['active'],
+            $context['categories'],
+            new MaterialEmissionSnapshot(),
+            $catalog,
+        );
+        $duplicateInitial = $this->initialFormValues((string) $duplicate->getContent());
+        self::assertSame('Parte de arriba', $duplicateInitial['clothingGroup']);
+        self::assertSame('Camiseta manga corta', $duplicateInitial['subproduct']);
     }
 
     /** @return array<string, mixed> */
@@ -455,6 +545,36 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         return $record;
     }
 
+    /** @param array<string, mixed> $context */
+    private function legacyClothingRecord(array $context): EmissionRecord
+    {
+        $post = array_diff_key($this->clothingPost(), ['clothingGroup' => true]);
+        $input = (new MaterialEmissionRequestMapper(new MaterialUiCatalog()))->map($this->request('POST', $post));
+        $result = $this->calculator()->calculate($input);
+        $snapshot = json_decode(
+            (new MaterialEmissionSnapshot())->encode($input, $result),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        unset($snapshot['input']['clothingGroup']);
+        $record = (new EmissionRecord())
+            ->setProject($context['project'])->setPhase($context['phase'])->setCategory($context['category'])
+            ->setAmount((float) $result->normalizedAmount)->setEmission((float) $result->emissionKgCo2e)
+            ->setStatus($result->status)->setRegisteredAt(new \DateTimeImmutable('2026-01-01'))
+            ->setCalculationDetails(json_encode($snapshot, JSON_THROW_ON_ERROR));
+        $this->setId($record, 302);
+
+        return $record;
+    }
+
+    /** @return array<string, mixed> */
+    private function initialFormValues(string $content): array
+    {
+        self::assertSame(1, preg_match('/data-material-v1-form-initial-value="([^"]+)"/', $content, $matches));
+
+        return json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
+    }
+
     /** @return array<string, string> */
     private function basePost(): array
     {
@@ -474,6 +594,21 @@ final class MaterialEmissionControllerTest extends KernelTestCase
             'inputUnit' => 'kg',
             'sustainabilitySeal' => 'FSC',
             'notes' => 'Madera comprada',
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function clothingPost(): array
+    {
+        return [
+            ...$this->basePost(),
+            'activity' => MaterialUiCatalog::ACTIVITY_CLOTHING,
+            'family' => 'clothing',
+            'subproduct' => 'Camiseta manga corta',
+            'origin' => 'Materia prima virgen',
+            'measurementMethod' => 'units',
+            'unitCount' => '2',
+            'clothingGroup' => 'Parte de arriba',
         ];
     }
 

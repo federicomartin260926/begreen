@@ -46,6 +46,23 @@ final class MaterialUiCatalog
         'Otra forma',
         'Desconocido',
     ];
+    private const CLOTHING_GROUP_KEYWORDS = [
+        'Parte de arriba' => ['camis', 'blusa', 'camisa', 'polo', 'sudadera', 'jersey', 'chaqueta', 'abrigo', 'chaleco', 'top'],
+        'Parte de abajo' => ['pantal', 'vaquero', 'falda', 'short', 'bermuda', 'legging'],
+        'Vestidos y prendas completas' => ['vestido', 'mono', 'traje', 'uniforme'],
+        'Calzado' => ['zapato', 'zapatilla', 'bota', 'sandalia', 'calzado'],
+        'Accesorios' => ['bolso', 'mochila', 'cintur', 'gorra', 'sombrero', 'bufanda', 'guante', 'corbata', 'pañuelo', 'accesorio'],
+        'Ropa interior y baño' => ['ropa interior', 'sujetador', 'braga', 'calzoncillo', 'bañador', 'bikini', 'calcet'],
+    ];
+    private const CLOTHING_GROUPS = [
+        'Parte de arriba',
+        'Parte de abajo',
+        'Vestidos y prendas completas',
+        'Calzado',
+        'Accesorios',
+        'Ropa interior y baño',
+        'Otros',
+    ];
 
     public const ACTIVITY_WOOD = 'Madera';
     public const ACTIVITY_PAPER = 'Papel';
@@ -290,6 +307,8 @@ final class MaterialUiCatalog
         }
         unset($family);
 
+        $clothingGroups = $this->buildClothingGroups($families);
+
         $woodBoards = [];
         foreach ($this->woodBoards as $family => $boards) {
             $woodBoards[$family] = array_keys($boards);
@@ -311,7 +330,52 @@ final class MaterialUiCatalog
             'cardboardStructures' => self::CARDBOARD_STRUCTURES,
             'metalMaterials' => self::METAL_MATERIALS,
             'metalForms' => self::METAL_FORMS,
+            'clothingGroups' => $clothingGroups,
         ];
+    }
+
+    public function clothingGroupForSubproduct(?string $subproduct): ?string
+    {
+        if (null === $subproduct || '' === trim($subproduct)) {
+            return null;
+        }
+        $normalized = mb_strtolower($subproduct);
+        foreach (self::CLOTHING_GROUP_KEYWORDS as $group => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($normalized, $keyword)) {
+                    return $group;
+                }
+            }
+        }
+
+        return 'Otros';
+    }
+
+    /** @param array<string, mixed> $families
+     *  @return list<array{value: string, subproducts: list<array<string, mixed>>}>
+     */
+    private function buildClothingGroups(array $families): array
+    {
+        $grouped = array_fill_keys(self::CLOTHING_GROUPS, []);
+        foreach ($families['clothing']['activities'] ?? [] as $activity) {
+            if (self::ACTIVITY_CLOTHING !== ($activity['value'] ?? null)) {
+                continue;
+            }
+            foreach ($activity['subproducts'] ?? [] as $subproduct) {
+                if (self::ACTIVITY_CLOTHING === ($subproduct['value'] ?? null)) {
+                    continue;
+                }
+                $group = $this->clothingGroupForSubproduct($subproduct['value'] ?? null);
+                if (null !== $group) {
+                    $grouped[$group][] = $subproduct;
+                }
+            }
+        }
+
+        return array_map(
+            static fn (string $group): array => ['value' => $group, 'subproducts' => $grouped[$group]],
+            self::CLOTHING_GROUPS,
+        );
     }
 
     public function familyForActivity(string $activity): string

@@ -15,7 +15,7 @@ final class MaterialEmissionRequestMapper
         'thicknessMeters', 'unitCount', 'pieceWeightKg', 'grammageGm2',
         'paperFormat', 'sheetsPerPackage', 'cardboardType',
         'batteryChemistry', 'batterySize', 'sustainabilitySeal',
-        'cardboardStructure', 'metalMaterial', 'metalForm',
+        'cardboardStructure', 'metalMaterial', 'metalForm', 'clothingGroup',
     ];
 
     private readonly EmissionCountryCatalog $countryCatalog;
@@ -72,6 +72,7 @@ final class MaterialEmissionRequestMapper
             cardboardStructure: $optional['cardboardStructure'],
             metalMaterial: $optional['metalMaterial'],
             metalForm: $optional['metalForm'],
+            clothingGroup: $optional['clothingGroup'],
             family: $family,
         );
     }

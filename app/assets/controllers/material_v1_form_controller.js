@@ -6,6 +6,7 @@ export default class extends Controller {
     'method', 'inputUnit', 'paperFormat', 'cardboardType', 'woodType',
     'boardFamily', 'boardThickness', 'batteryChemistry', 'batterySize',
     'sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm',
+    'clothingGroup',
     'previewStatus', 'previewEmission', 'previewTrace', 'previewMessages',
   ];
 
@@ -22,6 +23,7 @@ export default class extends Controller {
     const initialFamily = this.familyForActivity(this.initialValue.activity)?.value || '';
     this.replaceOptions(this.familyTarget, this.catalogValue.families || [], initialFamily);
     this.populateSustainabilitySeals(this.initialValue.sustainabilitySeal || '');
+    this.populateClothingGroups(this.initialValue.clothingGroup || '');
     this.populateActivities(this.initialValue.activity || '');
     this.populateSubproducts(this.initialValue.subproduct || '');
     this.populateOrigins(this.initialValue.origin || '');
@@ -37,6 +39,7 @@ export default class extends Controller {
 
   familyChanged() {
     this.populateSustainabilitySeals('');
+    this.populateClothingGroups('');
     this.populateActivities('');
     this.populateSubproducts('');
     this.populateOrigins('');
@@ -47,6 +50,15 @@ export default class extends Controller {
 
   activityChanged() {
     this.populateSubproducts('');
+    this.populateOrigins('');
+    this.queuePreview();
+  }
+
+  clothingGroupChanged() {
+    const current = this.subproductTarget.value;
+    const compatible = (this.selectedClothingGroup?.subproducts || [])
+      .some((item) => item.value === current);
+    this.populateSubproducts(compatible ? current : '');
     this.populateOrigins('');
     this.queuePreview();
   }
@@ -94,14 +106,26 @@ export default class extends Controller {
     );
   }
 
+  populateClothingGroups(selected) {
+    this.replaceOptions(
+      this.clothingGroupTarget,
+      (this.catalogValue.clothingGroups || []).map((group) => ({ value: group.value, label: group.value })),
+      selected,
+    );
+  }
+
   populateActivities(selected) {
     this.replaceOptions(this.activityTarget, this.selectedFamily?.activities || [], selected);
     if ((this.selectedFamily?.activities || []).length === 1) this.activityTarget.value = this.selectedFamily.activities[0].value;
   }
 
   populateSubproducts(selected) {
-    const subproducts = this.selectedActivity?.subproducts || [];
-    const needsSelection = !(subproducts.length === 1 && subproducts[0].value === '');
+    const clothing = this.familyTarget.value === 'clothing';
+    const subproducts = clothing
+      ? (this.selectedClothingGroup?.subproducts || [])
+      : (this.selectedActivity?.subproducts || []);
+    const needsSelection = (!clothing || Boolean(this.selectedClothingGroup))
+      && !(subproducts.length === 1 && subproducts[0].value === '');
     this.subproductContainerTarget.classList.toggle('d-none', !needsSelection);
     this.subproductTarget.disabled = !needsSelection;
     this.subproductTarget.required = needsSelection;
@@ -153,6 +177,7 @@ export default class extends Controller {
     if (['wood', 'paper', 'cardboard'].includes(family)) this.showFields(['sustainabilitySeal']);
     if (family === 'cardboard') this.showFields(['cardboardStructure']);
     if (family === 'metal') this.showFields(['metalMaterial', 'metalForm']);
+    if (family === 'clothing') this.showFields(['clothingGroup']);
   }
 
   showFields(names, units = null) {
@@ -302,6 +327,11 @@ export default class extends Controller {
     const items = this.selectedActivity?.subproducts || [];
     if (items.length === 1 && items[0].value === '') return items[0];
     return items.find((item) => item.value === this.subproductTarget.value) || null;
+  }
+
+  get selectedClothingGroup() {
+    return (this.catalogValue.clothingGroups || [])
+      .find((group) => group.value === this.clothingGroupTarget.value) || null;
   }
 
   get contextComplete() {

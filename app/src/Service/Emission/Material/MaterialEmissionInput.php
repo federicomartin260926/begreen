@@ -42,6 +42,7 @@ final readonly class MaterialEmissionInput
         public ?string $cardboardStructure = null,
         public ?string $metalMaterial = null,
         public ?string $metalForm = null,
+        public ?string $clothingGroup = null,
         public ?string $family = null,
     ) {
     }

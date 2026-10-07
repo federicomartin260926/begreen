@@ -53,6 +53,7 @@ final class MaterialEmissionSnapshot
             'cardboardStructure' => $input->cardboardStructure,
             'metalMaterial' => $input->metalMaterial,
             'metalForm' => $input->metalForm,
+            'clothingGroup' => $input->clothingGroup,
             'family' => $input->family,
         ];
     }
@@ -89,6 +90,7 @@ final class MaterialEmissionSnapshot
             cardboardStructure: $this->optionalStringIfPresent($input, 'cardboardStructure'),
             metalMaterial: $this->optionalStringIfPresent($input, 'metalMaterial'),
             metalForm: $this->optionalStringIfPresent($input, 'metalForm'),
+            clothingGroup: $this->optionalStringIfPresent($input, 'clothingGroup'),
             family: $this->optionalString($input, 'family'),
         );
     }

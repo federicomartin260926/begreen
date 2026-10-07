@@ -3475,6 +3475,7 @@ pdf_grouped_visual:
 "backend.emission.material_v1.fields.country": "Country"
 "backend.emission.material_v1.fields.family": "Family"
 "backend.emission.material_v1.fields.material": "Material"
+"backend.emission.material_v1.fields.clothing_group": "Group"
 "backend.emission.material_v1.fields.subproduct": "Type or subproduct"
 "backend.emission.material_v1.fields.origin": "Origin or condition"
 "backend.emission.material_v1.fields.method": "Measurement method"
