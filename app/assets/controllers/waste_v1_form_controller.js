@@ -82,9 +82,6 @@ export default class extends Controller {
       selected,
     );
 
-    if (treatments.length === 1) {
-      this.treatmentTarget.value = treatments[0];
-    }
   }
 
   replaceOptions(select, options, selected) {

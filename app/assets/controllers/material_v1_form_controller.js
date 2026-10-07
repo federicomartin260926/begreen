@@ -116,7 +116,6 @@ export default class extends Controller {
 
   populateActivities(selected) {
     this.replaceOptions(this.activityTarget, this.selectedFamily?.activities || [], selected);
-    if ((this.selectedFamily?.activities || []).length === 1) this.activityTarget.value = this.selectedFamily.activities[0].value;
   }
 
   populateSubproducts(selected) {
@@ -137,7 +136,6 @@ export default class extends Controller {
   populateOrigins(selected) {
     const origins = this.selectedSubproduct?.origins || [];
     this.replaceOptions(this.originTarget, this.asOptions(origins, true), selected);
-    if (origins.length === 1) this.originTarget.value = origins[0];
   }
 
   populateMethods(selected) {
@@ -146,7 +144,6 @@ export default class extends Controller {
       label: this.i18nValue.methods[value] || value,
     }));
     this.replaceOptions(this.methodTarget, methods, selected);
-    if (methods.length === 1) this.methodTarget.value = methods[0].value;
   }
 
   updateQuantityFields() {
@@ -188,8 +185,7 @@ export default class extends Controller {
       container.querySelectorAll('input, select').forEach((field) => { field.disabled = false; });
     });
     if (units) {
-      this.replaceOptions(this.inputUnitTarget, this.asOptions(units, true), this.initialValue.inputUnit || units[0]);
-      if (units.length === 1) this.inputUnitTarget.value = units[0];
+      this.replaceOptions(this.inputUnitTarget, this.asOptions(units, true), this.initialValue.inputUnit || '');
     }
   }
 

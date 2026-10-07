@@ -348,8 +348,8 @@ final class TransportEmissionController extends AbstractController
     {
         return [
             'category' => 'local',
-            'mode' => 'car',
-            'method' => 'distance',
+            'mode' => '',
+            'method' => '',
             'country' => '',
             'startDate' => '',
             'endDate' => '',

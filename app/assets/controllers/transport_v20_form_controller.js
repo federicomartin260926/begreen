@@ -329,7 +329,7 @@ export default class extends Controller {
     this.fillSelect(this.carSizeTarget, this.configValue.carSizes, initial.carSize);
     this.fillSelect(this.vehicleTypeTarget, this.configValue.vehicleTypes, initial.vehicleType);
     this.fillSelect(this.thermalFuelTarget, this.configValue.thermalFuels, initial.thermalFuel);
-    this.fillSelect(this.tripTypeTarget, this.configValue.tripTypes, initial.tripType || 'one_way');
+    this.fillSelect(this.tripTypeTarget, this.configValue.tripTypes, initial.tripType);
     this.fillSelect(this.weightUnitTarget, this.configValue.weightUnits, initial.weightUnit);
     this.fillSelect(this.accompanimentTarget, this.configValue.accompanimentOptions, initial.accompaniment);
   }
@@ -339,7 +339,7 @@ export default class extends Controller {
     const country = this.countryCode;
     modes = modes.filter((mode) => !(this.configValue.outsideSpainOnlyModes.includes(mode)
       && (!country || this.isSpain)));
-    this.fillSelect(this.modeTarget, modes, modes.includes(preferred) ? preferred : modes[0], false);
+    this.fillSelect(this.modeTarget, modes, modes.includes(preferred) ? preferred : null);
   }
 
   refreshMethods(preferred) {
@@ -351,7 +351,7 @@ export default class extends Controller {
       ? this.configValue.outsideSpainOnlyMethodsByMode
       : this.configValue.spainOnlyMethodsByMode;
     methods = methods.filter((method) => !(geographicExclusions[this.modeTarget.value] || []).includes(method));
-    this.fillSelect(this.methodTarget, methods, methods.includes(preferred) ? preferred : methods[0], false, true);
+    this.fillSelect(this.methodTarget, methods, methods.includes(preferred) ? preferred : null, true, true);
   }
 
   renderFields(clearInactive) {
@@ -439,7 +439,7 @@ export default class extends Controller {
   refreshActivityUnits(method, preferred) {
     let units = this.configValue.unitsByMethod[method] || [];
     if (method === 'fuel') units = this.fuelUnits();
-    this.fillSelect(this.activityUnitTarget, units, units.includes(preferred) ? preferred : units[0], false);
+    this.fillSelect(this.activityUnitTarget, units, units.includes(preferred) ? preferred : null);
   }
 
   fuelUnits() {

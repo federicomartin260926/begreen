@@ -299,7 +299,7 @@ final class WasteEmissionController extends AbstractController
     /** @return array<string, mixed> */
     private function emptyValues(): array
     {
-        return array_fill_keys(self::FORM_FIELDS, null) + ['weightUnit' => 'kg'];
+        return array_fill_keys(self::FORM_FIELDS, null);
     }
 
     /** @param array<string, mixed> $fallback
