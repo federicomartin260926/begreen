@@ -85,7 +85,7 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
     public function testCreateSupportsHostelApartmentAndOtherContracts(): void
     {
         foreach ([
-            [$this->hostelPost(), 6.0, null, EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE],
+            [$this->hostelPost(), 6.0, 9.5505, EmissionRecord::STATUS_CALCULATED],
             [$this->apartmentPost(), 6.0, 24.522, EmissionRecord::STATUS_CALCULATED],
             [$this->otherPost(), null, null, EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE],
         ] as [$post, $amount, $emission, $status]) {
