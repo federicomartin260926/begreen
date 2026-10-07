@@ -190,11 +190,13 @@ final class TransportFactorCriteriaMapper
             'average|cng' => ['Coche promedio (tamaño del motor desconocido)', 'GNC'],
             'average|phev' => ['Coche promedio (tamaño del motor desconocido)', 'Eléctrico híbrido enchufable*'],
             'average|bev' => ['Coche promedio (tamaño del motor desconocido)', 'Eléctrico de batería*'],
+            'average|unknown' => ['Coche promedio (tamaño del motor desconocido)', 'Desconocido'],
             'small|petrol' => ['Coche pequeño (< 1.400 cc)', 'Gasolina'],
             'small|diesel' => ['Coche pequeño (< 1.700 cc)', 'Diésel'],
             'small|hev' => ['Coche pequeño (< 1.700 cc)', 'Híbrido'],
             'small|phev' => ['Coche pequeño (< 1.700 cc)', 'Eléctrico híbrido enchufable'],
             'small|bev' => ['Coche pequeño (< 1.700 cc)', 'Eléctrico de batería'],
+            'small|unknown' => ['Coche pequeño (< 1.700 cc)', 'Desconocido'],
             'medium|petrol' => ['Coche mediano (1.400 - 2.000 cc)', 'Gasolina'],
             'medium|lpg' => ['Coche mediano (1.400 - 2.000 cc)', 'GLP'],
             'medium|cng' => ['Coche mediano (1.400 - 2.000 cc)', 'GNC'],
@@ -202,6 +204,7 @@ final class TransportFactorCriteriaMapper
             'medium|hev' => ['Coche mediano (1.700 - 2.000 cc)', 'Híbrido'],
             'medium|phev' => ['Coche mediano (1.700 - 2.000 cc)', 'Eléctrico híbrido enchufable'],
             'medium|bev' => ['Coche mediano (1.700 - 2.000 cc)', 'Eléctrico de batería'],
+            'medium|unknown' => ['Coche mediano (1.700 - 2.000 cc)', 'Desconocido'],
             'large|petrol' => ['Coche grande (> 2.000 cc)', 'Gasolina'],
             'large|diesel' => ['Coche grande (> 2.000 cc)', 'Diésel'],
             'large|hev' => ['Coche grande (> 2.000 cc)', 'Híbrido'],
@@ -209,6 +212,7 @@ final class TransportFactorCriteriaMapper
             'large|cng' => ['Coche grande (> 2.000 cc)', 'GNC'],
             'large|phev' => ['Coche grande (> 2.000 cc)', 'Eléctrico híbrido enchufable'],
             'large|bev' => ['Coche grande (> 2.000 cc)', 'Eléctrico de batería'],
+            'large|unknown' => ['Coche grande (> 2.000 cc)', 'Desconocido'],
         ];
         $row = $rows[$size.'|'.$type] ?? null;
 

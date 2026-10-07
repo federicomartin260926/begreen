@@ -4,6 +4,7 @@ namespace App\Tests\Service\Emission\Transport;
 
 use App\Service\Emission\Transport\TransportEmissionInput;
 use App\Service\Emission\Transport\TransportFactorCriteriaMapper;
+use App\Service\Emission\Transport\TransportUiCatalog;
 use PHPUnit\Framework\TestCase;
 
 final class TransportFactorCriteriaMapperTest extends TestCase
@@ -39,7 +40,7 @@ final class TransportFactorCriteriaMapperTest extends TestCase
             'rigid_truck', 'articulated_truck', 'freight_train', 'air_freight', 'freight_ship', 'courier', 'cargo_bike',
         ];
         $methods = ['distance', 'route', 'route_stops', 'passenger_distance', 'weight_distance', 'tonne_km', 'route_weight'];
-        $types = [null, 'petrol', 'diesel', 'hev', 'lpg', 'cng', 'phev', 'bev'];
+        $types = [null, 'petrol', 'diesel', 'hev', 'lpg', 'cng', 'phev', 'bev', 'unknown'];
         $sizes = [null, 'average', 'small', 'medium', 'large'];
 
         foreach ($countries as $country) {
@@ -95,6 +96,114 @@ final class TransportFactorCriteriaMapperTest extends TestCase
         self::assertSame('Biodiésel HVO', $this->map('ES', 'rigid_truck', 'fuel', fuel: 'hvo')['fuel']);
         self::assertNull($this->mapper->map($this->input('FR', 'rigid_truck', 'fuel', fuel: 'cng')));
         self::assertNull($this->mapper->map($this->input('FR', 'articulated_truck', 'fuel', fuel: 'lng')));
+    }
+
+    public function testUnknownCarOutsideSpainMapsEveryPublishedSizeToTheExactCatalogRow(): void
+    {
+        $activities = [
+            'small' => 'Coche pequeño (< 1.700 cc)',
+            'medium' => 'Coche mediano (1.700 - 2.000 cc)',
+            'large' => 'Coche grande (> 2.000 cc)',
+            'average' => 'Coche promedio (tamaño del motor desconocido)',
+        ];
+
+        foreach ($activities as $size => $activity) {
+            $input = $this->input('FR', 'car', 'distance', vehicleType: 'unknown', carSize: $size);
+            self::assertTrue($this->mapper->supportsUiCombination($input));
+            $mapping = $this->mapper->map($input);
+            self::assertNotNull($mapping);
+            self::assertSame([
+                'area' => 'FUERA DE ESPAÑA',
+                'subcategory' => 'PRIVADO',
+                'activity' => $activity,
+                'fuel' => 'Desconocido',
+                'unit' => 'km',
+                'method' => 'distancia',
+            ], $mapping->criteria);
+            $this->assertCatalogContains($mapping->criteria);
+        }
+    }
+
+    public function testHevFuelUsesThermalFuelAndMapsToTheExactCatalogRows(): void
+    {
+        foreach ([
+            ['ES', 'ESPAÑA', 'Turismos (hasta 8 asientos) / Taxis'],
+            ['FR', 'FUERA DE ESPAÑA', 'Coche promedio'],
+        ] as [$country, $area, $activity]) {
+            foreach (['petrol' => 'Híbrido gasolina', 'diesel' => 'Híbrido diésel'] as $thermalFuel => $fuel) {
+                $input = $this->input($country, 'car', 'fuel', vehicleType: 'hev', thermalFuel: $thermalFuel);
+                self::assertTrue($this->mapper->supportsUiCombination($input));
+                $mapping = $this->mapper->map($input);
+                self::assertNotNull($mapping);
+                self::assertSame([
+                    'area' => $area,
+                    'subcategory' => 'PRIVADO',
+                    'activity' => $activity,
+                    'fuel' => $fuel,
+                    'unit' => 'litros',
+                    'method' => 'combustible',
+                ], $mapping->criteria);
+                $this->assertCatalogContains($mapping->criteria);
+            }
+
+            $unknown = $this->input($country, 'car', 'fuel', vehicleType: 'hev', thermalFuel: 'unknown');
+            self::assertFalse($this->mapper->supportsUiCombination($unknown));
+            self::assertNull($this->mapper->map($unknown));
+        }
+    }
+
+    public function testPublishedCarDistanceAndFuelCombinationsReachDocumentedMappings(): void
+    {
+        $catalog = new TransportUiCatalog();
+        $configuration = $catalog->configuration();
+        $pending = [
+            'FR|lpg|fuel' => 'LPG fuel outside Spain has no approved car mapping.',
+            'FR|cng|fuel' => 'CNG fuel outside Spain has no approved car mapping.',
+        ];
+        $coveredPending = [];
+
+        foreach (['ES' => $configuration['carSpainVehicleTypes'], 'FR' => $configuration['vehicleTypes']] as $country => $vehicleTypes) {
+            foreach ($vehicleTypes as $vehicleType) {
+                foreach ($configuration['carTypeMethods'][$vehicleType] as $method) {
+                    $thermalFuels = 'hev' === $vehicleType && 'fuel' === $method
+                        ? $configuration['thermalFuels']
+                        : [null];
+                    foreach ($thermalFuels as $thermalFuel) {
+                        $input = $this->input(
+                            $country,
+                            'car',
+                            $method,
+                            vehicleType: $vehicleType,
+                            carSize: 'average',
+                            fuel: 'fuel' === $method && 'hev' !== $vehicleType ? $vehicleType : null,
+                            thermalFuel: $thermalFuel,
+                        );
+                        $case = $country.'|'.$vehicleType.'|'.$method;
+                        self::assertTrue($this->mapper->supportsUiCombination($input), $case);
+                        $mapping = $this->mapper->map($input);
+
+                        if (isset($pending[$case])) {
+                            self::assertNull($mapping, $pending[$case]);
+                            $coveredPending[$case] = true;
+                            continue;
+                        }
+
+                        self::assertNotNull($mapping, $case);
+                        $this->assertCatalogContains($mapping->criteria);
+                    }
+                }
+            }
+        }
+
+        self::assertSame(array_keys($pending), array_keys($coveredPending));
+        self::assertSame(
+            ['area' => 'ESPAÑA', 'subcategory' => 'PRIVADO', 'activity' => 'Turismos/ Taxis (hasta 8 asientos)', 'fuel' => 'Gasolina', 'unit' => 'km', 'method' => 'distancia'],
+            $this->map('ES', 'car', 'distance', 'petrol', 'average'),
+        );
+        self::assertSame(
+            ['area' => 'FUERA DE ESPAÑA', 'subcategory' => 'PRIVADO', 'activity' => 'Coche promedio (tamaño del motor desconocido)', 'fuel' => 'Gasolina', 'unit' => 'km', 'method' => 'distancia'],
+            $this->map('FR', 'car', 'distance', 'petrol', 'average'),
+        );
     }
 
     public function testMapperRejectsCategoryModeAndModeMethodOutsideTheUiContract(): void

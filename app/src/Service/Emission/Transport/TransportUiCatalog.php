@@ -88,6 +88,9 @@ final class TransportUiCatalog
     /** @var list<string> */
     private const CAR_SIZES = ['small', 'medium', 'large', 'average'];
 
+    /** @var list<string> */
+    private const THERMAL_FUELS = ['petrol', 'diesel'];
+
     /** @var array<string, list<string>> */
     private const FUELS_BY_MODE = [
         'car' => ['petrol', 'diesel', 'lpg', 'cng'],
@@ -198,7 +201,7 @@ final class TransportUiCatalog
             'fuelsByMode' => self::FUELS_BY_MODE,
             'outsideSpainOnlyModes' => self::OUTSIDE_SPAIN_ONLY_MODES,
             'spainOnlyFuelsByMode' => self::SPAIN_ONLY_FUELS_BY_MODE,
-            'thermalFuels' => ['petrol', 'diesel'],
+            'thermalFuels' => self::THERMAL_FUELS,
             'tripTypes' => ['one_way', 'round_trip', 'multiple'],
             'passengersByDistanceModes' => self::PASSENGERS_BY_DISTANCE_MODES,
             'passengerModes' => self::PASSENGER_MODES,
@@ -230,7 +233,17 @@ final class TransportUiCatalog
                 return false;
             }
 
-            return in_array($input->method, self::CAR_TYPE_METHODS[$input->vehicleType] ?? [], true);
+            if (!in_array($input->method, self::CAR_TYPE_METHODS[$input->vehicleType] ?? [], true)) {
+                return false;
+            }
+
+            if ('fuel' !== $input->method) {
+                return true;
+            }
+
+            return 'hev' === $input->vehicleType
+                ? in_array($input->thermalFuel, self::THERMAL_FUELS, true)
+                : in_array($input->fuel, self::FUELS_BY_MODE['car'], true);
         }
 
         if (!$isSpain && in_array($input->method, self::SPAIN_ONLY_METHODS_BY_MODE[$input->mode] ?? [], true)) {

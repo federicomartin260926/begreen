@@ -86,6 +86,25 @@ final class TransportEmissionCalculatorTest extends TestCase
         self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $result->status);
     }
 
+    public function testHevFuelUsesThermalFuelWithoutRequiringHiddenFuel(): void
+    {
+        foreach (['ES', 'FR'] as $country) {
+            foreach (['petrol' => 'Híbrido gasolina', 'diesel' => 'Híbrido diésel'] as $thermalFuel => $expectedFuel) {
+                $result = $this->calculate(
+                    'car', 'fuel', $country, '2', 'l', vehicleType: 'hev', thermalFuel: $thermalFuel,
+                );
+
+                self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $result->status);
+                self::assertSame($expectedFuel, $result->criteria['fuel']);
+                self::assertNotNull($result->factorValue);
+            }
+
+            $unknown = $this->calculate('car', 'fuel', $country, '2', 'l', vehicleType: 'hev', thermalFuel: 'unknown');
+            self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $unknown->status);
+            self::assertNull($unknown->criteria);
+        }
+    }
+
     public function testDirectAndUnsupportedPathsHaveExplicitStatuses(): void
     {
         $operator = $this->calculate('plane', 'operator', 'ES', '1.25', 't_co2e', repetitions: '2');
@@ -321,12 +340,13 @@ final class TransportEmissionCalculatorTest extends TestCase
         ?string $routeClassification = null,
         ?string $endDate = null,
         ?string $accompaniment = null,
+        ?string $thermalFuel = null,
     ): TransportEmissionResult {
         return $this->calculator->calculate(new TransportEmissionInput(
             $category ?? $this->categoryForMode($mode), $mode, $method, $country,
             new \DateTimeImmutable($date), new \DateTimeImmutable($endDate ?? $date), $value, $unit,
             $repetitions, $passengers, $weightValue, $weightUnit, $vehicleType, $carSize, $fuel,
-            routeClassification: $routeClassification, accompaniment: $accompaniment,
+            thermalFuel: $thermalFuel, routeClassification: $routeClassification, accompaniment: $accompaniment,
         ));
     }
 
