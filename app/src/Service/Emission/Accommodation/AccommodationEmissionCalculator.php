@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service\Emission\Accommodation;
 
-use App\Entity\EmissionFactor;
 use App\Entity\EmissionRecord;
 
 final readonly class AccommodationEmissionCalculator
@@ -42,7 +41,7 @@ final readonly class AccommodationEmissionCalculator
 
         return match ($input->accommodationType) {
             AccommodationEmissionInput::TYPE_HOTEL => $this->calculateHotel($input, $iso3, $activityYear),
-            AccommodationEmissionInput::TYPE_HOSTEL => $this->calculateHostel($input, $activityYear),
+            AccommodationEmissionInput::TYPE_HOSTEL => $this->calculateHostel($input, $iso3, $activityYear),
             AccommodationEmissionInput::TYPE_APARTMENT => $this->calculateApartment($input, $activityYear),
             AccommodationEmissionInput::TYPE_OTHER => $this->notAutomaticallyCalculable(
                 $activityYear,
@@ -85,7 +84,7 @@ final readonly class AccommodationEmissionCalculator
         );
     }
 
-    private function calculateHostel(AccommodationEmissionInput $input, int $activityYear): AccommodationEmissionResult
+    private function calculateHostel(AccommodationEmissionInput $input, string $iso3, int $activityYear): AccommodationEmissionResult
     {
         $people = $this->positiveDecimal($input->people);
         if (null === $people) {
@@ -97,13 +96,21 @@ final readonly class AccommodationEmissionCalculator
         }
 
         $amount = $this->multiply($people, $nights);
-        return $this->notAutomaticallyCalculable(
-            $activityYear,
+        $resolution = $this->factorResolver->resolveHotel($iso3, '4', $activityYear);
+        $effectiveFactor = null === $resolution->factorValue
+            ? null
+            : $this->multiply($this->divide($resolution->factorValue, '1.5'), '0.25');
+
+        return $this->calculatedFromResolution(
+            $resolution,
+            AccommodationEmissionInput::TYPE_HOSTEL,
             $amount,
             self::GUEST_UNIT,
-            EmissionFactor::TEMPORAL_TYPE_VERSIONED,
-            [],
-            ['emission_factor_unavailable'],
+            $effectiveFactor,
+            'kgCO2e/guest-night',
+            '1.5',
+            '0.25',
+            'Legacy Travel & Climate v5.1 proxy',
         );
     }
 
@@ -224,6 +231,11 @@ final readonly class AccommodationEmissionCalculator
     private function multiply(string $left, string $right): string
     {
         return $this->trimDecimal(bcmul($left, $right, self::SCALE));
+    }
+
+    private function divide(string $dividend, string $divisor): string
+    {
+        return $this->trimDecimal(bcdiv($dividend, $divisor, self::SCALE));
     }
 
     private function trimDecimal(string $value): string

@@ -45,10 +45,38 @@ final class AccommodationEmissionCalculatorTest extends TestCase
         self::assertSame('GLOBAL_STAR_FALLBACK', $proxy->factorTraces[0]->metadata['method']);
     }
 
-    public function testHostelIsNotAutomaticallyCalculatedWithoutNumericBaseFactor(): void
+    public function testHostelUsesPreviousHotelFourStarFactorAsDocumentedProxy(): void
     {
         $result = $this->calculator->calculate($this->input(
             year: 2025,
+            type: AccommodationEmissionInput::TYPE_HOSTEL,
+            occupiedRooms: null,
+            people: '2',
+            nights: '3',
+        ));
+
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $result->status);
+        self::assertSame('6', $result->normalizedAmount);
+        self::assertSame('guest-night', $result->normalizedUnit);
+        self::assertSame('9.5505', $result->emissionKgCo2e);
+
+        $trace = $result->factorTraces[0];
+        self::assertSame(AccommodationEmissionInput::TYPE_HOSTEL, $trace->accommodationType);
+        self::assertSame('9.5505', $trace->baseFactorValue);
+        self::assertSame('1.59175', $trace->effectiveFactorValue);
+        self::assertSame('kgCO2e/guest-night', $trace->effectiveFactorUnit);
+        self::assertSame('1.5', $trace->averageOccupancy);
+        self::assertSame('0.25', $trace->hostelReductionFactor);
+        self::assertSame('Legacy Travel & Climate v5.1 proxy', $trace->proxyReason);
+        self::assertSame(2024, $trace->factorYear);
+        self::assertTrue($trace->isFallback);
+        self::assertSame('exact_year_missing', $trace->fallbackReason);
+    }
+
+    public function testHostelIsNotAutomaticallyCalculatedWithoutHotelFourStarBaseFactor(): void
+    {
+        $result = $this->calculator->calculate($this->input(
+            year: 2021,
             type: AccommodationEmissionInput::TYPE_HOSTEL,
             occupiedRooms: null,
             people: '2',
@@ -59,8 +87,10 @@ final class AccommodationEmissionCalculatorTest extends TestCase
         self::assertSame('6', $result->normalizedAmount);
         self::assertSame('guest-night', $result->normalizedUnit);
         self::assertNull($result->emissionKgCo2e);
-        self::assertSame([], $result->factorTraces);
         self::assertSame(['emission_factor_unavailable'], $result->messages);
+        self::assertCount(1, $result->factorTraces);
+        self::assertNull($result->factorTraces[0]->baseFactorValue);
+        self::assertNull($result->factorTraces[0]->effectiveFactorValue);
     }
 
     public function testApartmentUsesSingleVersionedLandFactorAndOtherHasNoAutomaticEmission(): void
