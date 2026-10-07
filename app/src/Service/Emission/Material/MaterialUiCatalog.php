@@ -9,6 +9,44 @@ use App\Service\Emission\EmissionCountryCatalog;
 
 final class MaterialUiCatalog
 {
+    private const SUSTAINABILITY_SEALS = [
+        'wood' => ['FSC', 'PEFC', 'Sin sello'],
+        'paper' => ['FSC', 'PEFC', 'Sin sello', 'Desconocido'],
+        'cardboard' => ['FSC', 'PEFC', 'Sin sello', 'Desconocido'],
+    ];
+    private const CARDBOARD_STRUCTURES = [
+        'Cartón compacto / no corrugado',
+        'Cartón corrugado de 2 capas',
+        'Cartón corrugado de 3 capas',
+        'Cartón corrugado de 5 capas',
+        'Cartón corrugado de 7 capas',
+        'Otro',
+        'Desconocido',
+    ];
+    private const METAL_MATERIALS = [
+        'Acero',
+        'Hierro',
+        'Aluminio',
+        'Cobre',
+        'Acero inoxidable',
+        'Latón',
+        'Zinc',
+        'Otro metal',
+        'Desconocido',
+    ];
+    private const METAL_FORMS = [
+        'Perfiles',
+        'Rieles',
+        'Tubos',
+        'Chapas / placas',
+        'Barras / varillas',
+        'Mallas / rejillas',
+        'Herrajes / piezas',
+        'Estructura mixta',
+        'Otra forma',
+        'Desconocido',
+    ];
+
     public const ACTIVITY_WOOD = 'Madera';
     public const ACTIVITY_PAPER = 'Papel';
     public const ACTIVITY_CARDBOARD = 'Cartón';
@@ -203,7 +241,7 @@ final class MaterialUiCatalog
             || 1 === preg_match('/^(?:polietileno|tereftalato|polipropileno|poliestireno|policloruro)/u', $activity);
     }
 
-    /** @return array{families: list<array{value: string, label: string, methods: list<string>, activities: list<array{value: string, label: string, subproducts: list<array{value: string, label: string, origins: list<string>, normalizationValue: ?string}>}>}>, woodTypes: list<string>, woodBoards: array<string, list<string>>, paperFormats: list<string>, cardboardTypes: list<string>, batterySizes: list<string>} */
+    /** @return array<string, mixed> */
     public function frontendCatalog(): array
     {
         $families = [];
@@ -269,6 +307,10 @@ final class MaterialUiCatalog
             'paperFormats' => array_keys($this->paperFormats),
             'cardboardTypes' => array_keys($this->cardboardGrammages),
             'batterySizes' => array_keys($batterySizes),
+            'sustainabilitySeals' => self::SUSTAINABILITY_SEALS,
+            'cardboardStructures' => self::CARDBOARD_STRUCTURES,
+            'metalMaterials' => self::METAL_MATERIALS,
+            'metalForms' => self::METAL_FORMS,
         ];
     }
 

@@ -5,6 +5,7 @@ export default class extends Controller {
     'form', 'family', 'activity', 'subproductContainer', 'subproduct', 'origin',
     'method', 'inputUnit', 'paperFormat', 'cardboardType', 'woodType',
     'boardFamily', 'boardThickness', 'batteryChemistry', 'batterySize',
+    'sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm',
     'previewStatus', 'previewEmission', 'previewTrace', 'previewMessages',
   ];
 
@@ -20,6 +21,7 @@ export default class extends Controller {
     this.populateStaticOptions();
     const initialFamily = this.familyForActivity(this.initialValue.activity)?.value || '';
     this.replaceOptions(this.familyTarget, this.catalogValue.families || [], initialFamily);
+    this.populateSustainabilitySeals(this.initialValue.sustainabilitySeal || '');
     this.populateActivities(this.initialValue.activity || '');
     this.populateSubproducts(this.initialValue.subproduct || '');
     this.populateOrigins(this.initialValue.origin || '');
@@ -34,6 +36,7 @@ export default class extends Controller {
   }
 
   familyChanged() {
+    this.populateSustainabilitySeals('');
     this.populateActivities('');
     this.populateSubproducts('');
     this.populateOrigins('');
@@ -77,7 +80,18 @@ export default class extends Controller {
     this.replaceOptions(this.woodTypeTarget, this.asOptions(this.catalogValue.woodTypes), this.initialValue.woodType || '');
     this.replaceOptions(this.boardFamilyTarget, this.asOptions(Object.keys(this.catalogValue.woodBoards || {})), this.initialValue.boardFamily || '');
     this.replaceOptions(this.batterySizeTarget, this.asOptions(this.catalogValue.batterySizes), this.initialValue.batterySize || '');
+    this.replaceOptions(this.cardboardStructureTarget, this.asOptions(this.catalogValue.cardboardStructures), this.initialValue.cardboardStructure || '');
+    this.replaceOptions(this.metalMaterialTarget, this.asOptions(this.catalogValue.metalMaterials), this.initialValue.metalMaterial || '');
+    this.replaceOptions(this.metalFormTarget, this.asOptions(this.catalogValue.metalForms), this.initialValue.metalForm || '');
     this.boardFamilyChanged();
+  }
+
+  populateSustainabilitySeals(selected) {
+    this.replaceOptions(
+      this.sustainabilitySealTarget,
+      this.asOptions(this.catalogValue.sustainabilitySeals?.[this.familyTarget.value]),
+      selected,
+    );
   }
 
   populateActivities(selected) {
@@ -136,6 +150,9 @@ export default class extends Controller {
       if (family === 'wood') this.showFields(['thickness', 'woodType', 'boardFamily', 'boardThickness']);
       if (family === 'cardboard') this.showFields(['cardboardType']);
     }
+    if (['wood', 'paper', 'cardboard'].includes(family)) this.showFields(['sustainabilitySeal']);
+    if (family === 'cardboard') this.showFields(['cardboardStructure']);
+    if (family === 'metal') this.showFields(['metalMaterial', 'metalForm']);
   }
 
   showFields(names, units = null) {

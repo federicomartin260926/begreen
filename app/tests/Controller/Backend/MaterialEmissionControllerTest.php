@@ -62,6 +62,99 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         $catalog = json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
         self::assertCount(14, $catalog['families']);
         self::assertContains('Pilas y baterías', array_column($catalog['families'], 'label'));
+        self::assertSame(['FSC', 'PEFC', 'Sin sello'], $catalog['sustainabilitySeals']['wood']);
+        self::assertSame(['FSC', 'PEFC', 'Sin sello', 'Desconocido'], $catalog['sustainabilitySeals']['paper']);
+        self::assertSame(['FSC', 'PEFC', 'Sin sello', 'Desconocido'], $catalog['sustainabilitySeals']['cardboard']);
+        self::assertSame([
+            'Cartón compacto / no corrugado',
+            'Cartón corrugado de 2 capas',
+            'Cartón corrugado de 3 capas',
+            'Cartón corrugado de 5 capas',
+            'Cartón corrugado de 7 capas',
+            'Otro',
+            'Desconocido',
+        ], $catalog['cardboardStructures']);
+        self::assertSame(['Acero', 'Hierro', 'Aluminio', 'Cobre', 'Acero inoxidable', 'Latón', 'Zinc', 'Otro metal', 'Desconocido'], $catalog['metalMaterials']);
+        self::assertSame(['Perfiles', 'Rieles', 'Tubos', 'Chapas / placas', 'Barras / varillas', 'Mallas / rejillas', 'Herrajes / piezas', 'Estructura mixta', 'Otra forma', 'Desconocido'], $catalog['metalForms']);
+        foreach (['sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm'] as $field) {
+            self::assertStringContainsString(sprintf('name="%s"', $field), $content);
+        }
+    }
+
+    public function testRequestMapperAndSnapshotPreserveStructuredMetadata(): void
+    {
+        $mapper = new MaterialEmissionRequestMapper(new MaterialUiCatalog());
+        $snapshot = new MaterialEmissionSnapshot();
+        $cardboardInput = $mapper->map($this->request('POST', [
+            ...$this->basePost(),
+            'activity' => MaterialUiCatalog::ACTIVITY_CARDBOARD,
+            'origin' => 'Producción de materia prima',
+            'measurementMethod' => 'weight',
+            'inputQuantity' => '10',
+            'inputUnit' => 'kg',
+            'sustainabilitySeal' => 'PEFC',
+            'cardboardStructure' => 'Cartón corrugado de 5 capas',
+        ]));
+        $metalInput = $mapper->map($this->request('POST', [
+            ...$this->basePost(),
+            'activity' => MaterialUiCatalog::ACTIVITY_METAL,
+            'origin' => 'Producción de materia prima',
+            'measurementMethod' => 'weight',
+            'inputQuantity' => '10',
+            'inputUnit' => 'kg',
+            'metalMaterial' => 'Acero inoxidable',
+            'metalForm' => 'Chapas / placas',
+        ]));
+
+        self::assertSame('cardboard', $cardboardInput->family);
+        self::assertSame('metal', $metalInput->family);
+        self::assertSame('PEFC', $cardboardInput->sustainabilitySeal);
+        self::assertSame('Cartón corrugado de 5 capas', $cardboardInput->cardboardStructure);
+        self::assertSame('Acero inoxidable', $metalInput->metalMaterial);
+        self::assertSame('Chapas / placas', $metalInput->metalForm);
+
+        $storedCardboard = $snapshot->inputToArray($cardboardInput);
+        $storedMetal = $snapshot->inputToArray($metalInput);
+        self::assertSame('PEFC', $storedCardboard['sustainabilitySeal']);
+        self::assertSame('Cartón corrugado de 5 capas', $storedCardboard['cardboardStructure']);
+        self::assertSame('Acero inoxidable', $storedMetal['metalMaterial']);
+        self::assertSame('Chapas / placas', $storedMetal['metalForm']);
+
+        $decodedCardboard = $snapshot->decodeInput($snapshot->encode($cardboardInput, $this->calculator()->calculate($cardboardInput)));
+        $decodedMetal = $snapshot->decodeInput($snapshot->encode($metalInput, $this->calculator()->calculate($metalInput)));
+        self::assertSame('PEFC', $decodedCardboard->sustainabilitySeal);
+        self::assertSame('Cartón corrugado de 5 capas', $decodedCardboard->cardboardStructure);
+        self::assertSame('Acero inoxidable', $decodedMetal->metalMaterial);
+        self::assertSame('Chapas / placas', $decodedMetal->metalForm);
+    }
+
+    public function testSnapshotDecodesLegacyInputWithoutNewStructuredMetadata(): void
+    {
+        $input = (new MaterialEmissionRequestMapper(new MaterialUiCatalog()))->map($this->request('POST', $this->woodPost()));
+        $snapshot = new MaterialEmissionSnapshot();
+        $data = json_decode(
+            $snapshot->encode($input, $this->calculator()->calculate($input)),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        unset(
+            $data['input']['sustainabilitySeal'],
+            $data['input']['cardboardStructure'],
+            $data['input']['metalMaterial'],
+            $data['input']['metalForm'],
+        );
+
+        $decoded = $snapshot->decodeInput(json_encode($data, JSON_THROW_ON_ERROR));
+
+        self::assertNull($decoded->sustainabilitySeal);
+        self::assertNull($decoded->cardboardStructure);
+        self::assertNull($decoded->metalMaterial);
+        self::assertNull($decoded->metalForm);
+        self::assertSame(MaterialUiCatalog::ACTIVITY_WOOD, $decoded->activity);
+        self::assertSame('Producción de materia prima', $decoded->origin);
+        self::assertSame('weight', $decoded->measurementMethod);
+        self::assertSame('100', $decoded->inputQuantity);
+        self::assertSame('wood', $decoded->family);
     }
 
     public function testPreviewDistinguishesConvertedFactorRuleZeroAndUnavailableFactor(): void
@@ -170,6 +263,8 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         self::assertSame(20.0, $record->getAmount());
         self::assertSame(5.3900832, $record->getEmission());
+        $editedSnapshot = json_decode((string) $record->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('FSC', $editedSnapshot['input']['sustainabilitySeal']);
 
         $duplicate = $this->controller()->duplicate(
             $record,
@@ -183,6 +278,9 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('action="/backend/emission/new-material-v1?', $content);
         self::assertStringContainsString('value="20"', $content);
         self::assertStringNotContainsString('material_emission_v1_edit_300', $content);
+        self::assertSame(1, preg_match('/data-material-v1-form-initial-value="([^"]+)"/', $content, $matches));
+        $initial = json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('FSC', $initial['sustainabilitySeal']);
     }
 
     /** @return array<string, mixed> */
@@ -374,6 +472,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
             'measurementMethod' => 'weight',
             'inputQuantity' => '100',
             'inputUnit' => 'kg',
+            'sustainabilitySeal' => 'FSC',
             'notes' => 'Madera comprada',
         ];
     }

@@ -49,6 +49,10 @@ final class MaterialEmissionSnapshot
             'cardboardType' => $input->cardboardType,
             'batteryChemistry' => $input->batteryChemistry,
             'batterySize' => $input->batterySize,
+            'sustainabilitySeal' => $input->sustainabilitySeal,
+            'cardboardStructure' => $input->cardboardStructure,
+            'metalMaterial' => $input->metalMaterial,
+            'metalForm' => $input->metalForm,
             'family' => $input->family,
         ];
     }
@@ -81,6 +85,10 @@ final class MaterialEmissionSnapshot
             cardboardType: $this->optionalString($input, 'cardboardType'),
             batteryChemistry: $this->optionalString($input, 'batteryChemistry'),
             batterySize: $this->optionalString($input, 'batterySize'),
+            sustainabilitySeal: $this->optionalStringIfPresent($input, 'sustainabilitySeal'),
+            cardboardStructure: $this->optionalStringIfPresent($input, 'cardboardStructure'),
+            metalMaterial: $this->optionalStringIfPresent($input, 'metalMaterial'),
+            metalForm: $this->optionalStringIfPresent($input, 'metalForm'),
             family: $this->optionalString($input, 'family'),
         );
     }
@@ -155,5 +163,11 @@ final class MaterialEmissionSnapshot
         }
 
         return $value;
+    }
+
+    /** @param array<string, mixed> $input */
+    private function optionalStringIfPresent(array $input, string $field): ?string
+    {
+        return array_key_exists($field, $input) ? $this->optionalString($input, $field) : null;
     }
 }

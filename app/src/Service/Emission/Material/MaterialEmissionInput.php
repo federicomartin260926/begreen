@@ -38,6 +38,10 @@ final readonly class MaterialEmissionInput
         public ?string $cardboardType = null,
         public ?string $batteryChemistry = null,
         public ?string $batterySize = null,
+        public ?string $sustainabilitySeal = null,
+        public ?string $cardboardStructure = null,
+        public ?string $metalMaterial = null,
+        public ?string $metalForm = null,
         public ?string $family = null,
     ) {
     }
