@@ -14,7 +14,7 @@ final class TransportEmissionSnapshotTest extends TestCase
         $input = new TransportEmissionInput(
             'local', 'car', 'distance', 'ES',
             new \DateTimeImmutable('2026-03-04'), new \DateTimeImmutable('2026-03-06'),
-            '12.3400', 'km', '2', vehicleType: 'petrol', carSize: 'average',
+            '12.3400', 'km', '2', vehicleType: 'petrol', carSize: 'average', accompaniment: 'accompanied',
         );
         $result = new TransportEmissionResult(
             TransportEmissionResult::STATUS_CALCULATED,
@@ -72,6 +72,8 @@ final class TransportEmissionSnapshotTest extends TestCase
         self::assertSame('2026-03-04', $decoded->startDate->format('Y-m-d'));
         self::assertSame('2026-03-06', $decoded->endDate->format('Y-m-d'));
         self::assertSame('petrol', $decoded->vehicleType);
+        self::assertSame('accompanied', $data['input']['accompaniment']);
+        self::assertSame('accompanied', $decoded->accompaniment);
     }
 
     public function testDecodeRejectsUnsupportedVersion(): void
@@ -240,6 +242,31 @@ final class TransportEmissionSnapshotTest extends TestCase
 
         self::assertSame('2', $snapshot->decode($encoded)->activityValue);
         self::assertSame([], $snapshot->decodePresentation($encoded));
+    }
+
+    public function testLegacySnapshotWithoutAccompanimentDecodesItAsNull(): void
+    {
+        $snapshot = new TransportEmissionSnapshot();
+        $input = new TransportEmissionInput(
+            'local', 'car', 'distance', 'ES', new \DateTimeImmutable('2026-03-04'), new \DateTimeImmutable('2026-03-04'),
+            '12', 'km', '2', passengers: '3', vehicleType: 'petrol', carSize: 'small', accompaniment: 'solo',
+        );
+        $result = new TransportEmissionResult(
+            TransportEmissionResult::STATUS_CALCULATED, '24', 'km', '4', null, 'key', 2026,
+        );
+        $data = json_decode($snapshot->encode($input, $result), true, 512, JSON_THROW_ON_ERROR);
+        unset($data['input']['accompaniment']);
+
+        $decoded = $snapshot->decode(json_encode($data, JSON_THROW_ON_ERROR));
+
+        self::assertNull($decoded->accompaniment);
+        self::assertSame('local', $decoded->category);
+        self::assertSame('car', $decoded->mode);
+        self::assertSame('distance', $decoded->method);
+        self::assertSame('12', $decoded->activityValue);
+        self::assertSame('3', $decoded->passengers);
+        self::assertSame('petrol', $decoded->vehicleType);
+        self::assertSame('small', $decoded->carSize);
     }
 
     public function testHistoricalStartedAtSnapshotDecodesAsSameStartAndEndDate(): void

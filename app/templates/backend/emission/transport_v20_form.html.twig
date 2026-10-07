@@ -173,6 +173,7 @@
 {% set carSizeLabels = {} %}{% for option in transportUiConfig.carSizes %}{% set carSizeLabels = carSizeLabels|merge({(option): ('backend.emission.transport_v20.car_sizes.' ~ option)|trans}) %}{% endfor %}
 {% set fuelLabels = {} %}{% for modes in transportUiConfig.fuelsByMode %}{% for option in modes %}{% set fuelLabels = fuelLabels|merge({(option): ('backend.emission.transport_v20.fuels.' ~ option)|trans}) %}{% endfor %}{% endfor %}
 {% set tripTypeLabels = {} %}{% for option in transportUiConfig.tripTypes %}{% set tripTypeLabels = tripTypeLabels|merge({(option): ('backend.emission.transport_v20.trip_types.' ~ option)|trans}) %}{% endfor %}
+{% set accompanimentLabels = {} %}{% for option in ['solo', 'accompanied'] %}{% set accompanimentLabels = accompanimentLabels|merge({(option): ('backend.emission.transport_v20.accompaniment_options.' ~ option)|trans}) %}{% endfor %}
 {% set unitLabels = {} %}
 {% for units in transportUiConfig.unitsByMethod %}{% for unit in units %}{% set unitLabels = unitLabels|merge({(unit): ('backend.emission.transport_v20.units.' ~ unit)|trans}) %}{% endfor %}{% endfor %}
 {% for unit in transportUiConfig.weightUnits %}{% set unitLabels = unitLabels|merge({(unit): ('backend.emission.transport_v20.units.' ~ unit)|trans}) %}{% endfor %}
@@ -180,6 +181,22 @@
   select: 'backend.common.select'|trans,
   modeLabels: modeLabels,
   methodLabels: methodLabels,
+  carMethodLabels: {
+    distance: 'backend.emission.transport_v20.methods.car_distance'|trans
+  },
+  modeQuestionLabels: {
+    local: 'backend.emission.transport_v20.mode_questions.local'|trans,
+    travel: 'backend.emission.transport_v20.mode_questions.travel'|trans,
+    freight: 'backend.emission.transport_v20.mode_questions.freight'|trans
+  },
+  repetitionLabels: {
+    local: 'backend.emission.transport_v20.repetition_questions.local'|trans,
+    travel: 'backend.emission.transport_v20.repetition_questions.travel'|trans,
+    freight: 'backend.emission.transport_v20.repetition_questions.freight'|trans
+  },
+  vehicleTypeLabel: 'backend.emission.transport_v20.vehicle_type'|trans,
+  carTypeLabel: 'backend.emission.transport_v20.car_type'|trans,
+  accompanimentLabels: accompanimentLabels,
   vehicleTypeLabels: vehicleTypeLabels,
   carSizeLabels: carSizeLabels,
   fuelLabels: fuelLabels,
@@ -382,27 +399,25 @@
         </div>
         <div class="transport-v20-section__body">
           <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label" for="transport-mode">{{ 'backend.emission.transport_v20.mode'|trans }}</label>
-          <select class="form-select" id="transport-mode" name="mode" required data-transport-v20-form-target="mode" data-action="change->transport-v20-form#modeChanged"></select>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label" for="transport-method">{{ 'backend.emission.transport_v20.method'|trans }}</label>
-          <select class="form-select" id="transport-method" name="method" required data-transport-v20-form-target="method" data-action="change->transport-v20-form#methodChanged"></select>
-        </div>
-      </div>
-
-          <div class="transport-v20-dynamic-panel">
-        <div class="row">
-          <div class="col-md-6 mb-3" data-transport-v20-form-target="carSizeFields" hidden>
+            <div class="col-md-3 mb-3">
+              <label class="form-label" for="transport-mode" data-transport-v20-form-target="modeLabel">{{ 'backend.emission.transport_v20.mode'|trans }}</label>
+              <select class="form-select" id="transport-mode" name="mode" required data-transport-v20-form-target="mode" data-action="change->transport-v20-form#modeChanged"></select>
+            </div>
+          <div class="col-md-3 mb-3" data-transport-v20-form-target="carSizeFields" hidden>
             <label class="form-label" for="transport-car-size">{{ 'backend.emission.transport_v20.car_size'|trans }}</label>
             <select class="form-select" id="transport-car-size" name="carSize" data-transport-v20-form-target="carSize" required></select>
           </div>
-          <div class="col-md-6 mb-3" data-transport-v20-form-target="vehicleTypeFields" hidden>
-            <label class="form-label" for="transport-vehicle-type">{{ 'backend.emission.transport_v20.vehicle_type'|trans }}</label>
+          <div class="col-md-3 mb-3" data-transport-v20-form-target="vehicleTypeFields" hidden>
+            <label class="form-label" for="transport-vehicle-type" data-transport-v20-form-target="vehicleTypeLabel">{{ 'backend.emission.transport_v20.vehicle_type'|trans }}</label>
             <select class="form-select" id="transport-vehicle-type" name="vehicleType" data-transport-v20-form-target="vehicleType" data-action="change->transport-v20-form#vehicleTypeChanged" required></select>
           </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label" for="transport-method">{{ 'backend.emission.transport_v20.method'|trans }}</label>
+              <select class="form-select" id="transport-method" name="method" required data-transport-v20-form-target="method" data-action="change->transport-v20-form#methodChanged"></select>
+            </div>
         </div>
+
+          <div class="transport-v20-dynamic-panel">
 
         <div class="row" data-transport-v20-form-target="fuelFields" hidden>
           <div class="col-md-6 mb-3">
@@ -466,17 +481,35 @@
           </div>
         </div>
 
-        <div class="row" data-transport-v20-form-target="passengerFields" hidden>
-          <div class="col-md-6 mb-3">
-            <label class="form-label" for="transport-passengers">{{ 'backend.emission.transport_v20.passengers'|trans }}</label>
-            <input class="form-control" id="transport-passengers" type="number" name="passengers" value="{{ values.passengers|default('') }}" min="1" step="1" data-transport-v20-form-target="passengers">
-          </div>
-        </div>
-
         <div class="row" data-transport-v20-form-target="operatorFields" hidden>
           <div class="col-md-12 mb-3">
             <label class="form-label" for="transport-operator-reference">{{ 'backend.emission.transport_v20.operator_reference'|trans }}</label>
             <input class="form-control" id="transport-operator-reference" name="operatorReference" value="{{ values.operatorReference|default('') }}" data-transport-v20-form-target="operatorReference">
+          </div>
+        </div>
+
+        <div class="row" data-transport-v20-form-target="repetitionFields" hidden>
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="transport-repetitions" data-transport-v20-form-target="repetitionLabel">{{ 'backend.emission.transport_v20.repetitions'|trans }}</label>
+            <input class="form-control" id="transport-repetitions" type="number" name="repetitions" value="{{ values.repetitions|default('1') }}" min="1" step="1" required>
+            <div class="form-text">{{ 'backend.emission.transport_v20.repetitions_help'|trans }}</div>
+          </div>
+        </div>
+
+        <div class="row" data-transport-v20-form-target="accompanimentFields" hidden>
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="transport-accompaniment">{{ 'backend.emission.transport_v20.accompaniment'|trans }}</label>
+            <select class="form-select" id="transport-accompaniment" name="accompaniment" data-transport-v20-form-target="accompaniment"></select>
+          </div>
+        </div>
+
+        <div class="row" data-transport-v20-form-target="passengerFields" hidden>
+          <div class="col-12 mb-2">
+            <h3 class="h6 mb-0">{{ 'backend.emission.transport_v20.passenger_heading'|trans }}</h3>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="transport-passengers">{{ 'backend.emission.transport_v20.passengers'|trans }}</label>
+            <input class="form-control" id="transport-passengers" type="number" name="passengers" value="{{ values.passengers|default('') }}" min="1" step="1" data-transport-v20-form-target="passengers">
           </div>
         </div>
 
@@ -506,11 +539,7 @@
         </div>
         <div class="transport-v20-section__body">
           <div class="row">
-            <div class="col-md-4 mb-3">
-              <label class="form-label" for="transport-repetitions">{{ 'backend.emission.transport_v20.repetitions'|trans }}</label>
-          <input class="form-control" id="transport-repetitions" type="number" name="repetitions" value="{{ values.repetitions|default('1') }}" min="1" step="1" required>
-        </div>
-        <div class="col-md-8 mb-3">
+        <div class="col-12 mb-3">
           <label class="form-label" for="transport-notes">{{ 'backend.emission.transport_v20.notes'|trans }}</label>
           <textarea class="form-control" id="transport-notes" name="notes" rows="3">{{ values.notes|default('') }}</textarea>
         </div>

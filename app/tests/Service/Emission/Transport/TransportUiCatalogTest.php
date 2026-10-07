@@ -30,6 +30,10 @@ final class TransportUiCatalogTest extends TestCase
         self::assertSame(['passenger-km', 'passenger-mi'], $configuration['unitsByMethod']['passenger_distance']);
         self::assertSame(['kg', 't', 'lb', 'short_ton', 'long_ton'], $configuration['weightUnits']);
         self::assertSame(['L', 'us_gal', 'imp_gal', 'kg'], $configuration['unitsByMethod']['fuel']);
+        self::assertSame(['small', 'medium', 'large', 'average'], $configuration['carSizes']);
+        self::assertSame(['solo', 'accompanied'], $configuration['accompanimentOptions']);
+        self::assertSame(['car', 'taxi', 'passenger_van'], $configuration['accompanimentModes']);
+        self::assertSame(array_merge($catalog->categories()['local'], $catalog->categories()['travel']), $configuration['passengerModes']);
         self::assertNotContains('distance_consumption', $catalog->methods());
         self::assertNotContains('fuel_and_electricity', $catalog->methods());
         self::assertNotContains('electricity', $catalog->methods());
@@ -37,6 +41,8 @@ final class TransportUiCatalogTest extends TestCase
         self::assertNotContains('route_weight', $catalog->methodsByMode()['air_freight']);
         self::assertNotContains('route_weight', $catalog->methodsByMode()['freight_ship']);
         self::assertContains('route', $catalog->methodsByMode()['coach']);
+        self::assertNotContains('tonne_km', $configuration['methodsByMode']['freight_van']);
+        self::assertContains('tonne_km', $catalog->methodsByMode()['freight_van']);
 
         array_walk_recursive($configuration, static fn (mixed $value) => self::assertIsString($value));
     }

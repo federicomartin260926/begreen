@@ -115,6 +115,28 @@ final class TransportUiCatalog
     ];
 
     /** @var list<string> */
+    private const PASSENGER_MODES = [
+        'car',
+        'taxi',
+        'passenger_van',
+        'urban_bus',
+        'metro',
+        'tram',
+        'commuter_train',
+        'motorcycle',
+        'bicycle',
+        'scooter',
+        'walk',
+        'plane',
+        'long_distance_train',
+        'coach',
+        'passenger_ferry',
+    ];
+
+    /** @var list<string> */
+    private const ACCOMPANIMENT_MODES = ['car', 'taxi', 'passenger_van'];
+
+    /** @var list<string> */
     private const ORS_ROAD_MODES = ['taxi', 'urban_bus', 'coach'];
 
     /** @var array<string, list<string>> */
@@ -157,9 +179,15 @@ final class TransportUiCatalog
     /** @return array<string, mixed> */
     public function configuration(): array
     {
+        $uiMethodsByMode = self::MODE_METHODS;
+        $uiMethodsByMode['freight_van'] = array_values(array_filter(
+            $uiMethodsByMode['freight_van'],
+            static fn (string $method): bool => 'tonne_km' !== $method,
+        ));
+
         return [
             'categories' => self::CATEGORY_MODES,
-            'methodsByMode' => self::MODE_METHODS,
+            'methodsByMode' => $uiMethodsByMode,
             'carTypeMethods' => self::CAR_TYPE_METHODS,
             'unitsByMethod' => self::UNITS_BY_METHOD,
             'weightUnits' => self::WEIGHT_UNITS,
@@ -173,6 +201,9 @@ final class TransportUiCatalog
             'thermalFuels' => ['petrol', 'diesel'],
             'tripTypes' => ['one_way', 'round_trip', 'multiple'],
             'passengersByDistanceModes' => self::PASSENGERS_BY_DISTANCE_MODES,
+            'passengerModes' => self::PASSENGER_MODES,
+            'accompanimentModes' => self::ACCOMPANIMENT_MODES,
+            'accompanimentOptions' => ['solo', 'accompanied'],
             'orsRoadModes' => self::ORS_ROAD_MODES,
             'spainOnlyMethodsByMode' => self::SPAIN_ONLY_METHODS_BY_MODE,
             'outsideSpainOnlyMethodsByMode' => self::OUTSIDE_SPAIN_ONLY_METHODS_BY_MODE,

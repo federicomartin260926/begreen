@@ -42,7 +42,7 @@ final class TransportEmissionController extends AbstractController
 
     private const FORM_FIELDS = [
         'category', 'mode', 'method', 'country', 'startDate', 'endDate', 'activityValue', 'activityUnit', 'repetitions',
-        'passengers', 'weightValue', 'weightUnit', 'vehicleType', 'carSize', 'fuel', 'thermalFuel',
+        'passengers', 'accompaniment', 'weightValue', 'weightUnit', 'vehicleType', 'carSize', 'fuel', 'thermalFuel',
         'routeClassification', 'travelClass', 'notes',
         'origin', 'destination', 'originLatitude', 'originLongitude', 'destinationLatitude', 'destinationLongitude',
         'tripType', 'stops', 'operatorReference',
@@ -357,6 +357,7 @@ final class TransportEmissionController extends AbstractController
             'activityUnit' => '',
             'repetitions' => '1',
             'passengers' => null,
+            'accompaniment' => null,
             'weightValue' => null,
             'weightUnit' => null,
             'vehicleType' => null,

@@ -81,6 +81,51 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('name="startedAt"', $content);
         self::assertStringContainsString('value="ESP"', $content);
         self::assertStringContainsString('España', $content);
+        foreach ([
+            '¿Qué quieres registrar?',
+            'Desplazamientos',
+            'Viajes',
+            'Transporte de mercancías',
+            '¿Qué dato tienes?',
+            '¿Sabes el tamaño del coche?',
+            '¿Vas solo o acompañado?',
+            '¿Quién hizo este desplazamiento o viaje?',
+            '¿Cuántas personas del proyecto viajaban?',
+        ] as $wireframeText) {
+            self::assertStringContainsString($wireframeText, $content);
+        }
+        $config = $this->jsonDataAttribute($content, 'data-transport-v20-form-config-value');
+        self::assertSame(['car', 'taxi', 'passenger_van'], $config['accompanimentModes']);
+        self::assertSame(
+            array_merge($config['categories']['local'], $config['categories']['travel']),
+            $config['passengerModes'],
+        );
+        self::assertNotContains('tonne_km', $config['methodsByMode']['freight_van']);
+        $i18n = $this->jsonDataAttribute($content, 'data-transport-v20-form-i18n-value');
+        self::assertSame([
+            'local' => '¿Cómo te has desplazado?',
+            'travel' => '¿Cómo has viajado?',
+            'freight' => '¿Cómo se transportó la mercancía?',
+        ], $i18n['modeQuestionLabels']);
+        self::assertSame([
+            'local' => '¿Cuántos desplazamientos como este?',
+            'travel' => '¿Cuántos viajes como este?',
+            'freight' => '¿Cuántos transportes como este?',
+        ], $i18n['repetitionLabels']);
+        self::assertSame('¿Qué tipo?', $i18n['carTypeLabel']);
+        self::assertSame([
+            'small' => 'Pequeño',
+            'medium' => 'Mediano',
+            'large' => 'Grande',
+            'average' => 'No lo sé / usar promedio',
+        ], $i18n['carSizeLabels']);
+        self::assertSame(['solo' => 'Solo/a', 'accompanied' => 'Acompañado/a'], $i18n['accompanimentLabels']);
+        self::assertSame('Distancia recorrida', $i18n['carMethodLabels']['distance']);
+        $stimulus = file_get_contents(__DIR__.'/../../../assets/controllers/transport_v20_form_controller.js');
+        self::assertIsString($stimulus);
+        self::assertStringContainsString('this.toggle(this.carSizeFieldsTarget, isCar, clearInactive);', $stimulus);
+        self::assertStringContainsString("const showsPassengers = this.configValue.passengerModes.includes(mode) && this.category !== 'freight';", $stimulus);
+        self::assertStringContainsString('this.toggle(this.repetitionFieldsTarget, Boolean(method), clearInactive);', $stimulus);
         foreach (['passenger_van', 'motorcycle', 'bicycle', 'scooter', 'walk', 'coach', 'courier'] as $supportedOption) {
             self::assertStringContainsString($supportedOption, $content);
         }
@@ -112,6 +157,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('Nota conservada', $content);
         self::assertStringContainsString('value="Madrid"', $content);
         self::assertStringContainsString('value="Toledo"', $content);
+        self::assertSame('accompanied', $this->jsonDataAttribute($content, 'data-transport-v20-form-initial-value')['accompaniment']);
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
     }
 
@@ -146,6 +192,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('value="2026-06-02"', $content);
         self::assertStringContainsString('value="Madrid"', $content);
         self::assertStringContainsString('value="Toledo"', $content);
+        self::assertSame('accompanied', $this->jsonDataAttribute($content, 'data-transport-v20-form-initial-value')['accompaniment']);
         self::assertStringContainsString('Nota original', $content);
         self::assertStringNotContainsString('factura-origen.pdf', $content);
         self::assertStringNotContainsString('/attachments/402/', $content);
@@ -619,6 +666,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
     {
         $input = new TransportEmissionInput(
             'local', 'taxi', 'route', 'ES', new \DateTimeImmutable('2026-06-01'), new \DateTimeImmutable('2026-06-02'), '17', 'km', '2',
+            accompaniment: 'accompanied',
         );
         $result = new TransportEmissionResult(
             TransportEmissionResult::STATUS_CALCULATED, '34', 'km', '4', [], 'server-key', 2026, 2026, '0.1', 'km', 'MITECO',
@@ -641,8 +689,16 @@ final class TransportEmissionControllerTest extends KernelTestCase
         return [
             'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'ESP',
             'startDate' => '2026-06-01', 'endDate' => '2026-06-02', 'activityValue' => '10', 'activityUnit' => 'km',
-            'repetitions' => '1', 'vehicleType' => 'petrol', 'notes' => 'Nota nueva',
+            'repetitions' => '1', 'vehicleType' => 'petrol', 'accompaniment' => 'solo', 'notes' => 'Nota nueva',
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function jsonDataAttribute(string $content, string $attribute): array
+    {
+        self::assertSame(1, preg_match(sprintf('/%s="([^"]+)"/', preg_quote($attribute, '/')), $content, $matches));
+
+        return json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5), true, 512, JSON_THROW_ON_ERROR);
     }
 
     private function factor(): EmissionFactor

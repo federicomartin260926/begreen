@@ -56,6 +56,15 @@ final class TransportEmissionCalculatorTest extends TestCase
         self::assertSame('20', $result->normalizedActivityValue);
     }
 
+    public function testAccompanimentDoesNotChangeFactorOrEmissions(): void
+    {
+        $without = $this->calculate('car', 'distance', 'ES', '10', 'km', vehicleType: 'petrol');
+        $with = $this->calculate('car', 'distance', 'ES', '10', 'km', vehicleType: 'petrol', accompaniment: 'accompanied');
+
+        self::assertSame($without->factorId, $with->factorId);
+        self::assertSame($without->generatedKgCo2e, $with->generatedKgCo2e);
+    }
+
     public function testTonneKilometresAndWeightDistanceAreNormalized(): void
     {
         $tonneKm = $this->calculate('freight_train', 'tonne_km', 'ES', '10', 't-mi', repetitions: '2');
@@ -311,12 +320,13 @@ final class TransportEmissionCalculatorTest extends TestCase
         ?string $category = null,
         ?string $routeClassification = null,
         ?string $endDate = null,
+        ?string $accompaniment = null,
     ): TransportEmissionResult {
         return $this->calculator->calculate(new TransportEmissionInput(
             $category ?? $this->categoryForMode($mode), $mode, $method, $country,
             new \DateTimeImmutable($date), new \DateTimeImmutable($endDate ?? $date), $value, $unit,
             $repetitions, $passengers, $weightValue, $weightUnit, $vehicleType, $carSize, $fuel,
-            routeClassification: $routeClassification,
+            routeClassification: $routeClassification, accompaniment: $accompaniment,
         ));
     }
 

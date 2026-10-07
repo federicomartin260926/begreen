@@ -70,6 +70,7 @@ final class TransportEmissionSnapshot
             'thermalFuel' => $input->thermalFuel,
             'routeClassification' => $input->routeClassification,
             'travelClass' => $input->travelClass,
+            'accompaniment' => $input->accompaniment,
         ];
     }
 
@@ -118,6 +119,7 @@ final class TransportEmissionSnapshot
             $this->optionalString($input, 'thermalFuel'),
             $this->optionalString($input, 'routeClassification'),
             $this->optionalString($input, 'travelClass'),
+            $this->optionalString($input, 'accompaniment'),
         );
     }
 

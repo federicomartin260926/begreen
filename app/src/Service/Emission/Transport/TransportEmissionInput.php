@@ -23,6 +23,7 @@ final readonly class TransportEmissionInput
         public ?string $thermalFuel = null,
         public ?string $routeClassification = null,
         public ?string $travelClass = null,
+        public ?string $accompaniment = null,
     ) {
     }
 }

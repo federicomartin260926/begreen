@@ -46,6 +46,7 @@ final class TransportEmissionRequestMapper
             $this->optionalString($request, 'thermalFuel'),
             $this->optionalString($request, 'routeClassification'),
             $this->optionalString($request, 'travelClass'),
+            $this->optionalString($request, 'accompaniment'),
         );
     }
 

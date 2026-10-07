@@ -2,12 +2,13 @@ import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
   static targets = [
-    'form', 'mode', 'method', 'carSizeFields', 'carSize', 'vehicleTypeFields', 'vehicleType',
+    'form', 'modeLabel', 'mode', 'method', 'carSizeFields', 'carSize', 'vehicleTypeFields', 'vehicleTypeLabel', 'vehicleType',
     'fuelFields', 'fuel', 'thermalFuelFields', 'thermalFuel',
     'routeFields', 'origin', 'destination', 'originSuggestions', 'destinationSuggestions', 'originLatitude', 'originLongitude',
     'destinationLatitude', 'destinationLongitude', 'tripTypeFields', 'tripType', 'stopsFields', 'stopsNotice',
     'routeButton', 'routeMessage', 'activityFields', 'activityLabel', 'activityValue', 'activityUnit',
-    'weightFields', 'weightValue', 'weightUnit', 'passengerFields', 'passengers', 'operatorFields',
+    'weightFields', 'weightValue', 'weightUnit', 'repetitionFields', 'repetitionLabel',
+    'accompanimentFields', 'accompaniment', 'passengerFields', 'passengers', 'operatorFields',
     'operatorReference', 'submit', 'startDate', 'endDate',
     'previewStatus', 'previewEmission', 'previewTrace', 'previewMessages',
   ];
@@ -330,6 +331,7 @@ export default class extends Controller {
     this.fillSelect(this.thermalFuelTarget, this.configValue.thermalFuels, initial.thermalFuel);
     this.fillSelect(this.tripTypeTarget, this.configValue.tripTypes, initial.tripType || 'one_way');
     this.fillSelect(this.weightUnitTarget, this.configValue.weightUnits, initial.weightUnit);
+    this.fillSelect(this.accompanimentTarget, this.configValue.accompanimentOptions, initial.accompaniment);
   }
 
   refreshModes(preferred) {
@@ -376,8 +378,16 @@ export default class extends Controller {
     const hasWeight = ['weight_distance', 'route_weight'].includes(method);
     const needsPassengers = ['distance', 'route', 'route_stops'].includes(method)
       && this.configValue.passengersByDistanceModes.includes(mode);
+    const showsPassengers = this.configValue.passengerModes.includes(mode) && this.category !== 'freight';
+    const showsAccompaniment = Boolean(method) && this.configValue.accompanimentModes.includes(mode);
 
-    this.toggle(this.carSizeFieldsTarget, isCar && !this.isSpain && method === 'distance', clearInactive);
+    this.modeLabelTarget.textContent = this.i18nValue.modeQuestionLabels[this.category] || '';
+    this.repetitionLabelTarget.textContent = this.i18nValue.repetitionLabels[this.category] || '';
+    this.vehicleTypeLabelTarget.textContent = isCar
+      ? this.i18nValue.carTypeLabel
+      : this.i18nValue.vehicleTypeLabel;
+
+    this.toggle(this.carSizeFieldsTarget, isCar, clearInactive);
     this.toggle(this.vehicleTypeFieldsTarget, isCar || taxiSpainNeedsVehicleType, clearInactive);
 
     const showFuelChoice = method === 'fuel' && !isCar;
@@ -415,7 +425,9 @@ export default class extends Controller {
     this.toggle(this.weightFieldsTarget, hasWeight, clearInactive);
     this.weightValueTarget.required = hasWeight;
     this.weightUnitTarget.required = hasWeight;
-    this.toggle(this.passengerFieldsTarget, needsPassengers, clearInactive);
+    this.toggle(this.repetitionFieldsTarget, Boolean(method), clearInactive);
+    this.toggle(this.accompanimentFieldsTarget, showsAccompaniment, clearInactive);
+    this.toggle(this.passengerFieldsTarget, showsPassengers, clearInactive);
     this.passengersTarget.required = needsPassengers;
     this.toggle(this.operatorFieldsTarget, method === 'operator', clearInactive);
     this.operatorReferenceTarget.required = method === 'operator';
@@ -509,7 +521,10 @@ export default class extends Controller {
     if (placeholder) select.add(new Option(this.i18nValue.select, ''));
     codes.forEach((code) => {
       const labels = useMethodLabels ? this.i18nValue.methodLabels : this.labelMap(select);
-      select.add(new Option(labels[code] || code, code, false, code === selected));
+      const label = useMethodLabels && this.modeTarget.value === 'car'
+        ? (this.i18nValue.carMethodLabels[code] || labels[code])
+        : labels[code];
+      select.add(new Option(label || code, code, false, code === selected));
     });
     if (!select.value && !placeholder && codes.length) select.value = codes[0];
   }
@@ -520,6 +535,7 @@ export default class extends Controller {
     if (select === this.vehicleTypeTarget) return this.i18nValue.vehicleTypeLabels;
     if (select === this.carSizeTarget) return this.i18nValue.carSizeLabels;
     if ([this.fuelTarget, this.thermalFuelTarget].includes(select)) return this.i18nValue.fuelLabels;
+    if (select === this.accompanimentTarget) return this.i18nValue.accompanimentLabels;
     return this.i18nValue.tripTypeLabels;
   }
 
