@@ -56,6 +56,9 @@ final readonly class MaterialEmissionCalculator
             );
         }
 
+        if (null === $input->origin) {
+            return $this->pending($activityYear, 'origin_required');
+        }
         $origin = $this->catalog->canonicalOrigin($activity, $subproduct, $input->origin);
         if (null === $origin) {
             return $this->pending($activityYear, 'origin_required');

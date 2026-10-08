@@ -224,6 +224,10 @@ final class EmissionControllerTest extends KernelTestCase
                         'factorUnit' => 'km',
                         'source' => 'DEFRA 2026',
                         'sourceDetail' => 'Passenger transport factors',
+                    ], [
+                        'component' => 'Trayecto con pasajeros',
+                        'factorValue' => '0.050000000000000000',
+                        'factorUnit' => 'km*pasajero',
                     ]],
                 ],
             ], JSON_THROW_ON_ERROR));
@@ -243,6 +247,7 @@ final class EmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('</i>Duplicar', $transportContent);
         self::assertStringContainsString('</i>Eliminar', $transportContent);
         self::assertStringContainsString('0,183 kgCO2e/km', $transportContent);
+        self::assertStringContainsString('0,05 kgCO2e/(pasajero*km)', $transportContent);
         self::assertStringNotContainsString('0,183 km', $transportContent);
         self::assertStringNotContainsString('0.183000000000000000', $transportContent);
         self::assertStringContainsString('DEFRA 2026', $transportContent);

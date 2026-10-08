@@ -168,9 +168,11 @@ export default class extends Controller {
       if (trace.factorValue !== null && trace.factorValue !== undefined) {
         parts.push(`${this.formatDecimal(trace.factorValue)} ${trace.factorUnit || ''}`.trim());
       }
+      if (trace.factorId) parts.push(`${this.i18nValue.factorId}: ${trace.factorId}`);
+      if (trace.factorVersion) parts.push(`${this.i18nValue.factorVersion}: ${trace.factorVersion}`);
       if (trace.source) parts.push(trace.source);
       if (trace.sourceDetail) parts.push(trace.sourceDetail);
-      if (trace.factorYear) parts.push(String(trace.factorYear));
+      if (trace.factorYear && trace.temporalType !== 'VERSIONED') parts.push(String(trace.factorYear));
       if (trace.temporalType === 'VERSIONED') parts.push('VERSIONED');
       if (trace.temporalType === 'RULE') parts.push('RULE');
       if (trace.isFallback) parts.push(this.i18nValue.fallback);

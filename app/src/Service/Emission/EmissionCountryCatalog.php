@@ -9,6 +9,14 @@ use Symfony\Component\Intl\Countries;
 final class EmissionCountryCatalog
 {
     private const HEADERS = ['country', 'iso3', 'region_residuos'];
+    private const NON_STANDARD_ISO3_TO_ALPHA2 = [
+        'ANT' => 'AN',
+        'XKX' => 'XK',
+    ];
+    private const NON_STANDARD_ALPHA2_TO_ISO3 = [
+        'AN' => 'ANT',
+        'XK' => 'XKX',
+    ];
 
     /** @var array<string, array{country: string, region_residuos: string}> */
     private array $countries;
@@ -53,12 +61,17 @@ final class EmissionCountryCatalog
 
     public function iso2FromIso3(string $iso3): string
     {
-        return Countries::getAlpha2Code($this->normalizeIso3($iso3));
+        $iso3 = $this->normalizeIso3($iso3);
+
+        return self::NON_STANDARD_ISO3_TO_ALPHA2[$iso3] ?? Countries::getAlpha2Code($iso3);
     }
 
     public function iso3FromIso2(string $iso2): string
     {
         $iso2 = mb_strtoupper(trim($iso2), 'UTF-8');
+        if (isset(self::NON_STANDARD_ALPHA2_TO_ISO3[$iso2])) {
+            return self::NON_STANDARD_ALPHA2_TO_ISO3[$iso2];
+        }
         if (!Countries::exists($iso2)) {
             throw new \InvalidArgumentException(sprintf('Unsupported emission country ISO2 "%s".', $iso2));
         }
@@ -101,15 +114,11 @@ final class EmissionCountryCatalog
             if (isset($countries[$iso3]) || isset($names[$country])) {
                 throw new \RuntimeException(sprintf('Duplicate emission country CSV row %d.', $file->key() + 1));
             }
-            if (in_array($iso3, ['ANT', 'XKX'], true)) {
-                continue;
-            }
-
             $countries[$iso3] = ['country' => $country, 'region_residuos' => $region];
             $names[$country] = true;
         }
-        if (215 !== count($countries)) {
-            throw new \RuntimeException(sprintf('Expected 215 supported emission countries, got %d.', count($countries)));
+        if (217 !== count($countries)) {
+            throw new \RuntimeException(sprintf('Expected 217 supported emission countries, got %d.', count($countries)));
         }
 
         return $countries;

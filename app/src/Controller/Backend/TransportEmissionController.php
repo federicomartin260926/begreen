@@ -81,7 +81,7 @@ final class TransportEmissionController extends AbstractController
                 'temporalType' => $result->temporalType,
                 'factorVersion' => $result->factorVersion,
                 'factorValue' => $result->factorValue,
-                'factorUnit' => $result->factorUnit,
+                'factorUnit' => $this->formatFactorUnit($result->factorUnit),
                 'source' => $result->source,
                 'sourceDetail' => $result->sourceDetail,
                 'fallback' => $result->isFallback,
@@ -93,6 +93,19 @@ final class TransportEmissionController extends AbstractController
         } catch (\InvalidArgumentException $exception) {
             return $this->json(['error' => $this->inputErrorKey($exception)], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+    }
+
+    private function formatFactorUnit(?string $unit): ?string
+    {
+        if (null === $unit || '' === $unit || str_starts_with($unit, 'kgCO2e/')) {
+            return $unit;
+        }
+
+        $denominator = 'km*pasajero' === $unit ? 'pasajero*km' : $unit;
+
+        return str_contains($denominator, '*')
+            ? sprintf('kgCO2e/(%s)', $denominator)
+            : sprintf('kgCO2e/%s', $denominator);
     }
 
     #[Route('/new-transport', name: 'backend_emission_new_transport_v20', methods: ['GET', 'POST'])]

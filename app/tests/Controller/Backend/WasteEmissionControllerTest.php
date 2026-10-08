@@ -62,6 +62,19 @@ final class WasteEmissionControllerTest extends KernelTestCase
         self::assertSame('2.4542', $data['emissionKgCo2e']);
         self::assertSame('OCCC', $data['factorTraces'][0]['source']);
         self::assertSame('VERSIONED', $data['factorTraces'][0]['temporalType']);
+        self::assertSame('RES_B0BA0436E15B9A', $data['factorTraces'][0]['factorId']);
+        self::assertSame('OCCC v2025', $data['factorTraces'][0]['factorVersion']);
+        self::assertNull($data['factorTraces'][0]['factorYear']);
+    }
+
+    public function testFrontendShowsWasteFactorIdentityAndVersionWithoutVersionedFactorYear(): void
+    {
+        $source = file_get_contents(__DIR__.'/../../../assets/controllers/waste_v1_form_controller.js');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('if (trace.factorId)', $source);
+        self::assertStringContainsString('if (trace.factorVersion)', $source);
+        self::assertStringContainsString("trace.factorYear && trace.temporalType !== 'VERSIONED'", $source);
     }
 
     public function testCreatePersistsModernBackendCalculation(): void

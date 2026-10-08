@@ -129,6 +129,9 @@ final class WaterEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('data-controller="water-v1-form"', $content);
         self::assertStringContainsString('name="attachments[]"', $content);
         self::assertStringContainsString('piscina/tanque', $content);
+        self::assertSame(1, preg_match('/<select[^>]+name="volumeInputUnit"[^>]*>(.*?)<\/select>/s', $content, $unitSelect));
+        self::assertStringNotContainsString('value="L" selected', $unitSelect[1]);
+        self::assertStringNotContainsString('value="m3" selected', $unitSelect[1]);
         foreach (['factor', 'factorValue', 'factorYear', 'functionalKey', 'normalizedAmount', 'emission', 'source'] as $field) {
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
         }

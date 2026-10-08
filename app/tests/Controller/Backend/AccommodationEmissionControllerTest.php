@@ -104,6 +104,54 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
         }
     }
 
+    public function testHostelPreviewDistinguishesBaseFactorAndDerivedEffectiveFactor(): void
+    {
+        $preview = $this->preview($this->hostelPost());
+        $data = json_decode((string) $preview->getContent(), true, flags: JSON_THROW_ON_ERROR);
+
+        self::assertSame(Response::HTTP_OK, $preview->getStatusCode());
+        self::assertSame('9.5505', $data['emissionKgCo2e']);
+        self::assertSame('6', $data['normalizedAmount']);
+        self::assertSame('guest-night', $data['normalizedUnit']);
+
+        $trace = $data['factorTraces'][0];
+        self::assertSame('hostel', $trace['accommodationType']);
+        self::assertNotEmpty($trace['factorId']);
+        self::assertNotEmpty($trace['factorVersion']);
+        self::assertSame('Greenview Hotel Footprinting Tool', $trace['source']);
+        self::assertSame('9.5505', $trace['baseFactorValue']);
+        self::assertSame('kgCO2e/occupied room-night', $trace['baseFactorUnit']);
+        self::assertSame('Legacy Travel & Climate v5.1 proxy', $trace['proxyReason']);
+        self::assertSame('1.5', $trace['averageOccupancy']);
+        self::assertSame('0.25', $trace['hostelReductionFactor']);
+        self::assertSame('1.59175', $trace['effectiveFactorValue']);
+        self::assertSame('kgCO2e/guest-night', $trace['effectiveFactorUnit']);
+    }
+
+    public function testHostelTraceLabelsAreAvailableInSpanishAndEnglish(): void
+    {
+        $context = $this->context();
+
+        foreach ([
+            'es' => ['Factor base (Hotel 4 ★)', 'Metodología de derivación', 'Factor efectivo aplicado', 'Proxy para hostales de Travel & Climate v5.1'],
+            'en' => ['Base factor (4-star hotel)', 'Derivation methodology', 'Effective factor applied', 'Travel & Climate v5.1 hostel proxy'],
+        ] as $locale => [$baseFactor, $derivationMethod, $effectiveFactor, $proxyReason]) {
+            $persisted = null;
+            $response = $this->create($this->request('GET', locale: $locale), $context, 0, $persisted);
+            self::assertMatchesRegularExpression(
+                '/data-accommodation-v1-form-i18n-value="([^"]+)"/',
+                (string) $response->getContent(),
+            );
+            preg_match('/data-accommodation-v1-form-i18n-value="([^"]+)"/', (string) $response->getContent(), $matches);
+            $i18n = json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5), true, flags: JSON_THROW_ON_ERROR);
+
+            self::assertSame($baseFactor, $i18n['baseFactor']);
+            self::assertSame($derivationMethod, $i18n['derivationMethod']);
+            self::assertSame($effectiveFactor, $i18n['effectiveFactor']);
+            self::assertSame($proxyReason, $i18n['proxyReasonLabels']['Legacy Travel & Climate v5.1 proxy']);
+        }
+    }
+
     public function testCrossYearCreateIsRejectedWithoutPersistence(): void
     {
         $context = $this->context();
@@ -275,10 +323,11 @@ final class AccommodationEmissionControllerTest extends KernelTestCase
         return $controller;
     }
 
-    private function request(string $method, array $post = [], array $query = []): Request
+    private function request(string $method, array $post = [], array $query = [], string $locale = 'es'): Request
     {
         $request = new Request($query, $post, [], [], [], ['REQUEST_METHOD' => $method]);
-        $request->setLocale('es');
+        $request->setLocale($locale);
+        self::getContainer()->get('translator')->setLocale($locale);
         $request->attributes->set('_route', 'backend_emission_new_accommodation_v1');
         $request->attributes->set('_route_params', []);
         $request->setSession(new Session(new MockArraySessionStorage()));

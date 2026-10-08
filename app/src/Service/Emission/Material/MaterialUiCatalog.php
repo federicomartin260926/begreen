@@ -9,6 +9,18 @@ use App\Service\Emission\EmissionCountryCatalog;
 
 final class MaterialUiCatalog
 {
+    private const PLASTIC_UI = [
+        ['translationKey' => 'flexible_film', 'label' => 'Film, bolsas y láminas — plástico flexible', 'activity' => 'Película de plástico promedio'],
+        ['translationKey' => 'rigid_containers', 'label' => 'Envases y piezas rígidas — plástico rígido', 'activity' => 'Plástico rígido promedio'],
+        ['translationKey' => 'hdpe', 'label' => 'HDPE / PEAD — garrafas, bidones y cajas rígidas', 'activity' => 'Polietileno de alta densidad (HDPE/PEAD)'],
+        ['translationKey' => 'ldpe', 'label' => 'LDPE / PEBD — bolsas, film y láminas flexibles', 'activity' => 'Polietileno de baja densidad (LPDE/PEBD y LLPDE/PELBD)'],
+        ['translationKey' => 'pet', 'label' => 'PET — botellas y envases transparentes', 'activity' => 'Tereftalato de polietileno (PET)'],
+        ['translationKey' => 'pp', 'label' => 'PP — tapas, cajas, recipientes y piezas', 'activity' => 'Polipropileno (PP)'],
+        ['translationKey' => 'ps', 'label' => 'PS — poliestireno, bandejas y espuma', 'activity' => 'Poliestireno (PS)'],
+        ['translationKey' => 'pvc', 'label' => 'PVC — tubos, perfiles y láminas', 'activity' => 'Policloruro de vinilo (PVC)'],
+        ['translationKey' => 'mixed', 'label' => 'Plástico mixto / promedio', 'activity' => 'Plástico promedio'],
+        ['translationKey' => 'unknown', 'label' => 'Desconocido', 'activity' => 'Plástico promedio'],
+    ];
     private const SUSTAINABILITY_SEALS = [
         'wood' => ['FSC', 'PEFC', 'Sin sello'],
         'paper' => ['FSC', 'PEFC', 'Sin sello', 'Desconocido'],
@@ -77,6 +89,7 @@ final class MaterialUiCatalog
     public const ACTIVITY_VARNISH = 'Barniz';
     public const ACTIVITY_SOLVENT = 'Disolvente';
     public const ACTIVITY_CLOTHING = 'Ropa y accesorios';
+    public const ORIGIN_PURCHASED_PRESENTATION = '__material_origin_purchased__';
 
     private const FACTOR_HEADERS = [
         'category', 'factor_id', 'geography', 'iso3', 'subcategory', 'activity', 'variant',
@@ -278,12 +291,32 @@ final class MaterialUiCatalog
             unset($subproduct, $activity);
         }
 
-        foreach ($families['plastic']['activities'] ?? [] as &$activity) {
-            $subproduct = &$activity['subproducts'][''];
-            $subproduct['origins']['Reutilizado'] = 'Reutilizado';
-            unset($subproduct);
+        if (isset($families['plastic']['activities'])) {
+            foreach ($families['plastic']['activities'] as &$activity) {
+                $subproduct = &$activity['subproducts'][''];
+                $subproduct['origins']['Reutilizado'] = 'Reutilizado';
+                unset($subproduct);
+            }
+            unset($activity);
+
+            $technicalActivities = $families['plastic']['activities'];
+            $uiActivities = [];
+            $mappedActivities = [];
+            foreach (self::PLASTIC_UI as $option) {
+                if (!isset($technicalActivities[$option['activity']])) {
+                    continue;
+                }
+                $activity = $technicalActivities[$option['activity']];
+                $activity['label'] = $option['label'];
+                $activity['translationKey'] = $option['translationKey'];
+                $uiActivities[] = $activity;
+                $mappedActivities[$option['activity']] = true;
+            }
+            foreach (array_diff_key($technicalActivities, $mappedActivities) as $activity) {
+                $uiActivities[] = $activity;
+            }
+            $families['plastic']['activities'] = $uiActivities;
         }
-        unset($activity);
 
         if (isset($families['battery'])) {
             $families['battery']['activities'][self::ACTIVITY_BATTERIES]['subproducts']['Desconocido'] = [
@@ -331,6 +364,7 @@ final class MaterialUiCatalog
             'metalMaterials' => self::METAL_MATERIALS,
             'metalForms' => self::METAL_FORMS,
             'clothingGroups' => $clothingGroups,
+            'purchasedOriginPresentationValue' => self::ORIGIN_PURCHASED_PRESENTATION,
         ];
     }
 

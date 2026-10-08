@@ -115,7 +115,13 @@ export default class extends Controller {
   }
 
   populateActivities(selected) {
-    this.replaceOptions(this.activityTarget, this.selectedFamily?.activities || [], selected);
+    const activities = (this.selectedFamily?.activities || []).map((activity) => ({
+      ...activity,
+      label: activity.translationKey
+        ? (this.i18nValue.plasticActivities?.[activity.translationKey] || activity.label)
+        : activity.label,
+    }));
+    this.replaceOptions(this.activityTarget, activities, selected);
   }
 
   populateSubproducts(selected) {
@@ -135,7 +141,11 @@ export default class extends Controller {
 
   populateOrigins(selected) {
     const origins = this.selectedSubproduct?.origins || [];
-    this.replaceOptions(this.originTarget, this.asOptions(origins, true), selected);
+    const options = origins.map((origin) => origin === '' ? {
+      value: this.catalogValue.purchasedOriginPresentationValue,
+      label: this.i18nValue.purchasedOrigin,
+    } : { value: origin, label: origin });
+    this.replaceOptions(this.originTarget, options, selected);
   }
 
   populateMethods(selected) {
@@ -159,8 +169,8 @@ export default class extends Controller {
     if (method === 'volume') {
       this.showFields(['inputQuantity', 'inputUnit'], family === 'solvent' ? ['l', 'ml', 'cl', 'gal_us'] : ['l']);
     }
-    if (method === 'packages') this.showFields(['inputQuantity', 'paperFormat', 'sheetsPerPackage']);
-    if (method === 'grammage') this.showFields(['paperFormat', 'unitCount', 'grammage']);
+    if (method === 'packages') this.showFields(['inputQuantity', 'sheetsPerPackage']);
+    if (method === 'grammage') this.showFields(['unitCount', 'grammage']);
     if (method === 'units') {
       this.showFields(['unitCount']);
       if (['metal', 'plasterboard'].includes(family)) this.showFields(['pieceWeight']);
@@ -168,9 +178,11 @@ export default class extends Controller {
     }
     if (method === 'dimensions') {
       this.showFields(['length', 'width', 'unitCount', 'grammage']);
-      if (family === 'wood') this.showFields(['thickness', 'woodType', 'boardFamily', 'boardThickness']);
+      if (family === 'wood') this.showFields(['thickness', 'boardFamily', 'boardThickness']);
       if (family === 'cardboard') this.showFields(['cardboardType']);
     }
+    if (family === 'wood') this.showFields(['woodType']);
+    if (family === 'paper' && method !== 'weight') this.showFields(['paperFormat']);
     if (['wood', 'paper', 'cardboard'].includes(family)) this.showFields(['sustainabilitySeal']);
     if (family === 'cardboard') this.showFields(['cardboardStructure']);
     if (family === 'metal') this.showFields(['metalMaterial', 'metalForm']);
@@ -198,11 +210,13 @@ export default class extends Controller {
     first.value = '';
     first.textContent = this.i18nValue.select;
     select.replaceChildren(first);
+    let selectionApplied = false;
     options.forEach(({ value, label }) => {
       const option = document.createElement('option');
       option.value = value;
       option.textContent = label;
-      option.selected = value === selected;
+      option.selected = !selectionApplied && value === selected;
+      selectionApplied ||= option.selected;
       select.append(option);
     });
   }
@@ -334,8 +348,7 @@ export default class extends Controller {
     const common = ['startDate', 'endDate', 'country', 'activity', 'measurementMethod'];
     if (!common.every((name) => Boolean(this.formTarget.querySelector(`[name="${name}"]`)?.value))) return false;
     if (!this.selectedSubproduct) return false;
-    const origins = this.selectedSubproduct.origins || [];
-    return origins.includes('') || Boolean(this.originTarget.value);
+    return Boolean(this.originTarget.value);
   }
 
   formatDecimal(value) {

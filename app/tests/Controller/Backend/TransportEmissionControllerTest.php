@@ -270,12 +270,30 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame('10', $data['normalizedActivityValue']);
         self::assertSame('5', $data['generatedKgCo2e']);
         self::assertSame('0.5', $data['factorValue']);
+        self::assertSame('kgCO2e/km', $data['factorUnit']);
         self::assertSame(2026, $data['factorYear']);
         self::assertSame('TRA_TEST', $data['factorId']);
         self::assertSame(2026, $data['factorActivityYear']);
         self::assertSame('ANNUAL', $data['temporalType']);
         self::assertSame('MITECO', $data['source']);
         self::assertFalse($data['fallback']);
+    }
+
+    public function testPassengerDistancePreviewFormatsTheFactorDenominator(): void
+    {
+        $context = $this->context();
+        $post = $this->validPost();
+        $post['mode'] = 'urban_bus';
+        $post['passengers'] = '2';
+        unset($post['vehicleType']);
+        $request = $this->request('POST', $post);
+        $request->request->set('_preview_token', $this->csrfToken('transport_emission_v20_preview'));
+
+        $factor = $this->factor()->setUnit('km*pasajero');
+        $data = json_decode((string) $this->preview($request, $context, $factor)->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $data['status']);
+        self::assertSame('kgCO2e/(pasajero*km)', $data['factorUnit']);
     }
 
     public function testPreviewReportsTemporalFallback(): void

@@ -76,9 +76,81 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         ], $catalog['cardboardStructures']);
         self::assertSame(['Acero', 'Hierro', 'Aluminio', 'Cobre', 'Acero inoxidable', 'Latón', 'Zinc', 'Otro metal', 'Desconocido'], $catalog['metalMaterials']);
         self::assertSame(['Perfiles', 'Rieles', 'Tubos', 'Chapas / placas', 'Barras / varillas', 'Mallas / rejillas', 'Herrajes / piezas', 'Estructura mixta', 'Otra forma', 'Desconocido'], $catalog['metalForms']);
+        self::assertSame(MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION, $catalog['purchasedOriginPresentationValue']);
+        $plasticFamily = current(array_filter($catalog['families'], static fn (array $family): bool => 'plastic' === $family['value']));
+        self::assertSame([
+            ['Film, bolsas y láminas — plástico flexible', 'Película de plástico promedio'],
+            ['Envases y piezas rígidas — plástico rígido', 'Plástico rígido promedio'],
+            ['HDPE / PEAD — garrafas, bidones y cajas rígidas', 'Polietileno de alta densidad (HDPE/PEAD)'],
+            ['LDPE / PEBD — bolsas, film y láminas flexibles', 'Polietileno de baja densidad (LPDE/PEBD y LLPDE/PELBD)'],
+            ['PET — botellas y envases transparentes', 'Tereftalato de polietileno (PET)'],
+            ['PP — tapas, cajas, recipientes y piezas', 'Polipropileno (PP)'],
+            ['PS — poliestireno, bandejas y espuma', 'Poliestireno (PS)'],
+            ['PVC — tubos, perfiles y láminas', 'Policloruro de vinilo (PVC)'],
+            ['Plástico mixto / promedio', 'Plástico promedio'],
+            ['Desconocido', 'Plástico promedio'],
+        ], array_map(
+            static fn (array $activity): array => [$activity['label'], $activity['value']],
+            $plasticFamily['activities'],
+        ));
+        self::assertCount(9, array_unique(array_column($plasticFamily['activities'], 'value')));
+        foreach ($plasticFamily['activities'] as $activity) {
+            self::assertSame('', $activity['subproducts'][0]['value']);
+            self::assertContains('Reutilizado', $activity['subproducts'][0]['origins']);
+        }
+        foreach (['paint', 'varnish', 'solvent'] as $familyValue) {
+            $liquidFamily = current(array_filter(
+                $catalog['families'],
+                static fn (array $family): bool => $familyValue === $family['value'],
+            ));
+            self::assertContains('', $liquidFamily['activities'][0]['subproducts'][0]['origins']);
+            self::assertContains('Reutilizado', $liquidFamily['activities'][0]['subproducts'][0]['origins']);
+        }
+        self::assertSame(1, preg_match('/data-material-v1-form-i18n-value="([^"]+)"/', $content, $i18nMatches));
+        $i18n = json_decode(html_entity_decode($i18nMatches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('Comprado', $i18n['purchasedOrigin']);
+        self::assertSame('Film, bolsas y láminas — plástico flexible', $i18n['plasticActivities']['flexible_film']);
+        $translator = self::getContainer()->get('translator');
+        self::assertSame('Purchased', $translator->trans('backend.emission.material_v1.origins.purchased', locale: 'en'));
+        self::assertSame(array_column($plasticFamily['activities'], 'label'), array_map(
+            static fn (array $activity): string => $translator->trans(
+                'backend.emission.material_v1.plastic.'.$activity['translationKey'],
+                locale: 'es',
+            ),
+            $plasticFamily['activities'],
+        ));
+        self::assertSame([
+            'Film, bags and sheets — flexible plastic',
+            'Rigid containers and parts — rigid plastic',
+            'HDPE / PEAD — jerrycans, drums and rigid boxes',
+            'LDPE / PEBD — bags, film and flexible sheets',
+            'PET — bottles and transparent containers',
+            'PP — caps, boxes, containers and parts',
+            'PS — polystyrene, trays and foam',
+            'PVC — pipes, profiles and sheets',
+            'Mixed / average plastic',
+            'Unknown',
+        ], array_map(
+            static fn (array $activity): string => $translator->trans(
+                'backend.emission.material_v1.plastic.'.$activity['translationKey'],
+                locale: 'en',
+            ),
+            $plasticFamily['activities'],
+        ));
         foreach (['sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm', 'clothingGroup'] as $field) {
             self::assertStringContainsString(sprintf('name="%s"', $field), $content);
         }
+        $fieldPositions = $this->formFieldPositions($content);
+        self::assertTrue($fieldPositions['origin'] < $fieldPositions['sustainabilitySeal']);
+        self::assertTrue($fieldPositions['sustainabilitySeal'] < $fieldPositions['paperFormat']);
+        self::assertTrue($fieldPositions['paperFormat'] < $fieldPositions['measurementMethod']);
+        self::assertTrue($fieldPositions['woodType'] < $fieldPositions['origin']);
+        self::assertTrue($fieldPositions['cardboardStructure'] < $fieldPositions['origin']);
+        self::assertTrue($fieldPositions['metalMaterial'] < $fieldPositions['metalForm']);
+        self::assertTrue($fieldPositions['metalForm'] < $fieldPositions['origin']);
+        self::assertTrue($fieldPositions['measurementMethod'] < $fieldPositions['boardFamily']);
+        self::assertTrue($fieldPositions['measurementMethod'] < $fieldPositions['boardThickness']);
+        self::assertTrue($fieldPositions['measurementMethod'] < $fieldPositions['cardboardType']);
 
         self::assertSame([
             'Parte de arriba',
@@ -218,6 +290,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
             ...$this->basePost(),
             'activity' => MaterialUiCatalog::ACTIVITY_PAINT,
             'subproduct' => 'Pintura con base al agua',
+            'origin' => MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION,
             'measurementMethod' => 'volume',
             'inputQuantity' => '10',
             'inputUnit' => 'l',
@@ -251,6 +324,170 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame('NOT_AUTOMATICALLY_CALCULABLE', $unavailable['status']);
         self::assertNull($unavailable['emissionKgCo2e']);
         self::assertNotSame('0', $unavailable['emissionKgCo2e']);
+    }
+
+    public function testPurchasedOriginIsExplicitlyMappedPersistedAndRestored(): void
+    {
+        $catalog = new MaterialUiCatalog();
+        $mapper = new MaterialEmissionRequestMapper($catalog);
+        $calculator = $this->calculator();
+        $post = $this->paintPost();
+
+        $input = $mapper->map($this->request('POST', $post));
+        self::assertSame('', $input->origin);
+        self::assertSame('CALCULATED', $calculator->calculate($input)->status);
+
+        $withoutSelection = $mapper->map($this->request('POST', [...$post, 'origin' => '']));
+        self::assertNull($withoutSelection->origin);
+        $pending = $calculator->calculate($withoutSelection);
+        self::assertSame('PENDING_DATA', $pending->status);
+        self::assertSame(['origin_required'], $pending->messages);
+
+        $context = $this->context();
+        $controller = $this->controller();
+        $preview = $this->preview($controller, $context['active'], $post);
+        self::assertSame('CALCULATED', $preview['status']);
+        self::assertSame('34.45879792', $preview['emissionKgCo2e']);
+
+        $request = $this->request('POST', $post);
+        $request->request->set('_token', $this->csrfToken('material_emission_v1_create'));
+        $persisted = null;
+        $response = $controller->create(
+            $request,
+            $context['active'],
+            $context['categories'],
+            $context['projects'],
+            $mapper,
+            $this->recordService(1, $persisted),
+            $catalog,
+            $this->storage(),
+            $this->attachmentManager(),
+        );
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        self::assertInstanceOf(EmissionRecord::class, $persisted);
+        $details = (string) $persisted->getCalculationDetails();
+        self::assertStringNotContainsString(MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION, $details);
+        $stored = json_decode($details, true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('', $stored['input']['origin']);
+        self::assertTrue($stored['presentation']['purchasedOriginSelected']);
+
+        $ignored = null;
+        $edit = $controller->edit(
+            $persisted,
+            $this->request('GET'),
+            $context['active'],
+            $context['categories'],
+            $context['projects'],
+            $mapper,
+            $this->recordService(0, $ignored),
+            new MaterialEmissionSnapshot(),
+            $catalog,
+            $this->storage(),
+            $this->attachmentManager(),
+        );
+        $duplicate = $controller->duplicate(
+            $persisted,
+            $this->request('GET'),
+            $context['active'],
+            $context['categories'],
+            new MaterialEmissionSnapshot(),
+            $catalog,
+        );
+        self::assertSame(MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION, $this->initialFormValues((string) $edit->getContent())['origin']);
+        self::assertSame(MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION, $this->initialFormValues((string) $duplicate->getContent())['origin']);
+
+        $editRequest = $this->request('POST', [...$post, 'notes' => 'Compra actualizada']);
+        $editRequest->request->set('_token', $this->csrfToken('material_emission_v1_edit_'.$persisted->getId()));
+        $updated = null;
+        $editResponse = $controller->edit(
+            $persisted,
+            $editRequest,
+            $context['active'],
+            $context['categories'],
+            $context['projects'],
+            $mapper,
+            $this->recordService(1, $updated),
+            new MaterialEmissionSnapshot(),
+            $catalog,
+            $this->storage(),
+            $this->attachmentManager(),
+        );
+        self::assertSame(Response::HTTP_FOUND, $editResponse->getStatusCode());
+        self::assertSame($persisted, $updated);
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $persisted->getStatus());
+        self::assertSame(34.45879792, $persisted->getEmission());
+        self::assertSame('Compra actualizada', $persisted->getNotes());
+        $updatedSnapshot = json_decode((string) $persisted->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('', $updatedSnapshot['input']['origin']);
+        self::assertTrue($updatedSnapshot['presentation']['purchasedOriginSelected']);
+    }
+
+    public function testHistoricalPurchasedOriginRequiresExplicitSelectionBeforeEdit(): void
+    {
+        $context = $this->context();
+        $catalog = new MaterialUiCatalog();
+        $mapper = new MaterialEmissionRequestMapper($catalog);
+        $controller = $this->controller();
+        $record = $this->recordFromPost($context, $this->paintPost(), 330);
+        $originalDetails = $record->getCalculationDetails();
+        $originalAmount = $record->getAmount();
+        $originalEmission = $record->getEmission();
+        $originalStatus = $record->getStatus();
+
+        $stored = json_decode((string) $originalDetails, true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('', $stored['input']['origin']);
+        self::assertSame([], $stored['presentation']);
+
+        $request = $this->request('POST', [...$this->paintPost(), 'origin' => '', 'notes' => 'No debe guardarse']);
+        $request->request->set('_token', $this->csrfToken('material_emission_v1_edit_330'));
+        $ignored = null;
+        $response = $controller->edit(
+            $record,
+            $request,
+            $context['active'],
+            $context['categories'],
+            $context['projects'],
+            $mapper,
+            $this->recordService(0, $ignored),
+            new MaterialEmissionSnapshot(),
+            $catalog,
+            $this->storage(),
+            $this->attachmentManager(),
+        );
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertStringContainsString('Selecciona Comprado o Reutilizado antes de guardar', (string) $response->getContent());
+        self::assertSame($originalDetails, $record->getCalculationDetails());
+        self::assertSame($originalAmount, $record->getAmount());
+        self::assertSame($originalEmission, $record->getEmission());
+        self::assertSame($originalStatus, $record->getStatus());
+        self::assertNull($record->getNotes());
+
+        $selectedRequest = $this->request('POST', [...$this->paintPost(), 'notes' => 'Origen confirmado']);
+        $selectedRequest->request->set('_token', $this->csrfToken('material_emission_v1_edit_330'));
+        $updated = null;
+        $selectedResponse = $controller->edit(
+            $record,
+            $selectedRequest,
+            $context['active'],
+            $context['categories'],
+            $context['projects'],
+            $mapper,
+            $this->recordService(1, $updated),
+            new MaterialEmissionSnapshot(),
+            $catalog,
+            $this->storage(),
+            $this->attachmentManager(),
+        );
+
+        self::assertSame(Response::HTTP_FOUND, $selectedResponse->getStatusCode());
+        self::assertSame($record, $updated);
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $record->getStatus());
+        self::assertSame(34.45879792, $record->getEmission());
+        self::assertSame('Origen confirmado', $record->getNotes());
+        $confirmedSnapshot = json_decode((string) $record->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('', $confirmedSnapshot['input']['origin']);
+        self::assertTrue($confirmedSnapshot['presentation']['purchasedOriginSelected']);
     }
 
     public function testCreatePersistsModernRecordAndCompleteSnapshot(): void
@@ -317,6 +554,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame(5.3900832, $record->getEmission());
         $editedSnapshot = json_decode((string) $record->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
         self::assertSame('FSC', $editedSnapshot['input']['sustainabilitySeal']);
+        self::assertSame('Madera maciza de pino radiata o insignis', $editedSnapshot['input']['woodType']);
 
         $duplicate = $this->controller()->duplicate(
             $record,
@@ -333,6 +571,96 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame(1, preg_match('/data-material-v1-form-initial-value="([^"]+)"/', $content, $matches));
         $initial = json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
         self::assertSame('FSC', $initial['sustainabilitySeal']);
+        self::assertSame('Madera maciza de pino radiata o insignis', $initial['woodType']);
+    }
+
+    public function testEditAndDuplicatePreserveMaterialSelections(): void
+    {
+        $context = $this->context();
+        $cases = [
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => MaterialUiCatalog::ACTIVITY_PAPER,
+                    'origin' => 'Producción de materia prima',
+                    'measurementMethod' => 'packages',
+                    'inputQuantity' => '2',
+                    'paperFormat' => 'A4 (210 x 297)',
+                    'sheetsPerPackage' => '500',
+                    'sustainabilitySeal' => 'PEFC',
+                ],
+                ['paperFormat' => 'A4 (210 x 297)', 'sustainabilitySeal' => 'PEFC'],
+            ],
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => MaterialUiCatalog::ACTIVITY_CARDBOARD,
+                    'origin' => 'Producción de materia prima',
+                    'measurementMethod' => 'weight',
+                    'inputQuantity' => '10',
+                    'inputUnit' => 'kg',
+                    'cardboardStructure' => 'Cartón corrugado de 7 capas',
+                    'sustainabilitySeal' => 'FSC',
+                ],
+                ['cardboardStructure' => 'Cartón corrugado de 7 capas', 'sustainabilitySeal' => 'FSC'],
+            ],
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => MaterialUiCatalog::ACTIVITY_METAL,
+                    'origin' => 'Producción de materia prima',
+                    'measurementMethod' => 'weight',
+                    'inputQuantity' => '10',
+                    'inputUnit' => 'kg',
+                    'metalMaterial' => 'Cobre',
+                    'metalForm' => 'Tubos',
+                ],
+                ['metalMaterial' => 'Cobre', 'metalForm' => 'Tubos'],
+            ],
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => 'Tereftalato de polietileno (PET)',
+                    'origin' => 'Reutilizado',
+                    'measurementMethod' => 'weight',
+                    'inputQuantity' => '10',
+                    'inputUnit' => 'kg',
+                ],
+                ['activity' => 'Tereftalato de polietileno (PET)', 'origin' => 'Reutilizado'],
+            ],
+        ];
+
+        foreach ($cases as $index => [$post, $expected]) {
+            $record = $this->recordFromPost($context, $post, 310 + $index);
+            $catalog = new MaterialUiCatalog();
+            $ignored = null;
+            $edit = $this->controller()->edit(
+                $record,
+                $this->request('GET'),
+                $context['active'],
+                $context['categories'],
+                $context['projects'],
+                new MaterialEmissionRequestMapper($catalog),
+                $this->recordService(0, $ignored),
+                new MaterialEmissionSnapshot(),
+                $catalog,
+                $this->storage(),
+                $this->attachmentManager(),
+            );
+            $duplicate = $this->controller()->duplicate(
+                $record,
+                $this->request('GET'),
+                $context['active'],
+                $context['categories'],
+                new MaterialEmissionSnapshot(),
+                $catalog,
+            );
+
+            foreach ($expected as $field => $value) {
+                self::assertSame($value, $this->initialFormValues((string) $edit->getContent())[$field]);
+                self::assertSame($value, $this->initialFormValues((string) $duplicate->getContent())[$field]);
+            }
+        }
     }
 
     public function testEditAndDuplicateInferClothingGroupForLegacySnapshot(): void
@@ -533,14 +861,23 @@ final class MaterialEmissionControllerTest extends KernelTestCase
     /** @param array<string, mixed> $context */
     private function record(array $context): EmissionRecord
     {
-        $input = (new MaterialEmissionRequestMapper(new MaterialUiCatalog()))->map($this->request('POST', $this->woodPost()));
+        return $this->recordFromPost($context, $this->woodPost(), 300);
+    }
+
+    /** @param array<string, mixed> $context
+     *  @param array<string, string> $post
+     */
+    private function recordFromPost(array $context, array $post, int $id): EmissionRecord
+    {
+        $input = (new MaterialEmissionRequestMapper(new MaterialUiCatalog()))->map($this->request('POST', $post));
         $result = $this->calculator()->calculate($input);
         $record = (new EmissionRecord())
             ->setProject($context['project'])->setPhase($context['phase'])->setCategory($context['category'])
-            ->setAmount((float) $result->normalizedAmount)->setEmission((float) $result->emissionKgCo2e)
+            ->setAmount(null === $result->normalizedAmount ? null : (float) $result->normalizedAmount)
+            ->setEmission(null === $result->emissionKgCo2e ? null : (float) $result->emissionKgCo2e)
             ->setStatus($result->status)->setRegisteredAt(new \DateTimeImmutable('2026-01-01'))
             ->setCalculationDetails((new MaterialEmissionSnapshot())->encode($input, $result));
-        $this->setId($record, 300);
+        $this->setId($record, $id);
 
         return $record;
     }
@@ -575,6 +912,25 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         return json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
     }
 
+    /** @return array<string, int> */
+    private function formFieldPositions(string $content): array
+    {
+        $document = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML($content);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $positions = [];
+        foreach ((new \DOMXPath($document))->query('//form//*[@name]') ?: [] as $position => $field) {
+            $name = $field->getAttribute('name');
+            if (!isset($positions[$name])) {
+                $positions[$name] = $position;
+            }
+        }
+
+        return $positions;
+    }
+
     /** @return array<string, string> */
     private function basePost(): array
     {
@@ -592,6 +948,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
             'measurementMethod' => 'weight',
             'inputQuantity' => '100',
             'inputUnit' => 'kg',
+            'woodType' => 'Madera maciza de pino radiata o insignis',
             'sustainabilitySeal' => 'FSC',
             'notes' => 'Madera comprada',
         ];
@@ -609,6 +966,21 @@ final class MaterialEmissionControllerTest extends KernelTestCase
             'measurementMethod' => 'units',
             'unitCount' => '2',
             'clothingGroup' => 'Parte de arriba',
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function paintPost(): array
+    {
+        return [
+            ...$this->basePost(),
+            'family' => 'paint',
+            'activity' => MaterialUiCatalog::ACTIVITY_PAINT,
+            'subproduct' => 'Pintura con base al agua',
+            'origin' => MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION,
+            'measurementMethod' => 'volume',
+            'inputQuantity' => '10',
+            'inputUnit' => 'l',
         ];
     }
 

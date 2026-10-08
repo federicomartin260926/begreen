@@ -10,6 +10,35 @@
 {% endblock %}
 
 {% block body %}
+{% set sandwichTypes = {
+  'Vacuno': 'beef',
+  'Pollo': 'chicken',
+  'Cerdo / jamón': 'pork_ham',
+  'Pescado / atún': 'fish_tuna',
+  'Vegetariano': 'vegetarian',
+  'Vegano / hummus': 'vegan_hummus'
+} %}
+{% set waterVolumes = {
+  '0.33': 'liters_0_33',
+  '0.5': 'liters_0_5',
+  '1': 'liters_1',
+  '1.5': 'liters_1_5',
+  '2': 'liters_2',
+  '5': 'liters_5',
+  '8': 'liters_8',
+  '20': 'liters_20'
+} %}
+{% set containerMaterials = {
+  'PET': 'pet',
+  'rPET 75%': 'rpet_75',
+  'REUSABLE': 'reusable'
+} %}
+{% set coffeeTypes = {
+  'Tradicional': 'traditional',
+  'Cápsula compostable': 'compostable_capsule',
+  'Cápsula aluminio': 'aluminium_capsule',
+  'Cápsula plástico': 'plastic_capsule'
+} %}
 {% set messageKeys = ['automatic_factor_unavailable', 'food_automatic_factor_unavailable', 'tableware_automatic_factor_unavailable', 'dates_required', 'invalid_date_range', 'country_required', 'country_invalid', 'activity_type_required', 'activity_type_unknown', 'tableware_type_invalid', 'menu_line_invalid', 'menu_counts_invalid', 'consumed_exceeds_prepared', 'menu_variant_invalid', 'prepared_menu_required', 'people_invalid', 'prepared_count_invalid', 'consumed_count_invalid', 'water_input_invalid', 'drink_input_invalid', 'service_count_invalid', 'gas_input_invalid'] %}
 {% set messageLabels = {} %}
 {% for key in messageKeys %}{% set messageLabels = messageLabels|merge({(key): ('backend.emission.catering_v1.messages.' ~ key)|trans}) %}{% endfor %}
@@ -103,10 +132,53 @@
           <div class="mt-3"><label class="form-label">{{ 'backend.emission.catering_v1.fields.tableware_type'|trans }} *</label><select class="form-select" name="tablewareType"><option value="">{{ 'backend.common.select'|trans }}</option>{% for type in tablewareTypes %}<option value="{{ type }}" {% if values.tablewareType|default('') == type %}selected{% endif %}>{{ ('backend.emission.catering_v1.tableware_types.' ~ type)|trans }}</option>{% endfor %}</select></div>
         </div>
 
-        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="sandwichFields"><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.sandwich_type'|trans }}</label><input class="form-control" name="sandwichType" value="{{ values.sandwichType|default('') }}"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.prepared_count'|trans }} *</label><input class="form-control" name="preparedCountSingle" value="{{ values.preparedCountSingle|default('') }}" inputmode="numeric"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.consumed_count'|trans }}</label><input class="form-control" name="consumedCountSingle" value="{{ values.consumedCountSingle|default('') }}" inputmode="numeric"></div></div>
-        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="waterFields"><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.container_volume'|trans }} *</label><input class="form-control" name="containerVolumeLiters" value="{{ values.containerVolumeLiters|default('') }}" inputmode="decimal"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.container_material'|trans }} *</label><input class="form-control" name="containerMaterial" value="{{ values.containerMaterial|default('') }}"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.container_count'|trans }} *</label><input class="form-control" name="containerCount" value="{{ values.containerCount|default('') }}" inputmode="numeric"></div></div>
+        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="sandwichFields">
+          <div class="col-md-4">
+            <label class="form-label">{{ 'backend.emission.catering_v1.fields.sandwich_type'|trans }}</label>
+            {% set currentSandwichType = values.sandwichType|default('') %}
+            <select class="form-select" name="sandwichType">
+              <option value="">{{ 'backend.common.select'|trans }}</option>
+              {% if currentSandwichType and currentSandwichType not in sandwichTypes|keys %}<option value="{{ currentSandwichType }}" selected>{{ currentSandwichType }}</option>{% endif %}
+              {% for value, labelKey in sandwichTypes %}<option value="{{ value }}" {% if currentSandwichType == value %}selected{% endif %}>{{ ('backend.emission.catering_v1.sandwich_types.' ~ labelKey)|trans }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.prepared_count'|trans }} *</label><input class="form-control" name="preparedCountSingle" value="{{ values.preparedCountSingle|default('') }}" inputmode="numeric"></div>
+          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.consumed_count'|trans }}</label><input class="form-control" name="consumedCountSingle" value="{{ values.consumedCountSingle|default('') }}" inputmode="numeric"></div>
+        </div>
+        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="waterFields">
+          <div class="col-md-4">
+            <label class="form-label">{{ 'backend.emission.catering_v1.fields.container_volume'|trans }} *</label>
+            {% set currentWaterVolume = values.containerVolumeLiters|default('') %}
+            <select class="form-select" name="containerVolumeLiters">
+              <option value="">{{ 'backend.common.select'|trans }}</option>
+              {% if currentWaterVolume and currentWaterVolume not in waterVolumes|keys %}<option value="{{ currentWaterVolume }}" selected>{{ currentWaterVolume }} L</option>{% endif %}
+              {% for value, labelKey in waterVolumes %}<option value="{{ value }}" {% if currentWaterVolume == value %}selected{% endif %}>{{ ('backend.emission.catering_v1.water_volumes.' ~ labelKey)|trans }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ 'backend.emission.catering_v1.fields.container_material'|trans }} *</label>
+            {% set currentContainerMaterial = values.containerMaterial|default('') %}
+            <select class="form-select" name="containerMaterial">
+              <option value="">{{ 'backend.common.select'|trans }}</option>
+              {% if currentContainerMaterial and currentContainerMaterial not in containerMaterials|keys %}<option value="{{ currentContainerMaterial }}" selected>{{ currentContainerMaterial }}</option>{% endif %}
+              {% for value, labelKey in containerMaterials %}<option value="{{ value }}" {% if currentContainerMaterial == value %}selected{% endif %}>{{ ('backend.emission.catering_v1.container_materials.' ~ labelKey)|trans }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.container_count'|trans }} *</label><input class="form-control" name="containerCount" value="{{ values.containerCount|default('') }}" inputmode="numeric"></div>
+        </div>
         <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="drinkFields"><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.description'|trans }} *</label><input class="form-control" name="description" value="{{ values.description|default('') }}"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.unit_count'|trans }} *</label><input class="form-control" name="unitCount" value="{{ values.unitCount|default('') }}" inputmode="numeric"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.liters_per_unit'|trans }} *</label><input class="form-control" name="litersPerUnit" value="{{ values.litersPerUnit|default('') }}" inputmode="decimal"></div></div>
-        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="coffeeFields"><div class="col-md-6"><label class="form-label">{{ 'backend.emission.catering_v1.fields.service_count'|trans }} *</label><input class="form-control" name="serviceCount" value="{{ values.serviceCount|default('') }}" inputmode="numeric"></div><div class="col-md-6"><label class="form-label">{{ 'backend.emission.catering_v1.fields.coffee_type'|trans }}</label><input class="form-control" name="coffeeType" value="{{ values.coffeeType|default('') }}"></div></div>
+        <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="coffeeFields">
+          <div class="col-md-6"><label class="form-label">{{ 'backend.emission.catering_v1.fields.service_count'|trans }} *</label><input class="form-control" name="serviceCount" value="{{ values.serviceCount|default('') }}" inputmode="numeric"></div>
+          <div class="col-md-6">
+            <label class="form-label">{{ 'backend.emission.catering_v1.fields.coffee_type'|trans }}</label>
+            {% set currentCoffeeType = values.coffeeType|default('') %}
+            <select class="form-select" name="coffeeType">
+              <option value="">{{ 'backend.common.select'|trans }}</option>
+              {% if currentCoffeeType and currentCoffeeType not in coffeeTypes|keys %}<option value="{{ currentCoffeeType }}" selected>{{ currentCoffeeType }}</option>{% endif %}
+              {% for value, labelKey in coffeeTypes %}<option value="{{ value }}" {% if currentCoffeeType == value %}selected{% endif %}>{{ ('backend.emission.catering_v1.coffee_types.' ~ labelKey)|trans }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
         <div class="row g-3 mt-1 d-none" data-catering-v1-form-target="gasFields"><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.gas_type'|trans }} *</label><select class="form-select" name="gasType"><option value="">{{ 'backend.common.select'|trans }}</option>{% for type in ['propane', 'butane'] %}<option value="{{ type }}" {% if values.gasType|default('') == type %}selected{% endif %}>{{ ('backend.emission.catering_v1.gas_types.' ~ type)|trans }}</option>{% endfor %}</select></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.cylinder_count'|trans }} *</label><input class="form-control" name="cylinderCount" value="{{ values.cylinderCount|default('') }}" inputmode="numeric"></div><div class="col-md-4"><label class="form-label">{{ 'backend.emission.catering_v1.fields.kg_per_cylinder'|trans }} *</label><input class="form-control" name="kgPerCylinder" value="{{ values.kgPerCylinder|default('') }}" inputmode="decimal"></div></div>
       </div></section>
 

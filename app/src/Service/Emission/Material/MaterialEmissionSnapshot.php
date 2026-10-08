@@ -101,6 +101,18 @@ final class MaterialEmissionSnapshot
         return $this->section($snapshot, 'calculation');
     }
 
+    /** @return array<string, mixed> */
+    public function decodePresentation(string $snapshot): array
+    {
+        $data = $this->decode($snapshot);
+        $presentation = $data['presentation'] ?? [];
+        if (!is_array($presentation)) {
+            throw new \UnexpectedValueException('Invalid material emission snapshot presentation.');
+        }
+
+        return $presentation;
+    }
+
     public function isMaterialV1Record(EmissionRecord $record, int $categoryId): bool
     {
         if ($categoryId !== $record->getEffectiveCategory()?->getId()) {

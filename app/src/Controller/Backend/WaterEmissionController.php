@@ -265,9 +265,7 @@ final class WaterEmissionController extends AbstractController
     /** @return array<string, string|null> */
     private function createDefaults(): array
     {
-        return array_replace(array_fill_keys(self::FORM_FIELDS, null), [
-            'volumeInputUnit' => WaterEmissionInput::UNIT_CUBIC_METRES,
-        ]);
+        return array_fill_keys(self::FORM_FIELDS, null);
     }
 
     /**

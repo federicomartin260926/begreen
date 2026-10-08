@@ -17,6 +17,7 @@ use App\Repository\EmissionFactorRepository;
 use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
 use App\Service\Emission\Catering\CateringEmissionCalculator;
+use App\Service\Emission\Catering\CateringEmissionInput;
 use App\Service\Emission\Catering\CateringEmissionRecordService;
 use App\Service\Emission\Catering\CateringEmissionRequestMapper;
 use App\Service\Emission\Catering\CateringEmissionSnapshot;
@@ -152,8 +153,166 @@ final class CateringEmissionControllerTest extends KernelTestCase
         foreach (['people', 'menuVariant[]', 'preparedCount[]', 'consumedCount[]', 'tablewareType', 'sandwichType', 'containerVolumeLiters', 'description', 'serviceCount', 'gasType'] as $field) {
             self::assertStringContainsString(sprintf('name="%s"', $field), $content);
         }
+        self::assertSame([
+            '' => 'Seleccione…',
+            'Vacuno' => 'Vacuno',
+            'Pollo' => 'Pollo',
+            'Cerdo / jamón' => 'Cerdo/jamón',
+            'Pescado / atún' => 'Pescado/atún',
+            'Vegetariano' => 'Vegetariano',
+            'Vegano / hummus' => 'Vegano/hummus',
+        ], $this->selectOptionLabels($content, 'sandwichType'));
+        self::assertSame([
+            '' => 'Seleccione…',
+            '0.33' => '0,33 L',
+            '0.5' => '0,5 L',
+            '1' => '1 L',
+            '1.5' => '1,5 L',
+            '2' => '2 L',
+            '5' => '5 L',
+            '8' => '8 L',
+            '20' => '20 L',
+        ], $this->selectOptionLabels($content, 'containerVolumeLiters'));
+        self::assertSame([
+            '' => 'Seleccione…',
+            'PET' => 'PET',
+            'rPET 75%' => 'rPET 75 %',
+            'REUSABLE' => 'Bidón reutilizable',
+        ], $this->selectOptionLabels($content, 'containerMaterial'));
+        self::assertSame([
+            '' => 'Seleccione…',
+            'Tradicional' => 'Tradicional',
+            'Cápsula compostable' => 'Cápsula compostable',
+            'Cápsula aluminio' => 'Cápsula de aluminio',
+            'Cápsula plástico' => 'Cápsula de plástico',
+        ], $this->selectOptionLabels($content, 'coffeeType'));
+        $englishResponse = $this->controller()->duplicate($record, $this->request('GET', locale: 'en'), $context['active'], $context['categories'], new CateringEmissionSnapshot());
+        $englishContent = (string) $englishResponse->getContent();
+        self::assertSame([
+            '' => 'Select…',
+            'Vacuno' => 'Beef',
+            'Pollo' => 'Chicken',
+            'Cerdo / jamón' => 'Pork/ham',
+            'Pescado / atún' => 'Fish/tuna',
+            'Vegetariano' => 'Vegetarian',
+            'Vegano / hummus' => 'Vegan/hummus',
+        ], $this->selectOptionLabels($englishContent, 'sandwichType'));
+        self::assertSame([
+            '' => 'Select…',
+            '0.33' => '0.33 L',
+            '0.5' => '0.5 L',
+            '1' => '1 L',
+            '1.5' => '1.5 L',
+            '2' => '2 L',
+            '5' => '5 L',
+            '8' => '8 L',
+            '20' => '20 L',
+        ], $this->selectOptionLabels($englishContent, 'containerVolumeLiters'));
+        self::assertSame([
+            '' => 'Select…',
+            'PET' => 'PET',
+            'rPET 75%' => '75% rPET',
+            'REUSABLE' => 'Reusable water container',
+        ], $this->selectOptionLabels($englishContent, 'containerMaterial'));
+        self::assertSame([
+            '' => 'Select…',
+            'Tradicional' => 'Traditional',
+            'Cápsula compostable' => 'Compostable capsule',
+            'Cápsula aluminio' => 'Aluminium capsule',
+            'Cápsula plástico' => 'Plastic capsule',
+        ], $this->selectOptionLabels($englishContent, 'coffeeType'));
         self::assertStringNotContainsString('name="department"', $content);
         self::assertStringNotContainsString('name="person_role"', $content);
+    }
+
+    public function testCleanCreateDoesNotPreselectStructuredOptionsInSpanishOrEnglish(): void
+    {
+        $context = $this->context();
+
+        foreach (['es', 'en'] as $locale) {
+            $ignored = null;
+            $response = $this->controller()->create(
+                $this->request('GET', locale: $locale),
+                $context['active'],
+                $context['categories'],
+                $context['projects'],
+                new CateringEmissionRequestMapper(),
+                $this->recordService(0, $ignored),
+                new EmissionRecordAttachmentStorage(sys_get_temp_dir().'/bgfm-catering-test'),
+                $this->attachmentManager(),
+            );
+            $content = (string) $response->getContent();
+
+            foreach (['sandwichType', 'containerVolumeLiters', 'containerMaterial', 'coffeeType'] as $field) {
+                self::assertSame([], $this->selectedOptionValues($content, $field));
+            }
+        }
+    }
+
+    public function testDuplicatePreservesHistoricalFreeFormValuesInStructuredSelectors(): void
+    {
+        $context = $this->context();
+        $cases = [
+            [new CateringEmissionInput(
+                new \DateTimeImmutable('2025-01-01'),
+                new \DateTimeImmutable('2025-01-02'),
+                'ESP',
+                CateringEmissionInput::TYPE_SANDWICH,
+                sandwichType: 'Receta histórica',
+                preparedCount: '2',
+            ), 'sandwichType', 'Receta histórica'],
+            [new CateringEmissionInput(
+                new \DateTimeImmutable('2025-01-01'),
+                new \DateTimeImmutable('2025-01-02'),
+                'ESP',
+                CateringEmissionInput::TYPE_WATER,
+                containerVolumeLiters: '0.75',
+                containerMaterial: 'Vidrio retornable',
+                containerCount: '2',
+            ), 'containerVolumeLiters', '0.75'],
+            [new CateringEmissionInput(
+                new \DateTimeImmutable('2025-01-01'),
+                new \DateTimeImmutable('2025-01-02'),
+                'ESP',
+                CateringEmissionInput::TYPE_WATER,
+                containerVolumeLiters: '1',
+                containerMaterial: 'Vidrio retornable',
+                containerCount: '2',
+            ), 'containerMaterial', 'Vidrio retornable'],
+            [new CateringEmissionInput(
+                new \DateTimeImmutable('2025-01-01'),
+                new \DateTimeImmutable('2025-01-02'),
+                'ESP',
+                CateringEmissionInput::TYPE_COFFEE,
+                serviceCount: '2',
+                coffeeType: 'Cafetera italiana',
+            ), 'coffeeType', 'Cafetera italiana'],
+        ];
+
+        foreach ($cases as $index => [$input, $field, $historicalValue]) {
+            $record = $this->recordFromInput($context, $input, 310 + $index);
+            $response = $this->controller()->duplicate($record, $this->request('GET'), $context['active'], $context['categories'], new CateringEmissionSnapshot());
+            $content = (string) $response->getContent();
+
+            self::assertSame([$historicalValue], $this->selectedOptionValues($content, $field));
+            self::assertArrayHasKey($historicalValue, $this->selectOptionLabels($content, $field));
+
+            $ignored = null;
+            $editResponse = $this->controller()->edit(
+                $record,
+                $this->request('GET'),
+                $context['active'],
+                $context['categories'],
+                $context['projects'],
+                new CateringEmissionRequestMapper(),
+                $this->recordService(0, $ignored),
+                new CateringEmissionSnapshot(),
+                new EmissionRecordAttachmentStorage(sys_get_temp_dir().'/bgfm-catering-test'),
+                $this->attachmentManager(),
+            );
+
+            self::assertSame([$historicalValue], $this->selectedOptionValues((string) $editResponse->getContent(), $field));
+        }
     }
 
     /** @return array{project: Project, category: Category, phase: ProjectPhaseDate, active: ActiveProjectService&MockObject, categories: CategoryRepository&MockObject, projects: ProjectRepository&MockObject} */
@@ -187,10 +346,11 @@ final class CateringEmissionControllerTest extends KernelTestCase
         return $controller;
     }
 
-    private function request(string $method, array $post = [], array $query = []): Request
+    private function request(string $method, array $post = [], array $query = [], string $locale = 'es'): Request
     {
         $request = new Request($query, $post, [], [], [], ['REQUEST_METHOD' => $method]);
-        $request->setLocale('es');
+        $request->setLocale($locale);
+        self::getContainer()->get('translator')->setLocale($locale);
         $request->attributes->set('_route', 'backend_emission_new_catering_v1');
         $request->attributes->set('_route_params', []);
         $request->setSession(new Session(new MockArraySessionStorage()));
@@ -246,11 +406,62 @@ final class CateringEmissionControllerTest extends KernelTestCase
     private function record(array $context, ?string $notes = null): EmissionRecord
     {
         $input = (new CateringEmissionRequestMapper())->map($this->request('POST', $this->mealPost()));
-        $result = $this->calculator()->calculate($input);
-        $record = (new EmissionRecord())->setProject($context['project'])->setPhase($context['phase'])->setCategory($context['category'])->setAmount((float) $result->normalizedAmount)->setEmission((float) $result->emissionKgCo2e)->setStatus($result->status)->setRegisteredAt(new \DateTimeImmutable('2025-01-01'))->setNotes($notes)->setCalculationDetails((new CateringEmissionSnapshot())->encode($input, $result));
-        $this->setId($record, 300);
+        $record = $this->recordFromInput($context, $input, 300);
+        $record->setNotes($notes);
 
         return $record;
+    }
+
+    /** @param array<string, mixed> $context */
+    private function recordFromInput(array $context, CateringEmissionInput $input, int $id): EmissionRecord
+    {
+        $result = $this->calculator()->calculate($input);
+        $record = (new EmissionRecord())
+            ->setProject($context['project'])
+            ->setPhase($context['phase'])
+            ->setCategory($context['category'])
+            ->setAmount(null === $result->normalizedAmount ? null : (float) $result->normalizedAmount)
+            ->setEmission(null === $result->emissionKgCo2e ? null : (float) $result->emissionKgCo2e)
+            ->setStatus($result->status)
+            ->setRegisteredAt(new \DateTimeImmutable('2025-01-01'))
+            ->setCalculationDetails((new CateringEmissionSnapshot())->encode($input, $result));
+        $this->setId($record, $id);
+
+        return $record;
+    }
+
+    /** @return array<string, string> */
+    private function selectOptionLabels(string $content, string $field): array
+    {
+        $document = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML($content);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xpath = new \DOMXPath($document);
+        $options = [];
+        foreach ($xpath->query(sprintf('//select[@name="%s"]/option', $field)) ?: [] as $option) {
+            $options[$option->getAttribute('value')] = trim($option->textContent);
+        }
+
+        return $options;
+    }
+
+    /** @return list<string> */
+    private function selectedOptionValues(string $content, string $field): array
+    {
+        $document = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML($content);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xpath = new \DOMXPath($document);
+        $values = [];
+        foreach ($xpath->query(sprintf('//select[@name="%s"]/option[@selected]', $field)) ?: [] as $option) {
+            $values[] = $option->getAttribute('value');
+        }
+
+        return $values;
     }
 
     /** @return array<string, string|list<string>> */

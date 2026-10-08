@@ -87,6 +87,44 @@ export default class extends Controller {
     }
     if (result.activityYear !== null) lines.push(`${this.i18nValue.activityYear}: ${result.activityYear}`);
     (result.factorTraces || []).forEach((trace) => {
+      if (trace.accommodationType === 'hostel') {
+        const baseParts = [this.i18nValue.baseFactor];
+        if (trace.baseFactorValue !== null) {
+          baseParts.push(`${this.formatDecimal(trace.baseFactorValue)} ${this.localizeUnit(trace.baseFactorUnit)}`.trim());
+        }
+        if (trace.source) baseParts.push(`${this.i18nValue.baseSource}: ${trace.source}`);
+        if (trace.factorId) baseParts.push(`${this.i18nValue.factorId}: ${trace.factorId}`);
+        if (trace.activityYear !== null) baseParts.push(`${this.i18nValue.factorActivityYear}: ${trace.activityYear}`);
+        if (trace.factorYear !== null) baseParts.push(`${this.i18nValue.factorYear}: ${trace.factorYear}`);
+        if (trace.temporalType) baseParts.push(`${this.i18nValue.temporalType}: ${trace.temporalType}`);
+        if (trace.factorVersion) baseParts.push(`${this.i18nValue.factorVersion}: ${trace.factorVersion}`);
+        if (trace.sourceDetail) baseParts.push(`${this.i18nValue.sourceDetail}: ${trace.sourceDetail}`);
+        if (trace.fallback) baseParts.push(`${this.i18nValue.fallback}${trace.fallbackReason ? `: ${trace.fallbackReason}` : ''}`);
+        if (trace.geographicProxy) baseParts.push(`${this.i18nValue.geographicProxy}${trace.proxyGeography ? `: ${trace.proxyGeography}` : ''}`);
+        if (trace.qualityStatus) baseParts.push(`${this.i18nValue.quality}: ${trace.qualityStatus}`);
+        ['sourceWorkbook', 'sourceSheet', 'dataset'].forEach((key) => {
+          if (trace.metadata?.[key]) baseParts.push(trace.metadata[key]);
+        });
+        lines.push(baseParts.filter(Boolean).join(' · '));
+
+        const derivationParts = [this.i18nValue.derivationMethod];
+        if (trace.proxyReason) {
+          derivationParts.push(this.i18nValue.proxyReasonLabels[trace.proxyReason] || trace.proxyReason);
+        }
+        if (trace.averageOccupancy !== null) {
+          derivationParts.push(`${this.i18nValue.averageOccupancy}: ${this.formatDecimal(trace.averageOccupancy)}`);
+        }
+        if (trace.hostelReductionFactor !== null) {
+          derivationParts.push(`${this.i18nValue.hostelCoefficient}: ${this.formatDecimal(trace.hostelReductionFactor)}`);
+        }
+        lines.push(derivationParts.filter(Boolean).join(' · '));
+
+        if (trace.effectiveFactorValue !== null) {
+          lines.push(`${this.i18nValue.effectiveFactor}: ${this.formatDecimal(trace.effectiveFactorValue)} ${this.localizeUnit(trace.effectiveFactorUnit)}`.trim());
+        }
+        return;
+      }
+
       const parts = [this.i18nValue.typeLabels[trace.accommodationType] || trace.accommodationType, trace.source];
       if (trace.factorId) parts.push(`${this.i18nValue.factorId}: ${trace.factorId}`);
       if (trace.activityYear !== null) parts.push(`${this.i18nValue.factorActivityYear}: ${trace.activityYear}`);

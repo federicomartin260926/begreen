@@ -114,7 +114,14 @@ final class MaterialEmissionController extends AbstractController
             if (!$phase) {
                 return $this->renderForm($request, $project, $category, $values, $catalog, false, null, ['phase_not_available'], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
-            $writeResult = $recordService->write($project, $category, $phase, $input, $this->notes($request));
+            $writeResult = $recordService->write(
+                $project,
+                $category,
+                $phase,
+                $input,
+                $this->notes($request),
+                presentation: $this->presentationValues($request),
+            );
         } catch (EmissionRecordAttachmentValidationException $e) {
             return $this->renderForm($request, $project, $category, $values, $catalog, false, null, [$e->errorKey], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (\InvalidArgumentException $e) {
@@ -171,6 +178,19 @@ final class MaterialEmissionController extends AbstractController
         if (!$this->hasValidCsrfToken($request, 'material_emission_v1_edit_'.$record->getId())) {
             return $this->renderForm($request, $project, $category, $values, $catalog, true, $record, ['csrf_invalid'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+        if ($this->requiresHistoricalOriginSelection($storedValues, $request)) {
+            return $this->renderForm(
+                $request,
+                $project,
+                $category,
+                $values,
+                $catalog,
+                true,
+                $record,
+                ['historical_origin_selection_required'],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
 
         $attachments = $this->uploadedAttachments($request);
         try {
@@ -180,7 +200,15 @@ final class MaterialEmissionController extends AbstractController
             if (!$phase) {
                 return $this->renderForm($request, $project, $category, $values, $catalog, true, $record, ['phase_not_available'], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
-            $recordService->write($project, $category, $phase, $input, $this->notes($request), $record);
+            $recordService->write(
+                $project,
+                $category,
+                $phase,
+                $input,
+                $this->notes($request),
+                $record,
+                $this->presentationValues($request),
+            );
         } catch (EmissionRecordAttachmentValidationException $e) {
             return $this->renderForm($request, $project, $category, $values, $catalog, true, $record, [$e->errorKey], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (\InvalidArgumentException $e) {
@@ -286,13 +314,47 @@ final class MaterialEmissionController extends AbstractController
     /** @return array<string, mixed> */
     private function snapshotValues(MaterialEmissionSnapshot $snapshot, EmissionRecord $record, MaterialUiCatalog $catalog): array
     {
-        $values = $snapshot->inputToArray($snapshot->decodeInput((string) $record->getCalculationDetails()));
+        $details = (string) $record->getCalculationDetails();
+        $values = $snapshot->inputToArray($snapshot->decodeInput($details));
+        $presentation = $snapshot->decodePresentation($details);
+        if ('' === $values['origin'] && true === ($presentation['purchasedOriginSelected'] ?? null)) {
+            $values['origin'] = MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION;
+        }
         if ('clothing' === $values['family'] && null === $values['clothingGroup']) {
             $values['clothingGroup'] = $catalog->clothingGroupForSubproduct($values['subproduct']);
         }
         $values['notes'] = $record->getNotes();
 
         return $values;
+    }
+
+    /** @return array<string, scalar|null> */
+    private function presentationValues(Request $request): array
+    {
+        return MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION === $request->request->get('origin')
+            ? ['purchasedOriginSelected' => true]
+            : [];
+    }
+
+    /** @param array<string, mixed> $storedValues */
+    private function requiresHistoricalOriginSelection(array $storedValues, Request $request): bool
+    {
+        if ('' !== ($storedValues['origin'] ?? null)) {
+            return false;
+        }
+        $historicalActivity = $storedValues['activity'] ?? null;
+        $requestedActivity = $request->request->get('activity');
+        $activities = [
+            MaterialUiCatalog::ACTIVITY_PAINT,
+            MaterialUiCatalog::ACTIVITY_VARNISH,
+            MaterialUiCatalog::ACTIVITY_SOLVENT,
+        ];
+        if (!in_array($historicalActivity, $activities, true) || !in_array($requestedActivity, $activities, true)) {
+            return false;
+        }
+        $requestedOrigin = $request->request->get('origin');
+
+        return !is_string($requestedOrigin) || '' === trim($requestedOrigin);
     }
 
     private function inputErrorKey(\InvalidArgumentException $exception): string

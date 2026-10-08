@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\Request;
 final class MaterialEmissionRequestMapper
 {
     private const OPTIONAL_FIELDS = [
-        'subproduct', 'origin', 'inputQuantity', 'inputUnit', 'woodType',
+        'subproduct', 'inputQuantity', 'inputUnit', 'woodType',
         'boardFamily', 'boardThickness', 'lengthMeters', 'widthMeters',
         'thicknessMeters', 'unitCount', 'pieceWeightKg', 'grammageGm2',
         'paperFormat', 'sheetsPerPackage', 'cardboardType',
@@ -50,7 +50,7 @@ final class MaterialEmissionRequestMapper
             country: $this->country($request),
             activity: $activity,
             subproduct: $optional['subproduct'],
-            origin: $optional['origin'],
+            origin: $this->origin($request),
             measurementMethod: $this->requiredString($request, 'measurementMethod'),
             inputQuantity: $optional['inputQuantity'],
             inputUnit: $optional['inputUnit'],
@@ -92,6 +92,13 @@ final class MaterialEmissionRequestMapper
     private function country(Request $request): string
     {
         return $this->countryCatalog->normalizeIso3($this->requiredString($request, 'country'));
+    }
+
+    private function origin(Request $request): ?string
+    {
+        $origin = $this->optionalString($request, 'origin');
+
+        return MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION === $origin ? '' : $origin;
     }
 
     private function requiredString(Request $request, string $field): string

@@ -63,6 +63,8 @@ final class AccommodationEmissionCalculatorTest extends TestCase
         $trace = $result->factorTraces[0];
         self::assertSame(AccommodationEmissionInput::TYPE_HOSTEL, $trace->accommodationType);
         self::assertSame('9.5505', $trace->baseFactorValue);
+        self::assertSame('kgCO2e/occupied room-night', $trace->baseFactorUnit);
+        self::assertSame('Greenview Hotel Footprinting Tool', $trace->source);
         self::assertSame('1.59175', $trace->effectiveFactorValue);
         self::assertSame('kgCO2e/guest-night', $trace->effectiveFactorUnit);
         self::assertSame('1.5', $trace->averageOccupancy);

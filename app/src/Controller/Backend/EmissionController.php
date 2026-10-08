@@ -413,9 +413,11 @@ class EmissionController extends AbstractController
             return $unit;
         }
 
-        return str_contains($unit, '*')
-            ? sprintf('kgCO2e/(%s)', $unit)
-            : sprintf('kgCO2e/%s', $unit);
+        $denominator = 'km*pasajero' === $unit ? 'pasajero*km' : $unit;
+
+        return str_contains($denominator, '*')
+            ? sprintf('kgCO2e/(%s)', $denominator)
+            : sprintf('kgCO2e/%s', $denominator);
     }
 
     private function modernActivityName(
