@@ -312,7 +312,7 @@ export default class extends Controller {
       container.querySelectorAll('input, select').forEach((field) => { field.disabled = false; });
     });
     if (units) {
-      this.replaceOptions(this.inputUnitTarget, this.asOptions(units, true), this.initialValue.inputUnit || '');
+      this.replaceOptions(this.inputUnitTarget, this.asOptions(units, true), this.inputUnitTarget.value || this.initialValue.inputUnit || '');
     }
   }
 
