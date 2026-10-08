@@ -76,6 +76,15 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         ], $catalog['cardboardStructures']);
         self::assertSame(['Acero', 'Hierro', 'Aluminio', 'Cobre', 'Acero inoxidable', 'Latón', 'Zinc', 'Otro metal', 'Desconocido'], $catalog['metalMaterials']);
         self::assertSame(['Perfiles', 'Rieles', 'Tubos', 'Chapas / placas', 'Barras / varillas', 'Mallas / rejillas', 'Herrajes / piezas', 'Estructura mixta', 'Otra forma', 'Desconocido'], $catalog['metalForms']);
+        self::assertSame([
+            'Madera maciza',
+            'Táblex',
+            'DM o MDF',
+            'Aglomerada',
+            'Contrachapada o Laminada (Plywood)',
+            'OSB',
+            'Desconocida',
+        ], $catalog['woodSelections']);
         self::assertSame(MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION, $catalog['purchasedOriginPresentationValue']);
         $plasticFamily = current(array_filter($catalog['families'], static fn (array $family): bool => 'plastic' === $family['value']));
         self::assertSame([
@@ -145,6 +154,10 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertTrue($fieldPositions['sustainabilitySeal'] < $fieldPositions['paperFormat']);
         self::assertTrue($fieldPositions['paperFormat'] < $fieldPositions['measurementMethod']);
         self::assertTrue($fieldPositions['woodType'] < $fieldPositions['origin']);
+        self::assertLessThan(
+            strpos($content, 'id="material-origin"'),
+            strpos($content, 'id="material-wood-selection"'),
+        );
         self::assertTrue($fieldPositions['cardboardStructure'] < $fieldPositions['origin']);
         self::assertTrue($fieldPositions['metalMaterial'] < $fieldPositions['metalForm']);
         self::assertTrue($fieldPositions['metalForm'] < $fieldPositions['origin']);
@@ -583,6 +596,29 @@ final class MaterialEmissionControllerTest extends KernelTestCase
                     ...$this->basePost(),
                     'activity' => MaterialUiCatalog::ACTIVITY_PAPER,
                     'origin' => 'Producción de materia prima',
+                    'measurementMethod' => 'weight',
+                    'inputQuantity' => '10',
+                    'inputUnit' => 'kg',
+                    'paperFormat' => 'A4 (210 x 297)',
+                ],
+                ['paperFormat' => 'A4 (210 x 297)', 'measurementMethod' => 'weight'],
+            ],
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => MaterialUiCatalog::ACTIVITY_PAPER,
+                    'origin' => 'Producción de materia prima',
+                    'measurementMethod' => 'weight',
+                    'inputQuantity' => '10',
+                    'inputUnit' => 'kg',
+                ],
+                ['paperFormat' => null, 'measurementMethod' => 'weight'],
+            ],
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => MaterialUiCatalog::ACTIVITY_PAPER,
+                    'origin' => 'Producción de materia prima',
                     'measurementMethod' => 'packages',
                     'inputQuantity' => '2',
                     'paperFormat' => 'A4 (210 x 297)',
@@ -627,6 +663,49 @@ final class MaterialEmissionControllerTest extends KernelTestCase
                     'inputUnit' => 'kg',
                 ],
                 ['activity' => 'Tereftalato de polietileno (PET)', 'origin' => 'Reutilizado'],
+            ],
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => MaterialUiCatalog::ACTIVITY_WOOD,
+                    'origin' => 'Producción de materia prima',
+                    'measurementMethod' => 'dimensions',
+                    'unitCount' => '1',
+                    'boardFamily' => 'DM o MDF',
+                    'boardThickness' => '10 mm',
+                ],
+                ['boardFamily' => 'DM o MDF', 'boardThickness' => '10 mm', 'woodType' => null],
+            ],
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => MaterialUiCatalog::ACTIVITY_WOOD,
+                    'origin' => 'Producción de materia prima',
+                    'measurementMethod' => 'dimensions',
+                    'unitCount' => '1',
+                    'woodType' => 'Desconocida / promedio',
+                    'lengthMeters' => '1',
+                    'widthMeters' => '1',
+                    'thicknessMeters' => '1',
+                ],
+                ['woodType' => 'Desconocida / promedio', 'boardFamily' => null, 'boardThickness' => null],
+            ],
+            [
+                [
+                    ...$this->basePost(),
+                    'activity' => MaterialUiCatalog::ACTIVITY_WOOD,
+                    'origin' => 'Producción de materia prima',
+                    'measurementMethod' => 'dimensions',
+                    'unitCount' => '1',
+                    'woodType' => 'Madera maciza de pino radiata o insignis',
+                    'boardFamily' => 'DM o MDF',
+                    'boardThickness' => '10 mm',
+                ],
+                [
+                    'woodType' => 'Madera maciza de pino radiata o insignis',
+                    'boardFamily' => 'DM o MDF',
+                    'boardThickness' => '10 mm',
+                ],
             ],
         ];
 

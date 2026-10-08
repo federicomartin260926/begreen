@@ -3592,6 +3592,7 @@ pdf_grouped_visual:
 "backend.emission.material_v1.fields.cardboard_structure": "Estructura del cartón"
 "backend.emission.material_v1.fields.metal_material": "Material metálico"
 "backend.emission.material_v1.fields.metal_form": "Forma del metal"
+"backend.emission.material_v1.fields.wood_selection": "Tipo de madera"
 "backend.emission.material_v1.fields.wood_type": "Tipo de madera maciza"
 "backend.emission.material_v1.fields.board_family": "Familia de tablero"
 "backend.emission.material_v1.fields.board_thickness": "Grosor de tablero"

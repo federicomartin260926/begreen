@@ -354,6 +354,7 @@ final class MaterialUiCatalog
 
         return [
             'families' => array_values($families),
+            'woodSelections' => array_merge(['Madera maciza'], array_keys($woodBoards), ['Desconocida']),
             'woodTypes' => array_keys($this->solidWoodDensities),
             'woodBoards' => $woodBoards,
             'paperFormats' => array_keys($this->paperFormats),

@@ -3,7 +3,7 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
   static targets = [
     'form', 'family', 'activity', 'subproductContainer', 'subproduct', 'origin',
-    'method', 'inputUnit', 'paperFormat', 'cardboardType', 'woodType',
+    'method', 'inputUnit', 'paperFormat', 'cardboardType', 'woodSelection', 'woodSpecies', 'woodType',
     'boardFamily', 'boardThickness', 'batteryChemistry', 'batterySize',
     'sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm',
     'clothingGroup',
@@ -18,7 +18,17 @@ export default class extends Controller {
     previewToken: String,
   };
 
+  static UNKNOWN_WOOD_TYPE = 'Desconocida / promedio';
+
+  static SOLID_WOOD_SELECTION = 'Madera maciza';
+
+  static UNKNOWN_WOOD_SELECTION = 'Desconocida';
+
   connect() {
+    this.boardThicknessByFamily = {};
+    if (this.initialValue.boardFamily && this.initialValue.boardThickness) {
+      this.boardThicknessByFamily[this.initialValue.boardFamily] = this.initialValue.boardThickness;
+    }
     this.populateStaticOptions();
     const initialFamily = this.familyForActivity(this.initialValue.activity)?.value || '';
     this.replaceOptions(this.familyTarget, this.catalogValue.families || [], initialFamily);
@@ -74,28 +84,42 @@ export default class extends Controller {
     this.queuePreview();
   }
 
-  boardFamilyChanged() {
-    const selected = this.initialValue.boardFamily === this.boardFamilyTarget.value
-      ? (this.initialValue.boardThickness || '')
-      : '';
-    this.replaceOptions(
-      this.boardThicknessTarget,
-      (this.catalogValue.woodBoards?.[this.boardFamilyTarget.value] || []).map((value) => ({ value, label: value })),
-      selected,
-    );
+  woodSelectionChanged() {
+    this.rememberBoardThickness();
+    this.syncWoodSelection();
+    this.updateQuantityFields();
+    this.queuePreview();
+  }
+
+  woodSpeciesChanged() {
+    if (this.woodSelectionTarget.value === this.constructor.SOLID_WOOD_SELECTION) {
+      this.woodTypeTarget.value = this.woodSpeciesTarget.value;
+    }
+    this.queuePreview();
+  }
+
+  boardThicknessChanged() {
+    this.rememberBoardThickness();
+    this.updateQuantityFields();
     this.queuePreview();
   }
 
   populateStaticOptions() {
     this.replaceOptions(this.paperFormatTarget, this.asOptions(this.catalogValue.paperFormats), this.initialValue.paperFormat || '');
     this.replaceOptions(this.cardboardTypeTarget, this.asOptions(this.catalogValue.cardboardTypes), this.initialValue.cardboardType || '');
-    this.replaceOptions(this.woodTypeTarget, this.asOptions(this.catalogValue.woodTypes), this.initialValue.woodType || '');
+    const solidWoodTypes = (this.catalogValue.woodTypes || [])
+      .filter((value) => value !== this.constructor.UNKNOWN_WOOD_TYPE);
+    const initialSpecies = this.initialValue.woodType === this.constructor.UNKNOWN_WOOD_TYPE
+      ? ''
+      : (this.initialValue.woodType || '');
+    this.replaceOptions(this.woodSpeciesTarget, this.asOptions(solidWoodTypes), initialSpecies);
     this.replaceOptions(this.boardFamilyTarget, this.asOptions(Object.keys(this.catalogValue.woodBoards || {})), this.initialValue.boardFamily || '');
+    this.replaceOptions(this.woodSelectionTarget, this.asOptions(this.catalogValue.woodSelections), this.initialWoodSelection());
     this.replaceOptions(this.batterySizeTarget, this.asOptions(this.catalogValue.batterySizes), this.initialValue.batterySize || '');
     this.replaceOptions(this.cardboardStructureTarget, this.asOptions(this.catalogValue.cardboardStructures), this.initialValue.cardboardStructure || '');
     this.replaceOptions(this.metalMaterialTarget, this.asOptions(this.catalogValue.metalMaterials), this.initialValue.metalMaterial || '');
     this.replaceOptions(this.metalFormTarget, this.asOptions(this.catalogValue.metalForms), this.initialValue.metalForm || '');
-    this.boardFamilyChanged();
+    this.syncWoodSelection();
   }
 
   populateSustainabilitySeals(selected) {
@@ -161,6 +185,7 @@ export default class extends Controller {
       container.classList.add('d-none');
       container.querySelectorAll('input, select').forEach((field) => { field.disabled = true; });
     });
+    this.woodTypeTarget.disabled = true;
 
     const family = this.familyTarget.value;
     const method = this.methodTarget.value;
@@ -176,17 +201,107 @@ export default class extends Controller {
       if (['metal', 'plasterboard'].includes(family)) this.showFields(['pieceWeight']);
       if (family === 'battery') this.showFields(['batterySize']);
     }
-    if (method === 'dimensions') {
+    if (method === 'dimensions' && family !== 'wood') {
       this.showFields(['length', 'width', 'unitCount', 'grammage']);
-      if (family === 'wood') this.showFields(['thickness', 'boardFamily', 'boardThickness']);
       if (family === 'cardboard') this.showFields(['cardboardType']);
     }
-    if (family === 'wood') this.showFields(['woodType']);
-    if (family === 'paper' && method !== 'weight') this.showFields(['paperFormat']);
+    if (family === 'wood') this.updateWoodFields(method);
+    if (family === 'paper') this.showFields(['paperFormat']);
     if (['wood', 'paper', 'cardboard'].includes(family)) this.showFields(['sustainabilitySeal']);
     if (family === 'cardboard') this.showFields(['cardboardStructure']);
     if (family === 'metal') this.showFields(['metalMaterial', 'metalForm']);
     if (family === 'clothing') this.showFields(['clothingGroup']);
+  }
+
+  updateWoodFields(method) {
+    this.showFields(['woodSelection']);
+    const selection = this.woodSelectionTarget.value;
+
+    if (selection === this.constructor.SOLID_WOOD_SELECTION) {
+      this.showFields(['woodSpecies']);
+      this.woodTypeTarget.disabled = false;
+      this.woodTypeTarget.value = this.woodSpeciesTarget.value;
+      if (method === 'dimensions') this.showFields(['length', 'width', 'thickness', 'unitCount']);
+      return;
+    }
+
+    if (selection === this.constructor.UNKNOWN_WOOD_SELECTION) {
+      this.woodTypeTarget.disabled = false;
+      this.woodTypeTarget.value = this.constructor.UNKNOWN_WOOD_TYPE;
+      if (method === 'dimensions') this.showFields(['length', 'width', 'thickness', 'unitCount']);
+      return;
+    }
+
+    this.woodTypeTarget.disabled = true;
+    if (!this.isBoardSelection(selection)) return;
+
+    this.boardFamilyTarget.value = selection;
+    this.boardFamilyTarget.disabled = false;
+    if (method !== 'dimensions') return;
+
+    this.showFields(['boardThickness', 'unitCount']);
+    if (this.boardThicknessTarget.value === 'Desconocido / manual') {
+      // Compatibility exception: the current normalizer still requires all three manual dimensions.
+      this.showFields(['length', 'width', 'thickness']);
+    }
+  }
+
+  initialWoodSelection() {
+    const { boardFamily, boardThickness, measurementMethod, woodType } = this.initialValue;
+    const hasBoardFamily = this.isBoardSelection(boardFamily);
+    const validThicknesses = this.catalogValue.woodBoards?.[boardFamily] || [];
+    const hasValidBoard = hasBoardFamily && validThicknesses.includes(boardThickness);
+
+    if (hasValidBoard || (hasBoardFamily && measurementMethod === 'weight')) {
+      return boardFamily;
+    }
+    if (woodType === this.constructor.UNKNOWN_WOOD_TYPE) {
+      return this.constructor.UNKNOWN_WOOD_SELECTION;
+    }
+    if (woodType) return this.constructor.SOLID_WOOD_SELECTION;
+
+    // Keep an incomplete board selection available for completion.
+    return hasBoardFamily ? boardFamily : '';
+  }
+
+  syncWoodSelection() {
+    const selection = this.woodSelectionTarget.value;
+    if (this.isBoardSelection(selection)) {
+      this.boardFamilyTarget.value = selection;
+      this.populateBoardThickness(selection);
+      this.woodTypeTarget.value = '';
+      return;
+    }
+
+    this.boardFamilyTarget.value = '';
+    if (selection === this.constructor.UNKNOWN_WOOD_SELECTION) {
+      this.woodTypeTarget.value = this.constructor.UNKNOWN_WOOD_TYPE;
+    } else if (selection === this.constructor.SOLID_WOOD_SELECTION) {
+      this.woodTypeTarget.value = this.woodSpeciesTarget.value;
+    } else {
+      this.woodTypeTarget.value = '';
+    }
+  }
+
+  populateBoardThickness(family) {
+    const selected = this.boardThicknessByFamily[family]
+      || (this.initialValue.boardFamily === family ? (this.initialValue.boardThickness || '') : '');
+    this.replaceOptions(
+      this.boardThicknessTarget,
+      (this.catalogValue.woodBoards?.[family] || []).map((value) => ({ value, label: value })),
+      selected,
+    );
+  }
+
+  rememberBoardThickness() {
+    const family = this.boardFamilyTarget.value;
+    if (this.isBoardSelection(family) && this.boardThicknessTarget.value) {
+      this.boardThicknessByFamily[family] = this.boardThicknessTarget.value;
+    }
+  }
+
+  isBoardSelection(value) {
+    return Boolean(value && this.catalogValue.woodBoards?.[value]);
   }
 
   showFields(names, units = null) {

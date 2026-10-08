@@ -96,6 +96,87 @@ final class MaterialEmissionCalculatorTest extends TestCase
         self::assertSame('counterfactual', $metal->avoidedFactorTraces[0]->component);
     }
 
+    public function testPaperFormatDoesNotChangeDirectWeightCalculation(): void
+    {
+        $withoutFormat = $this->calculator->calculate(new MaterialEmissionInput(
+            startDate: new \DateTimeImmutable('2026-01-01'),
+            endDate: new \DateTimeImmutable('2026-01-02'),
+            country: 'ESP',
+            activity: MaterialUiCatalog::ACTIVITY_PAPER,
+            origin: 'Producción de materia prima',
+            measurementMethod: MaterialEmissionInput::METHOD_WEIGHT,
+            inputQuantity: '10',
+            inputUnit: 'kg',
+        ));
+        $withFormat = $this->calculator->calculate(new MaterialEmissionInput(
+            startDate: new \DateTimeImmutable('2026-01-01'),
+            endDate: new \DateTimeImmutable('2026-01-02'),
+            country: 'ESP',
+            activity: MaterialUiCatalog::ACTIVITY_PAPER,
+            origin: 'Producción de materia prima',
+            measurementMethod: MaterialEmissionInput::METHOD_WEIGHT,
+            inputQuantity: '10',
+            inputUnit: 'kg',
+            paperFormat: 'A4 (210 x 297)',
+        ));
+
+        self::assertSame($withoutFormat->normalizedAmount, $withFormat->normalizedAmount);
+        self::assertSame($withoutFormat->emissionKgCo2e, $withFormat->emissionKgCo2e);
+        self::assertSame(
+            $withoutFormat->factorTraces[0]->resolution->factorId,
+            $withFormat->factorTraces[0]->resolution->factorId,
+        );
+    }
+
+    public function testWoodBranchesKeepExistingNormalizationContracts(): void
+    {
+        $common = [
+            'startDate' => new \DateTimeImmutable('2026-01-01'),
+            'endDate' => new \DateTimeImmutable('2026-01-02'),
+            'country' => 'ESP',
+            'activity' => MaterialUiCatalog::ACTIVITY_WOOD,
+            'origin' => 'Producción de materia prima',
+            'measurementMethod' => MaterialEmissionInput::METHOD_DIMENSIONS,
+            'unitCount' => '1',
+        ];
+
+        $solid = $this->calculator->calculate(new MaterialEmissionInput(
+            ...$common,
+            woodType: 'Madera maciza de pino radiata o insignis',
+            lengthMeters: '2',
+            widthMeters: '1',
+            thicknessMeters: '0.01',
+        ));
+        self::assertSame('10', $solid->normalizedAmount);
+
+        $knownBoard = $this->calculator->calculate(new MaterialEmissionInput(
+            ...$common,
+            boardFamily: 'DM o MDF',
+            boardThickness: '10 mm',
+        ));
+        self::assertEqualsWithDelta(23.0, (float) $knownBoard->normalizedAmount, 0.000000000001);
+        self::assertEqualsWithDelta(6.19859568, (float) $knownBoard->emissionKgCo2e, 0.000000000001);
+
+        $manualBoard = $this->calculator->calculate(new MaterialEmissionInput(
+            ...$common,
+            boardFamily: 'DM o MDF',
+            boardThickness: 'Desconocido / manual',
+            lengthMeters: '2',
+            widthMeters: '1',
+            thicknessMeters: '0.01',
+        ));
+        self::assertSame('15.100448786', $manualBoard->normalizedAmount);
+
+        $unknown = $this->calculator->calculate(new MaterialEmissionInput(
+            ...$common,
+            woodType: 'Desconocida / promedio',
+            lengthMeters: '1',
+            widthMeters: '1',
+            thicknessMeters: '1',
+        ));
+        self::assertEqualsWithDelta(588.1515152, (float) $unknown->normalizedAmount, 0.000000000001);
+    }
+
     public function testValidatedBatteryUnitsAndAuxiliaryBatteryWeights(): void
     {
         $battery = $this->calculator->calculate(new MaterialEmissionInput(
