@@ -85,6 +85,8 @@ final class MaterialEmissionControllerTest extends KernelTestCase
             'OSB',
             'Desconocida',
         ], $catalog['woodSelections']);
+        self::assertSame(MaterialUiCatalog::WOOD_TYPE_COMPLETELY_UNKNOWN, $catalog['completelyUnknownWoodType']);
+        self::assertContains('Desconocida / promedio', $catalog['woodTypes']);
         self::assertSame(MaterialUiCatalog::ORIGIN_PURCHASED_PRESENTATION, $catalog['purchasedOriginPresentationValue']);
         $plasticFamily = current(array_filter($catalog['families'], static fn (array $family): bool => 'plastic' === $family['value']));
         self::assertSame([
@@ -118,9 +120,12 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame(1, preg_match('/data-material-v1-form-i18n-value="([^"]+)"/', $content, $i18nMatches));
         $i18n = json_decode(html_entity_decode($i18nMatches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
         self::assertSame('Comprado', $i18n['purchasedOrigin']);
+        self::assertSame('Número de unidades', $i18n['unitCount']);
+        self::assertSame('Número de hojas', $i18n['sheetCount']);
         self::assertSame('Film, bolsas y láminas — plástico flexible', $i18n['plasticActivities']['flexible_film']);
         $translator = self::getContainer()->get('translator');
         self::assertSame('Purchased', $translator->trans('backend.emission.material_v1.origins.purchased', locale: 'en'));
+        self::assertSame('Number of sheets', $translator->trans('backend.emission.material_v1.fields.sheet_count', locale: 'en'));
         self::assertSame(array_column($plasticFamily['activities'], 'label'), array_map(
             static fn (array $activity): string => $translator->trans(
                 'backend.emission.material_v1.plastic.'.$activity['translationKey'],

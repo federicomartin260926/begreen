@@ -3593,6 +3593,7 @@ pdf_grouped_visual:
 "backend.emission.material_v1.fields.quantity": "Cantidad"
 "backend.emission.material_v1.fields.unit": "Unidad"
 "backend.emission.material_v1.fields.unit_count": "Número de unidades"
+"backend.emission.material_v1.fields.sheet_count": "Número de hojas"
 "backend.emission.material_v1.fields.piece_weight": "Peso por unidad (kg)"
 "backend.emission.material_v1.fields.length": "Largo (m)"
 "backend.emission.material_v1.fields.width": "Ancho (m)"

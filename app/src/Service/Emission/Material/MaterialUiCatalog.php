@@ -9,6 +9,9 @@ use App\Service\Emission\EmissionCountryCatalog;
 
 final class MaterialUiCatalog
 {
+    public const WOOD_TYPE_COMPLETELY_UNKNOWN = 'Completamente desconocida';
+    private const COMPLETELY_UNKNOWN_WOOD_DENSITY = '632.5';
+
     private const PLASTIC_UI = [
         ['translationKey' => 'flexible_film', 'label' => 'Film, bolsas y láminas — plástico flexible', 'activity' => 'Película de plástico promedio'],
         ['translationKey' => 'rigid_containers', 'label' => 'Envases y piezas rígidas — plástico rígido', 'activity' => 'Plástico rígido promedio'],
@@ -228,6 +231,10 @@ final class MaterialUiCatalog
 
     public function solidWoodDensity(?string $type): ?string
     {
+        if (self::WOOD_TYPE_COMPLETELY_UNKNOWN === $type) {
+            return self::COMPLETELY_UNKNOWN_WOOD_DENSITY;
+        }
+
         return null === $type ? null : ($this->solidWoodDensities[$type] ?? null);
     }
 
@@ -362,6 +369,7 @@ final class MaterialUiCatalog
             'families' => array_values($families),
             'woodSelections' => array_merge(['Madera maciza'], array_keys($woodBoards), ['Desconocida']),
             'woodTypes' => array_keys($this->solidWoodDensities),
+            'completelyUnknownWoodType' => self::WOOD_TYPE_COMPLETELY_UNKNOWN,
             'woodBoards' => $woodBoards,
             'paperFormats' => array_keys($this->paperFormats),
             'cardboardTypes' => array_keys($this->cardboardGrammages),

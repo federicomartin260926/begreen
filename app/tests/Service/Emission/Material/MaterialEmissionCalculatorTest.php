@@ -190,20 +190,57 @@ final class MaterialEmissionCalculatorTest extends TestCase
             ...$common,
             boardFamily: 'DM o MDF',
             boardThickness: 'Desconocido / manual',
+            thicknessMeters: '0.01',
+        ));
+        self::assertSame('22.4755079730824', $manualBoard->normalizedAmount);
+
+        $historicalManualBoard = $this->calculator->calculate(new MaterialEmissionInput(
+            ...$common,
+            boardFamily: 'DM o MDF',
+            boardThickness: 'Desconocido / manual',
             lengthMeters: '2',
             widthMeters: '1',
             thicknessMeters: '0.01',
         ));
-        self::assertSame('15.100448786', $manualBoard->normalizedAmount);
+        self::assertSame('15.100448786', $historicalManualBoard->normalizedAmount);
 
-        $unknown = $this->calculator->calculate(new MaterialEmissionInput(
+        $snapshot = new MaterialEmissionSnapshot();
+        $historicalInput = new MaterialEmissionInput(
+            ...$common,
+            boardFamily: 'DM o MDF',
+            boardThickness: 'Desconocido / manual',
+            lengthMeters: '2',
+            widthMeters: '1',
+            thicknessMeters: '0.01',
+        );
+        $restoredHistoricalInput = $snapshot->decodeInput($snapshot->encode(
+            $historicalInput,
+            $this->calculator->calculate($historicalInput),
+        ));
+        self::assertSame('2', $restoredHistoricalInput->lengthMeters);
+        self::assertSame('1', $restoredHistoricalInput->widthMeters);
+        self::assertSame(
+            $historicalManualBoard->normalizedAmount,
+            $this->calculator->calculate($restoredHistoricalInput)->normalizedAmount,
+        );
+
+        $completelyUnknown = $this->calculator->calculate(new MaterialEmissionInput(
+            ...$common,
+            woodType: MaterialUiCatalog::WOOD_TYPE_COMPLETELY_UNKNOWN,
+            lengthMeters: '1',
+            widthMeters: '1',
+            thicknessMeters: '1',
+        ));
+        self::assertSame('632.5', $completelyUnknown->normalizedAmount);
+
+        $unknownSolidSpecies = $this->calculator->calculate(new MaterialEmissionInput(
             ...$common,
             woodType: 'Desconocida / promedio',
             lengthMeters: '1',
             widthMeters: '1',
             thicknessMeters: '1',
         ));
-        self::assertEqualsWithDelta(588.1515152, (float) $unknown->normalizedAmount, 0.000000000001);
+        self::assertEqualsWithDelta(588.1515152, (float) $unknownSolidSpecies->normalizedAmount, 0.000000000001);
     }
 
     public function testValidatedBatteryUnitsAndAuxiliaryBatteryWeights(): void

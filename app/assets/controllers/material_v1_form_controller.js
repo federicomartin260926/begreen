@@ -6,7 +6,7 @@ export default class extends Controller {
     'method', 'inputUnit', 'paperFormat', 'cardboardType', 'woodSelection', 'woodSpecies', 'woodType',
     'boardFamily', 'boardThickness', 'batteryChemistry', 'batterySize',
     'sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm',
-    'clothingGroup',
+    'clothingGroup', 'unitCountLabel',
     'previewStatus', 'previewEmission', 'previewTrace', 'previewMessages',
   ];
 
@@ -17,8 +17,6 @@ export default class extends Controller {
     previewUrl: String,
     previewToken: String,
   };
-
-  static UNKNOWN_WOOD_TYPE = 'Desconocida / promedio';
 
   static SOLID_WOOD_SELECTION = 'Madera maciza';
 
@@ -107,9 +105,8 @@ export default class extends Controller {
   populateStaticOptions() {
     this.replaceOptions(this.paperFormatTarget, this.asOptions(this.catalogValue.paperFormats), this.initialValue.paperFormat || '');
     this.replaceOptions(this.cardboardTypeTarget, this.asOptions(this.catalogValue.cardboardTypes), this.initialValue.cardboardType || '');
-    const solidWoodTypes = (this.catalogValue.woodTypes || [])
-      .filter((value) => value !== this.constructor.UNKNOWN_WOOD_TYPE);
-    const initialSpecies = this.initialValue.woodType === this.constructor.UNKNOWN_WOOD_TYPE
+    const solidWoodTypes = this.catalogValue.woodTypes || [];
+    const initialSpecies = this.initialValue.woodType === this.catalogValue.completelyUnknownWoodType
       ? ''
       : (this.initialValue.woodType || '');
     this.replaceOptions(this.woodSpeciesTarget, this.asOptions(solidWoodTypes), initialSpecies);
@@ -189,6 +186,9 @@ export default class extends Controller {
 
     const family = this.familyTarget.value;
     const method = this.methodTarget.value;
+    this.unitCountLabelTarget.textContent = family === 'paper' && method === 'grammage'
+      ? this.i18nValue.sheetCount
+      : this.i18nValue.unitCount;
     if (method === 'weight') {
       const legacyWoodWeight = family === 'wood'
         && this.familyForActivity(this.initialValue.activity)?.value === 'wood'
@@ -239,7 +239,7 @@ export default class extends Controller {
 
     if (selection === this.constructor.UNKNOWN_WOOD_SELECTION) {
       this.woodTypeTarget.disabled = false;
-      this.woodTypeTarget.value = this.constructor.UNKNOWN_WOOD_TYPE;
+      this.woodTypeTarget.value = this.catalogValue.completelyUnknownWoodType;
       if (method === 'dimensions') this.showFields(['length', 'width', 'thickness', 'unitCount']);
       return;
     }
@@ -253,8 +253,8 @@ export default class extends Controller {
 
     this.showFields(['boardThickness', 'unitCount']);
     if (this.boardThicknessTarget.value === 'Desconocido / manual') {
-      // Compatibility exception: the current normalizer still requires all three manual dimensions.
-      this.showFields(['length', 'width', 'thickness']);
+      this.showFields(['thickness']);
+      if (this.hasHistoricalManualBoardDimensions(selection)) this.showFields(['length', 'width']);
     }
   }
 
@@ -267,7 +267,7 @@ export default class extends Controller {
     if (hasValidBoard || (hasBoardFamily && measurementMethod === 'weight')) {
       return boardFamily;
     }
-    if (woodType === this.constructor.UNKNOWN_WOOD_TYPE) {
+    if (woodType === this.catalogValue.completelyUnknownWoodType) {
       return this.constructor.UNKNOWN_WOOD_SELECTION;
     }
     if (woodType) return this.constructor.SOLID_WOOD_SELECTION;
@@ -287,7 +287,7 @@ export default class extends Controller {
 
     this.boardFamilyTarget.value = '';
     if (selection === this.constructor.UNKNOWN_WOOD_SELECTION) {
-      this.woodTypeTarget.value = this.constructor.UNKNOWN_WOOD_TYPE;
+      this.woodTypeTarget.value = this.catalogValue.completelyUnknownWoodType;
     } else if (selection === this.constructor.SOLID_WOOD_SELECTION) {
       this.woodTypeTarget.value = this.woodSpeciesTarget.value;
     } else {
@@ -314,6 +314,14 @@ export default class extends Controller {
 
   isBoardSelection(value) {
     return Boolean(value && this.catalogValue.woodBoards?.[value]);
+  }
+
+  hasHistoricalManualBoardDimensions(family) {
+    return this.initialValue.measurementMethod === 'dimensions'
+      && this.initialValue.boardFamily === family
+      && this.initialValue.boardThickness === 'Desconocido / manual'
+      && Boolean(this.initialValue.lengthMeters)
+      && Boolean(this.initialValue.widthMeters);
   }
 
   showFields(names, units = null) {

@@ -20,6 +20,8 @@
   fallback: 'backend.emission.material_v1.preview.fallback'|trans,
   factorVersion: 'backend.emission.material_v1.preview.factor_version'|trans,
   purchasedOrigin: 'backend.emission.material_v1.origins.purchased'|trans,
+  unitCount: 'backend.emission.material_v1.fields.unit_count'|trans,
+  sheetCount: 'backend.emission.material_v1.fields.sheet_count'|trans,
   plasticActivities: {
     flexible_film: 'backend.emission.material_v1.plastic.flexible_film'|trans,
     rigid_containers: 'backend.emission.material_v1.plastic.rigid_containers'|trans,
@@ -111,7 +113,7 @@
         <div class="row g-3">
           <div class="col-md-4 d-none" data-material-field="inputQuantity"><label class="form-label" for="material-quantity">{{ 'backend.emission.material_v1.fields.quantity'|trans }} *</label><input class="form-control" id="material-quantity" type="number" min="0" step="any" name="inputQuantity" value="{{ values.inputQuantity|default('') }}"></div>
           <div class="col-md-4 d-none" data-material-field="inputUnit"><label class="form-label" for="material-unit">{{ 'backend.emission.material_v1.fields.unit'|trans }} *</label><select class="form-select" id="material-unit" name="inputUnit" data-material-v1-form-target="inputUnit"></select></div>
-          <div class="col-md-4 d-none" data-material-field="unitCount"><label class="form-label" for="material-unit-count">{{ 'backend.emission.material_v1.fields.unit_count'|trans }} *</label><input class="form-control" id="material-unit-count" type="number" min="0" step="any" name="unitCount" value="{{ values.unitCount|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="unitCount"><label class="form-label" for="material-unit-count"><span data-material-v1-form-target="unitCountLabel">{{ 'backend.emission.material_v1.fields.unit_count'|trans }}</span> *</label><input class="form-control" id="material-unit-count" type="number" min="0" step="any" name="unitCount" value="{{ values.unitCount|default('') }}"></div>
           <div class="col-md-4 d-none" data-material-field="pieceWeight"><label class="form-label" for="material-piece-weight">{{ 'backend.emission.material_v1.fields.piece_weight'|trans }} *</label><input class="form-control" id="material-piece-weight" type="number" min="0" step="any" name="pieceWeightKg" value="{{ values.pieceWeightKg|default('') }}"></div>
           <div class="col-md-4 d-none" data-material-field="length"><label class="form-label" for="material-length">{{ 'backend.emission.material_v1.fields.length'|trans }} *</label><input class="form-control" id="material-length" type="number" min="0" step="any" name="lengthMeters" value="{{ values.lengthMeters|default('') }}"></div>
           <div class="col-md-4 d-none" data-material-field="width"><label class="form-label" for="material-width">{{ 'backend.emission.material_v1.fields.width'|trans }} *</label><input class="form-control" id="material-width" type="number" min="0" step="any" name="widthMeters" value="{{ values.widthMeters|default('') }}"></div>

@@ -99,10 +99,11 @@ final readonly class MaterialAmountNormalizer
         }
 
         if (null !== $board) {
+            $hasHistoricalDimensions = null !== $input->lengthMeters || null !== $input->widthMeters;
             $amount = $this->product([
                 $units,
-                $this->positiveDecimal($input->lengthMeters),
-                $this->positiveDecimal($input->widthMeters),
+                $this->positiveDecimal($hasHistoricalDimensions ? $input->lengthMeters : $board['largo_m']),
+                $this->positiveDecimal($hasHistoricalDimensions ? $input->widthMeters : $board['ancho_m']),
                 $this->positiveDecimal($input->thicknessMeters),
                 $this->positiveDecimal($board['densidad_kg_m3']),
             ]);
