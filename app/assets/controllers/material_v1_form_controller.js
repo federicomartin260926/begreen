@@ -191,7 +191,7 @@ export default class extends Controller {
     const method = this.methodTarget.value;
     if (method === 'weight') {
       const legacyWoodWeight = family === 'wood'
-        && this.initialValue.family === 'wood'
+        && this.familyForActivity(this.initialValue.activity)?.value === 'wood'
         && this.initialValue.measurementMethod === 'weight'
         && this.initialValue.inputQuantity
         && !this.initialValue.pieceWeightKg;
