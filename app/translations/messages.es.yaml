@@ -2386,6 +2386,10 @@ backend:
       answers:
         yes: "Sí"
         no: "No"
+      certificate_answers:
+        yes: "Sí"
+        no: "No"
+        unknown: "No lo sé"
       modes:
         direct: "Cantidad directa"
         cylinders: "Bombonas"
@@ -2423,6 +2427,11 @@ backend:
         labeling: "Garantía / etiquetado"
         supplier: "Comercializadora"
         supplier_known: "¿Conoces la comercializadora?"
+        electricity_provider: "Proveedor eléctrico"
+        renewable_certificate: "¿Tienes certificado de origen renovable?"
+        certified_kwh: "kWh cubiertos por el certificado"
+        certificate_evidence: "Evidencia documental del certificado"
+        certificate_evidence_help: "Opcional. Usa el mismo sistema seguro de adjuntos del registro."
         amount: "Consumo"
         unit: "Unidad"
         initial_reading: "Lectura inicial"

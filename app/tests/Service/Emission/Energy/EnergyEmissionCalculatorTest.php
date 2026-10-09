@@ -101,6 +101,52 @@ final class EnergyEmissionCalculatorTest extends TestCase
         self::assertSame('FR', $result->factorTraces[0]->metadata['country']);
     }
 
+    public function testOutsideCertificateMetadataRoundTripsWithoutChangingCalculation(): void
+    {
+        $baselineInput = $this->input(
+            EnergyEmissionInput::FAMILY_ELECTRICITY,
+            start: '2026-01-01',
+            end: '2026-12-31',
+            country: 'FR',
+            origin: EnergyEmissionInput::ORIGIN_GRID,
+            amount: '10',
+            unit: 'kWh',
+        );
+        $certifiedInput = $this->input(
+            EnergyEmissionInput::FAMILY_ELECTRICITY,
+            start: '2026-01-01',
+            end: '2026-12-31',
+            country: 'FR',
+            origin: EnergyEmissionInput::ORIGIN_GRID,
+            amount: '10',
+            unit: 'kWh',
+            supplier: 'Proveedor exterior',
+            renewableCertificate: 'yes',
+            certifiedKwh: '4.5',
+        );
+
+        $baseline = $this->calculator()->calculate($baselineInput);
+        $certified = $this->calculator()->calculate($certifiedInput);
+
+        self::assertSame($baseline->emissionKgCo2e, $certified->emissionKgCo2e);
+        self::assertSame($baseline->factorValue, $certified->factorValue);
+        self::assertSame($baseline->factorTraces[0]->criteria, $certified->factorTraces[0]->criteria);
+
+        $snapshotService = new EnergyEmissionSnapshot();
+        $snapshot = $snapshotService->encode($certifiedInput, $certified);
+        $decoded = $snapshotService->decodeInput($snapshot);
+        self::assertSame('Proveedor exterior', $decoded->supplier);
+        self::assertSame('yes', $decoded->renewableCertificate);
+        self::assertSame('4.5', $decoded->certifiedKwh);
+
+        $legacy = json_decode($snapshot, true, flags: JSON_THROW_ON_ERROR);
+        unset($legacy['input']['renewableCertificate'], $legacy['input']['certifiedKwh']);
+        $decodedLegacy = $snapshotService->decodeInput(json_encode($legacy, JSON_THROW_ON_ERROR));
+        self::assertNull($decodedLegacy->renewableCertificate);
+        self::assertNull($decodedLegacy->certifiedKwh);
+        self::assertSame('Proveedor exterior', $decodedLegacy->supplier);
+    }
+
     public function testDifferentSpainSuppliersProduceDifferentEmissions(): void
     {
         $supplierA = $this->calculator()->calculate($this->input(
@@ -468,6 +514,8 @@ final class EnergyEmissionCalculatorTest extends TestCase
         ?string $solarKwh = null,
         ?string $supplier = null,
         ?string $labeling = null,
+        ?string $renewableCertificate = null,
+        ?string $certifiedKwh = null,
         ?string $equipmentType = null,
         ?string $fuel = null,
         string $mode = EnergyEmissionInput::EQUIPMENT_MODE_DIRECT,
@@ -501,6 +549,8 @@ final class EnergyEmissionCalculatorTest extends TestCase
             solarKwh: $solarKwh,
             supplier: $supplier,
             labeling: $labeling,
+            renewableCertificate: $renewableCertificate,
+            certifiedKwh: $certifiedKwh,
             equipmentType: $equipmentType,
             fuel: $fuel,
             mode: $mode,

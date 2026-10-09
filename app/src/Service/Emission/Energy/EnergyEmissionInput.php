@@ -48,6 +48,8 @@ final readonly class EnergyEmissionInput
         public ?string $model = null,
         public ?string $provider = null,
         public ?string $ownership = null,
+        public ?string $renewableCertificate = null,
+        public ?string $certifiedKwh = null,
     ) {
     }
 }

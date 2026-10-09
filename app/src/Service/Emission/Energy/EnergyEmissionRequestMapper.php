@@ -30,6 +30,8 @@ final class EnergyEmissionRequestMapper
         $origin = $this->optionalString($request, 'origin');
         $supplier = null;
         $labeling = null;
+        $renewableCertificate = null;
+        $certifiedKwh = null;
         if (EnergyEmissionInput::FAMILY_ELECTRICITY === $family) {
             if ($isSpain && in_array($origin, [EnergyEmissionInput::ORIGIN_GRID, EnergyEmissionInput::ORIGIN_MIXED], true)) {
                 $supplierKnown = $this->optionalString($request, 'electricitySupplierKnown');
@@ -40,7 +42,19 @@ final class EnergyEmissionRequestMapper
                     $supplier = $this->requiredString($request, 'electricitySupplier');
                 }
             } elseif (!$isSpain) {
-                $labeling = $this->familyString($request, $family, 'Labeling');
+                $supplier = $this->familyString($request, $family, 'Supplier');
+                if (in_array($origin, [EnergyEmissionInput::ORIGIN_GRID, EnergyEmissionInput::ORIGIN_MIXED, EnergyEmissionInput::ORIGIN_UNKNOWN], true)) {
+                    $renewableCertificate = $this->optionalString($request, 'renewableCertificate');
+                    if (null !== $renewableCertificate && !in_array($renewableCertificate, ['yes', 'no', 'unknown'], true)) {
+                        throw new \InvalidArgumentException('renewableCertificate must be yes, no or unknown.');
+                    }
+                    if ('yes' === $renewableCertificate) {
+                        $certifiedKwh = $this->optionalString($request, 'certifiedKwh');
+                        if (null !== $certifiedKwh && !preg_match('/^(?:0|[1-9]\d*)(?:\.\d+)?$/', $certifiedKwh)) {
+                            throw new \InvalidArgumentException('certifiedKwh must be a non-negative decimal.');
+                        }
+                    }
+                }
             }
         } elseif (EnergyEmissionInput::FAMILY_BATTERY === $family) {
             $supplier = $isSpain ? $this->familyString($request, $family, 'Supplier') : null;
@@ -61,6 +75,8 @@ final class EnergyEmissionRequestMapper
             solarKwh: $this->optionalString($request, 'solarKwh'),
             supplier: $supplier,
             labeling: $labeling,
+            renewableCertificate: $renewableCertificate,
+            certifiedKwh: $certifiedKwh,
             equipmentType: $this->optionalString($request, 'equipmentType'),
             fuel: $this->optionalString($request, 'fuel'),
             mode: $this->optionalString($request, 'mode') ?? '',

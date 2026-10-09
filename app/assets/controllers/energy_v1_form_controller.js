@@ -6,7 +6,8 @@ export default class extends Controller {
     'totalFields', 'meterFields', 'mixedFields', 'fuel', 'fuelUnit', 'equipmentMode', 'equipmentDirectFields',
     'cylinderFields', 'bottleSize', 'chargeSource', 'batteryMixedFields', 'previewStatus', 'previewEmission',
     'previewTrace', 'previewMessages', 'electricitySupplierKnownFields', 'electricitySupplierKnown',
-    'electricitySupplierFields', 'electricityLabelingFields',
+    'electricitySupplierFields', 'electricityOutsideSupplierFields', 'renewableCertificateFields',
+    'renewableCertificate', 'certifiedKwhFields', 'certificateEvidenceFields', 'generalAttachmentFields',
     'batterySupplierFields', 'batteryLabelingFields',
   ];
 
@@ -53,7 +54,15 @@ export default class extends Controller {
       this.electricitySupplierFieldsTarget,
       supplierQuestionVisible && this.electricitySupplierKnownTarget.value === 'yes',
     );
-    this.toggle(this.electricityLabelingFieldsTarget, family === 'electricity' && hasCountry && !this.isSpain);
+    const outsideElectricity = family === 'electricity' && hasCountry && !this.isSpain;
+    const certificateVisible = outsideElectricity
+      && ['grid', 'mixed', 'unknown'].includes(this.originTarget.value);
+    const certificateEvidenceVisible = certificateVisible && this.renewableCertificateTarget.value === 'yes';
+    this.toggle(this.electricityOutsideSupplierFieldsTarget, outsideElectricity);
+    this.toggle(this.renewableCertificateFieldsTarget, certificateVisible);
+    this.toggle(this.certifiedKwhFieldsTarget, certificateEvidenceVisible);
+    this.toggle(this.certificateEvidenceFieldsTarget, certificateEvidenceVisible);
+    this.toggle(this.generalAttachmentFieldsTarget, !certificateEvidenceVisible);
     this.toggle(this.batterySupplierFieldsTarget, family === 'battery' && this.isSpain);
     this.toggle(this.batteryLabelingFieldsTarget, family === 'battery' && hasCountry && !this.isSpain);
 

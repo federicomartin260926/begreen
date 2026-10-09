@@ -43,7 +43,8 @@ final class EnergyEmissionController extends AbstractController
         'family', 'startDate', 'endDate', 'country', 'origin', 'inputMethod', 'amount', 'unit', 'initialReading', 'finalReading',
         'gridKwh', 'solarKwh', 'supplier', 'labeling', 'equipmentType', 'fuel', 'mode', 'bottleSizeKg',
         'bottleCount', 'batteryType', 'chargeSource', 'chargedKwh', 'notes',
-        'electricitySupplierKnown', 'electricitySupplier', 'electricityLabeling', 'batterySupplier', 'batteryLabeling',
+        'electricitySupplierKnown', 'electricitySupplier', 'electricityLabeling', 'renewableCertificate', 'certifiedKwh',
+        'batterySupplier', 'batteryLabeling',
         'digitalType', 'digitalLocation', 'digitalCountry', 'knownKwh', 'hours', 'units', 'gpu', 'service', 'model', 'provider', 'ownership',
     ];
 

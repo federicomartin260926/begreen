@@ -123,6 +123,9 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('name="family" value="electricity" checked', $content);
         self::assertStringContainsString('data-energy-v1-form-target="electricityPanel" hidden disabled', $content);
         self::assertStringContainsString('name="electricitySupplier"', $content);
+        self::assertStringContainsString('name="renewableCertificate"', $content);
+        self::assertStringContainsString('name="certifiedKwh"', $content);
+        self::assertSame(2, substr_count($content, 'name="attachments[]"'));
         self::assertStringContainsString('name="batterySupplier"', $content);
         self::assertStringNotContainsString('name="supplier"', $content);
         $initial = $this->initialValues($content);
@@ -323,7 +326,7 @@ final class EnergyEmissionControllerTest extends KernelTestCase
             '/connect\(\)\s*\{\s*this\.populateFuels\(this\.initialValue\.fuel\);\s*this\.populateEquipmentModes\(this\.initialValue\.mode\);\s*this\.renderFields\(\);\s*this\.preview\(\);\s*\}/',
             $controller,
         );
-        self::assertStringContainsString('if (!this.commonContextComplete)', $controller);
+        self::assertStringContainsString('if (!this.commonContextComplete || !this.supplierSelectionComplete)', $controller);
         self::assertStringContainsString("body.set('_preview_token', this.previewTokenValue)", $controller);
         self::assertStringContainsString('fetch(this.previewUrlValue', $controller);
         self::assertStringContainsString('trace.factorId', $controller);
@@ -333,6 +336,9 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertMatchesRegularExpression("/family === 'electricity'\\s*&& this\\.isSpain/", $controller);
         self::assertStringContainsString("['grid', 'mixed'].includes(this.originTarget.value)", $controller);
         self::assertStringContainsString("this.electricitySupplierKnownTarget.value === 'yes'", $controller);
+        self::assertStringContainsString("['grid', 'mixed', 'unknown'].includes(this.originTarget.value)", $controller);
+        self::assertStringContainsString("this.renewableCertificateTarget.value === 'yes'", $controller);
+        self::assertStringContainsString('this.toggle(this.generalAttachmentFieldsTarget, !certificateEvidenceVisible)', $controller);
         self::assertStringContainsString("family === 'battery' && hasCountry && !this.isSpain", $controller);
     }
 
@@ -365,9 +371,51 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         $post['country'] = 'FRA';
         $post['origin'] = 'grid';
         $post['electricityLabeling'] = 'SIN GDO';
+        $post['renewableCertificate'] = 'yes';
+        $post['certifiedKwh'] = '4.5';
         $outsideInput = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
-        self::assertNull($outsideInput->supplier);
-        self::assertSame('SIN GDO', $outsideInput->labeling);
+        self::assertSame('Comercializadora A', $outsideInput->supplier);
+        self::assertNull($outsideInput->labeling);
+        self::assertSame('yes', $outsideInput->renewableCertificate);
+        self::assertSame('4.5', $outsideInput->certifiedKwh);
+
+        $post['renewableCertificate'] = 'no';
+        $post['certifiedKwh'] = '999';
+        $withoutCertificate = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+        self::assertSame('no', $withoutCertificate->renewableCertificate);
+        self::assertNull($withoutCertificate->certifiedKwh);
+
+        unset($post['renewableCertificate'], $post['certifiedKwh']);
+        $withoutAnswer = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+        self::assertNull($withoutAnswer->renewableCertificate);
+        self::assertNull($withoutAnswer->certifiedKwh);
+
+        $post['family'] = 'digital';
+        $unrelatedInput = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+        self::assertNull($unrelatedInput->supplier);
+        self::assertNull($unrelatedInput->renewableCertificate);
+        self::assertNull($unrelatedInput->certifiedKwh);
+    }
+
+    public function testMapperRejectsInvalidOutsideCertificateData(): void
+    {
+        $base = [...$this->validPost(),
+            'country' => 'FRA',
+            'electricitySupplier' => 'Proveedor exterior',
+        ];
+
+        foreach ([
+            [...$base, 'renewableCertificate' => 'invalid'],
+            [...$base, 'renewableCertificate' => 'yes', 'certifiedKwh' => '-1'],
+            [...$base, 'renewableCertificate' => 'yes', 'certifiedKwh' => 'not-a-number'],
+        ] as $post) {
+            try {
+                (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+                self::fail('Invalid outside certificate data must be rejected.');
+            } catch (\InvalidArgumentException) {
+                self::addToAssertionCount(1);
+            }
+        }
     }
 
     public function testMapperRequiresSupplierKnowledgeAnswerForSpanishGridElectricity(): void
@@ -401,6 +449,56 @@ final class EnergyEmissionControllerTest extends KernelTestCase
             $initial = $this->initialValues($content);
             self::assertSame('yes', $initial['electricitySupplierKnown']);
             self::assertSame('Proveedor', $initial['electricitySupplier']);
+        }
+    }
+
+    public function testEditAndDuplicateRestoreOutsideCertificateMetadata(): void
+    {
+        $context = $this->context();
+        $record = $this->record($context);
+        $snapshot = json_decode((string) $record->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
+        $snapshot['input']['country'] = 'FR';
+        $snapshot['input']['supplier'] = 'Proveedor exterior';
+        $snapshot['input']['renewableCertificate'] = 'yes';
+        $snapshot['input']['certifiedKwh'] = '4.5';
+        $record->setCalculationDetails(json_encode($snapshot, JSON_THROW_ON_ERROR));
+
+        $editContent = (string) $this->edit($record, $this->request('GET'), $context, 0)->getContent();
+        $duplicateContent = (string) $this->controller()->duplicate(
+            $record,
+            $this->request('GET'),
+            $context['active'],
+            $context['categories'],
+            new EnergyEmissionSnapshot(),
+            $this->uiCatalog(),
+        )->getContent();
+
+        foreach ([$editContent, $duplicateContent] as $content) {
+            $initial = $this->initialValues($content);
+            self::assertSame('FRA', $initial['country']);
+            self::assertSame('Proveedor exterior', $initial['electricitySupplier']);
+            self::assertSame('yes', $initial['renewableCertificate']);
+            self::assertSame('4.5', $initial['certifiedKwh']);
+        }
+
+        unset($snapshot['input']['renewableCertificate'], $snapshot['input']['certifiedKwh']);
+        $record->setCalculationDetails(json_encode($snapshot, JSON_THROW_ON_ERROR));
+
+        $legacyEditContent = (string) $this->edit($record, $this->request('GET'), $context, 0)->getContent();
+        $legacyDuplicateContent = (string) $this->controller()->duplicate(
+            $record,
+            $this->request('GET'),
+            $context['active'],
+            $context['categories'],
+            new EnergyEmissionSnapshot(),
+            $this->uiCatalog(),
+        )->getContent();
+
+        foreach ([$legacyEditContent, $legacyDuplicateContent] as $content) {
+            $initial = $this->initialValues($content);
+            self::assertSame('Proveedor exterior', $initial['electricitySupplier']);
+            self::assertNull($initial['renewableCertificate']);
+            self::assertNull($initial['certifiedKwh']);
         }
     }
 
