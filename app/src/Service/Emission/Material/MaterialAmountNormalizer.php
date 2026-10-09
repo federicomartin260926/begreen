@@ -43,6 +43,18 @@ final readonly class MaterialAmountNormalizer
         if (MaterialUiCatalog::ACTIVITY_SOLVENT === $input->activity) {
             return $this->unavailable('solvent_mass_conversion_unavailable', 'l');
         }
+        if (MaterialUiCatalog::ACTIVITY_WOOD === $input->activity
+            && (null !== $input->pieceWeightKg || null !== $input->unitCount)) {
+            $amount = $this->product([
+                $this->positiveDecimal($input->pieceWeightKg),
+                $this->positiveDecimal($input->unitCount),
+            ]);
+
+            return null === $amount
+                ? $this->pending('piece_weight_data_invalid')
+                : $this->calculated($amount, 'kg');
+        }
+
         if ('kg' !== $input->inputUnit) {
             return $this->pending('weight_kg_required');
         }

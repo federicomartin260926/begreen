@@ -189,7 +189,19 @@ export default class extends Controller {
 
     const family = this.familyTarget.value;
     const method = this.methodTarget.value;
-    if (method === 'weight') this.showFields(['inputQuantity', 'inputUnit'], ['kg']);
+    if (method === 'weight') {
+      const legacyWoodWeight = family === 'wood'
+        && this.initialValue.family === 'wood'
+        && this.initialValue.measurementMethod === 'weight'
+        && this.initialValue.inputQuantity
+        && !this.initialValue.pieceWeightKg;
+
+      if (family === 'wood' && !legacyWoodWeight) {
+        this.showFields(['pieceWeight', 'unitCount']);
+      } else {
+        this.showFields(['inputQuantity', 'inputUnit'], ['kg']);
+      }
+    }
     if (method === 'surface') this.showFields(['inputQuantity', 'inputUnit'], ['m²']);
     if (method === 'volume') {
       this.showFields(['inputQuantity', 'inputUnit'], family === 'solvent' ? ['l', 'ml', 'cl', 'gal_us'] : ['l']);

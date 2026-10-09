@@ -128,6 +128,35 @@ final class MaterialEmissionCalculatorTest extends TestCase
         );
     }
 
+    public function testWoodWeightByUnitsKeepsLegacyTotalWeight(): void
+    {
+        $common = [
+            'startDate' => new \DateTimeImmutable('2026-01-01'),
+            'endDate' => new \DateTimeImmutable('2026-01-02'),
+            'country' => 'ESP',
+            'activity' => MaterialUiCatalog::ACTIVITY_WOOD,
+            'origin' => 'Producción de materia prima',
+            'measurementMethod' => MaterialEmissionInput::METHOD_WEIGHT,
+        ];
+
+        $byUnits = $this->calculator->calculate(new MaterialEmissionInput(
+            ...$common,
+            pieceWeightKg: '2.5',
+            unitCount: '4',
+        ));
+
+        $legacy = $this->calculator->calculate(new MaterialEmissionInput(
+            ...$common,
+            inputQuantity: '10',
+            inputUnit: 'kg',
+        ));
+
+        self::assertSame('10', $byUnits->normalizedAmount);
+        self::assertSame($legacy->normalizedAmount, $byUnits->normalizedAmount);
+        self::assertSame($legacy->emissionKgCo2e, $byUnits->emissionKgCo2e);
+        self::assertSame($legacy->status, $byUnits->status);
+    }
+
     public function testWoodBranchesKeepExistingNormalizationContracts(): void
     {
         $common = [
