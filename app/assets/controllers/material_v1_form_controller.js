@@ -206,7 +206,7 @@ export default class extends Controller {
       if (family === 'cardboard') this.showFields(['cardboardType']);
     }
     if (family === 'wood') this.updateWoodFields(method);
-    if (family === 'paper') this.showFields(['paperFormat']);
+    if (family === 'paper' && ['packages', 'grammage'].includes(method)) this.showFields(['paperFormat']);
     if (['wood', 'paper', 'cardboard'].includes(family)) this.showFields(['sustainabilitySeal']);
     if (family === 'cardboard') this.showFields(['cardboardStructure']);
     if (family === 'metal') this.showFields(['metalMaterial', 'metalForm']);

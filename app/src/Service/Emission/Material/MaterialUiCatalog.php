@@ -244,6 +244,12 @@ final class MaterialUiCatalog
         }
         $weights = $this->batteryWeights[$chemistry."\x1f".$size] ?? [];
 
+        // Decisión Franc Planas, 08/10/2026: fila 10 (0,041 kg).
+        // No sustituirla por otro peso si desaparece del catálogo.
+        if ('Litio-Ion' === $chemistry && '9V' === $size) {
+            return in_array('0.041', $weights, true) ? '0.041' : null;
+        }
+
         return 1 === count($weights) ? $weights[0] : null;
     }
 

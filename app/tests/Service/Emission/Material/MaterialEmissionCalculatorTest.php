@@ -208,11 +208,11 @@ final class MaterialEmissionCalculatorTest extends TestCase
             batteryChemistry: 'Litio-Ion',
             batterySize: '9V',
         ));
-        self::assertSame(EmissionRecord::STATUS_NOT_AUTOMATICALLY_CALCULABLE, $nineVolt->status);
-        self::assertNull($nineVolt->normalizedAmount);
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $nineVolt->status);
+        self::assertSame('0.41', $nineVolt->normalizedAmount);
         self::assertSame('kg', $nineVolt->normalizedUnit);
-        self::assertNull($nineVolt->emissionKgCo2e);
-        self::assertSame(['battery_unique_weight_unavailable'], $nineVolt->messages);
+        self::assertNotNull($nineVolt->emissionKgCo2e);
+        self::assertSame([], $nineVolt->messages);
     }
 
     public function testDocumentedLiquidConversions(): void
