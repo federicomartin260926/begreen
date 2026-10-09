@@ -22,6 +22,10 @@
   purchasedOrigin: 'backend.emission.material_v1.origins.purchased'|trans,
   unitCount: 'backend.emission.material_v1.fields.unit_count'|trans,
   sheetCount: 'backend.emission.material_v1.fields.sheet_count'|trans,
+  woodWeightModes: {
+    total: 'backend.emission.material_v1.fields.wood_weight_total'|trans,
+    unit: 'backend.emission.material_v1.fields.wood_weight_per_unit'|trans
+  },
   plasticActivities: {
     flexible_film: 'backend.emission.material_v1.plastic.flexible_film'|trans,
     rigid_containers: 'backend.emission.material_v1.plastic.rigid_containers'|trans,
@@ -111,6 +115,7 @@
       <section class="card mb-4"><div class="card-body">
         <h3 class="h5 mb-3">{{ 'backend.emission.material_v1.sections.quantity'|trans }}</h3>
         <div class="row g-3">
+          <div class="col-md-4 d-none" data-material-field="woodWeightMode"><label class="form-label" for="material-wood-weight-mode">{{ 'backend.emission.material_v1.fields.wood_weight_mode'|trans }} *</label><select class="form-select" id="material-wood-weight-mode" required data-material-v1-form-target="woodWeightMode" data-action="change->material-v1-form#woodWeightModeChanged"></select></div>
           <div class="col-md-4 d-none" data-material-field="inputQuantity"><label class="form-label" for="material-quantity">{{ 'backend.emission.material_v1.fields.quantity'|trans }} *</label><input class="form-control" id="material-quantity" type="number" min="0" step="any" name="inputQuantity" value="{{ values.inputQuantity|default('') }}"></div>
           <div class="col-md-4 d-none" data-material-field="inputUnit"><label class="form-label" for="material-unit">{{ 'backend.emission.material_v1.fields.unit'|trans }} *</label><select class="form-select" id="material-unit" name="inputUnit" data-material-v1-form-target="inputUnit"></select></div>
           <div class="col-md-4 d-none" data-material-field="unitCount"><label class="form-label" for="material-unit-count"><span data-material-v1-form-target="unitCountLabel">{{ 'backend.emission.material_v1.fields.unit_count'|trans }}</span> *</label><input class="form-control" id="material-unit-count" type="number" min="0" step="any" name="unitCount" value="{{ values.unitCount|default('') }}"></div>

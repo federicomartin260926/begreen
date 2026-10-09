@@ -3,7 +3,7 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
   static targets = [
     'form', 'family', 'activity', 'subproductContainer', 'subproduct', 'origin',
-    'method', 'inputUnit', 'paperFormat', 'cardboardType', 'woodSelection', 'woodSpecies', 'woodType',
+    'method', 'inputUnit', 'paperFormat', 'cardboardType', 'woodSelection', 'woodSpecies', 'woodType', 'woodWeightMode',
     'boardFamily', 'boardThickness', 'batteryChemistry', 'batterySize',
     'sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm',
     'clothingGroup', 'unitCountLabel',
@@ -82,6 +82,14 @@ export default class extends Controller {
     this.queuePreview();
   }
 
+  woodWeightModeChanged() {
+    const mode = this.woodWeightModeTarget.value;
+    if (mode !== 'unit') this.clearFieldValues(['pieceWeight', 'unitCount']);
+    if (mode !== 'total') this.clearFieldValues(['inputQuantity', 'inputUnit']);
+    this.updateQuantityFields();
+    this.queuePreview();
+  }
+
   woodSelectionChanged() {
     this.rememberBoardThickness();
     this.syncWoodSelection();
@@ -112,6 +120,10 @@ export default class extends Controller {
     this.replaceOptions(this.woodSpeciesTarget, this.asOptions(solidWoodTypes), initialSpecies);
     this.replaceOptions(this.boardFamilyTarget, this.asOptions(Object.keys(this.catalogValue.woodBoards || {})), this.initialValue.boardFamily || '');
     this.replaceOptions(this.woodSelectionTarget, this.asOptions(this.catalogValue.woodSelections), this.initialWoodSelection());
+    this.replaceOptions(this.woodWeightModeTarget, [
+      { value: 'total', label: this.i18nValue.woodWeightModes.total },
+      { value: 'unit', label: this.i18nValue.woodWeightModes.unit },
+    ], this.initialWoodWeightMode());
     this.replaceOptions(this.batterySizeTarget, this.asOptions(this.catalogValue.batterySizes), this.initialValue.batterySize || '');
     this.replaceOptions(this.cardboardStructureTarget, this.asOptions(this.catalogValue.cardboardStructures), this.initialValue.cardboardStructure || '');
     this.replaceOptions(this.metalMaterialTarget, this.asOptions(this.catalogValue.metalMaterials), this.initialValue.metalMaterial || '');
@@ -190,14 +202,13 @@ export default class extends Controller {
       ? this.i18nValue.sheetCount
       : this.i18nValue.unitCount;
     if (method === 'weight') {
-      const legacyWoodWeight = family === 'wood'
-        && this.familyForActivity(this.initialValue.activity)?.value === 'wood'
-        && this.initialValue.measurementMethod === 'weight'
-        && this.initialValue.inputQuantity
-        && !this.initialValue.pieceWeightKg;
-
-      if (family === 'wood' && !legacyWoodWeight) {
-        this.showFields(['pieceWeight', 'unitCount']);
+      if (family === 'wood') {
+        this.showFields(['woodWeightMode']);
+        if (this.woodWeightModeTarget.value === 'total') {
+          this.showFields(['inputQuantity', 'inputUnit'], ['kg']);
+          this.inputUnitTarget.value = 'kg';
+        }
+        if (this.woodWeightModeTarget.value === 'unit') this.showFields(['pieceWeight', 'unitCount']);
       } else {
         this.showFields(['inputQuantity', 'inputUnit'], ['kg']);
       }
@@ -276,6 +287,20 @@ export default class extends Controller {
     return hasBoardFamily ? boardFamily : '';
   }
 
+  initialWoodWeightMode() {
+    if (this.initialValue.measurementMethod !== 'weight'
+      || this.familyForActivity(this.initialValue.activity)?.value !== 'wood') return '';
+    if (this.hasInitialValue('pieceWeightKg') || this.hasInitialValue('unitCount')) return 'unit';
+    if (this.hasInitialValue('inputQuantity') || this.hasInitialValue('inputUnit')) return 'total';
+    return '';
+  }
+
+  hasInitialValue(field) {
+    return this.initialValue[field] !== null
+      && this.initialValue[field] !== undefined
+      && this.initialValue[field] !== '';
+  }
+
   syncWoodSelection() {
     const selection = this.woodSelectionTarget.value;
     if (this.isBoardSelection(selection)) {
@@ -334,6 +359,13 @@ export default class extends Controller {
     if (units) {
       this.replaceOptions(this.inputUnitTarget, this.asOptions(units, true), this.inputUnitTarget.value || this.initialValue.inputUnit || '');
     }
+  }
+
+  clearFieldValues(names) {
+    names.forEach((name) => {
+      const container = this.element.querySelector(`[data-material-field="${name}"]`);
+      container?.querySelectorAll('input, select').forEach((field) => { field.value = ''; });
+    });
   }
 
   syncBatteryChemistry() {

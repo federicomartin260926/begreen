@@ -122,10 +122,24 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame('Comprado', $i18n['purchasedOrigin']);
         self::assertSame('Número de unidades', $i18n['unitCount']);
         self::assertSame('Número de hojas', $i18n['sheetCount']);
+        self::assertSame([
+            'total' => 'Peso total (kg)',
+            'unit' => 'Peso por unidad (kg) × número de unidades',
+        ], $i18n['woodWeightModes']);
         self::assertSame('Film, bolsas y láminas — plástico flexible', $i18n['plasticActivities']['flexible_film']);
         $translator = self::getContainer()->get('translator');
         self::assertSame('Purchased', $translator->trans('backend.emission.material_v1.origins.purchased', locale: 'en'));
         self::assertSame('Number of sheets', $translator->trans('backend.emission.material_v1.fields.sheet_count', locale: 'en'));
+        self::assertSame('Total weight (kg)', $translator->trans('backend.emission.material_v1.fields.wood_weight_total', locale: 'en'));
+        self::assertSame('Weight per unit (kg) × number of units', $translator->trans('backend.emission.material_v1.fields.wood_weight_per_unit', locale: 'en'));
+        self::assertStringContainsString('id="material-wood-weight-mode"', $content);
+        self::assertStringNotContainsString('name="woodWeightMode"', $content);
+        $stimulus = file_get_contents(__DIR__.'/../../../assets/controllers/material_v1_form_controller.js');
+        self::assertIsString($stimulus);
+        self::assertStringContainsString('initialWoodWeightMode()', $stimulus);
+        self::assertStringContainsString("if (mode !== 'unit') this.clearFieldValues(['pieceWeight', 'unitCount']);", $stimulus);
+        self::assertStringContainsString("if (mode !== 'total') this.clearFieldValues(['inputQuantity', 'inputUnit']);", $stimulus);
+        self::assertStringContainsString("this.inputUnitTarget.value = 'kg';", $stimulus);
         self::assertSame(array_column($plasticFamily['activities'], 'label'), array_map(
             static fn (array $activity): string => $translator->trans(
                 'backend.emission.material_v1.plastic.'.$activity['translationKey'],
@@ -590,6 +604,57 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         $initial = json_decode(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
         self::assertSame('FSC', $initial['sustainabilitySeal']);
         self::assertSame('Madera maciza de pino radiata o insignis', $initial['woodType']);
+    }
+
+    public function testWoodWeightModeIsRestoredFromExistingFieldsWithoutSnapshotField(): void
+    {
+        $context = $this->context();
+        $catalog = new MaterialUiCatalog();
+        $totalRecord = $this->recordFromPost($context, $this->woodPost(), 310);
+        $unitPost = array_diff_key($this->woodPost(), ['inputQuantity' => true, 'inputUnit' => true]) + [
+            'pieceWeightKg' => '25',
+            'unitCount' => '4',
+        ];
+        $unitRecord = $this->recordFromPost($context, $unitPost, 311);
+
+        foreach ([
+            [$totalRecord, '100', null, null],
+            [$unitRecord, null, '25', '4'],
+        ] as [$record, $inputQuantity, $pieceWeightKg, $unitCount]) {
+            $ignored = null;
+            $edit = $this->controller()->edit(
+                $record,
+                $this->request('GET'),
+                $context['active'],
+                $context['categories'],
+                $context['projects'],
+                new MaterialEmissionRequestMapper($catalog),
+                $this->recordService(0, $ignored),
+                new MaterialEmissionSnapshot(),
+                $catalog,
+                $this->storage(),
+                $this->attachmentManager(),
+            );
+            $duplicate = $this->controller()->duplicate(
+                $record,
+                $this->request('GET'),
+                $context['active'],
+                $context['categories'],
+                new MaterialEmissionSnapshot(),
+                $catalog,
+            );
+
+            foreach ([$edit, $duplicate] as $response) {
+                $initial = $this->initialFormValues((string) $response->getContent());
+                self::assertSame($inputQuantity, $initial['inputQuantity']);
+                self::assertSame($pieceWeightKg, $initial['pieceWeightKg']);
+                self::assertSame($unitCount, $initial['unitCount']);
+                self::assertArrayNotHasKey('woodWeightMode', $initial);
+            }
+        }
+
+        self::assertSame($totalRecord->getAmount(), $unitRecord->getAmount());
+        self::assertSame($totalRecord->getEmission(), $unitRecord->getEmission());
     }
 
     public function testEditAndDuplicatePreserveMaterialSelections(): void
