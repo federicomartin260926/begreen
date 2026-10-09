@@ -89,6 +89,9 @@ final class TransportUiCatalog
     private const CAR_SIZES = ['small', 'medium', 'large', 'average'];
 
     /** @var list<string> */
+    private const TRAVEL_CLASSES = ['economy', 'premium_economy', 'business', 'first'];
+
+    /** @var list<string> */
     private const THERMAL_FUELS = ['petrol', 'diesel'];
 
     /** @var array<string, list<string>> */
@@ -203,6 +206,7 @@ final class TransportUiCatalog
             'carSpainVehicleTypes' => self::CAR_SPAIN_VEHICLE_TYPES,
             'taxiSpainVehicleTypes' => self::TAXI_SPAIN_VEHICLE_TYPES,
             'carSizes' => self::CAR_SIZES,
+            'travelClasses' => self::TRAVEL_CLASSES,
             'fuelsByMode' => self::FUELS_BY_MODE,
             'outsideSpainOnlyModes' => self::OUTSIDE_SPAIN_ONLY_MODES,
             'spainFuelsByMode' => self::SPAIN_FUELS_BY_MODE,
@@ -229,6 +233,12 @@ final class TransportUiCatalog
 
         $isSpain = 'ES' === strtoupper(trim($input->country));
         if ($isSpain && in_array($input->mode, self::OUTSIDE_SPAIN_ONLY_MODES, true)) {
+            return false;
+        }
+
+        if (null !== $input->travelClass
+            && ('plane' !== $input->mode || !in_array($input->travelClass, self::TRAVEL_CLASSES, true))
+        ) {
             return false;
         }
 

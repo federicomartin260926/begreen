@@ -173,6 +173,7 @@
 {% set carSizeLabels = {} %}{% for option in transportUiConfig.carSizes %}{% set carSizeLabels = carSizeLabels|merge({(option): ('backend.emission.transport_v20.car_sizes.' ~ option)|trans}) %}{% endfor %}
 {% set fuelLabels = {} %}{% for modes in transportUiConfig.fuelsByMode %}{% for option in modes %}{% set fuelLabels = fuelLabels|merge({(option): ('backend.emission.transport_v20.fuels.' ~ option)|trans}) %}{% endfor %}{% endfor %}
 {% set tripTypeLabels = {} %}{% for option in transportUiConfig.tripTypes %}{% set tripTypeLabels = tripTypeLabels|merge({(option): ('backend.emission.transport_v20.trip_types.' ~ option)|trans}) %}{% endfor %}
+{% set travelClassLabels = {} %}{% for option in transportUiConfig.travelClasses %}{% set travelClassLabels = travelClassLabels|merge({(option): ('backend.emission.transport_v20.travel_classes.' ~ option)|trans}) %}{% endfor %}
 {% set accompanimentLabels = {} %}{% for option in ['solo', 'accompanied'] %}{% set accompanimentLabels = accompanimentLabels|merge({(option): ('backend.emission.transport_v20.accompaniment_options.' ~ option)|trans}) %}{% endfor %}
 {% set unitLabels = {} %}
 {% for units in transportUiConfig.unitsByMethod %}{% for unit in units %}{% set unitLabels = unitLabels|merge({(unit): ('backend.emission.transport_v20.units.' ~ unit)|trans}) %}{% endfor %}{% endfor %}
@@ -201,6 +202,7 @@
   carSizeLabels: carSizeLabels,
   fuelLabels: fuelLabels,
   tripTypeLabels: tripTypeLabels,
+  travelClassLabels: travelClassLabels,
   unitLabels: unitLabels,
   activityLabels: {
     distance: 'backend.emission.transport_v20.dynamic.distance'|trans,
@@ -429,6 +431,13 @@
           <div class="col-md-6 mb-3">
             <label class="form-label" for="transport-thermal-fuel">{{ 'backend.emission.transport_v20.thermal_fuel'|trans }}</label>
             <select class="form-select" id="transport-thermal-fuel" name="thermalFuel" data-transport-v20-form-target="thermalFuel" data-action="change->transport-v20-form#countryChanged"></select>
+          </div>
+        </div>
+
+        <div class="row" data-transport-v20-form-target="travelClassFields" hidden>
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="transport-travel-class">{{ 'backend.emission.transport_v20.travel_class'|trans }}</label>
+            <select class="form-select" id="transport-travel-class" name="travelClass" data-transport-v20-form-target="travelClass"></select>
           </div>
         </div>
 

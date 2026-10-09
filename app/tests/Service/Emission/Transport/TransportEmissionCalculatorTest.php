@@ -207,6 +207,24 @@ final class TransportEmissionCalculatorTest extends TestCase
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $domestic->status);
     }
 
+    public function testAggregatedPlaneDistanceKeepsAverageFactorForEveryPublishedTravelClass(): void
+    {
+        foreach (['economy', 'premium_economy', 'business', 'first'] as $travelClass) {
+            $result = $this->calculate(
+                'plane',
+                'passenger_distance',
+                'ES',
+                '100',
+                'passenger-km',
+                travelClass: $travelClass,
+            );
+
+            self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $result->status);
+            self::assertSame('Vuelo (Nacional pasajero promedio)', $result->criteria['activity']);
+            self::assertSame('22.928', $result->generatedKgCo2e);
+        }
+    }
+
     public function testSpanishMotorcycleUsesDocumentedFuelAndDistanceFactors(): void
     {
         $fuel = $this->calculate('motorcycle', 'fuel', 'ES', '2', 'l', fuel: 'petrol');
@@ -357,12 +375,13 @@ final class TransportEmissionCalculatorTest extends TestCase
         ?string $endDate = null,
         ?string $accompaniment = null,
         ?string $thermalFuel = null,
+        ?string $travelClass = null,
     ): TransportEmissionResult {
         return $this->calculator->calculate(new TransportEmissionInput(
             $category ?? $this->categoryForMode($mode), $mode, $method, $country,
             new \DateTimeImmutable($date), new \DateTimeImmutable($endDate ?? $date), $value, $unit,
             $repetitions, $passengers, $weightValue, $weightUnit, $vehicleType, $carSize, $fuel,
-            thermalFuel: $thermalFuel, routeClassification: $routeClassification, accompaniment: $accompaniment,
+            thermalFuel: $thermalFuel, routeClassification: $routeClassification, travelClass: $travelClass, accompaniment: $accompaniment,
         ));
     }
 

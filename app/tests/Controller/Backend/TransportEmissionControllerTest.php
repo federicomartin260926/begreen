@@ -121,6 +121,13 @@ final class TransportEmissionControllerTest extends KernelTestCase
         ], $i18n['carSizeLabels']);
         self::assertSame(['solo' => 'Solo/a', 'accompanied' => 'Acompañado/a'], $i18n['accompanimentLabels']);
         self::assertSame('Distancia recorrida', $i18n['carMethodLabels']['distance']);
+        self::assertSame([
+            'economy' => 'Economy',
+            'premium_economy' => 'Premium Economy',
+            'business' => 'Business',
+            'first' => 'First',
+        ], $i18n['travelClassLabels']);
+        self::assertNull($this->jsonDataAttribute($content, 'data-transport-v20-form-initial-value')['travelClass']);
         $stimulus = file_get_contents(__DIR__.'/../../../assets/controllers/transport_v20_form_controller.js');
         self::assertIsString($stimulus);
         self::assertStringContainsString('this.toggle(this.carSizeFieldsTarget, isCar, clearInactive);', $stimulus);
@@ -134,7 +141,8 @@ final class TransportEmissionControllerTest extends KernelTestCase
         }
         self::assertStringNotContainsString('name="secondaryActivityValue"', $content);
         self::assertStringNotContainsString('name="routeClassification"', $content);
-        self::assertStringNotContainsString('name="travelClass"', $content);
+        self::assertStringContainsString('name="travelClass"', $content);
+        self::assertStringContainsString("this.toggle(this.travelClassFieldsTarget, mode === 'plane', clearInactive);", $stimulus);
         foreach (['factor', 'factorValue', 'factorYear', 'source', 'functionalKey', 'amount', 'emission', 'generatedKgCo2e'] as $field) {
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
         }
@@ -200,6 +208,32 @@ final class TransportEmissionControllerTest extends KernelTestCase
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
         }
         self::assertMatchesRegularExpression('/name="_token" value="[^"]+"/', $content);
+    }
+
+    public function testEditAndDuplicateRestorePlaneTravelClass(): void
+    {
+        $context = $this->context();
+        $record = $this->record($context, input: new TransportEmissionInput(
+            'travel',
+            'plane',
+            'passenger_distance',
+            'ES',
+            new \DateTimeImmutable('2026-06-01'),
+            new \DateTimeImmutable('2026-06-02'),
+            '100',
+            'passenger-km',
+            travelClass: 'premium_economy',
+        ));
+
+        foreach ([
+            $this->edit($record, $this->request('GET'), $context, persistCalls: 0),
+            $this->duplicate($record, $this->request('GET'), $context),
+        ] as $response) {
+            self::assertSame(200, $response->getStatusCode());
+            $initial = $this->jsonDataAttribute((string) $response->getContent(), 'data-transport-v20-form-initial-value');
+            self::assertSame('plane', $initial['mode']);
+            self::assertSame('premium_economy', $initial['travelClass']);
+        }
     }
 
     public function testDuplicateRejectsNonV20Record(): void
@@ -679,9 +713,9 @@ final class TransportEmissionControllerTest extends KernelTestCase
     }
 
     /** @param array<string, mixed> $context */
-    private function record(array $context, ?string $notes = null): EmissionRecord
+    private function record(array $context, ?string $notes = null, ?TransportEmissionInput $input = null): EmissionRecord
     {
-        $input = new TransportEmissionInput(
+        $input ??= new TransportEmissionInput(
             'local', 'taxi', 'route', 'ES', new \DateTimeImmutable('2026-06-01'), new \DateTimeImmutable('2026-06-02'), '17', 'km', '2',
             accompaniment: 'accompanied',
         );
@@ -690,11 +724,15 @@ final class TransportEmissionControllerTest extends KernelTestCase
         );
         $record = (new EmissionRecord())->setProject($context['project'])->setPhase($context['phase'])
             ->setCategory($context['category'])->setAmount(34)->setEmission(4)->setRegisteredAt(new \DateTimeImmutable('2026-06-01'))
-            ->setNotes($notes)->setCalculationDetails((new TransportEmissionSnapshot())->encode($input, $result, [
-                'origin' => 'Madrid',
-                'destination' => 'Toledo',
-                'tripType' => 'one_way',
-            ]));
+            ->setNotes($notes)->setCalculationDetails((new TransportEmissionSnapshot())->encode(
+                $input,
+                $result,
+                'route' === $input->method ? [
+                    'origin' => 'Madrid',
+                    'destination' => 'Toledo',
+                    'tripType' => 'one_way',
+                ] : [],
+            ));
         $this->setEntityId($record, 300);
 
         return $record;

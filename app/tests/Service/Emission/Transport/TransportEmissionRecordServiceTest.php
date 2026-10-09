@@ -101,7 +101,7 @@ final class TransportEmissionRecordServiceTest extends TestCase
     public function testRequestCannotOverrideBackendAmountsFactorOrEmission(): void
     {
         $request = Request::create('/', 'POST', [
-            'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'es',
+            'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'ESP',
             'startDate' => '2025-06-01', 'endDate' => '2025-06-01', 'activityValue' => '10', 'activityUnit' => 'km',
             'vehicleType' => 'petrol', 'factorValue' => '999', 'factorYear' => '1900',
             'source' => 'browser', 'functionalKey' => 'browser', 'amount' => '999',
@@ -125,7 +125,7 @@ final class TransportEmissionRecordServiceTest extends TestCase
     {
         $mapper = new TransportEmissionRequestMapper();
         $base = [
-            'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'ES',
+            'category' => 'local', 'mode' => 'car', 'method' => 'distance', 'country' => 'ESP',
             'activityValue' => '2', 'activityUnit' => 'km',
         ];
 
@@ -140,6 +140,30 @@ final class TransportEmissionRecordServiceTest extends TestCase
         $mapper->map(Request::create('/', 'POST', $base + [
             'startDate' => '2026-12-30', 'endDate' => '2027-01-02',
         ]));
+    }
+
+    public function testPlaneTravelClassMapsAndPersistsInTheExistingSnapshotContract(): void
+    {
+        $input = (new TransportEmissionRequestMapper())->map(Request::create('/', 'POST', [
+            'category' => 'travel',
+            'mode' => 'plane',
+            'method' => 'passenger_distance',
+            'country' => 'ESP',
+            'startDate' => '2025-06-01',
+            'endDate' => '2025-06-01',
+            'activityValue' => '100',
+            'activityUnit' => 'passenger-km',
+            'travelClass' => 'business',
+        ]));
+        self::assertSame('business', $input->travelClass);
+
+        [$service] = $this->service($this->factor('0.22928'));
+        $result = $service->write(...$this->writeArguments($input));
+        $snapshot = json_decode((string) $result->record?->getCalculationDetails(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertTrue($result->isPersisted());
+        self::assertSame('business', $snapshot['input']['travelClass']);
+        self::assertSame('Vuelo (Nacional pasajero promedio)', $result->calculation->criteria['activity']);
     }
 
     public function testEditingRecalculatesWithCurrentResolverInsteadOfStoredFactor(): void

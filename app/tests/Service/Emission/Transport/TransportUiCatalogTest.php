@@ -31,6 +31,7 @@ final class TransportUiCatalogTest extends TestCase
         self::assertSame(['kg', 't', 'lb', 'short_ton', 'long_ton'], $configuration['weightUnits']);
         self::assertSame(['L', 'us_gal', 'imp_gal', 'kg'], $configuration['unitsByMethod']['fuel']);
         self::assertSame(['small', 'medium', 'large', 'average'], $configuration['carSizes']);
+        self::assertSame(['economy', 'premium_economy', 'business', 'first'], $configuration['travelClasses']);
         self::assertSame(['solo', 'accompanied'], $configuration['accompanimentOptions']);
         self::assertSame(['car', 'taxi', 'passenger_van'], $configuration['accompanimentModes']);
         self::assertSame(array_merge($catalog->categories()['local'], $catalog->categories()['travel']), $configuration['passengerModes']);
@@ -124,6 +125,18 @@ final class TransportUiCatalogTest extends TestCase
         self::assertFalse($catalog->supports($this->input('freight', 'rigid_truck', 'fuel', 'ES', fuel: 'unknown')));
     }
 
+    public function testTravelClassIsRestrictedToPublishedPlaneOptions(): void
+    {
+        $catalog = new TransportUiCatalog();
+
+        foreach (['economy', 'premium_economy', 'business', 'first'] as $travelClass) {
+            self::assertTrue($catalog->supports($this->input('travel', 'plane', 'passenger_distance', 'ES', travelClass: $travelClass)));
+        }
+
+        self::assertFalse($catalog->supports($this->input('travel', 'plane', 'passenger_distance', 'ES', travelClass: 'average')));
+        self::assertFalse($catalog->supports($this->input('local', 'car', 'distance', 'ES', 'petrol', travelClass: 'business')));
+    }
+
     private function input(
         string $category,
         string $mode,
@@ -131,11 +144,12 @@ final class TransportUiCatalogTest extends TestCase
         string $country,
         ?string $vehicleType = null,
         ?string $fuel = null,
+        ?string $travelClass = null,
     ): TransportEmissionInput {
         return new TransportEmissionInput(
             $category, $mode, $method, $country,
             new \DateTimeImmutable('2026-01-15'), new \DateTimeImmutable('2026-01-15'), '1', 'km',
-            vehicleType: $vehicleType, fuel: $fuel,
+            vehicleType: $vehicleType, fuel: $fuel, travelClass: $travelClass,
         );
     }
 }

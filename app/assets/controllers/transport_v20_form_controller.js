@@ -4,6 +4,7 @@ export default class extends Controller {
   static targets = [
     'form', 'modeLabel', 'mode', 'method', 'carSizeFields', 'carSize', 'vehicleTypeFields', 'vehicleTypeLabel', 'vehicleType',
     'fuelFields', 'fuel', 'thermalFuelFields', 'thermalFuel',
+    'travelClassFields', 'travelClass',
     'routeFields', 'origin', 'destination', 'originSuggestions', 'destinationSuggestions', 'originLatitude', 'originLongitude',
     'destinationLatitude', 'destinationLongitude', 'tripTypeFields', 'tripType', 'stopsFields', 'stopsNotice',
     'routeButton', 'routeMessage', 'activityFields', 'activityLabel', 'activityValue', 'activityUnit',
@@ -330,6 +331,7 @@ export default class extends Controller {
     this.fillSelect(this.vehicleTypeTarget, this.configValue.vehicleTypes, initial.vehicleType);
     this.fillSelect(this.thermalFuelTarget, this.configValue.thermalFuels, initial.thermalFuel);
     this.fillSelect(this.tripTypeTarget, this.configValue.tripTypes, initial.tripType);
+    this.fillSelect(this.travelClassTarget, this.configValue.travelClasses, initial.travelClass);
     this.fillSelect(this.weightUnitTarget, this.configValue.weightUnits, initial.weightUnit);
     this.fillSelect(this.accompanimentTarget, this.configValue.accompanimentOptions, initial.accompaniment);
   }
@@ -414,6 +416,8 @@ export default class extends Controller {
       && method === 'fuel';
     this.toggle(this.thermalFuelFieldsTarget, showThermalFuel, clearInactive);
     this.thermalFuelTarget.required = showThermalFuel;
+
+    this.toggle(this.travelClassFieldsTarget, mode === 'plane', clearInactive);
 
     this.toggle(this.routeFieldsTarget, isRoute, clearInactive);
     this.toggle(this.tripTypeFieldsTarget, hasTripType, clearInactive);
@@ -537,6 +541,7 @@ export default class extends Controller {
     if (select === this.vehicleTypeTarget) return this.i18nValue.vehicleTypeLabels;
     if (select === this.carSizeTarget) return this.i18nValue.carSizeLabels;
     if ([this.fuelTarget, this.thermalFuelTarget].includes(select)) return this.i18nValue.fuelLabels;
+    if (select === this.travelClassTarget) return this.i18nValue.travelClassLabels;
     if (select === this.accompanimentTarget) return this.i18nValue.accompanimentLabels;
     return this.i18nValue.tripTypeLabels;
   }

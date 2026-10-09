@@ -76,6 +76,35 @@ final class TransportEmissionSnapshotTest extends TestCase
         self::assertSame('accompanied', $decoded->accompaniment);
     }
 
+    public function testPlaneTravelClassRoundTrips(): void
+    {
+        $input = new TransportEmissionInput(
+            'travel',
+            'plane',
+            'passenger_distance',
+            'ES',
+            new \DateTimeImmutable('2026-03-04'),
+            new \DateTimeImmutable('2026-03-04'),
+            '100',
+            'passenger-km',
+            travelClass: 'business',
+        );
+        $result = new TransportEmissionResult(
+            TransportEmissionResult::STATUS_CALCULATED,
+            '100',
+            'km*pasajero',
+            '22.928',
+            [],
+            'plane-key',
+            2026,
+        );
+        $snapshot = new TransportEmissionSnapshot();
+        $encoded = $snapshot->encode($input, $result);
+
+        self::assertSame('business', json_decode($encoded, true, 512, JSON_THROW_ON_ERROR)['input']['travelClass']);
+        self::assertSame('business', $snapshot->decode($encoded)->travelClass);
+    }
+
     public function testDecodeRejectsUnsupportedVersion(): void
     {
         $this->expectException(\UnexpectedValueException::class);
