@@ -2383,6 +2383,9 @@ backend:
       input_methods:
         total: "Consumo total"
         meter: "Lectura de contador"
+      answers:
+        yes: "Sí"
+        no: "No"
       modes:
         direct: "Cantidad directa"
         cylinders: "Bombonas"
@@ -2419,6 +2422,7 @@ backend:
         input_method: "Entrada del consumo"
         labeling: "Garantía / etiquetado"
         supplier: "Comercializadora"
+        supplier_known: "¿Conoces la comercializadora?"
         amount: "Consumo"
         unit: "Unidad"
         initial_reading: "Lectura inicial"

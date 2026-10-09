@@ -2362,6 +2362,7 @@ backend:
         exact_year_missing: "Using the latest available factor"
       origins: { grid: "Electricity grid", solar: "Solar panels", mixed: "Mixed (grid + solar)", unknown: "I don't know" }
       input_methods: { total: "Total consumption", meter: "Meter readings" }
+      answers: { yes: "Yes", no: "No" }
       modes: { direct: "Direct amount", cylinders: "Cylinders" }
       equipment_types: { generator: "Generator", heating: "Heating", cooking: "Cooking", boiler: "Boiler", climate: "Climate control", other: "Other equipment" }
       battery_types: { portable_station: "Portable power station", battery: "Battery / accumulator", fixed_battery: "Fixed battery system", ups: "UPS", other: "Other" }
@@ -2375,6 +2376,7 @@ backend:
         input_method: "Consumption input"
         labeling: "Guarantee / label"
         supplier: "Supplier"
+        supplier_known: "Do you know the supplier?"
         amount: "Consumption"
         unit: "Unit"
         initial_reading: "Initial reading"

@@ -26,23 +26,41 @@ final class EnergyEmissionRequestMapper
             throw new \InvalidArgumentException('Unsupported energy family.');
         }
         $country = $this->country($request, 'country');
-        $usesElectricitySource = in_array($family, [EnergyEmissionInput::FAMILY_ELECTRICITY, EnergyEmissionInput::FAMILY_BATTERY], true);
         $isSpain = 'ES' === $country;
+        $origin = $this->optionalString($request, 'origin');
+        $supplier = null;
+        $labeling = null;
+        if (EnergyEmissionInput::FAMILY_ELECTRICITY === $family) {
+            if ($isSpain && in_array($origin, [EnergyEmissionInput::ORIGIN_GRID, EnergyEmissionInput::ORIGIN_MIXED], true)) {
+                $supplierKnown = $this->optionalString($request, 'electricitySupplierKnown');
+                if (!in_array($supplierKnown, ['yes', 'no'], true)) {
+                    throw new \InvalidArgumentException('electricitySupplierKnown must be yes or no.');
+                }
+                if ('yes' === $supplierKnown) {
+                    $supplier = $this->requiredString($request, 'electricitySupplier');
+                }
+            } elseif (!$isSpain) {
+                $labeling = $this->familyString($request, $family, 'Labeling');
+            }
+        } elseif (EnergyEmissionInput::FAMILY_BATTERY === $family) {
+            $supplier = $isSpain ? $this->familyString($request, $family, 'Supplier') : null;
+            $labeling = $isSpain ? null : $this->familyString($request, $family, 'Labeling');
+        }
 
         return new EnergyEmissionInput(
             family: $family,
             startDate: $this->date($request, 'startDate'),
             endDate: $this->date($request, 'endDate'),
             country: $country,
-            origin: $this->optionalString($request, 'origin'),
+            origin: $origin,
             amount: $this->optionalString($request, 'amount'),
             unit: $this->optionalString($request, 'unit'),
             initialReading: $this->optionalString($request, 'initialReading'),
             finalReading: $this->optionalString($request, 'finalReading'),
             gridKwh: $this->optionalString($request, 'gridKwh'),
             solarKwh: $this->optionalString($request, 'solarKwh'),
-            supplier: $usesElectricitySource && $isSpain ? $this->familyString($request, $family, 'Supplier') : null,
-            labeling: $usesElectricitySource && !$isSpain ? $this->familyString($request, $family, 'Labeling') : null,
+            supplier: $supplier,
+            labeling: $labeling,
             equipmentType: $this->optionalString($request, 'equipmentType'),
             fuel: $this->optionalString($request, 'fuel'),
             mode: $this->optionalString($request, 'mode') ?? '',

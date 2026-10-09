@@ -43,7 +43,7 @@ final class EnergyEmissionController extends AbstractController
         'family', 'startDate', 'endDate', 'country', 'origin', 'inputMethod', 'amount', 'unit', 'initialReading', 'finalReading',
         'gridKwh', 'solarKwh', 'supplier', 'labeling', 'equipmentType', 'fuel', 'mode', 'bottleSizeKg',
         'bottleCount', 'batteryType', 'chargeSource', 'chargedKwh', 'notes',
-        'electricitySupplier', 'electricityLabeling', 'batterySupplier', 'batteryLabeling',
+        'electricitySupplierKnown', 'electricitySupplier', 'electricityLabeling', 'batterySupplier', 'batteryLabeling',
         'digitalType', 'digitalLocation', 'digitalCountry', 'knownKwh', 'hours', 'units', 'gpu', 'service', 'model', 'provider', 'ownership',
     ];
 
@@ -254,6 +254,14 @@ final class EnergyEmissionController extends AbstractController
                     $values[$field] = $values[$legacyField] ?? null;
                 }
             }
+        }
+        if (($edit || $duplicate)
+            && 'electricity' === ($values['family'] ?? null)
+            && in_array(strtoupper((string) ($values['country'] ?? '')), ['ES', 'ESP'], true)
+            && in_array($values['origin'] ?? null, ['grid', 'mixed'], true)
+            && empty($values['electricitySupplierKnown'])
+        ) {
+            $values['electricitySupplierKnown'] = empty($values['electricitySupplier']) ? 'no' : 'yes';
         }
         $formAction = $edit && null !== $record
             ? $this->generateUrl('backend_emission_edit_energy_v1', array_merge(['id' => $record->getId()], $backQuery))

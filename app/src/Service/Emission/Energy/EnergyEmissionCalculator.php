@@ -71,7 +71,15 @@ final readonly class EnergyEmissionCalculator
             return $this->pending($activityYear, [$error]);
         }
 
-        return $this->calculateElectricityConsumption($input, $activityYear, $amount, $input->origin);
+        $unknownOrigin = EnergyEmissionInput::ORIGIN_UNKNOWN === $input->origin;
+
+        return $this->calculateElectricityConsumption(
+            $input,
+            $activityYear,
+            $amount,
+            $unknownOrigin ? EnergyEmissionInput::ORIGIN_GRID : $input->origin,
+            forceNationalAverage: $unknownOrigin,
+        );
     }
 
     private function calculateBattery(EnergyEmissionInput $input, int $activityYear): EnergyEmissionResult
@@ -191,6 +199,7 @@ final readonly class EnergyEmissionCalculator
         ?string $origin,
         string $componentPrefix = 'electricity',
         ?string $electricityCountry = null,
+        bool $forceNationalAverage = false,
     ): EnergyEmissionResult {
         if (null === $origin || '' === trim($origin)) {
             return $this->pending($activityYear, ['electricity_origin_required'], $totalKwh, 'kWh');
@@ -204,7 +213,7 @@ final readonly class EnergyEmissionCalculator
             return $this->pending($activityYear, ['electricity_origin_unknown'], $totalKwh, 'kWh');
         }
 
-        $resolution = $this->resolveElectricity($input, $activityYear, $origin, $electricityCountry);
+        $resolution = $this->resolveElectricity($input, $activityYear, $origin, $electricityCountry, $forceNationalAverage);
         if (!$resolution->hasFactor()) {
             return $this->notAutomaticallyCalculable($activityYear, ['emission_factor_unavailable'], $totalKwh, 'kWh');
         }
@@ -301,14 +310,15 @@ final readonly class EnergyEmissionCalculator
         int $activityYear,
         string $origin,
         ?string $electricityCountry = null,
+        bool $forceNationalAverage = false,
     ): ElectricityFactorResolution
     {
         return $this->electricityFactorResolver->resolve(new ElectricityFactorInput(
             country: $electricityCountry ?? $input->country,
             activityYear: $activityYear,
             origin: $origin,
-            supplier: $input->supplier,
-            labeling: $input->labeling,
+            supplier: $forceNationalAverage ? null : $input->supplier,
+            labeling: $forceNationalAverage ? null : $input->labeling,
         ));
     }
 

@@ -130,6 +130,11 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertNull($initial['inputMethod']);
         self::assertNull($initial['unit']);
         self::assertNull($initial['mode']);
+        self::assertNull($initial['electricitySupplierKnown']);
+        self::assertDoesNotMatchRegularExpression(
+            '/name="electricitySupplierKnown"[^>]*>.*?<option value="(?:yes|no)" selected/s',
+            $content,
+        );
         self::assertStringContainsString('GDO COGENERACIÓN ALTA EFICIENCIA', $content);
         foreach (['factor', 'factorValue', 'factorYear', 'source', 'normalizedAmount', 'emission'] as $field) {
             self::assertStringNotContainsString(sprintf('name="%s"', $field), $content);
@@ -243,6 +248,7 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('data-energy-v1-form-preview-url-value="/backend/emission/energy/preview"', $content);
         self::assertMatchesRegularExpression('/data-energy-v1-form-preview-token-value="[^"]+"/', $content);
         $this->assertInitialPreviewContext($content);
+        self::assertSame('no', $this->initialValues($content)['electricitySupplierKnown']);
     }
 
     public function testDigitalFieldsFromSnapshotArePreservedInEdit(): void
@@ -305,6 +311,7 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringNotContainsString('no-copiar.pdf', $content);
         self::assertStringContainsString('value="10"', $content);
         $this->assertInitialPreviewContext($content);
+        self::assertSame('no', $this->initialValues($content)['electricitySupplierKnown']);
     }
 
     public function testFrontendInitializesPreviewImmediatelyAfterReconstructingDependentFields(): void
@@ -323,15 +330,18 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('digitalPanel', $controller);
         self::assertStringContainsString("['Gas butano', 'Gas propano'].includes(this.fuelTarget.value)", $controller);
         self::assertStringNotContainsString('fuelNames[0]', $controller);
-        self::assertStringContainsString("family === 'electricity' && this.isSpain", $controller);
+        self::assertMatchesRegularExpression("/family === 'electricity'\\s*&& this\\.isSpain/", $controller);
+        self::assertStringContainsString("['grid', 'mixed'].includes(this.originTarget.value)", $controller);
+        self::assertStringContainsString("this.electricitySupplierKnownTarget.value === 'yes'", $controller);
         self::assertStringContainsString("family === 'battery' && hasCountry && !this.isSpain", $controller);
     }
 
-    public function testMapperKeepsInactiveBatterySupplierOutOfElectricityInput(): void
+    public function testMapperUsesSupplierOnlyAfterExplicitYesAndRejectsHiddenOrManipulatedValues(): void
     {
-        $post = $this->validPost() + [
+        $post = [...$this->validPost(),
+            'electricitySupplierKnown' => 'yes',
             'electricitySupplier' => 'Comercializadora A',
-            'electricityLabeling' => 'SIN GDO',
+            'electricityLabeling' => 'GDO RENOVABLE',
             'batterySupplier' => 'Comercializadora B',
             'batteryLabeling' => 'CON GDO',
         ];
@@ -341,10 +351,57 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertSame('Comercializadora A', $input->supplier);
         self::assertNull($input->labeling);
 
+        $post['electricitySupplierKnown'] = 'no';
+        $nationalInput = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+        self::assertNull($nationalInput->supplier);
+        self::assertNull($nationalInput->labeling);
+
+        $post['origin'] = 'unknown';
+        $post['electricitySupplierKnown'] = 'yes';
+        $unknownInput = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+        self::assertNull($unknownInput->supplier);
+        self::assertNull($unknownInput->labeling);
+
         $post['country'] = 'FRA';
+        $post['origin'] = 'grid';
+        $post['electricityLabeling'] = 'SIN GDO';
         $outsideInput = (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
         self::assertNull($outsideInput->supplier);
         self::assertSame('SIN GDO', $outsideInput->labeling);
+    }
+
+    public function testMapperRequiresSupplierKnowledgeAnswerForSpanishGridElectricity(): void
+    {
+        $post = $this->validPost();
+        unset($post['electricitySupplierKnown']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+    }
+
+    public function testEditAndDuplicateRestoreExplicitSupplierChoiceFromCanonicalSnapshot(): void
+    {
+        $context = $this->context();
+        $record = $this->record($context);
+        $snapshot = json_decode((string) $record->getCalculationDetails(), true, flags: JSON_THROW_ON_ERROR);
+        $snapshot['input']['supplier'] = 'Proveedor';
+        $record->setCalculationDetails(json_encode($snapshot, JSON_THROW_ON_ERROR));
+
+        $editContent = (string) $this->edit($record, $this->request('GET'), $context, 0)->getContent();
+        $duplicateContent = (string) $this->controller()->duplicate(
+            $record,
+            $this->request('GET'),
+            $context['active'],
+            $context['categories'],
+            new EnergyEmissionSnapshot(),
+            $this->uiCatalog(),
+        )->getContent();
+
+        foreach ([$editContent, $duplicateContent] as $content) {
+            $initial = $this->initialValues($content);
+            self::assertSame('yes', $initial['electricitySupplierKnown']);
+            self::assertSame('Proveedor', $initial['electricitySupplier']);
+        }
     }
 
     /** @return array{project: Project, category: Category, phase: ProjectPhaseDate, active: ActiveProjectService&MockObject, categories: CategoryRepository&MockObject, projects: ProjectRepository&MockObject} */
@@ -510,6 +567,7 @@ final class EnergyEmissionControllerTest extends KernelTestCase
             'endDate' => '2025-06-30',
             'country' => 'ESP',
             'origin' => 'grid',
+            'electricitySupplierKnown' => 'no',
             'amount' => '10',
             'unit' => 'kWh',
         ];

@@ -53,6 +53,54 @@ final class EnergyEmissionCalculatorTest extends TestCase
         self::assertFalse($result->isFallback);
     }
 
+    public function testUnknownSpainUsesNationalGridFactorAndKeepsRequestedOriginInSnapshot(): void
+    {
+        $input = $this->input(
+            EnergyEmissionInput::FAMILY_ELECTRICITY,
+            start: '2026-01-01',
+            end: '2026-12-31',
+            origin: EnergyEmissionInput::ORIGIN_UNKNOWN,
+            amount: '10',
+            unit: 'kWh',
+            supplier: 'Comercializadora A',
+            labeling: 'GDO RENOVABLE',
+        );
+        $result = $this->calculator()->calculate($input);
+
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $result->status);
+        self::assertSame('2.58', $result->emissionKgCo2e);
+        self::assertSame('PROMEDIO NACIONAL', $result->factorTraces[0]->criteria['activity']);
+        self::assertSame('SIN GDO', $result->factorTraces[0]->criteria['labeling']);
+        self::assertSame('', $result->factorTraces[0]->criteria['supplier']);
+        self::assertSame(2025, $result->factorTraces[0]->factorYear);
+        self::assertTrue($result->factorTraces[0]->isFallback);
+        self::assertSame('exact_year_missing', $result->factorTraces[0]->fallbackReason);
+
+        $snapshot = json_decode((new EnergyEmissionSnapshot())->encode($input, $result), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame(EnergyEmissionInput::ORIGIN_UNKNOWN, $snapshot['input']['origin']);
+    }
+
+    public function testUnknownOutsideSpainUsesTraceableUkGridProxy(): void
+    {
+        $result = $this->calculator()->calculate($this->input(
+            EnergyEmissionInput::FAMILY_ELECTRICITY,
+            start: '2026-01-01',
+            end: '2026-12-31',
+            country: 'FR',
+            origin: EnergyEmissionInput::ORIGIN_UNKNOWN,
+            amount: '10',
+            unit: 'kWh',
+        ));
+
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $result->status);
+        self::assertSame('1.3096', $result->emissionKgCo2e);
+        self::assertSame('DEFRA', $result->factorTraces[0]->source);
+        self::assertSame(2026, $result->factorTraces[0]->factorYear);
+        self::assertTrue($result->factorTraces[0]->isGeographicProxy);
+        self::assertSame('Reino Unido', $result->factorTraces[0]->proxyGeography);
+        self::assertSame('FR', $result->factorTraces[0]->metadata['country']);
+    }
+
     public function testDifferentSpainSuppliersProduceDifferentEmissions(): void
     {
         $supplierA = $this->calculator()->calculate($this->input(

@@ -5,7 +5,8 @@ export default class extends Controller {
     'form', 'electricityPanel', 'equipmentPanel', 'batteryPanel', 'digitalPanel', 'origin', 'inputMethod',
     'totalFields', 'meterFields', 'mixedFields', 'fuel', 'fuelUnit', 'equipmentMode', 'equipmentDirectFields',
     'cylinderFields', 'bottleSize', 'chargeSource', 'batteryMixedFields', 'previewStatus', 'previewEmission',
-    'previewTrace', 'previewMessages', 'electricitySupplierFields', 'electricityLabelingFields',
+    'previewTrace', 'previewMessages', 'electricitySupplierKnownFields', 'electricitySupplierKnown',
+    'electricitySupplierFields', 'electricityLabelingFields',
     'batterySupplierFields', 'batteryLabelingFields',
   ];
 
@@ -44,7 +45,14 @@ export default class extends Controller {
     this.toggle(this.batteryPanelTarget, family === 'battery');
     this.toggle(this.digitalPanelTarget, family === 'digital');
 
-    this.toggle(this.electricitySupplierFieldsTarget, family === 'electricity' && this.isSpain);
+    const supplierQuestionVisible = family === 'electricity'
+      && this.isSpain
+      && ['grid', 'mixed'].includes(this.originTarget.value);
+    this.toggle(this.electricitySupplierKnownFieldsTarget, supplierQuestionVisible);
+    this.toggle(
+      this.electricitySupplierFieldsTarget,
+      supplierQuestionVisible && this.electricitySupplierKnownTarget.value === 'yes',
+    );
     this.toggle(this.electricityLabelingFieldsTarget, family === 'electricity' && hasCountry && !this.isSpain);
     this.toggle(this.batterySupplierFieldsTarget, family === 'battery' && this.isSpain);
     this.toggle(this.batteryLabelingFieldsTarget, family === 'battery' && hasCountry && !this.isSpain);
@@ -115,15 +123,18 @@ export default class extends Controller {
   }
 
   async preview() {
-    if (!this.commonContextComplete) {
-      this.previewStatusTarget.textContent = this.i18nValue.previewError;
+    this.previewRequest?.abort();
+
+    if (!this.commonContextComplete || !this.supplierSelectionComplete) {
+      this.previewStatusTarget.textContent = this.commonContextComplete
+        ? '—'
+        : this.i18nValue.previewError;
       this.previewEmissionTarget.textContent = '—';
       this.previewTraceTarget.textContent = '';
       this.previewMessagesTarget.replaceChildren();
       return;
     }
 
-    this.previewRequest?.abort();
     this.previewRequest = new AbortController();
     const body = new URLSearchParams();
     new FormData(this.formTarget).forEach((value, key) => {
@@ -233,6 +244,22 @@ export default class extends Controller {
 
   get isSpain() {
     return ['ES', 'ESP'].includes(this.country.toUpperCase());
+  }
+
+  get supplierSelectionComplete() {
+    if (this.family !== 'electricity'
+      || !this.isSpain
+      || !['grid', 'mixed'].includes(this.originTarget.value)) {
+      return true;
+    }
+
+    const answer = this.electricitySupplierKnownTarget.value;
+    if (answer === 'no') return true;
+    if (answer !== 'yes') return false;
+
+    return Boolean(
+      this.formTarget.querySelector('[name="electricitySupplier"]')?.value.trim()
+    );
   }
 
   get commonContextComplete() {
