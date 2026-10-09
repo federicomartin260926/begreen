@@ -392,7 +392,7 @@ final class TransportEmissionControllerTest extends KernelTestCase
         self::assertSame(422, $response->getStatusCode());
     }
 
-    public function testManipulatedPostCannotUseMotorcycleInSpain(): void
+    public function testMotorcycleInSpainCanUseDocumentedDistanceFactor(): void
     {
         $context = $this->context();
         $post = $this->validPost();
@@ -402,10 +402,9 @@ final class TransportEmissionControllerTest extends KernelTestCase
         $request = $this->request('POST', $post);
         $request->request->set('_token', $this->csrfToken('transport_emission_v20_create'));
 
-        $response = $this->create($request, $context, persistCalls: 0);
+        $response = $this->create($request, $context, persistCalls: 1, factor: $this->factor());
 
-        self::assertSame(422, $response->getStatusCode());
-        self::assertStringContainsString('todavía no está soportada', (string) $response->getContent());
+        self::assertSame(302, $response->getStatusCode());
     }
 
     public function testEndDateBeforeStartDateReturns422WithoutPersisting(): void

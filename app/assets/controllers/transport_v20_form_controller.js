@@ -394,7 +394,9 @@ export default class extends Controller {
     this.toggle(this.fuelFieldsTarget, showFuelChoice, clearInactive);
     if (showFuelChoice) {
       let fuels = this.configValue.fuelsByMode[mode] || [];
-      if (!this.isSpain) {
+      if (this.isSpain && this.configValue.spainFuelsByMode[mode]) {
+        fuels = this.configValue.spainFuelsByMode[mode];
+      } else if (!this.isSpain) {
         const spainOnlyFuels = this.configValue.spainOnlyFuelsByMode[mode] || [];
         fuels = fuels.filter((fuel) => !spainOnlyFuels.includes(fuel));
       }

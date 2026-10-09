@@ -106,8 +106,15 @@ final class TransportUiCatalogTest extends TestCase
         self::assertFalse($catalog->supports($this->input('local', 'taxi', 'route', 'FR')));
         self::assertFalse($catalog->supports($this->input('local', 'car', 'distance', 'ES', 'bev')));
         self::assertTrue($catalog->supports($this->input('local', 'car', 'distance', 'FR', 'bev')));
-        self::assertFalse($catalog->supports($this->input('local', 'motorcycle', 'distance', 'ES')));
+        self::assertTrue($catalog->supports($this->input('local', 'motorcycle', 'distance', 'ES')));
         self::assertTrue($catalog->supports($this->input('local', 'motorcycle', 'distance', 'FR')));
+        foreach (['petrol', 'hvo', 'bioethanol'] as $fuel) {
+            self::assertTrue($catalog->supports($this->input('local', 'motorcycle', 'fuel', 'ES', fuel: $fuel)));
+        }
+        foreach (['diesel', 'biodiesel'] as $fuel) {
+            self::assertFalse($catalog->supports($this->input('local', 'motorcycle', 'fuel', 'ES', fuel: $fuel)));
+            self::assertTrue($catalog->supports($this->input('local', 'motorcycle', 'fuel', 'FR', fuel: $fuel)));
+        }
         self::assertTrue($catalog->supports($this->input('freight', 'freight_van', 'fuel', 'FR', fuel: 'cng')));
         self::assertFalse($catalog->supports($this->input('freight', 'freight_van', 'fuel', 'FR', fuel: 'lng')));
         self::assertTrue($catalog->supports($this->input('freight', 'rigid_truck', 'fuel', 'ES', fuel: 'cng')));

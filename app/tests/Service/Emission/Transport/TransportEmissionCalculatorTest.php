@@ -207,16 +207,32 @@ final class TransportEmissionCalculatorTest extends TestCase
         self::assertSame(TransportEmissionResult::STATUS_UNSUPPORTED, $domestic->status);
     }
 
-    public function testMotorcycleFuelUsesOnlyAnUnambiguousCatalogMapping(): void
+    public function testSpanishMotorcycleUsesDocumentedFuelAndDistanceFactors(): void
+    {
+        $fuel = $this->calculate('motorcycle', 'fuel', 'ES', '2', 'l', fuel: 'petrol');
+        self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $fuel->status);
+        self::assertSame('2', $fuel->normalizedActivityValue);
+        self::assertSame('litros', $fuel->normalizedActivityUnit);
+        self::assertSame('4.672', $fuel->generatedKgCo2e);
+        self::assertSame('TRA_5F598C4CD320DF', $fuel->factorId);
+        self::assertSame(2025, $fuel->factorYear);
+        self::assertSame('MITECO', $fuel->source);
+
+        $distance = $this->calculate('motorcycle', 'distance', 'ES', '10', 'km');
+        self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $distance->status);
+        self::assertSame('10', $distance->normalizedActivityValue);
+        self::assertSame('km', $distance->normalizedActivityUnit);
+        self::assertSame('0.99', $distance->generatedKgCo2e);
+        self::assertSame('TRA_7C3E235A16EFD4', $distance->factorId);
+        self::assertSame(2025, $distance->factorYear);
+        self::assertSame('MITECO', $distance->source);
+    }
+
+    public function testOutsideSpainMotorcycleMappingIsUnchanged(): void
     {
         $outside = $this->calculate('motorcycle', 'fuel', 'FR', '2', 'l', fuel: 'petrol');
         self::assertSame(TransportEmissionResult::STATUS_CALCULATED, $outside->status);
         self::assertSame('Moto promedio', $outside->criteria['activity']);
-
-        self::assertSame(
-            TransportEmissionResult::STATUS_UNSUPPORTED,
-            $this->calculate('motorcycle', 'fuel', 'ES', '2', 'l', fuel: 'petrol')->status,
-        );
     }
 
     public function testRecoveredZeroEmissionModesProduceAValidOperationalZero(): void
@@ -381,6 +397,7 @@ final class TransportEmissionCalculatorTest extends TestCase
             if ($year <= $activityYear && $keyGenerator->generate($criteria) === $key && (null === $selected || $year > $selected->getYear())) {
                 $selected = (new EmissionFactor())
                     ->setCategoryKey('transport')->setFunctionalKey($key)->setCriteria($criteria)->setYear($year)
+                    ->setFactorId($row['factor_id'])
                     ->setValue('' === $row['factor_value'] ? null : $row['factor_value'])
                     ->setUnit($row['unit'])->setSource($row['source'])->setSourceDetail($row['source_detail'] ?: null);
             }

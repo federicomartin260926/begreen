@@ -90,7 +90,26 @@ final class TransportFactorCriteriaMapperTest extends TestCase
         );
         self::assertNull($this->mapper->map($this->input('FR', 'car', 'distance', vehicleType: 'lpg', carSize: 'small')));
         self::assertSame('Moto promedio', $this->map('FR', 'motorcycle', 'fuel', fuel: 'petrol')['activity']);
-        self::assertNull($this->mapper->map($this->input('ES', 'motorcycle', 'fuel', fuel: 'petrol')));
+        self::assertSame([
+            'area' => 'ESPAÑA',
+            'subcategory' => 'PRIVADO',
+            'activity' => 'Motocicletas (> 50cc)',
+            'fuel' => 'Gasolina 95 o 98',
+            'unit' => 'litros',
+            'method' => 'combustible',
+        ], $this->map('ES', 'motorcycle', 'fuel', fuel: 'petrol'));
+        self::assertSame('XTL (Biodiésel HVO)', $this->map('ES', 'motorcycle', 'fuel', fuel: 'hvo')['fuel']);
+        self::assertSame('Bioetanol 100%  (E100)', $this->map('ES', 'motorcycle', 'fuel', fuel: 'bioethanol')['fuel']);
+        self::assertSame([
+            'area' => 'ESPAÑA',
+            'subcategory' => 'PRIVADO',
+            'activity' => 'Motocicletas (> 50cc)',
+            'fuel' => 'Gasolina',
+            'unit' => 'km',
+            'method' => 'distancia',
+        ], $this->map('ES', 'motorcycle', 'distance'));
+        self::assertNull($this->mapper->map($this->input('ES', 'motorcycle', 'fuel', fuel: 'diesel')));
+        self::assertNull($this->mapper->map($this->input('ES', 'motorcycle', 'fuel', fuel: 'biodiesel')));
         self::assertSame('Autocar (larga distancia)', $this->map('ES', 'coach', 'distance')['activity']);
         self::assertSame('Gasolina', $this->map('ES', 'freight_van', 'fuel', fuel: 'petrol')['fuel']);
         self::assertSame('Biodiésel HVO', $this->map('ES', 'rigid_truck', 'fuel', fuel: 'hvo')['fuel']);

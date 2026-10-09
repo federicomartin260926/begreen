@@ -66,11 +66,10 @@ final class TransportFactorCriteriaMapper
             return $this->mapSpanishCarDistance($input, $area);
         }
 
-        if ('motorcycle' === $input->mode
-            && self::OUTSIDE_SPAIN === $area
-            && in_array($input->method, ['distance', 'route', 'route_stops'], true)
-        ) {
-            return $this->criteria($area, 'PRIVADO', 'Moto promedio (tamaño del motor desconocido)', 'Gasolina', 'km');
+        if ('motorcycle' === $input->mode && 'distance' === $input->method) {
+            return self::SPAIN === $area
+                ? $this->criteria($area, 'PRIVADO', 'Motocicletas (> 50cc)', 'Gasolina', 'km')
+                : $this->criteria($area, 'PRIVADO', 'Moto promedio (tamaño del motor desconocido)', 'Gasolina', 'km');
         }
 
         if ('passenger_van' === $input->mode && in_array($input->method, ['distance', 'route', 'route_stops'], true)) {
@@ -249,7 +248,7 @@ final class TransportFactorCriteriaMapper
             'coach' => self::SPAIN === $area ? 'Autocar (larga distancia)' : 'Autocar (coach) / Minibús',
             'plane' => 'Avión',
             'passenger_ferry' => 'Barco',
-            'motorcycle' => self::OUTSIDE_SPAIN === $area ? 'Moto promedio' : null,
+            'motorcycle' => self::SPAIN === $area ? 'Motocicletas (> 50cc)' : 'Moto promedio',
             'freight_van' => self::SPAIN === $area ? 'Furgonetas y furgones (< 3,5 tn)' : 'Furgoneta / Camión (< 3,5 Tn)',
             'rigid_truck', 'articulated_truck' => self::SPAIN === $area ? 'Camiones (> 3,5 tn)' : 'Vehículo pesado (> 3,5 Tn)',
             default => null,
@@ -316,6 +315,14 @@ final class TransportFactorCriteriaMapper
             };
 
             return $allowed[$alias] ?? null;
+        }
+
+        if ('motorcycle' === $mode) {
+            return [
+                'petrol' => 'Gasolina 95 o 98',
+                'hvo' => 'XTL (Biodiésel HVO)',
+                'bioethanol' => 'Bioetanol 100%  (E100)',
+            ][$alias] ?? null;
         }
 
         $common = [

@@ -102,7 +102,12 @@ final class TransportUiCatalog
     ];
 
     /** @var list<string> */
-    private const OUTSIDE_SPAIN_ONLY_MODES = ['motorcycle'];
+    private const OUTSIDE_SPAIN_ONLY_MODES = [];
+
+    /** @var array<string, list<string>> */
+    private const SPAIN_FUELS_BY_MODE = [
+        'motorcycle' => ['petrol', 'hvo', 'bioethanol'],
+    ];
 
     /** @var array<string, list<string>> */
     private const SPAIN_ONLY_FUELS_BY_MODE = [
@@ -200,6 +205,7 @@ final class TransportUiCatalog
             'carSizes' => self::CAR_SIZES,
             'fuelsByMode' => self::FUELS_BY_MODE,
             'outsideSpainOnlyModes' => self::OUTSIDE_SPAIN_ONLY_MODES,
+            'spainFuelsByMode' => self::SPAIN_FUELS_BY_MODE,
             'spainOnlyFuelsByMode' => self::SPAIN_ONLY_FUELS_BY_MODE,
             'thermalFuels' => self::THERMAL_FUELS,
             'tripTypes' => ['one_way', 'round_trip', 'multiple'],
@@ -262,6 +268,12 @@ final class TransportUiCatalog
 
         if ('fuel' === $input->method) {
             if (!in_array($input->fuel, self::FUELS_BY_MODE[$input->mode] ?? [], true)) {
+                return false;
+            }
+            if ($isSpain
+                && isset(self::SPAIN_FUELS_BY_MODE[$input->mode])
+                && !in_array($input->fuel, self::SPAIN_FUELS_BY_MODE[$input->mode], true)
+            ) {
                 return false;
             }
             if (!$isSpain && in_array($input->fuel, self::SPAIN_ONLY_FUELS_BY_MODE[$input->mode] ?? [], true)) {

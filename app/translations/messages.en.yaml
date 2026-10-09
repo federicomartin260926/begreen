@@ -2191,7 +2191,7 @@ backend:
         metro: "Metro"
         tram: "Tram"
         commuter_train: "Local / commuter train"
-        motorcycle: "Motorcycle / moped"
+        motorcycle: "Motorcycle (> 50 cc)"
         bicycle: "Bicycle / e-bike"
         scooter: "Scooter / e-scooter"
         walk: "Walking"
