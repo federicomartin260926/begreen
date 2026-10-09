@@ -48,7 +48,7 @@ export default class extends Controller {
 
     const supplierQuestionVisible = family === 'electricity'
       && this.isSpain
-      && ['grid', 'mixed'].includes(this.originTarget.value);
+      && ['grid', 'mixed', 'unknown'].includes(this.originTarget.value);
     this.toggle(this.electricitySupplierKnownFieldsTarget, supplierQuestionVisible);
     this.toggle(
       this.electricitySupplierFieldsTarget,
@@ -277,7 +277,7 @@ export default class extends Controller {
   get supplierSelectionComplete() {
     if (this.family !== 'electricity'
       || !this.isSpain
-      || !['grid', 'mixed'].includes(this.originTarget.value)) {
+      || !['grid', 'mixed', 'unknown'].includes(this.originTarget.value)) {
       return true;
     }
 

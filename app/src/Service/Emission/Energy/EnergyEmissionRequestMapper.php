@@ -40,7 +40,7 @@ final class EnergyEmissionRequestMapper
         $fuel = $this->optionalString($request, 'fuel');
         $mode = $this->optionalString($request, 'mode') ?? '';
         if (EnergyEmissionInput::FAMILY_ELECTRICITY === $family) {
-            if ($isSpain && in_array($origin, [EnergyEmissionInput::ORIGIN_GRID, EnergyEmissionInput::ORIGIN_MIXED], true)) {
+            if ($isSpain && in_array($origin, [EnergyEmissionInput::ORIGIN_GRID, EnergyEmissionInput::ORIGIN_MIXED, EnergyEmissionInput::ORIGIN_UNKNOWN], true)) {
                 $supplierKnown = $this->optionalString($request, 'electricitySupplierKnown');
                 if (!in_array($supplierKnown, ['yes', 'no'], true)) {
                     throw new \InvalidArgumentException('electricitySupplierKnown must be yes or no.');

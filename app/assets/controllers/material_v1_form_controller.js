@@ -6,7 +6,7 @@ export default class extends Controller {
     'method', 'inputUnit', 'paperFormat', 'cardboardType', 'woodSelection', 'woodSpecies', 'woodType', 'woodWeightMode',
     'boardFamily', 'boardThickness', 'batteryChemistry', 'batterySize',
     'sustainabilitySeal', 'cardboardStructure', 'metalMaterial', 'metalForm',
-    'clothingGroup', 'unitCountLabel',
+    'clothingGroup', 'inputQuantityLabel', 'unitCountLabel',
     'previewStatus', 'previewEmission', 'previewTrace', 'previewMessages',
   ];
 
@@ -174,10 +174,11 @@ export default class extends Controller {
 
   populateOrigins(selected) {
     const origins = this.selectedSubproduct?.origins || [];
+    const labels = this.i18nValue.originLabels?.[this.familyTarget.value] || {};
     const options = origins.map((origin) => origin === '' ? {
       value: this.catalogValue.purchasedOriginPresentationValue,
       label: this.i18nValue.purchasedOrigin,
-    } : { value: origin, label: origin });
+    } : { value: origin, label: labels[origin] || origin });
     this.replaceOptions(this.originTarget, options, selected);
   }
 
@@ -198,6 +199,9 @@ export default class extends Controller {
 
     const family = this.familyTarget.value;
     const method = this.methodTarget.value;
+    this.inputQuantityLabelTarget.textContent = family === 'paper' && method === 'packages'
+      ? this.i18nValue.packageCount
+      : this.i18nValue.quantity;
     this.unitCountLabelTarget.textContent = family === 'paper' && method === 'grammage'
       ? this.i18nValue.sheetCount
       : this.i18nValue.unitCount;

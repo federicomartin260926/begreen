@@ -437,6 +437,7 @@ export default class extends Controller {
     this.passengersTarget.required = needsPassengers;
     this.toggle(this.operatorFieldsTarget, method === 'operator', clearInactive);
     this.operatorReferenceTarget.required = method === 'operator';
+    this.toggle(this.activityFieldsTarget, Boolean(method), clearInactive);
 
     this.activityLabelTarget.textContent = this.i18nValue.activityLabels[method] || '';
     this.refreshActivityUnits(method, clearInactive ? null : this.initialValue.activityUnit);

@@ -20,6 +20,20 @@
   fallback: 'backend.emission.material_v1.preview.fallback'|trans,
   factorVersion: 'backend.emission.material_v1.preview.factor_version'|trans,
   purchasedOrigin: 'backend.emission.material_v1.origins.purchased'|trans,
+  originLabels: {
+    wood: {
+      'Producción de materia prima': 'backend.emission.material_v1.origins.wood_purchased'|trans,
+      'Reciclado (Circuito cerrado)': 'backend.emission.material_v1.origins.wood_recycled'|trans,
+      'Reutilizado': 'backend.emission.material_v1.origins.wood_reused'|trans
+    },
+    paper: {
+      'Producción de materia prima': 'backend.emission.material_v1.origins.paper_purchased'|trans,
+      'Reciclado (Circuito cerrado)': 'backend.emission.material_v1.origins.paper_recycled'|trans,
+      'Reutilizado': 'backend.emission.material_v1.origins.paper_reused'|trans
+    }
+  },
+  quantity: 'backend.emission.material_v1.fields.quantity'|trans,
+  packageCount: 'backend.emission.material_v1.fields.package_count'|trans,
   unitCount: 'backend.emission.material_v1.fields.unit_count'|trans,
   sheetCount: 'backend.emission.material_v1.fields.sheet_count'|trans,
   woodWeightModes: {
@@ -107,8 +121,8 @@
           <div class="col-md-4 d-none" data-material-field="metalForm"><label class="form-label" for="material-metal-form">{{ 'backend.emission.material_v1.fields.metal_form'|trans }}</label><select class="form-select" id="material-metal-form" name="metalForm" data-material-v1-form-target="metalForm"></select></div>
           <div class="col-md-6"><label class="form-label" for="material-origin">{{ 'backend.emission.material_v1.fields.origin'|trans }} *</label><select class="form-select" id="material-origin" name="origin" data-material-v1-form-target="origin" data-action="change->material-v1-form#queuePreview"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
           <div class="col-md-4 d-none" data-material-field="sustainabilitySeal"><label class="form-label" for="material-sustainability-seal">{{ 'backend.emission.material_v1.fields.sustainability_seal'|trans }}</label><select class="form-select" id="material-sustainability-seal" name="sustainabilitySeal" data-material-v1-form-target="sustainabilitySeal"></select></div>
-          <div class="col-md-4 d-none" data-material-field="paperFormat"><label class="form-label" for="material-paper-format">{{ 'backend.emission.material_v1.fields.paper_format'|trans }} *</label><select class="form-select" id="material-paper-format" name="paperFormat" data-material-v1-form-target="paperFormat"></select></div>
           <div class="col-md-6"><label class="form-label" for="material-method">{{ 'backend.emission.material_v1.fields.method'|trans }} *</label><select class="form-select" id="material-method" name="measurementMethod" required data-material-v1-form-target="method" data-action="change->material-v1-form#methodChanged"><option value="">{{ 'backend.common.select'|trans }}</option></select></div>
+          <div class="col-md-4 d-none" data-material-field="paperFormat"><label class="form-label" for="material-paper-format">{{ 'backend.emission.material_v1.fields.paper_format'|trans }} *</label><select class="form-select" id="material-paper-format" name="paperFormat" data-material-v1-form-target="paperFormat"></select></div>
         </div>
       </div></section>
 
@@ -116,7 +130,7 @@
         <h3 class="h5 mb-3">{{ 'backend.emission.material_v1.sections.quantity'|trans }}</h3>
         <div class="row g-3">
           <div class="col-md-4 d-none" data-material-field="woodWeightMode"><label class="form-label" for="material-wood-weight-mode">{{ 'backend.emission.material_v1.fields.wood_weight_mode'|trans }} *</label><select class="form-select" id="material-wood-weight-mode" required data-material-v1-form-target="woodWeightMode" data-action="change->material-v1-form#woodWeightModeChanged"></select></div>
-          <div class="col-md-4 d-none" data-material-field="inputQuantity"><label class="form-label" for="material-quantity">{{ 'backend.emission.material_v1.fields.quantity'|trans }} *</label><input class="form-control" id="material-quantity" type="number" min="0" step="any" name="inputQuantity" value="{{ values.inputQuantity|default('') }}"></div>
+          <div class="col-md-4 d-none" data-material-field="inputQuantity"><label class="form-label" for="material-quantity"><span data-material-v1-form-target="inputQuantityLabel">{{ 'backend.emission.material_v1.fields.quantity'|trans }}</span> *</label><input class="form-control" id="material-quantity" type="number" min="0" step="any" name="inputQuantity" value="{{ values.inputQuantity|default('') }}"></div>
           <div class="col-md-4 d-none" data-material-field="inputUnit"><label class="form-label" for="material-unit">{{ 'backend.emission.material_v1.fields.unit'|trans }} *</label><select class="form-select" id="material-unit" name="inputUnit" data-material-v1-form-target="inputUnit"></select></div>
           <div class="col-md-4 d-none" data-material-field="unitCount"><label class="form-label" for="material-unit-count"><span data-material-v1-form-target="unitCountLabel">{{ 'backend.emission.material_v1.fields.unit_count'|trans }}</span> *</label><input class="form-control" id="material-unit-count" type="number" min="0" step="any" name="unitCount" value="{{ values.unitCount|default('') }}"></div>
           <div class="col-md-4 d-none" data-material-field="pieceWeight"><label class="form-label" for="material-piece-weight">{{ 'backend.emission.material_v1.fields.piece_weight'|trans }} *</label><input class="form-control" id="material-piece-weight" type="number" min="0" step="any" name="pieceWeightKg" value="{{ values.pieceWeightKg|default('') }}"></div>

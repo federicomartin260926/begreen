@@ -259,7 +259,7 @@ final class EnergyEmissionController extends AbstractController
         if (($edit || $duplicate)
             && 'electricity' === ($values['family'] ?? null)
             && in_array(strtoupper((string) ($values['country'] ?? '')), ['ES', 'ESP'], true)
-            && in_array($values['origin'] ?? null, ['grid', 'mixed'], true)
+            && in_array($values['origin'] ?? null, ['grid', 'mixed', 'unknown'], true)
             && empty($values['electricitySupplierKnown'])
         ) {
             $values['electricitySupplierKnown'] = empty($values['electricitySupplier']) ? 'no' : 'yes';

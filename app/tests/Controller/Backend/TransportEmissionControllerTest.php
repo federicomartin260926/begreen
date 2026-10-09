@@ -127,12 +127,20 @@ final class TransportEmissionControllerTest extends KernelTestCase
             'business' => 'Business',
             'first' => 'First',
         ], $i18n['travelClassLabels']);
+        self::assertStringContainsString('¿En qué clase viajaste?', $content);
+        $travelClassPosition = strpos($content, 'id="transport-travel-class"');
+        $methodPosition = strpos($content, 'id="transport-method"');
+        self::assertIsInt($travelClassPosition);
+        self::assertIsInt($methodPosition);
+        self::assertLessThan($methodPosition, $travelClassPosition);
         self::assertNull($this->jsonDataAttribute($content, 'data-transport-v20-form-initial-value')['travelClass']);
         $stimulus = file_get_contents(__DIR__.'/../../../assets/controllers/transport_v20_form_controller.js');
         self::assertIsString($stimulus);
         self::assertStringContainsString('this.toggle(this.carSizeFieldsTarget, isCar, clearInactive);', $stimulus);
         self::assertStringContainsString("const showsPassengers = this.configValue.passengerModes.includes(mode) && this.category !== 'freight';", $stimulus);
         self::assertStringContainsString('this.toggle(this.repetitionFieldsTarget, Boolean(method), clearInactive);', $stimulus);
+        self::assertStringContainsString('this.toggle(this.activityFieldsTarget, Boolean(method), clearInactive);', $stimulus);
+        self::assertStringContainsString('data-transport-v20-form-target="activityFields" hidden', $content);
         foreach (['passenger_van', 'motorcycle', 'bicycle', 'scooter', 'walk', 'coach', 'courier'] as $supportedOption) {
             self::assertStringContainsString($supportedOption, $content);
         }

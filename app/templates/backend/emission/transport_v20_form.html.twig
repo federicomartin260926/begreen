@@ -413,6 +413,10 @@
             <label class="form-label" for="transport-vehicle-type" data-transport-v20-form-target="vehicleTypeLabel">{{ 'backend.emission.transport_v20.vehicle_type'|trans }}</label>
             <select class="form-select" id="transport-vehicle-type" name="vehicleType" data-transport-v20-form-target="vehicleType" data-action="change->transport-v20-form#vehicleTypeChanged" required></select>
           </div>
+            <div class="col-md-3 mb-3" data-transport-v20-form-target="travelClassFields" hidden>
+              <label class="form-label" for="transport-travel-class">{{ 'backend.emission.transport_v20.travel_class'|trans }}</label>
+              <select class="form-select" id="transport-travel-class" name="travelClass" data-transport-v20-form-target="travelClass"></select>
+            </div>
             <div class="col-md-3 mb-3">
               <label class="form-label" for="transport-method">{{ 'backend.emission.transport_v20.method'|trans }}</label>
               <select class="form-select" id="transport-method" name="method" required data-transport-v20-form-target="method" data-action="change->transport-v20-form#methodChanged"></select>
@@ -431,13 +435,6 @@
           <div class="col-md-6 mb-3">
             <label class="form-label" for="transport-thermal-fuel">{{ 'backend.emission.transport_v20.thermal_fuel'|trans }}</label>
             <select class="form-select" id="transport-thermal-fuel" name="thermalFuel" data-transport-v20-form-target="thermalFuel" data-action="change->transport-v20-form#countryChanged"></select>
-          </div>
-        </div>
-
-        <div class="row" data-transport-v20-form-target="travelClassFields" hidden>
-          <div class="col-md-6 mb-3">
-            <label class="form-label" for="transport-travel-class">{{ 'backend.emission.transport_v20.travel_class'|trans }}</label>
-            <select class="form-select" id="transport-travel-class" name="travelClass" data-transport-v20-form-target="travelClass"></select>
           </div>
         </div>
 
@@ -474,7 +471,7 @@
         </div>
 
         <div class="row">
-          <div class="col-md-6 mb-3" data-transport-v20-form-target="activityFields">
+          <div class="col-md-6 mb-3" data-transport-v20-form-target="activityFields" hidden>
             <label class="form-label" for="transport-activity-value" data-transport-v20-form-target="activityLabel">{{ 'backend.emission.transport_v20.activity_value'|trans }}</label>
             <div class="input-group">
               <input class="form-control" id="transport-activity-value" name="activityValue" value="{{ values.activityValue|default('') }}" inputmode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]+)?" data-transport-v20-form-target="activityValue" required>

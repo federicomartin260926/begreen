@@ -120,6 +120,18 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame(1, preg_match('/data-material-v1-form-i18n-value="([^"]+)"/', $content, $i18nMatches));
         $i18n = json_decode(html_entity_decode($i18nMatches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
         self::assertSame('Comprado', $i18n['purchasedOrigin']);
+        self::assertSame([
+            'Producción de materia prima' => 'Comprada',
+            'Reciclado (Circuito cerrado)' => 'Reciclada',
+            'Reutilizado' => 'Reutilizada',
+        ], $i18n['originLabels']['wood']);
+        self::assertSame([
+            'Producción de materia prima' => 'Comprado',
+            'Reciclado (Circuito cerrado)' => 'Comprado reciclado',
+            'Reutilizado' => 'Reutilizado',
+        ], $i18n['originLabels']['paper']);
+        self::assertSame('Cantidad', $i18n['quantity']);
+        self::assertSame('Número de paquetes', $i18n['packageCount']);
         self::assertSame('Número de unidades', $i18n['unitCount']);
         self::assertSame('Número de hojas', $i18n['sheetCount']);
         self::assertSame([
@@ -129,6 +141,9 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertSame('Film, bolsas y láminas — plástico flexible', $i18n['plasticActivities']['flexible_film']);
         $translator = self::getContainer()->get('translator');
         self::assertSame('Purchased', $translator->trans('backend.emission.material_v1.origins.purchased', locale: 'en'));
+        self::assertSame('Number of packages', $translator->trans('backend.emission.material_v1.fields.package_count', locale: 'en'));
+        self::assertSame('Recycled', $translator->trans('backend.emission.material_v1.origins.wood_recycled', locale: 'en'));
+        self::assertSame('Purchased recycled', $translator->trans('backend.emission.material_v1.origins.paper_recycled', locale: 'en'));
         self::assertSame('Number of sheets', $translator->trans('backend.emission.material_v1.fields.sheet_count', locale: 'en'));
         self::assertSame('Total weight (kg)', $translator->trans('backend.emission.material_v1.fields.wood_weight_total', locale: 'en'));
         self::assertSame('Weight per unit (kg) × number of units', $translator->trans('backend.emission.material_v1.fields.wood_weight_per_unit', locale: 'en'));
@@ -140,6 +155,9 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString("if (mode !== 'unit') this.clearFieldValues(['pieceWeight', 'unitCount']);", $stimulus);
         self::assertStringContainsString("if (mode !== 'total') this.clearFieldValues(['inputQuantity', 'inputUnit']);", $stimulus);
         self::assertStringContainsString("this.inputUnitTarget.value = 'kg';", $stimulus);
+        self::assertStringContainsString("const labels = this.i18nValue.originLabels?.[this.familyTarget.value] || {};", $stimulus);
+        self::assertStringContainsString("family === 'paper' && method === 'packages'", $stimulus);
+        self::assertStringContainsString('data-material-v1-form-target="inputQuantityLabel"', $content);
         self::assertSame(array_column($plasticFamily['activities'], 'label'), array_map(
             static fn (array $activity): string => $translator->trans(
                 'backend.emission.material_v1.plastic.'.$activity['translationKey'],
@@ -171,7 +189,7 @@ final class MaterialEmissionControllerTest extends KernelTestCase
         $fieldPositions = $this->formFieldPositions($content);
         self::assertTrue($fieldPositions['origin'] < $fieldPositions['sustainabilitySeal']);
         self::assertTrue($fieldPositions['sustainabilitySeal'] < $fieldPositions['paperFormat']);
-        self::assertTrue($fieldPositions['paperFormat'] < $fieldPositions['measurementMethod']);
+        self::assertTrue($fieldPositions['measurementMethod'] < $fieldPositions['paperFormat']);
         self::assertTrue($fieldPositions['woodType'] < $fieldPositions['origin']);
         self::assertLessThan(
             strpos($content, 'id="material-origin"'),
