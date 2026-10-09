@@ -8,10 +8,14 @@ use Symfony\Component\HttpFoundation\Request;
 final class EnergyEmissionRequestMapper
 {
     private readonly EmissionCountryCatalog $countryCatalog;
+    private readonly EnergyEquipmentCatalog $equipmentCatalog;
 
-    public function __construct(?EmissionCountryCatalog $countryCatalog = null)
-    {
+    public function __construct(
+        ?EmissionCountryCatalog $countryCatalog = null,
+        ?EnergyEquipmentCatalog $equipmentCatalog = null,
+    ) {
         $this->countryCatalog = $countryCatalog ?? new EmissionCountryCatalog();
+        $this->equipmentCatalog = $equipmentCatalog ?? new EnergyEquipmentCatalog();
     }
 
     public function map(Request $request): EnergyEmissionInput
@@ -32,6 +36,9 @@ final class EnergyEmissionRequestMapper
         $labeling = null;
         $renewableCertificate = null;
         $certifiedKwh = null;
+        $equipmentType = $this->optionalString($request, 'equipmentType');
+        $fuel = $this->optionalString($request, 'fuel');
+        $mode = $this->optionalString($request, 'mode') ?? '';
         if (EnergyEmissionInput::FAMILY_ELECTRICITY === $family) {
             if ($isSpain && in_array($origin, [EnergyEmissionInput::ORIGIN_GRID, EnergyEmissionInput::ORIGIN_MIXED], true)) {
                 $supplierKnown = $this->optionalString($request, 'electricitySupplierKnown');
@@ -59,6 +66,19 @@ final class EnergyEmissionRequestMapper
         } elseif (EnergyEmissionInput::FAMILY_BATTERY === $family) {
             $supplier = $isSpain ? $this->familyString($request, $family, 'Supplier') : null;
             $labeling = $isSpain ? null : $this->familyString($request, $family, 'Labeling');
+        } elseif (EnergyEmissionInput::FAMILY_EQUIPMENT === $family
+            && null !== $equipmentType && '' !== $equipmentType
+            && null !== $fuel && '' !== $fuel) {
+            if (!$this->equipmentCatalog->isAllowed($equipmentType, $fuel, $country)) {
+                throw new \InvalidArgumentException('Fuel is not compatible with the selected equipment.');
+            }
+            $bottledGas = in_array($fuel, ['Gas butano', 'Gas propano'], true);
+            if (!$bottledGas) {
+                if (!in_array($mode, ['', EnergyEmissionInput::EQUIPMENT_MODE_DIRECT], true)) {
+                    throw new \InvalidArgumentException('Cylinder mode is only available for butane and propane.');
+                }
+                $mode = EnergyEmissionInput::EQUIPMENT_MODE_DIRECT;
+            }
         }
 
         return new EnergyEmissionInput(
@@ -77,9 +97,9 @@ final class EnergyEmissionRequestMapper
             labeling: $labeling,
             renewableCertificate: $renewableCertificate,
             certifiedKwh: $certifiedKwh,
-            equipmentType: $this->optionalString($request, 'equipmentType'),
-            fuel: $this->optionalString($request, 'fuel'),
-            mode: $this->optionalString($request, 'mode') ?? '',
+            equipmentType: $equipmentType,
+            fuel: $fuel,
+            mode: $mode,
             bottleSizeKg: $this->optionalString($request, 'bottleSizeKg'),
             bottleCount: $this->optionalString($request, 'bottleCount'),
             batteryType: $this->optionalString($request, 'batteryType'),

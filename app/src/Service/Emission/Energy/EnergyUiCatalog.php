@@ -6,11 +6,22 @@ use App\Repository\EmissionFactorRepository;
 
 final readonly class EnergyUiCatalog
 {
-    public function __construct(private EmissionFactorRepository $repository)
-    {
+    private EnergyEquipmentCatalog $equipmentCatalog;
+
+    public function __construct(
+        private EmissionFactorRepository $repository,
+        ?EnergyEquipmentCatalog $equipmentCatalog = null,
+    ) {
+        $this->equipmentCatalog = $equipmentCatalog ?? new EnergyEquipmentCatalog();
     }
 
-    /** @return array{suppliers: list<string>, labelings: list<string>, fuels: array<string, array<string, list<string>>>} */
+    /** @return array{
+     *     suppliers: list<string>,
+     *     labelings: list<string>,
+     *     fuels: array<string, array<string, list<string>>>,
+     *     equipmentFuels: array<string, array<string, list<array{value: string, label: string, units: list<string>}>>>
+     * }
+     */
     public function configuration(): array
     {
         $suppliers = [];
@@ -59,6 +70,11 @@ final readonly class EnergyUiCatalog
         }
         unset($fuelGroups);
 
-        return ['suppliers' => $supplierNames, 'labelings' => $labelingNames, 'fuels' => $fuels];
+        return [
+            'suppliers' => $supplierNames,
+            'labelings' => $labelingNames,
+            'fuels' => $fuels,
+            'equipmentFuels' => $this->equipmentCatalog->configuration($fuels),
+        ];
     }
 }

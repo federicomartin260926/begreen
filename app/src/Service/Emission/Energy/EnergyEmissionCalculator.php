@@ -138,6 +138,25 @@ final readonly class EnergyEmissionCalculator
             return $this->pending($activityYear, ['fuel_required']);
         }
 
+        if (EnergyEquipmentCatalog::FUEL_ELECTRICITY === $input->fuel) {
+            if (EnergyEmissionInput::EQUIPMENT_MODE_DIRECT !== $input->mode) {
+                return $this->pending($activityYear, ['equipment_mode_unknown']);
+            }
+            $amount = $this->decimal($input->amount);
+            if (null === $amount || 'kWh' !== $input->unit) {
+                return $this->pending($activityYear, ['fuel_amount_and_unit_required']);
+            }
+
+            return $this->calculateElectricityConsumption(
+                $input,
+                $activityYear,
+                $amount,
+                EnergyEmissionInput::ORIGIN_GRID,
+                'equipment_electricity',
+                forceNationalAverage: true,
+            );
+        }
+
         $unit = $this->normalizeCombustionUnit($input->unit);
         $amount = null;
         if (!in_array($input->mode, [EnergyEmissionInput::EQUIPMENT_MODE_DIRECT, EnergyEmissionInput::EQUIPMENT_MODE_CYLINDERS], true)) {

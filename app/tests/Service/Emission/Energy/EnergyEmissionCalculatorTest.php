@@ -260,10 +260,17 @@ final class EnergyEmissionCalculatorTest extends TestCase
 
     public function testNaturalGasWithValidUnit(): void
     {
-        $result = $this->calculator()->calculate($this->equipment('Gas natural', '10', 'm3'));
+        $legacyInput = $this->equipment('Gas natural', '10', 'm3');
+        $result = $this->calculator()->calculate($legacyInput);
 
         self::assertSame('20.6672', $result->emissionKgCo2e);
         self::assertSame('m3', $result->normalizedUnit);
+
+        $snapshot = new EnergyEmissionSnapshot();
+        $restored = $snapshot->decodeInput($snapshot->encode($legacyInput, $result));
+        self::assertSame('generator', $restored->equipmentType);
+        self::assertSame('Gas natural', $restored->fuel);
+        self::assertSame($result->emissionKgCo2e, $this->calculator()->calculate($restored)->emissionKgCo2e);
     }
 
     public function testPropaneLitresArePendingInsteadOfInventingConversion(): void
@@ -307,6 +314,56 @@ final class EnergyEmissionCalculatorTest extends TestCase
         self::assertSame('25', $result->normalizedAmount);
         self::assertSame('kg', $result->normalizedUnit);
         self::assertSame('74.9', $result->emissionKgCo2e);
+    }
+
+    public function testElectricEquipmentUsesExistingGridResolverAndTrace(): void
+    {
+        $spain = $this->calculator()->calculate($this->input(
+            EnergyEmissionInput::FAMILY_EQUIPMENT,
+            equipmentType: 'heating',
+            fuel: 'Electricidad',
+            amount: '10',
+            unit: 'kWh',
+        ));
+
+        self::assertSame(EmissionRecord::STATUS_CALCULATED, $spain->status);
+        self::assertSame('2.58', $spain->emissionKgCo2e);
+        self::assertSame('kWh', $spain->normalizedUnit);
+        self::assertSame('equipment_electricity', $spain->factorTraces[0]->component);
+        self::assertNotNull($spain->factorTraces[0]->factorId);
+        self::assertSame('MITECO', $spain->factorTraces[0]->source);
+        self::assertSame('test-v1', $spain->factorTraces[0]->factorVersion);
+
+        $outside = $this->calculator()->calculate($this->input(
+            EnergyEmissionInput::FAMILY_EQUIPMENT,
+            start: '2026-01-01',
+            end: '2026-12-31',
+            country: 'FR',
+            equipmentType: 'climate',
+            fuel: 'Electricidad',
+            amount: '10',
+            unit: 'kWh',
+        ));
+
+        self::assertSame('1.3096', $outside->emissionKgCo2e);
+        self::assertTrue($outside->isGeographicProxy);
+        self::assertSame('Reino Unido', $outside->proxyGeography);
+        self::assertNotNull($outside->factorTraces[0]->factorId);
+        self::assertSame('DEFRA', $outside->factorTraces[0]->source);
+    }
+
+    public function testElectricEquipmentRejectsCombustionUnits(): void
+    {
+        $result = $this->calculator()->calculate($this->input(
+            EnergyEmissionInput::FAMILY_EQUIPMENT,
+            equipmentType: 'heating',
+            fuel: 'Electricidad',
+            amount: '10',
+            unit: 'litros',
+        ));
+
+        self::assertSame(EmissionRecord::STATUS_PENDING_DATA, $result->status);
+        self::assertContains('fuel_amount_and_unit_required', $result->messages);
     }
 
     public function testBatteryChargedFromGrid(): void
@@ -422,6 +479,7 @@ final class EnergyEmissionCalculatorTest extends TestCase
         $factors = [];
         $register = function (array $criteria, int $year, string $value, string $unit, string $source) use (&$factors, $keyGenerator): void {
             $factor = (new EmissionFactor())
+                ->setFactorId('TEST_'.strtoupper(substr(hash('sha256', $keyGenerator->generate($criteria).$year), 0, 12)))
                 ->setCategoryKey('energy')
                 ->setFunctionalKey($keyGenerator->generate($criteria))
                 ->setCriteria($criteria)

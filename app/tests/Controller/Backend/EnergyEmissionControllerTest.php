@@ -332,6 +332,10 @@ final class EnergyEmissionControllerTest extends KernelTestCase
         self::assertStringContainsString('trace.factorId', $controller);
         self::assertStringContainsString('digitalPanel', $controller);
         self::assertStringContainsString("['Gas butano', 'Gas propano'].includes(this.fuelTarget.value)", $controller);
+        self::assertStringContainsString('this.configValue.equipmentFuels?.[geography]?.[equipment]', $controller);
+        self::assertStringContainsString('equipment === this.initialValue.equipmentType', $controller);
+        self::assertStringContainsString("family === 'equipment' && bottledGas", $controller);
+        self::assertStringContainsString("hasEquipmentFuel && (!bottledGas || this.equipmentModeTarget.value === 'direct')", $controller);
         self::assertStringNotContainsString('fuelNames[0]', $controller);
         self::assertMatchesRegularExpression("/family === 'electricity'\\s*&& this\\.isSpain/", $controller);
         self::assertStringContainsString("['grid', 'mixed'].includes(this.originTarget.value)", $controller);
@@ -425,6 +429,53 @@ final class EnergyEmissionControllerTest extends KernelTestCase
 
         $this->expectException(\InvalidArgumentException::class);
         (new EnergyEmissionRequestMapper())->map($this->request('POST', $post));
+    }
+
+    public function testMapperEnforcesEquipmentFuelMatrixAndCylinderScope(): void
+    {
+        $base = [...$this->validPost(),
+            'family' => 'equipment',
+            'equipmentType' => 'generator',
+            'fuel' => 'Diésel',
+            'mode' => 'direct',
+            'amount' => '10',
+            'unit' => 'litros',
+        ];
+
+        $allowed = (new EnergyEmissionRequestMapper())->map($this->request('POST', $base));
+        self::assertSame('generator', $allowed->equipmentType);
+        self::assertSame('Diésel', $allowed->fuel);
+        self::assertSame('direct', $allowed->mode);
+
+        $withoutPresentationMode = $base;
+        unset($withoutPresentationMode['mode']);
+        self::assertSame(
+            'direct',
+            (new EnergyEmissionRequestMapper())->map($this->request('POST', $withoutPresentationMode))->mode,
+        );
+
+        foreach ([
+            [...$base, 'fuel' => 'Gas natural'],
+            [...$base, 'mode' => 'cylinders'],
+            [...$base, 'equipmentType' => 'unknown'],
+        ] as $invalid) {
+            try {
+                (new EnergyEmissionRequestMapper())->map($this->request('POST', $invalid));
+                self::fail('An incompatible equipment/fuel/mode combination must be rejected.');
+            } catch (\InvalidArgumentException) {
+                self::addToAssertionCount(1);
+            }
+        }
+
+        $cylinder = (new EnergyEmissionRequestMapper())->map($this->request('POST', [
+            ...$base,
+            'equipmentType' => 'cooking',
+            'fuel' => 'Gas butano',
+            'mode' => 'cylinders',
+            'bottleSizeKg' => '12.5',
+            'bottleCount' => '2',
+        ]));
+        self::assertSame('cylinders', $cylinder->mode);
     }
 
     public function testEditAndDuplicateRestoreExplicitSupplierChoiceFromCanonicalSnapshot(): void

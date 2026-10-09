@@ -3,7 +3,7 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
   static targets = [
     'form', 'electricityPanel', 'equipmentPanel', 'batteryPanel', 'digitalPanel', 'origin', 'inputMethod',
-    'totalFields', 'meterFields', 'mixedFields', 'fuel', 'fuelUnit', 'equipmentMode', 'equipmentDirectFields',
+    'totalFields', 'meterFields', 'mixedFields', 'equipmentType', 'fuel', 'fuelUnit', 'equipmentModeFields', 'equipmentMode', 'equipmentDirectFields',
     'cylinderFields', 'bottleSize', 'chargeSource', 'batteryMixedFields', 'previewStatus', 'previewEmission',
     'previewTrace', 'previewMessages', 'electricitySupplierKnownFields', 'electricitySupplierKnown',
     'electricitySupplierFields', 'electricityOutsideSupplierFields', 'renewableCertificateFields',
@@ -72,8 +72,11 @@ export default class extends Controller {
     this.toggle(this.meterFieldsTarget, meter);
     this.toggle(this.mixedFieldsTarget, family === 'electricity' && this.originTarget.value === 'mixed');
 
-    const cylinders = family === 'equipment' && this.equipmentModeTarget.value === 'cylinders';
-    this.toggle(this.equipmentDirectFieldsTarget, family === 'equipment' && this.equipmentModeTarget.value === 'direct');
+    const bottledGas = ['Gas butano', 'Gas propano'].includes(this.fuelTarget.value);
+    const hasEquipmentFuel = family === 'equipment' && Boolean(this.fuelTarget.value);
+    const cylinders = family === 'equipment' && bottledGas && this.equipmentModeTarget.value === 'cylinders';
+    this.toggle(this.equipmentModeFieldsTarget, family === 'equipment' && bottledGas);
+    this.toggle(this.equipmentDirectFieldsTarget, hasEquipmentFuel && (!bottledGas || this.equipmentModeTarget.value === 'direct'));
     this.toggle(this.cylinderFieldsTarget, cylinders);
     this.populateBottleSizes();
 
@@ -83,32 +86,48 @@ export default class extends Controller {
   populateFuels(preferred) {
     if (!this.hasFuelTarget) return;
     const geography = this.isSpain ? 'ES' : 'OUTSIDE';
+    const equipment = this.equipmentTypeTarget.value;
+    const options = [...(this.configValue.equipmentFuels?.[geography]?.[equipment] || [])];
     const fuels = this.configValue.fuels?.[geography] || {};
+    const historicalFuel = equipment === this.initialValue.equipmentType ? this.initialValue.fuel : '';
+    if (historicalFuel && !options.some((option) => option.value === historicalFuel) && fuels[historicalFuel]) {
+      options.push({ value: historicalFuel, label: historicalFuel, units: fuels[historicalFuel] });
+    }
 
-    const fuelNames = Object.keys(fuels);
+    const fuelNames = options.map((option) => option.value);
     const current = this.fuelTarget.value;
-    let selected = Object.prototype.hasOwnProperty.call(fuels, preferred)
+    const selected = fuelNames.includes(preferred)
       ? preferred
-      : (Object.prototype.hasOwnProperty.call(fuels, current) ? current : '');
+      : (fuelNames.includes(current) ? current : '');
 
-    this.fillSelect(this.fuelTarget, fuelNames, selected);
-    this.populateFuelUnits(fuels);
+    this.fillSelect(
+      this.fuelTarget,
+      fuelNames,
+      selected,
+      true,
+      Object.fromEntries(options.map((option) => [option.value, option.label])),
+    );
+    this.populateFuelUnits(options);
   }
 
   populateEquipmentModes(preferred) {
     if (!this.hasEquipmentModeTarget) return;
-    const modes = ['direct'];
-    if (['Gas butano', 'Gas propano'].includes(this.fuelTarget.value)) modes.push('cylinders');
+    const modes = ['Gas butano', 'Gas propano'].includes(this.fuelTarget.value)
+      ? ['direct', 'cylinders']
+      : [];
     const selected = modes.includes(preferred) ? preferred : this.equipmentModeTarget.value;
 
     this.fillSelect(this.equipmentModeTarget, modes, selected, true, this.i18nValue.modes);
   }
 
-  populateFuelUnits(fuels = null) {
+  populateFuelUnits(options = null) {
     if (!this.hasFuelUnitTarget) return;
     const geography = this.isSpain ? 'ES' : 'OUTSIDE';
-    const available = fuels || this.configValue.fuels?.[geography] || {};
-    const units = available[this.fuelTarget.value] || [];
+    const equipment = this.equipmentTypeTarget.value;
+    const available = options || this.configValue.equipmentFuels?.[geography]?.[equipment] || [];
+    const units = available.find((option) => option.value === this.fuelTarget.value)?.units
+      || this.configValue.fuels?.[geography]?.[this.fuelTarget.value]
+      || [];
     const selected = units.includes(this.fuelUnitTarget.value)
       ? this.fuelUnitTarget.value
       : this.initialValue.unit;

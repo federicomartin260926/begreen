@@ -321,9 +321,9 @@
       <fieldset class="card mb-4" data-energy-v1-form-target="equipmentPanel" hidden disabled><div class="card-body">
         <h3 class="h5 mb-3">{{ 'backend.emission.energy_v1.families.equipment'|trans }}</h3>
         <div class="row g-3">
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.equipment_type'|trans }}</label><select class="form-select" name="equipmentType"><option value="">{{ 'backend.common.select'|trans }}</option>{% for value in ['generator', 'heating', 'cooking', 'boiler', 'climate', 'other'] %}<option value="{{ value }}" {% if values.equipmentType|default('') == value %}selected{% endif %}>{{ ('backend.emission.energy_v1.equipment_types.' ~ value)|trans }}</option>{% endfor %}</select></div>
+          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.equipment_type'|trans }}</label><select class="form-select" name="equipmentType" data-energy-v1-form-target="equipmentType"><option value="">{{ 'backend.common.select'|trans }}</option>{% for value in ['generator', 'heating', 'cooking', 'boiler', 'climate', 'other'] %}<option value="{{ value }}" {% if values.equipmentType|default('') == value %}selected{% endif %}>{{ ('backend.emission.energy_v1.equipment_types.' ~ value)|trans }}</option>{% endfor %}</select></div>
           <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.fuel'|trans }}</label><select class="form-select" name="fuel" data-energy-v1-form-target="fuel"></select></div>
-          <div class="col-md-4"><label class="form-label">{{ 'backend.emission.energy_v1.fields.mode'|trans }}</label><select class="form-select" name="mode" data-energy-v1-form-target="equipmentMode"></select></div>
+          <div class="col-md-4" data-energy-v1-form-target="equipmentModeFields" hidden><label class="form-label">{{ 'backend.emission.energy_v1.fields.mode'|trans }}</label><select class="form-select" name="mode" data-energy-v1-form-target="equipmentMode"></select></div>
         </div>
         <div class="row g-3 mt-0" data-energy-v1-form-target="equipmentDirectFields">
           <div class="col-md-6"><label class="form-label">{{ 'backend.emission.energy_v1.fields.amount'|trans }}</label><input class="form-control" name="amount" value="{{ values.amount|default('') }}" inputmode="decimal"></div>
