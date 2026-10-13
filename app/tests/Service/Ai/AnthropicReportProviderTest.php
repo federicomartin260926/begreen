@@ -55,12 +55,15 @@ final class AnthropicReportProviderTest extends TestCase
             self::assertSame('json_schema', $payload['output_config']['format']['type']);
             self::assertSame('object', $payload['output_config']['format']['schema']['type']);
             $categorySchema = $payload['output_config']['format']['schema']['properties']['categorySummaries'];
-            self::assertSame('object', $categorySchema['type']);
-            self::assertSame(['energy'], $categorySchema['required']);
-            self::assertSame(['energy'], array_keys($categorySchema['properties']));
+            self::assertSame('array', $categorySchema['type']);
+            self::assertSame(['categoryKey', 'summary'], $categorySchema['items']['required']);
+            self::assertSame(
+                ['categoryKey', 'summary'],
+                array_keys($categorySchema['items']['properties'])
+            );
             $futureSchema = $payload['output_config']['format']['schema']['properties']['categoryFutureSummaries'];
-            self::assertSame(['energy'], $futureSchema['required']);
-            self::assertSame(['energy'], array_keys($futureSchema['properties']));
+            self::assertSame('array', $futureSchema['type']);
+            self::assertSame(['categoryKey', 'summary'], $futureSchema['items']['required']);
             self::assertCount(1, $payload['messages']);
             self::assertSame('user', $payload['messages'][0]['role']);
             self::assertStringNotContainsString('Generate the narrative report', $payload['messages'][0]['content']);
@@ -76,10 +79,10 @@ final class AnthropicReportProviderTest extends TestCase
             return $this->successfulResponse([
                 'generalConclusion' => 'Conclusión generada.',
                 'categorySummaries' => [
-                    'energy' => ['summary' => 'Resumen energético.'],
+                    ['categoryKey' => 'energy', 'summary' => 'Resumen energético.'],
                 ],
                 'categoryFutureSummaries' => [
-                    'energy' => ['summary' => 'Horizonte energético.'],
+                    ['categoryKey' => 'energy', 'summary' => 'Horizonte energético.'],
                 ],
                 'finalConclusion' => 'Cierre generado.',
             ]);

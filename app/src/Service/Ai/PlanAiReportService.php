@@ -28,6 +28,120 @@ final readonly class PlanAiReportService
     ) {
     }
 
+    /**
+     * Obtiene únicamente un informe IA vigente ya almacenado.
+     *
+     * Este método nunca llama al proveedor.
+     */
+    public function getExisting(Plan $plan, string $locale): AiReportResult
+    {
+        $planId = $plan->getId();
+
+        if ($planId === null || $planId <= 0) {
+            throw new AiReportRequestException(
+                'The plan must be persisted before reading an AI report.'
+            );
+        }
+
+        $request = $this->requestBuilder->build($plan, $locale);
+        $contextHash = $this->contextHasher->hash($request);
+
+        $stored = $this->freshResult(
+            $this->storage->read($planId, $request->locale),
+            $planId,
+            $request,
+            $contextHash,
+        );
+
+        if (!$stored instanceof AiReportResult) {
+            throw new AiReportRequestException(
+                'No current stored AI report is available.'
+            );
+        }
+
+        $this->logLifecycle(
+            'reused_cache_only',
+            $planId,
+            $request->locale,
+        );
+
+        return $stored;
+    }
+
+    /**
+     * Obtiene un informe almacenado únicamente como contenido de muestra
+     * para previsualizar un diseño.
+     *
+     * Nunca llama al proveedor y no exige que modelo, prompt o contexto
+     * sigan siendo los actuales. Sí exige mismo plan, idioma, contrato
+     * de almacenamiento y una estructura de resultado válida.
+     */
+    public function getStoredForPreview(
+        Plan $plan,
+        string $locale,
+    ): AiReportResult {
+        $planId = $plan->getId();
+
+        if ($planId === null || $planId <= 0) {
+            throw new AiReportRequestException(
+                'The plan must be persisted before reading an AI report.'
+            );
+        }
+
+        $request = $this->requestBuilder->build($plan, $locale);
+        $stored = $this->storage->read($planId, $request->locale);
+
+        if (
+            !$stored instanceof AiStoredReport
+            || $stored->version !== AiStoredReport::VERSION
+            || $stored->planId !== $planId
+            || $stored->locale !== $request->locale
+        ) {
+            throw new AiReportRequestException(
+                'No stored AI report is available for design preview.'
+            );
+        }
+
+        try {
+            $result = $this->resultValidator->validate(
+                $stored->resultData(),
+                array_map(
+                    static fn (array $summary): string =>
+                        $summary['categoryKey'],
+                    $stored->categorySummaries,
+                ),
+                array_map(
+                    static fn (array $summary): string =>
+                        $summary['categoryKey'],
+                    $stored->categoryFutureSummaries,
+                ),
+            );
+        } catch (AiInvalidStructureException $exception) {
+            $this->logger->warning(
+                'Stored AI report result is invalid for design preview.',
+                [
+                    'event' => 'ai_report_preview_invalid',
+                    'plan_id' => $planId,
+                    'locale' => $request->locale,
+                    'error_type' => $exception::class,
+                ],
+            );
+
+            throw new AiReportRequestException(
+                'No valid stored AI report is available for design preview.',
+                previous: $exception,
+            );
+        }
+
+        $this->logLifecycle(
+            'reused_preview',
+            $planId,
+            $request->locale,
+        );
+
+        return $result;
+    }
+
     public function getOrGenerate(Plan $plan, string $locale): AiReportResult
     {
         $planId = $plan->getId();

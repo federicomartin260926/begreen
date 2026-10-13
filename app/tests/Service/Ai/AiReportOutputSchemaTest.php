@@ -7,35 +7,68 @@ use PHPUnit\Framework\TestCase;
 
 final class AiReportOutputSchemaTest extends TestCase
 {
-    public function testBindsGeneralAndFutureSummariesToTheirExpectedCategories(): void
+    public function testUsesCompactArraySchemaIndependentOfCategoryCount(): void
     {
         $schema = (new AiReportOutputSchema())->get(
             ['category:1', 'category:2'],
             ['category:2'],
         );
 
-        $general = $schema['properties']['categorySummaries'];
-        self::assertFalse($general['additionalProperties']);
-        self::assertSame(['category:1', 'category:2'], $general['required']);
-        self::assertSame(['category:1', 'category:2'], array_keys($general['properties']));
+        foreach (['categorySummaries', 'categoryFutureSummaries'] as $field) {
+            $collection = $schema['properties'][$field];
 
-        $future = $schema['properties']['categoryFutureSummaries'];
-        self::assertFalse($future['additionalProperties']);
-        self::assertSame(['category:2'], $future['required']);
-        self::assertSame(['category:2'], array_keys($future['properties']));
+            self::assertSame('array', $collection['type']);
+            self::assertSame('object', $collection['items']['type']);
+            self::assertFalse($collection['items']['additionalProperties']);
+            self::assertSame(
+                ['categoryKey', 'summary'],
+                $collection['items']['required']
+            );
+            self::assertSame(
+                ['categoryKey', 'summary'],
+                array_keys($collection['items']['properties'])
+            );
+            self::assertSame(
+                'string',
+                $collection['items']['properties']['categoryKey']['type']
+            );
+            self::assertSame(
+                'string',
+                $collection['items']['properties']['summary']['type']
+            );
+        }
     }
 
-    public function testFutureSchemaIsStrictAndEmptyWhenNoFutureCategoryExists(): void
+    public function testFutureSchemaRemainsCompactWhenNoFutureCategoryExists(): void
     {
-        $future = (new AiReportOutputSchema())->get(['category:1'], [])['properties']['categoryFutureSummaries'];
+        $future = (new AiReportOutputSchema())
+            ->get(['category:1'], [])['properties']['categoryFutureSummaries'];
 
-        self::assertSame('object', $future['type']);
-        self::assertFalse($future['additionalProperties']);
-        self::assertSame([], $future['required']);
-        self::assertSame([], $future['properties']);
+        self::assertSame('array', $future['type']);
+        self::assertSame('object', $future['items']['type']);
     }
 
-    public function testConvertsBothStructuredCollectionsForTheStrictValidator(): void
+    public function testLeavesNewListFormatReadyForStrictValidator(): void
+    {
+        $data = [
+            'generalConclusion' => 'Conclusión.',
+            'categorySummaries' => [
+                ['categoryKey' => 'category:1', 'summary' => 'Resumen uno.'],
+                ['categoryKey' => 'category:2', 'summary' => 'Resumen dos.'],
+            ],
+            'categoryFutureSummaries' => [
+                ['categoryKey' => 'category:2', 'summary' => 'Horizonte dos.'],
+            ],
+            'finalConclusion' => 'Cierre.',
+        ];
+
+        self::assertSame(
+            $data,
+            (new AiReportOutputSchema())->toValidatorData($data)
+        );
+    }
+
+    public function testKeepsLegacyObjectResponseCompatibility(): void
     {
         $data = (new AiReportOutputSchema())->toValidatorData([
             'generalConclusion' => 'Conclusión.',
@@ -53,16 +86,19 @@ final class AiReportOutputSchemaTest extends TestCase
             ['categoryKey' => 'category:1', 'summary' => 'Resumen uno.'],
             ['categoryKey' => 'category:2', 'summary' => 'Resumen dos.'],
         ], $data['categorySummaries']);
+
         self::assertSame([
             ['categoryKey' => 'category:2', 'summary' => 'Horizonte dos.'],
         ], $data['categoryFutureSummaries']);
     }
 
-    public function testConvertsAnEmptyFutureObjectToAnEmptyValidatorCollection(): void
+    public function testConvertsLegacyEmptyFutureObjectToEmptyList(): void
     {
         $data = (new AiReportOutputSchema())->toValidatorData([
             'generalConclusion' => 'Conclusión.',
-            'categorySummaries' => ['category:1' => ['summary' => 'Resumen.']],
+            'categorySummaries' => [
+                'category:1' => ['summary' => 'Resumen.'],
+            ],
             'categoryFutureSummaries' => [],
             'finalConclusion' => 'Cierre.',
         ]);

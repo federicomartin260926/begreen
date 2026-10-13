@@ -1,0 +1,269 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.report_design.title'|trans }}{% endblock %}
+
+{% block breadcrumb %}
+    {{ parent() }}
+    <li class="breadcrumb-item active">
+        {{ 'backend.report_design.breadcrumb'|trans }}
+    </li>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0 backend-admin-shell">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="mb-2">{{ 'backend.report_design.heading'|trans }}</h2>
+            <p class="text-muted mb-0">
+                {{ 'backend.report_design.description'|trans }}
+            </p>
+        </div>
+
+        <div class="text-end">
+            <div class="small text-muted">
+                {{ 'backend.report_design.active_provider'|trans }}
+            </div>
+            <span class="badge bg-light text-dark border">
+                {{ provider|upper }} · {{ model ?: '—' }}
+            </span>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between gap-3">
+                <div>
+                    <div class="small text-muted">
+                        {{ 'backend.report_design.document'|trans }}
+                    </div>
+                    <div class="fw-semibold">{{ definition.label }}</div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 align-items-start">
+                    {% if draft %}
+                        <span class="badge bg-warning-subtle text-warning-emphasis border">
+                            {{ 'backend.report_design.status.draft'|trans }}
+                        </span>
+                    {% else %}
+                        <span class="badge bg-light text-muted border">
+                            {{ 'backend.report_design.status.no_draft'|trans }}
+                        </span>
+                    {% endif %}
+
+                    {% if approved %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                            {{ 'backend.report_design.status.approved'|trans }}
+                        </span>
+                    {% else %}
+                        <span class="badge bg-light text-muted border">
+                            {{ 'backend.report_design.status.no_approved'|trans }}
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if draft %}
+                <div class="small text-muted mt-3">
+                    {{ 'backend.report_design.draft_updated'|trans }}:
+                    {{ draft.metadata.updated_at|default('—') }}
+                    {% if draft.metadata.provider|default(null) %}
+                        · {{ draft.metadata.provider|upper }}
+                        · {{ draft.metadata.model|default('—') }}
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if approved %}
+                <div class="small text-muted mt-1">
+                    {{ 'backend.report_design.approved_at'|trans }}:
+                    {{ approved.metadata.approved_at|default(approved.metadata.updated_at|default('—')) }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h3 class="h5 mb-2">
+                        {{ 'backend.report_design.instruction_title'|trans }}
+                    </h3>
+
+                    <p class="text-muted small">
+                        {{ 'backend.report_design.instruction_help'|trans }}
+                    </p>
+
+                    <form
+                        method="post"
+                        action="{{ path('admin_report_design_generate') }}"
+                    >
+                        <input
+                            type="hidden"
+                            name="_token"
+                            value="{{ csrf_token('report_design_generate') }}"
+                        >
+
+                        <label class="form-label" for="report-design-instruction">
+                            {{ 'backend.report_design.instruction_label'|trans }}
+                        </label>
+
+                        <textarea
+                            class="form-control"
+                            id="report-design-instruction"
+                            name="instruction"
+                            rows="8"
+                            maxlength="5000"
+                            required
+                            placeholder="{{ 'backend.report_design.instruction_placeholder'|trans }}"
+                        ></textarea>
+
+                        <div class="form-text">
+                            {{ 'backend.report_design.ai_notice'|trans }}
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button
+                                class="btn btn-success"
+                                type="submit"
+                                data-controller="download-state"
+                                data-action="click->download-state#start"
+                                data-download-state-loading-label-value="{{ 'backend.report_design.generate.processing'|trans }}">
+                                <i class="bi bi-stars me-1" aria-hidden="true"></i>
+                                {{ 'backend.report_design.generate'|trans }}
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if draft %}
+                        <hr class="my-4">
+
+                        <form
+                            method="post"
+                            action="{{ path('admin_report_design_approve') }}"
+                            onsubmit="return confirm('{{ 'backend.report_design.approve_confirm'|trans|e('js') }}');"
+                        >
+                            <input
+                                type="hidden"
+                                name="_token"
+                                value="{{ csrf_token('report_design_approve') }}"
+                            >
+
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <div>
+                                    <div class="fw-semibold">
+                                        {{ 'backend.report_design.approve_title'|trans }}
+                                    </div>
+                                    <div class="small text-muted">
+                                        {{ 'backend.report_design.approve_help'|trans }}
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a
+                                        class="btn btn-outline-secondary"
+                                        href="{{ path('backend_plan_closure_download_pdf', {'report_design': 'draft'}) }}"
+                                    >
+                                        <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>
+                                        {{ 'backend.report_design.download_draft'|trans }}
+                                    </a>
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-outline-success"
+                                    >
+                                        <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>
+                                        {{ 'backend.report_design.approve'|trans }}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-5">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">
+                        {{ 'backend.report_design.components_title'|trans }}
+                    </h3>
+
+                    <div class="d-flex flex-column gap-3">
+                        {% for key, component in components %}
+                            <div>
+                                <div class="fw-semibold">
+                                    {{ component.label }}
+                                </div>
+                                <code>[COMPONENT:{{ key }}]</code>
+                                <div class="small text-muted">
+                                    {{ component.description }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="h5 mb-2">
+                        {{ 'backend.report_design.variables_title'|trans }}
+                    </h3>
+
+                    <p class="small text-muted">
+                        {{ 'backend.report_design.variables_help'|trans }}
+                    </p>
+
+                    <div class="accordion" id="reportDesignDataCatalog">
+                        {% for groupKey, group in dataTree %}
+                            <div class="accordion-item">
+                                <h4
+                                    class="accordion-header"
+                                    id="report-design-data-{{ groupKey }}"
+                                >
+                                    <button
+                                        class="accordion-button collapsed"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#report-design-data-panel-{{ groupKey }}"
+                                        aria-expanded="false"
+                                        aria-controls="report-design-data-panel-{{ groupKey }}"
+                                    >
+                                        {{ group.label }}
+                                    </button>
+                                </h4>
+
+                                <div
+                                    id="report-design-data-panel-{{ groupKey }}"
+                                    class="accordion-collapse collapse"
+                                    aria-labelledby="report-design-data-{{ groupKey }}"
+                                >
+                                    <div class="accordion-body">
+                                        {% for key, variable in group.variables %}
+                                            <div class="{% if not loop.last %}mb-3{% endif %}">
+                                                <div class="fw-semibold">
+                                                    {{ variable.label }}
+                                                </div>
+                                                <code>[[{{ key }}]]</code>
+                                                <div class="small text-muted">
+                                                    {{ variable.description }}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="alert alert-info small mt-3 mb-0">
+                        {{ 'backend.report_design.unavailable_help'|trans }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

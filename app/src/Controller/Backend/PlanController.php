@@ -32,6 +32,8 @@ use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Ai\PlanAiReportService;
+use App\Service\ReportDesign\ReportDesignCatalog;
+use App\Service\ReportDesign\ReportDesignRenderer;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -83,6 +85,8 @@ class PlanController extends AbstractController
         private SustainabilityGamificationService $gamificationService,
         private PlanMeasureElaborationDecisionValidator $decisionValidator,
         private PlanAiReportService $planAiReportService,
+        private ReportDesignCatalog $reportDesignCatalog,
+        private ReportDesignRenderer $reportDesignRenderer,
         private LoggerInterface $logger,
         private ProtocolAvailabilityResolver $protocolAvailabilityResolver,
         private AnimationPlanSynchronizer $animationPlanSynchronizer,
@@ -1700,6 +1704,13 @@ class PlanController extends AbstractController
         Request $request,
         TranslatorInterface $translator
     ): Response {
+        $useDraftReportDesign =
+            $request->query->get('report_design') === 'draft';
+
+        if ($useDraftReportDesign) {
+            $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        }
+
         return $this->handlePreviewOrDownload(
             activeProjectService: $activeProjectService,
             planRepository: $planRepository,
@@ -1711,7 +1722,8 @@ class PlanController extends AbstractController
             translator: $translator,
             phase: CommercialPhase::ELABORATION,
             requireClosure: true,
-            forcedFilters: ['state' => PlanMeasureOperationalStateResolver::ALL]
+            forcedFilters: ['state' => PlanMeasureOperationalStateResolver::ALL],
+            useDraftReportDesign: $useDraftReportDesign
         );
     }
 
@@ -1862,6 +1874,13 @@ class PlanController extends AbstractController
         Request $request,
         TranslatorInterface $translator
     ): Response {
+        $useDraftReportDesign =
+            $request->query->get('report_design') === 'draft';
+
+        if ($useDraftReportDesign) {
+            $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        }
+
         return $this->handlePreviewOrDownload(
             activeProjectService: $activeProjectService,
             planRepository:       $planRepository,
@@ -1870,7 +1889,8 @@ class PlanController extends AbstractController
             em:                   $em,
             request:              $request,
             asPdf:                true,
-            translator:           $translator
+            translator:           $translator,
+            useDraftReportDesign: $useDraftReportDesign
         );
     }
 
@@ -1911,7 +1931,8 @@ class PlanController extends AbstractController
         TranslatorInterface $translator,
         CommercialPhase $phase = CommercialPhase::IMPLEMENTATION,
         bool $requireClosure = false,
-        ?array $forcedFilters = null
+        ?array $forcedFilters = null,
+        bool $useDraftReportDesign = false
     ): Response {
         // --- Guards de acceso y estado ---
         $project = $activeProjectService->getActiveProject();
@@ -1979,7 +2000,8 @@ class PlanController extends AbstractController
                 translator:           $translator,
                 locale:               $request->getLocale(),
                 phase:                $phase,
-                selectedDetailOnly:   $requireClosure
+                selectedDetailOnly:   $requireClosure,
+                allowAiGeneration:    !$useDraftReportDesign
             );
         } catch (AiReportException $exception) {
             $this->logger->warning('Unified PDF AI report generation failed.', [
@@ -1990,6 +2012,17 @@ class PlanController extends AbstractController
                 'plan_id' => $plan->getId(),
                 'locale' => $request->getLocale(),
             ]);
+
+            if ($useDraftReportDesign) {
+                $this->addFlash(
+                    'warning',
+                    'backend.report_design.flash.preview_requires_cached_ai'
+                );
+
+                return $this->redirectToRoute(
+                    'admin_report_design_index'
+                );
+            }
 
             if ($asPdf && $request->isXmlHttpRequest()) {
                 return new JsonResponse([
@@ -2122,7 +2155,10 @@ HTML;
 
         if ($asPdf) {
             // 3A) Renderizar HTML del PDF y generar bytes
-            $html    = $this->renderPdfHtml($ctx);
+            $html    = $this->renderPdfHtml(
+                $ctx,
+                $useDraftReportDesign
+            );
             $pdfData = $this->pdfBytesFromHtml(
                 $html,
                 'portrait'
@@ -2295,7 +2331,8 @@ HTML;
         string $locale,
         bool $useDepartmentActionText = false,
         CommercialPhase $phase = CommercialPhase::IMPLEMENTATION,
-        bool $selectedDetailOnly = false
+        bool $selectedDetailOnly = false,
+        bool $allowAiGeneration = true
     ): array {
         $project = $activeProjectService->getActiveProject();
         if (!$project) throw $this->createNotFoundException('backend.projects.flash.no_active');
@@ -2303,7 +2340,9 @@ HTML;
         $plan = $planRepository->findOneBy(['project' => $project]);
         if (!$plan) throw $this->createNotFoundException('backend.plan.errors.not_found');
 
-        $aiReport = $this->planAiReportService->getOrGenerate($plan, $locale);
+        $aiReport = $allowAiGeneration
+            ? $this->planAiReportService->getOrGenerate($plan, $locale)
+            : $this->planAiReportService->getStoredForPreview($plan, $locale);
         $aiGeneralConclusion = $aiReport->generalConclusion;
         $aiFinalConclusion = $aiReport->finalConclusion;
         $aiCategorySummaries = $this->buildAiCategorySummaries(
@@ -2852,8 +2891,10 @@ HTML;
         return 'data:image/svg+xml;base64,'.base64_encode($svg);
     }
 
-    private function renderPdfHtml(array $context): string
-    {
+    private function renderPdfHtml(
+        array $context,
+        bool $useDraftReportDesign = false
+    ): string {
         $context['pdfVisualAssets'] = [
             'logo' => $this->pdfAssetDataUri(
                 'assets/images/logo-white.svg',
@@ -2877,6 +2918,46 @@ HTML;
             ),
             'scoreRing' => $this->pdfScoreRingDataUri($context['scorePct'] ?? 0),
         ];
+
+        // El diseño persistente sólo afecta a la familia
+        // Plan de Sostenibilidad / PDF general.
+        // Ante cualquier problema se conserva el diseño estable de Git.
+        $definition = $this->reportDesignCatalog->sustainabilityPlanGeneral();
+
+        try {
+            $reportDesign = $useDraftReportDesign
+                ? $this->reportDesignRenderer->renderDraft(
+                    $definition,
+                    $context
+                )
+                : $this->reportDesignRenderer->renderApproved(
+                    $definition,
+                    $context
+                );
+
+            if ($useDraftReportDesign && $reportDesign === null) {
+                throw new \RuntimeException(
+                    'There is no draft report design to preview.'
+                );
+            }
+        } catch (\Throwable $exception) {
+            if ($useDraftReportDesign) {
+                throw $exception;
+            }
+
+            $this->logger->error(
+                'Approved report design could not be rendered; using built-in fallback.',
+                [
+                    'report_design' => $definition->key(),
+                    'exception' => $exception,
+                ]
+            );
+
+            $reportDesign = null;
+        }
+
+        $context['reportDesignHtml'] = $reportDesign['html'] ?? null;
+        $context['reportDesignCss'] = $reportDesign['css'] ?? null;
 
         return $this->renderView(
             'backend/plan/pdf_visual.html.twig',

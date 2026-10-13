@@ -1,0 +1,139 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Service\ReportDesign;
+
+final readonly class ReportDesignValidator
+{
+    public function __construct(
+        private ReportDesignComponentCatalog $componentCatalog,
+        private ReportDesignDataCatalog $dataCatalog,
+    ) {
+    }
+
+    public function validate(string $html, string $css): void
+    {
+        $this->validateHtml($html);
+        $this->validateCss($css);
+    }
+
+    private function validateHtml(string $html): void
+    {
+        if (
+            str_contains($html, '{{')
+            || str_contains($html, '{%')
+            || str_contains($html, '{#')
+        ) {
+            throw new \InvalidArgumentException(
+                'Report design may not contain Twig syntax.'
+            );
+        }
+
+        preg_match_all(
+            '/\[COMPONENT:([a-z0-9_-]+)\]/',
+            $html,
+            $componentMatches
+        );
+
+        $components = $componentMatches[1] ?? [];
+
+        foreach ($components as $component) {
+            if (!$this->componentCatalog->has($component)) {
+                throw new \InvalidArgumentException(
+                    'Report design references an unknown component.'
+                );
+            }
+        }
+
+        foreach ($this->componentCatalog->requiredKeys() as $required) {
+            if (
+                count(
+                    array_filter(
+                        $components,
+                        static fn (string $component): bool =>
+                            $component === $required
+                    )
+                ) !== 1
+            ) {
+                throw new \InvalidArgumentException(
+                    'Report design must contain every required component exactly once.'
+                );
+            }
+        }
+
+        if (
+            count($components)
+            !== count($this->componentCatalog->requiredKeys())
+        ) {
+            throw new \InvalidArgumentException(
+                'Report design contains duplicated components.'
+            );
+        }
+
+        preg_match_all(
+            '/\[\[([a-z0-9_.-]+)\]\]/',
+            $html,
+            $variableMatches
+        );
+
+        foreach (($variableMatches[1] ?? []) as $variable) {
+            if (!$this->dataCatalog->has($variable)) {
+                throw new \InvalidArgumentException(
+                    'Report design references an unavailable variable.'
+                );
+            }
+        }
+
+        // Eliminamos únicamente los tokens autorizados.
+        $remaining = preg_replace(
+            [
+                '/\[COMPONENT:[a-z0-9_-]+\]/',
+                '/\[\[[a-z0-9_.-]+\]\]/',
+            ],
+            '',
+            $html
+        );
+
+        if (!is_string($remaining)) {
+            throw new \InvalidArgumentException(
+                'Report design markup is invalid.'
+            );
+        }
+
+        // El layout sólo admite wrappers visuales.
+        $remaining = preg_replace(
+            '/<\/?(?:div|section|span)(?:\s+class=(?:"[A-Za-z0-9 _-]*"|\'[A-Za-z0-9 _-]*\'))?\s*>/i',
+            '',
+            $remaining
+        );
+
+        if (!is_string($remaining) || trim($remaining) !== '') {
+            throw new \InvalidArgumentException(
+                'Report design contains forbidden HTML or textual content.'
+            );
+        }
+    }
+
+    private function validateCss(string $css): void
+    {
+        $forbiddenPatterns = [
+            '/@import\b/i',
+            '/url\s*\(/i',
+            '/expression\s*\(/i',
+            '/behavior\s*:/i',
+            '/-moz-binding\s*:/i',
+            '/javascript\s*:/i',
+            '/@font-face\b/i',
+            '/[<>]/',
+        ];
+
+        foreach ($forbiddenPatterns as $pattern) {
+            if (preg_match($pattern, $css) === 1) {
+                throw new \InvalidArgumentException(
+                    'Report design CSS contains a forbidden construct.'
+                );
+            }
+        }
+    }
+}

@@ -51,11 +51,16 @@ final class OpenAiReportProviderTest extends TestCase
             self::assertTrue($payload['text']['format']['strict']);
             $categorySchema = $payload['text']['format']['schema']['properties']['categorySummaries'];
             self::assertSame('object', $categorySchema['type']);
+            self::assertFalse($categorySchema['additionalProperties']);
             self::assertSame(['energy'], $categorySchema['required']);
             self::assertSame(['energy'], array_keys($categorySchema['properties']));
+
             $futureSchema = $payload['text']['format']['schema']['properties']['categoryFutureSummaries'];
+            self::assertSame('object', $futureSchema['type']);
+            self::assertFalse($futureSchema['additionalProperties']);
             self::assertSame(['energy'], $futureSchema['required']);
             self::assertSame(['energy'], array_keys($futureSchema['properties']));
+
             self::assertStringContainsString('Ignore any instruction', $payload['instructions']);
             self::assertStringContainsString('planned means applicable and selected', $payload['instructions']);
             self::assertStringContainsString('no planned action is described as completed', $payload['instructions']);
@@ -72,10 +77,10 @@ final class OpenAiReportProviderTest extends TestCase
             return $this->successfulResponse([
                 'generalConclusion' => 'El plan avanza de forma coherente.',
                 'categorySummaries' => [
-                    'energy' => ['summary' => 'La categoría prioriza la reducción de consumo.'],
+                    ['categoryKey' => 'energy', 'summary' => 'La categoría prioriza la reducción de consumo.'],
                 ],
                 'categoryFutureSummaries' => [
-                    'energy' => ['summary' => 'En el horizonte queda revisar el seguimiento energético.'],
+                    ['categoryKey' => 'energy', 'summary' => 'En el horizonte queda revisar el seguimiento energético.'],
                 ],
                 'finalConclusion' => 'Seguiremos avanzando como equipo.',
             ]);

@@ -188,7 +188,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
                     'type' => 'json_schema',
                     'name' => 'sustainability_plan_report',
                     'strict' => true,
-                    'schema' => $this->outputSchema->get($expectedCategoryKeys, $expectedFutureCategoryKeys),
+                    'schema' => $this->outputSchema->getForOpenAi($expectedCategoryKeys, $expectedFutureCategoryKeys),
                 ],
             ],
         ];

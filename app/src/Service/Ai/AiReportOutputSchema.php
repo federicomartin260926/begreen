@@ -25,6 +25,41 @@ final class AiReportOutputSchema
         ];
     }
 
+    /**
+     * OpenAI structured output can safely bind every expected category
+     * explicitly. This prevents omissions and duplicate category keys.
+     *
+     * @param list<string> $expectedCategoryKeys
+     * @param list<string> $expectedFutureCategoryKeys
+     *
+     * @return array<string, mixed>
+     */
+    public function getForOpenAi(
+        array $expectedCategoryKeys,
+        array $expectedFutureCategoryKeys
+    ): array {
+        return [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'required' => [
+                'generalConclusion',
+                'categorySummaries',
+                'categoryFutureSummaries',
+                'finalConclusion',
+            ],
+            'properties' => [
+                'generalConclusion' => ['type' => 'string'],
+                'categorySummaries' => $this->strictCategoryCollection(
+                    $expectedCategoryKeys
+                ),
+                'categoryFutureSummaries' => $this->strictCategoryCollection(
+                    $expectedFutureCategoryKeys
+                ),
+                'finalConclusion' => ['type' => 'string'],
+            ],
+        ];
+    }
+
     public function toValidatorData(mixed $data): mixed
     {
         if (!is_array($data)) {
@@ -46,7 +81,48 @@ final class AiReportOutputSchema
     /** @param list<string> $categoryKeys */
     private function categoryCollection(array $categoryKeys): array
     {
+        // Keep the provider grammar deliberately compact.
+        //
+        // Cardinality is constrained here so structured-output providers cannot
+        // omit categories. Exact keys, duplicates and omissions are still
+        // validated after generation by AiReportResultValidator.
+        //
+        // Encoding every category as a separate JSON Schema property makes
+        // Anthropic's compiled grammar grow with the plan and can exceed its
+        // provider limit.
+        $categoryKeySchema = ['type' => 'string'];
+
+        if ($categoryKeys !== []) {
+            $categoryKeySchema['enum'] = $categoryKeys;
+        }
+
+        $expectedCount = count($categoryKeys);
+
+        return [
+            'type' => 'array',
+            'minItems' => $expectedCount,
+            'maxItems' => $expectedCount,
+            'items' => [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'required' => ['categoryKey', 'summary'],
+                'properties' => [
+                    'categoryKey' => $categoryKeySchema,
+                    'summary' => ['type' => 'string'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param list<string> $categoryKeys
+     *
+     * @return array<string, mixed>
+     */
+    private function strictCategoryCollection(array $categoryKeys): array
+    {
         $properties = [];
+
         foreach ($categoryKeys as $categoryKey) {
             $properties[$categoryKey] = [
                 'type' => 'object',

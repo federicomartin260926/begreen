@@ -145,6 +145,58 @@ final class PlanAiReportServiceTest extends TestCase
         self::assertSame('Generado por otro proceso.', $result->generalConclusion);
     }
 
+    public function testDesignPreviewReusesStoredReportWhenModelAndContextChanged(): void
+    {
+        [$plan, $planMeasure] = $this->plan();
+        $provider = new CountingAiReportProvider();
+        $storage = new AiReportStorage(
+            $this->storageDirectory,
+            new CollectingAiLogger(),
+        );
+        $service = $this->service($storage, $provider);
+
+        $generated = $service->getOrGenerate($plan, 'es');
+
+        self::assertSame(1, $provider->calls);
+
+        // Cambia el contexto funcional del proyecto.
+        $planMeasure->setObservations(
+            'Contexto modificado después de generar el informe.'
+        );
+
+        // Y simulamos también que el informe se generó con otro modelo.
+        $path = $storage->pathFor(123, 'es');
+        $data = json_decode(
+            (string) file_get_contents($path),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        $data['provider'] = 'anthropic';
+        $data['model'] = 'previous-model';
+
+        file_put_contents(
+            $path,
+            json_encode(
+                $data,
+                JSON_THROW_ON_ERROR
+                | JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES,
+            ),
+        );
+
+        // Para diseño se admite como contenido de muestra.
+        $preview = $service->getStoredForPreview($plan, 'es');
+
+        self::assertEquals($generated, $preview);
+        self::assertSame(1, $provider->calls);
+
+        // El flujo funcional normal sigue siendo estricto y regenera.
+        $service->getOrGenerate($plan, 'es');
+
+        self::assertSame(2, $provider->calls);
+    }
+
     private function service(
         AiReportStorage $storage,
         CountingAiReportProvider $provider,
