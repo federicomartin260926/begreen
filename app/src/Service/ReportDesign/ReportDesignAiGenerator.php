@@ -233,31 +233,85 @@ Return only the structured response requested by the JSON schema.
 HTML RULES
 - Use every available component token exactly once.
 - Do not invent component tokens.
-- You may use only div, section and span wrappers.
-- Wrappers may only have a class attribute.
-- Class names may contain only letters, numbers, spaces, underscores and hyphens.
+- HTML must contain ONLY the authorised component tokens, separated by whitespace if desired.
+- Do not generate div, section, span or any other HTML wrapper.
 - Do not generate Twig syntax.
 - Do not generate scripts, links, images, forms, inline styles or arbitrary HTML.
 - Do not add literal textual content.
 - Available variables are reference targets for the user's instruction only.
 - Do not emit variable tokens into html.
 - Never duplicate scalar report data before, after or between trusted components.
-- HTML may only reorder or wrap the authorised component tokens.
+- HTML may only reorder the authorised component tokens.
 - Do not invent variables.
 
-CSS RULES
+CSS SCOPE RULES
+- Every CSS selector must start with exactly one of these stable report hooks:
+  .report-design-cover
+  .report-design-analytics
+  .report-design-departments
+  .report-design-ai-report
+  .report-design-final-conclusion
+- Never use an unscoped selector such as body, html, .pdf-page or h1.
+- Never use the universal selector *.
+- Do not use generated content or pseudo-element content.
+
+USEFUL SAFE STYLE TARGETS
+- Cover:
+  .report-design-cover
+  .report-design-cover .pdf-cover__title
+  .report-design-cover .pdf-cover__project
+  .report-design-cover .pdf-cover__project-meta
+  .report-design-cover .pdf-indicators__cell
+  .report-design-cover .pdf-indicators__value
+  .report-design-cover .pdf-cover-approved__summary
+  .report-design-cover .pdf-cover-commitment
+- Analytics:
+  .report-design-analytics
+  .report-design-analytics .pdf-analytics-page__title
+  .report-design-analytics .pdf-analytics-page__conclusion
+  .report-design-analytics .pdf-quick-read__row
+  .report-design-analytics .pdf-quick-read__value
+- Departments:
+  .report-design-departments
+  .report-design-departments .pdf-analytics-page__title
+  .report-design-departments .pdf-department-allocation__row
+  .report-design-departments .pdf-department-allocation__name
+  .report-design-departments .pdf-department-allocation__fill
+  .report-design-departments .pdf-department-allocation__value
+- AI report:
+  .report-design-ai-report
+  .report-design-ai-report .pdf-ai-page__section-title
+  .report-design-ai-report .pdf-ai-page__category-card
+  .report-design-ai-report .pdf-ai-page__category-title
+  .report-design-ai-report .pdf-ai-page__measure-pill
+  .report-design-ai-report .pdf-ai-page__future
+  .report-design-ai-report .pdf-ai-page__future-title
+  .report-design-ai-report .pdf-ai-page__measure-observation
+- Final conclusion:
+  .report-design-final-conclusion
+  .report-design-final-conclusion .pdf-final-page__title
+  .report-design-final-conclusion .pdf-final-page__conclusion
+  .report-design-final-conclusion .pdf-final-page__commitment
+  .report-design-final-conclusion .pdf-final-page__commitment-level
+  .report-design-final-conclusion .pdf-final-page__commitment-score
+
+CSS PRESENTATION RULES
 - CSS is presentation-only.
+- You MAY make strong visual changes using colours, backgrounds, borders, border-radius, font-size, font-weight, letter-spacing, text alignment, text transform, opacity, and internal margin/padding.
+- You MAY create clearly differentiated cards, stronger visual hierarchy, editorial emphasis and alternate soft backgrounds.
 - No @import.
 - No url().
 - No @font-face.
+- No CSS at-rules.
 - Do not set font-family, the font shorthand or line-height.
 - The stable template owns Poppins typography and line metrics.
 - No JavaScript or executable constructs.
 - No external or remote resources.
 - Do not control physical PDF pagination, page size or page breaks.
 - Do not use @page, page-break-*, break-before, break-after or break-inside.
+- Do not set physical geometry properties such as position, display, float, overflow, width, height, min/max width or height, top, right, bottom, left or transform.
 - The stable application template owns A4 geometry and physical pagination.
-- Do not change the outer geometry of whole report components. Use CSS only for visual presentation inside the authorised layout.
+- Do not change the outer geometry of whole report components.
 
 DATA RULES
 - The available variables are the complete data catalogue authorised as instruction references.

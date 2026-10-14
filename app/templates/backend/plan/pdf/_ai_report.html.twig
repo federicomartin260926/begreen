@@ -281,7 +281,7 @@
 
 {% for reportPage in reportPages %}
     <section
-        class="pdf-ai-page{% if loop.last %} pdf-ai-page--last{% endif %}"
+        class="pdf-ai-page report-design-ai-report{% if loop.last %} pdf-ai-page--last{% endif %}"
         data-pdf-page-weight="{{ reportPage.weight|round }}"
         data-pdf-fragment-count="{{ reportPage.fragments|length }}">
 

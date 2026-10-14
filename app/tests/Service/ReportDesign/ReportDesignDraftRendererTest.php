@@ -70,15 +70,13 @@ final class ReportDesignDraftRendererTest extends TestCase
         $manager->saveDraft(
             $definition,
             <<<'HTML'
-<section class="draft-layout">
 [COMPONENT:cover]
 [COMPONENT:analytics]
 [COMPONENT:ai_report]
 [COMPONENT:departments]
 [COMPONENT:final_conclusion]
-</section>
 HTML,
-            '.draft-layout { padding: 10px; }',
+            '.report-design-cover { background: #f3faf5; }',
             ['source' => 'test'],
         );
 
@@ -116,7 +114,7 @@ HTML,
             $draft['html'],
         );
         self::assertSame(
-            '.draft-layout { padding: 10px; }',
+            '.report-design-cover { background: #f3faf5; }',
             $draft['css'],
         );
 

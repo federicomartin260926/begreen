@@ -6,6 +6,14 @@ namespace App\Service\ReportDesign;
 
 final readonly class ReportDesignValidator
 {
+    private const STYLE_SCOPES = [
+        '.report-design-cover',
+        '.report-design-analytics',
+        '.report-design-departments',
+        '.report-design-ai-report',
+        '.report-design-final-conclusion',
+    ];
+
     public function __construct(
         private ReportDesignComponentCatalog $componentCatalog,
         private ReportDesignDataCatalog $dataCatalog,
@@ -91,31 +99,16 @@ final readonly class ReportDesignValidator
             );
         }
 
-
-        // Eliminamos únicamente los tokens autorizados.
         $remaining = preg_replace(
-            [
-                '/\[COMPONENT:[a-z0-9_-]+\]/',
-                '/\[\[[a-z0-9_.-]+\]\]/',
-            ],
+            '/\[COMPONENT:[a-z0-9_-]+\]/',
             '',
             $html
         );
 
-        if (!is_string($remaining)) {
-            throw new \InvalidArgumentException(
-                'Report design markup is invalid.'
-            );
-        }
-
-        // El layout sólo admite wrappers visuales.
-        $remaining = preg_replace(
-            '/<\/?(?:div|section|span)(?:\s+class=(?:"[A-Za-z0-9 _-]*"|\'[A-Za-z0-9 _-]*\'))?\s*>/i',
-            '',
-            $remaining
-        );
-
-        if (!is_string($remaining) || trim($remaining) !== '') {
+        if (
+            !is_string($remaining)
+            || trim($remaining) !== ''
+        ) {
             throw new \InvalidArgumentException(
                 'Report design contains forbidden HTML or textual content.'
             );
@@ -124,7 +117,16 @@ final readonly class ReportDesignValidator
 
     private function validateCss(string $css): void
     {
-        if (preg_match('/\b(?:font-family|font|line-height)\s*:/i', $css) === 1) {
+        if (trim($css) === '') {
+            return;
+        }
+
+        if (
+            preg_match(
+                '/\b(?:font-family|font|line-height)\s*:/i',
+                $css
+            ) === 1
+        ) {
             throw new \InvalidArgumentException(
                 'Report design may not override the base font family or line height.'
             );
@@ -132,12 +134,19 @@ final readonly class ReportDesignValidator
 
         $forbiddenPatterns = [
             '/@import\b/i' => '@import',
+            '/@font-face\b/i' => '@font-face',
+            '/@page\b/i' => '@page',
+            '/@[a-z-]+\b/i' => 'CSS at-rules',
             '/url\s*\(/i' => 'url()',
             '/expression\s*\(/i' => 'expression()',
             '/behavior\s*:/i' => 'behavior:',
             '/-moz-binding\s*:/i' => '-moz-binding:',
             '/javascript\s*:/i' => 'javascript:',
-            '/@font-face\b/i' => '@font-face',
+            '/\b(?:page-break-(?:before|after|inside)|break-(?:before|after|inside))\s*:/i'
+                => 'pagination properties',
+            '/\b(?:position|display|float|clear|overflow(?:-x|-y)?|width|min-width|max-width|height|min-height|max-height|top|right|bottom|left|transform)\s*:/i'
+                => 'physical geometry properties',
+            '/\bcontent\s*:/i' => 'generated content',
             '/[<>]/' => 'HTML-like angle brackets',
         ];
 
@@ -151,6 +160,84 @@ final readonly class ReportDesignValidator
                 );
             }
         }
-    }
 
+        $cleanCss = preg_replace(
+            '~/\*.*?\*/~s',
+            '',
+            $css
+        );
+
+        if (!is_string($cleanCss)) {
+            throw new \InvalidArgumentException(
+                'Report design CSS is invalid.'
+            );
+        }
+
+        preg_match_all(
+            '/([^{}]+)\{([^{}]*)\}/s',
+            $cleanCss,
+            $rules,
+            PREG_SET_ORDER
+        );
+
+        if ($rules === []) {
+            throw new \InvalidArgumentException(
+                'Report design CSS is invalid.'
+            );
+        }
+
+        $unparsed = preg_replace(
+            '/[^{}]+\{[^{}]*\}/s',
+            '',
+            $cleanCss
+        );
+
+        if (
+            !is_string($unparsed)
+            || trim($unparsed) !== ''
+        ) {
+            throw new \InvalidArgumentException(
+                'Report design CSS is invalid.'
+            );
+        }
+
+        foreach ($rules as $rule) {
+            $selectorList = trim((string) ($rule[1] ?? ''));
+
+            foreach (explode(',', $selectorList) as $selector) {
+                $selector = trim($selector);
+
+                if (
+                    $selector === ''
+                    || str_contains($selector, '*')
+                ) {
+                    throw new \InvalidArgumentException(
+                        'Report design CSS may not use universal selectors.'
+                    );
+                }
+
+                $isScoped = false;
+
+                foreach (self::STYLE_SCOPES as $scope) {
+                    if (
+                        preg_match(
+                            '/^'
+                            .preg_quote($scope, '/')
+                            .'(?=$|[\s.#:\[])/',
+                            $selector
+                        ) === 1
+                    ) {
+                        $isScoped = true;
+                        break;
+                    }
+                }
+
+                if (!$isScoped) {
+                    throw new \InvalidArgumentException(
+                        'Report design CSS selectors must be scoped to an authorised report component.'
+                    );
+                }
+            }
+        }
+    }
 }

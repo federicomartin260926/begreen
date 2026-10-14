@@ -54,21 +54,13 @@ final class ReportDesignRendererTest extends TestCase
         $storage->saveDraft(
             $definition,
             <<<'HTML'
-<section class="custom-cover">
     [COMPONENT:cover]
-</section>
-<section class="custom-summary">
     [COMPONENT:analytics]
     [COMPONENT:ai_report]
-</section>
-<div class="custom-detail">
     [COMPONENT:departments]
-</div>
-<section class="custom-closing">
     [COMPONENT:final_conclusion]
-</section>
 HTML,
-            '.custom-cover { margin: 0; }'
+            '.report-design-cover { background: #f3faf5; }'
         );
 
         $storage->approve($definition);
@@ -110,7 +102,7 @@ HTML,
 
 
         self::assertSame(
-            '.custom-cover { margin: 0; }',
+            '.report-design-cover { background: #f3faf5; }',
             $result['css']
         );
     }

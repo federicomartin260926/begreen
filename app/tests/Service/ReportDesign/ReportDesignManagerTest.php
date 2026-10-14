@@ -55,7 +55,7 @@ final class ReportDesignManagerTest extends TestCase
         $draft = $manager->saveDraft(
             $this->definition(),
             $this->validHtml(),
-            '.report-layout { margin: 0; }',
+            '.report-design-cover { background: #f3faf5; }',
             ['source' => 'test'],
         );
 
@@ -100,7 +100,7 @@ final class ReportDesignManagerTest extends TestCase
         $manager->saveDraft(
             $this->definition(),
             $this->validHtml(),
-            '.report-layout { padding: 4px; }',
+            '.report-design-cover { border: 1px solid #d3e8da; }',
         );
 
         $approved = $manager->approve($this->definition());
@@ -137,13 +137,11 @@ final class ReportDesignManagerTest extends TestCase
     private function validHtml(): string
     {
         return <<<'HTML'
-<section class="report-layout">
 [COMPONENT:cover]
 [COMPONENT:analytics]
 [COMPONENT:ai_report]
 [COMPONENT:departments]
 [COMPONENT:final_conclusion]
-</section>
 HTML;
     }
 }

@@ -5,36 +5,13 @@
         {{ reportDesignCss|raw }}
 
         /*
-         * Layout firewall:
-         * el diseño IA puede cambiar presentación interna, jerarquía,
-         * tipografía y color, pero la geometría/paginación A4 sigue
-         * siendo responsabilidad de la plantilla estable.
+         * Layout firewall.
+         *
+         * El diseño IA puede modificar la presentación visual,
+         * pero las páginas físicas, la geometría A4 y la paginación
+         * pertenecen siempre a la plantilla estable.
          */
-        .cover,
-        .analytics,
-        .ai_report,
-        .departments,
-        .final_conclusion {
-            margin: 0 !important;
-            padding: 0 !important;
-            border: 0 !important;
-            width: auto !important;
-            min-width: 0 !important;
-            max-width: none !important;
-            height: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
-            position: static !important;
-            overflow: visible !important;
-            page-break-before: auto !important;
-            page-break-after: auto !important;
-            page-break-inside: auto !important;
-            break-before: auto !important;
-            break-after: auto !important;
-            break-inside: auto !important;
-        }
-
-        .pdf-page {
+        .report-design-cover {
             position: relative !important;
             width: 210mm !important;
             height: 297mm !important;
@@ -44,7 +21,29 @@
             page-break-after: always !important;
         }
 
-        .pdf-page--last {
+        .report-design-analytics,
+        .report-design-departments,
+        .report-design-ai-report {
+            position: relative !important;
+            width: 210mm !important;
+            height: 296mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            page-break-after: always !important;
+        }
+
+        .report-design-ai-report.pdf-ai-page--last {
+            page-break-after: auto !important;
+        }
+
+        .report-design-final-conclusion {
+            position: relative !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
             page-break-after: auto !important;
         }
     {% endif %}

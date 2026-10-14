@@ -12,19 +12,11 @@ use PHPUnit\Framework\TestCase;
 final class ReportDesignValidatorTest extends TestCase
 {
     private const VALID_HTML = <<<'HTML'
-<section class="report-cover">
-    [COMPONENT:cover]
-</section>
-<section class="report-summary">
-    [COMPONENT:analytics]
-    [COMPONENT:ai_report]
-</section>
-<div class="report-detail">
-    [COMPONENT:departments]
-</div>
-<section class="report-closing">
-    [COMPONENT:final_conclusion]
-</section>
+[COMPONENT:cover]
+[COMPONENT:analytics]
+[COMPONENT:ai_report]
+[COMPONENT:departments]
+[COMPONENT:final_conclusion]
 HTML;
 
     private function validator(): ReportDesignValidator
@@ -39,7 +31,7 @@ HTML;
     {
         $this->validator()->validate(
             self::VALID_HTML,
-            ".report-summary { margin: 10mm 0; }\n"
+            ".report-design-analytics .pdf-quick-read__row { margin: 2mm 0; }\n"
         );
 
         self::assertTrue(true);
@@ -116,8 +108,8 @@ HTML;
     public function testInventedTextIsRejected(): void
     {
         $html = str_replace(
-            '<section class="report-cover">',
-            '<section class="report-cover">Texto inventado',
+            '[COMPONENT:cover]',
+            'Texto inventado[COMPONENT:cover]',
             self::VALID_HTML
         );
 
@@ -179,4 +171,84 @@ HTML;
             '</style><script>alert(1)</script>'
         );
     }
+
+    public function testWrappersAroundComponentsAreRejected(): void
+    {
+        $html = str_replace(
+            '[COMPONENT:cover]',
+            '<section class="wrapper">[COMPONENT:cover]</section>',
+            self::VALID_HTML
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'forbidden HTML or textual content'
+        );
+
+        $this->validator()->validate($html, '');
+    }
+
+    public function testScopedVisualCssIsAccepted(): void
+    {
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.report-design-cover { background: #173f35; color: #f4edda; border: 2px solid #d8c99f; }'
+            .' .report-design-ai-report .pdf-ai-page__category-card { background: #f4eee1; border: 1px solid #c9b98f; font-size: 1.1em; }'
+        );
+
+        self::assertTrue(true);
+    }
+
+    public function testUnscopedCssSelectorIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'selectors must be scoped'
+        );
+
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.pdf-page { color: #123456; }'
+        );
+    }
+
+    public function testUniversalSelectorIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'universal selectors'
+        );
+
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.report-design-cover * { color: #ffffff; }'
+        );
+    }
+
+    public function testPhysicalGeometryCssIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'physical geometry properties'
+        );
+
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.report-design-cover { height: 400mm; }'
+        );
+    }
+
+    public function testPaginationCssIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'pagination properties'
+        );
+
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.report-design-cover { page-break-after: always; }'
+        );
+    }
+
 }
