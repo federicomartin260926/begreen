@@ -309,8 +309,11 @@ CSS PRESENTATION RULES
 - No external or remote resources.
 - Do not control physical PDF pagination, page size or page breaks.
 - Do not use @page, page-break-*, break-before, break-after or break-inside.
-- Do not set physical geometry properties such as position, display, float, overflow, width, height, min/max width or height, top, right, bottom, left or transform.
 - The stable application template owns A4 geometry and physical pagination.
+- Never change geometry on the stable report hook itself (.report-design-cover, .report-design-analytics, .report-design-departments, .report-design-ai-report or .report-design-final-conclusion).
+- On DESCENDANT elements only, you may use display:block, display:inline-block, display:table or display:table-cell and width/min-width/max-width when useful for visual composition.
+- Do not use flex, inline-flex, grid or inline-grid.
+- Never use position, float, clear, overflow, fixed heights, min/max heights, top, right, bottom, left or transform.
 - Do not change the outer geometry of whole report components.
 
 DATA RULES

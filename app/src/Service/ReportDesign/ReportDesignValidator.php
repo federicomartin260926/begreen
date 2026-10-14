@@ -144,8 +144,10 @@ final readonly class ReportDesignValidator
             '/javascript\s*:/i' => 'javascript:',
             '/\b(?:page-break-(?:before|after|inside)|break-(?:before|after|inside))\s*:/i'
                 => 'pagination properties',
-            '/\b(?:position|display|float|clear|overflow(?:-x|-y)?|width|min-width|max-width|height|min-height|max-height|top|right|bottom|left|transform)\s*:/i'
-                => 'physical geometry properties',
+            '/\b(?:position|float|clear|overflow(?:-x|-y)?|height|min-height|max-height|top|right|bottom|left|transform)\s*:/i'
+                => 'unsafe geometry properties',
+            '/\bdisplay\s*:\s*(?:flex|inline-flex|grid|inline-grid)\b/i'
+                => 'unsupported flex/grid layout',
             '/\bcontent\s*:/i' => 'generated content',
             '/[<>]/' => 'HTML-like angle brackets',
         ];
@@ -203,6 +205,7 @@ final readonly class ReportDesignValidator
 
         foreach ($rules as $rule) {
             $selectorList = trim((string) ($rule[1] ?? ''));
+            $declarations = trim((string) ($rule[2] ?? ''));
 
             foreach (explode(',', $selectorList) as $selector) {
                 $selector = trim($selector);
@@ -216,7 +219,7 @@ final readonly class ReportDesignValidator
                     );
                 }
 
-                $isScoped = false;
+                $matchedScope = null;
 
                 foreach (self::STYLE_SCOPES as $scope) {
                     if (
@@ -227,14 +230,50 @@ final readonly class ReportDesignValidator
                             $selector
                         ) === 1
                     ) {
-                        $isScoped = true;
+                        $matchedScope = $scope;
                         break;
                     }
                 }
 
-                if (!$isScoped) {
+                if ($matchedScope === null) {
                     throw new \InvalidArgumentException(
                         'Report design CSS selectors must be scoped to an authorised report component.'
+                    );
+                }
+
+                /*
+                 * La raíz del hook ES la página física.
+                 * Su geometría siempre pertenece a la plantilla estable.
+                 *
+                 * Los descendientes pueden usar display y anchuras para
+                 * composición visual interna, pero no posición absoluta,
+                 * alturas, overflow, transformaciones ni paginación.
+                 */
+                $scopeTail = substr(
+                    $selector,
+                    strlen($matchedScope)
+                );
+
+                $targetsPhysicalRoot =
+                    $scopeTail === ''
+                    || preg_match(
+                        '/^[.#:\[]/',
+                        $scopeTail
+                    ) === 1;
+
+                if (
+                    $targetsPhysicalRoot
+                    && preg_match(
+                        '/\b(display|width|min-width|max-width)\s*:/i',
+                        $declarations,
+                        $geometryMatch
+                    ) === 1
+                ) {
+                    throw new \InvalidArgumentException(
+                        sprintf(
+                            'Report design CSS may not change physical report root geometry with %s.',
+                            strtolower($geometryMatch[1])
+                        )
                     );
                 }
             }

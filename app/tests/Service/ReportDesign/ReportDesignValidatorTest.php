@@ -229,7 +229,7 @@ HTML;
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage(
-            'physical geometry properties'
+            'unsafe geometry properties'
         );
 
         $this->validator()->validate(
