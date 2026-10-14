@@ -135,7 +135,17 @@
                         ></textarea>
 
                         <div class="form-text">
-                            {{ 'backend.report_design.ai_notice'|trans }}
+                            {{
+    (
+        draft
+            ? 'backend.report_design.ai_notice_draft'
+            : (
+                approved
+                    ? 'backend.report_design.ai_notice_approved'
+                    : 'backend.report_design.ai_notice_base'
+            )
+    )|trans
+}}
                         </div>
 
                         <div class="d-flex flex-wrap gap-2 mt-3">
@@ -146,7 +156,13 @@
                                 data-action="click->download-state#start"
                                 data-download-state-loading-label-value="{{ 'backend.report_design.generate.processing'|trans }}">
                                 <i class="bi bi-stars me-1" aria-hidden="true"></i>
-                                {{ 'backend.report_design.generate'|trans }}
+                                {{
+    (
+        draft
+            ? 'backend.report_design.modify'
+            : 'backend.report_design.generate'
+    )|trans
+}}
                             </button>
                         </div>
                     </form>
@@ -193,6 +209,27 @@
                                     </button>
                                 </div>
                             </div>
+                        </form>
+
+                        <form
+                            class="mt-2"
+                            method="post"
+                            action="{{ path('admin_report_design_discard_draft') }}"
+                            onsubmit="return confirm('{{ 'backend.report_design.discard_confirm'|trans|e('js') }}');"
+                        >
+                            <input
+                                type="hidden"
+                                name="_token"
+                                value="{{ csrf_token('report_design_discard_draft') }}"
+                            >
+
+                            <button
+                                type="submit"
+                                class="btn btn-sm btn-outline-danger"
+                            >
+                                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>
+                                {{ 'backend.report_design.discard'|trans }}
+                            </button>
                         </form>
                     {% endif %}
                 </div>

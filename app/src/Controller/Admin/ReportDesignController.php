@@ -136,4 +136,45 @@ final class ReportDesignController extends AbstractController
 
         return $this->redirectToRoute('admin_report_design_index');
     }
+
+    #[Route(
+        '/discard-draft',
+        name: 'discard_draft',
+        methods: ['POST'],
+    )]
+    public function discardDraft(
+        Request $request,
+        ReportDesignCatalog $designCatalog,
+        ReportDesignManager $manager,
+    ): RedirectResponse {
+        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+
+        if (!$this->isCsrfTokenValid(
+            'report_design_discard_draft',
+            (string) $request->request->get('_token'),
+        )) {
+            throw $this->createAccessDeniedException();
+        }
+
+        try {
+            $manager->discardDraft(
+                $designCatalog->sustainabilityPlanGeneral(),
+            );
+
+            $this->addFlash(
+                'success',
+                'backend.report_design.flash.discarded',
+            );
+        } catch (\RuntimeException) {
+            $this->addFlash(
+                'danger',
+                'backend.report_design.flash.discard_error',
+            );
+        }
+
+        return $this->redirectToRoute(
+            'admin_report_design_index'
+        );
+    }
+
 }

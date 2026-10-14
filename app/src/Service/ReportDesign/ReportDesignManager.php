@@ -34,6 +34,45 @@ final readonly class ReportDesignManager
     }
 
     /**
+     * @return array{source:string,html:string,css:string}
+     */
+    public function startingPoint(
+        ReportDesignDefinition $definition,
+    ): array {
+        $draft = $this->storage->loadDraft($definition);
+
+        if ($draft !== null) {
+            return [
+                'source' => 'draft',
+                'html' => $draft['html'],
+                'css' => $draft['css'],
+            ];
+        }
+
+        $approved = $this->storage->loadApproved($definition);
+
+        if ($approved !== null) {
+            return [
+                'source' => 'approved',
+                'html' => $approved['html'],
+                'css' => $approved['css'],
+            ];
+        }
+
+        return [
+            'source' => 'base',
+            'html' => '',
+            'css' => '',
+        ];
+    }
+
+    public function discardDraft(
+        ReportDesignDefinition $definition,
+    ): void {
+        $this->storage->discardDraft($definition);
+    }
+
+    /**
      * @return array{html:string,css:string,metadata:array<string,mixed>}
      */
     public function approve(

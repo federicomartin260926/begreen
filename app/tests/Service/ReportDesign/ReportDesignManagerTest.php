@@ -113,6 +113,64 @@ final class ReportDesignManagerTest extends TestCase
         );
     }
 
+    public function testStartingPointFollowsDraftApprovedBasePriority(): void
+    {
+        $storage = new ReportDesignStorage($this->directory);
+        $manager = $this->manager($storage);
+        $definition = $this->definition();
+
+        self::assertSame(
+            'base',
+            $manager->startingPoint($definition)['source']
+        );
+
+        $manager->saveDraft(
+            $definition,
+            $this->validHtml(),
+            '.report-design-cover { background: #eeeeee; }',
+        );
+
+        $draftStartingPoint = $manager->startingPoint(
+            $definition
+        );
+
+        self::assertSame(
+            'draft',
+            $draftStartingPoint['source']
+        );
+
+        $manager->approve($definition);
+
+        self::assertNull($storage->loadDraft($definition));
+
+        $approvedStartingPoint = $manager->startingPoint(
+            $definition
+        );
+
+        self::assertSame(
+            'approved',
+            $approvedStartingPoint['source']
+        );
+
+        $manager->saveDraft(
+            $definition,
+            $this->validHtml(),
+            '.report-design-cover { background: #dddddd; }',
+        );
+
+        self::assertSame(
+            'draft',
+            $manager->startingPoint($definition)['source']
+        );
+
+        $manager->discardDraft($definition);
+
+        self::assertSame(
+            'approved',
+            $manager->startingPoint($definition)['source']
+        );
+    }
+
     private function manager(
         ?ReportDesignStorage $storage = null,
     ): ReportDesignManager {

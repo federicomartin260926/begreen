@@ -55,6 +55,12 @@ final class ReportDesignStorage
         return $this->loadSnapshot($definition, 'approved');
     }
 
+    public function discardDraft(
+        ReportDesignDefinition $definition,
+    ): void {
+        $this->deleteSnapshot($definition, 'draft');
+    }
+
     /**
      * @return array{html:string,css:string,metadata:array<string,mixed>}
      */
@@ -81,13 +87,19 @@ final class ReportDesignStorage
             (new \DateTimeImmutable())->format(DATE_ATOM);
         $metadata['source'] = 'draft';
 
-        return $this->saveSnapshot(
+        $approved = $this->saveSnapshot(
             $definition,
             'approved',
             $draft['html'],
             $draft['css'],
             $metadata,
         );
+
+        // Approval promotes the draft. There is no longer a pending
+        // working copy after the approved snapshot has been persisted.
+        $this->discardDraft($definition);
+
+        return $approved;
     }
 
     /**
@@ -232,6 +244,53 @@ final class ReportDesignStorage
             'css' => $css,
             'metadata' => $metadata,
         ];
+    }
+
+    private function deleteSnapshot(
+        ReportDesignDefinition $definition,
+        string $stage,
+    ): void {
+        $this->assertStage($stage);
+
+        $directory = $this->stageDirectory($definition, $stage);
+
+        if (!is_dir($directory)) {
+            return;
+        }
+
+        /*
+         * metadata.json is the completion marker for a snapshot.
+         * Delete it first so a concurrent reader can never consider a
+         * partially discarded draft to be a complete valid snapshot.
+         */
+        foreach ([
+            'metadata.json',
+            'design.html',
+            'design.css',
+        ] as $file) {
+            $path = $directory.'/'.$file;
+
+            if (
+                is_file($path)
+                && !unlink($path)
+            ) {
+                throw new \RuntimeException(
+                    'Stored report design draft could not be discarded.'
+                );
+            }
+        }
+
+        $remaining = scandir($directory);
+
+        if (
+            $remaining !== false
+            && array_diff($remaining, ['.', '..']) === []
+            && !rmdir($directory)
+        ) {
+            throw new \RuntimeException(
+                'Stored report design draft directory could not be removed.'
+            );
+        }
     }
 
     private function stageDirectory(

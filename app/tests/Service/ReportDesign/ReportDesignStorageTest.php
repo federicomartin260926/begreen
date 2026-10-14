@@ -69,6 +69,50 @@ final class ReportDesignStorageTest extends TestCase
         );
     }
 
+    public function testDiscardDraftKeepsApprovedDesign(): void
+    {
+        $definition = (new ReportDesignCatalog())
+            ->sustainabilityPlanGeneral();
+        $storage = new ReportDesignStorage(
+            $this->storageDirectory
+        );
+
+        $storage->saveDraft(
+            $definition,
+            '[COMPONENT:cover]',
+            '.draft { color: #123456; }',
+        );
+
+        $approved = $storage->approve($definition);
+
+        self::assertNull($storage->loadDraft($definition));
+        self::assertNotNull(
+            $storage->loadApproved($definition)
+        );
+
+        $storage->saveDraft(
+            $definition,
+            '[COMPONENT:analytics]',
+            '.second { color: #654321; }',
+        );
+
+        $storage->discardDraft($definition);
+
+        self::assertNull($storage->loadDraft($definition));
+
+        $stillApproved = $storage->loadApproved($definition);
+
+        self::assertNotNull($stillApproved);
+        self::assertSame(
+            $approved['html'],
+            $stillApproved['html']
+        );
+        self::assertSame(
+            $approved['css'],
+            $stillApproved['css']
+        );
+    }
+
     public function testIntegrityFailureIsDetected(): void
     {
         $definition = (new ReportDesignCatalog())->sustainabilityPlanGeneral();
