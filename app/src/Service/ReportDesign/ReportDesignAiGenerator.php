@@ -311,6 +311,7 @@ CSS PRESENTATION RULES
 - Do not use @page, page-break-*, break-before, break-after or break-inside.
 - The stable application template owns A4 geometry and physical pagination.
 - Never change geometry on the stable report hook itself (.report-design-cover, .report-design-analytics, .report-design-departments, .report-design-ai-report or .report-design-final-conclusion).
+- On a stable report hook itself, use only page-level colour/background styling. Do not place border, border-radius, margin or padding on the stable hook; apply decorative borders and spacing to descendant elements instead.
 - On DESCENDANT elements only, you may use display:block, display:inline-block, display:table or display:table-cell and width/min-width/max-width when useful for visual composition.
 - Do not use flex, inline-flex, grid or inline-grid.
 - Never use position, float, clear, overflow, fixed heights, min/max heights, top, right, bottom, left or transform.
