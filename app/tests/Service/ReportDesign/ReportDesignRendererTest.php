@@ -42,7 +42,7 @@ final class ReportDesignRendererTest extends TestCase
         self::assertNull($result);
     }
 
-    public function testApprovedDesignRendersComponentsAndSafeVariables(): void
+    public function testApprovedDesignRendersTrustedComponents(): void
     {
         $catalog = new ReportDesignCatalog();
         $definition = $catalog->sustainabilityPlanGeneral();
@@ -55,11 +55,9 @@ final class ReportDesignRendererTest extends TestCase
             $definition,
             <<<'HTML'
 <section class="custom-cover">
-    [[project.name]]
     [COMPONENT:cover]
 </section>
 <section class="custom-summary">
-    <span class="score">[[score.percent]]</span>
     [COMPONENT:analytics]
     [COMPONENT:ai_report]
 </section>
@@ -84,11 +82,6 @@ HTML,
 
         self::assertNotNull($result);
 
-        // La variable del proyecto se escapa siempre.
-        self::assertStringContainsString(
-            'Proyecto &lt;QA&gt;',
-            $result['html']
-        );
 
         self::assertStringContainsString(
             '<article id="cover">COVER</article>',
@@ -115,10 +108,6 @@ HTML,
             $result['html']
         );
 
-        self::assertStringContainsString(
-            '60%',
-            $result['html']
-        );
 
         self::assertSame(
             '.custom-cover { margin: 0; }',

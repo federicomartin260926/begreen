@@ -85,6 +85,13 @@ final readonly class ReportDesignValidator
             }
         }
 
+        if (($variableMatches[1] ?? []) !== []) {
+            throw new \InvalidArgumentException(
+                'Report design may not render scalar variables outside trusted report components.'
+            );
+        }
+
+
         // Eliminamos únicamente los tokens autorizados.
         $remaining = preg_replace(
             [
@@ -117,6 +124,12 @@ final readonly class ReportDesignValidator
 
     private function validateCss(string $css): void
     {
+        if (preg_match('/\\b(?:font-family|font|line-height)\\s*:/i', $css) === 1) {
+            throw new \InvalidArgumentException(
+                'Report design may not override the base font family or line height.'
+            );
+        }
+
         $forbiddenPatterns = [
             '/@import\b/i',
             '/url\s*\(/i',

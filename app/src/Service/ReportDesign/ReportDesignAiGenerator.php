@@ -239,7 +239,10 @@ HTML RULES
 - Do not generate Twig syntax.
 - Do not generate scripts, links, images, forms, inline styles or arbitrary HTML.
 - Do not add literal textual content.
-- Only available variable tokens may be inserted.
+- Available variables are reference targets for the user's instruction only.
+- Do not emit variable tokens into html.
+- Never duplicate scalar report data before, after or between trusted components.
+- HTML may only reorder or wrap the authorised component tokens.
 - Do not invent variables.
 
 CSS RULES
@@ -247,6 +250,8 @@ CSS RULES
 - No @import.
 - No url().
 - No @font-face.
+- Do not set font-family, the font shorthand or line-height.
+- The stable template owns Poppins typography and line metrics.
 - No JavaScript or executable constructs.
 - No external or remote resources.
 - Do not control physical PDF pagination, page size or page breaks.
@@ -255,7 +260,8 @@ CSS RULES
 - Do not change the outer geometry of whole report components. Use CSS only for visual presentation inside the authorised layout.
 
 DATA RULES
-- The available variables are the complete data catalogue authorised for this design.
+- The available variables are the complete data catalogue authorised as instruction references.
+- They identify data already rendered by trusted report components and must not be emitted as additional html content.
 - Never infer other application data or entity fields.
 - unavailableData is ONLY for an explicitly requested data value or content item that would need application data not present in availableVariables or availableComponents.
 - Presentation concepts are NOT missing data. Ordering, spacing, typography, colours, contrast, visual hierarchy, branding, editorial style and preserving pagination must never be added to unavailableData.

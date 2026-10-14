@@ -71,7 +71,6 @@ final class ReportDesignDraftRendererTest extends TestCase
             $definition,
             <<<'HTML'
 <section class="draft-layout">
-[[project.name]]
 [COMPONENT:cover]
 [COMPONENT:analytics]
 [COMPONENT:ai_report]
@@ -112,10 +111,6 @@ HTML,
         );
 
         self::assertNotNull($draft);
-        self::assertStringContainsString(
-            'Proyecto &lt;QA&gt;',
-            $draft['html'],
-        );
         self::assertStringContainsString(
             '<div>COVER</div>',
             $draft['html'],

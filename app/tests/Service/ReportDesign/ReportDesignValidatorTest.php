@@ -13,11 +13,9 @@ final class ReportDesignValidatorTest extends TestCase
 {
     private const VALID_HTML = <<<'HTML'
 <section class="report-cover">
-    [[project.name]]
     [COMPONENT:cover]
 </section>
 <section class="report-summary">
-    <span class="score">[[score.percent]]</span>
     [COMPONENT:analytics]
     [COMPONENT:ai_report]
 </section>
@@ -47,24 +45,27 @@ HTML;
         self::assertTrue(true);
     }
 
-    public function testKnownVariablesCanBeUsed(): void
+    public function testKnownVariablesCannotBeRenderedAsAdditionalContent(): void
     {
         $html = str_replace(
-            '[[project.name]]',
-            '[[project.name]][[ai.general_conclusion]]',
+            '[COMPONENT:cover]',
+            '[[project.name]][COMPONENT:cover]',
             self::VALID_HTML
         );
 
-        $this->validator()->validate($html, '');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'may not render scalar variables outside trusted report components'
+        );
 
-        self::assertTrue(true);
+        $this->validator()->validate($html, '');
     }
 
     public function testUnknownVariableIsRejected(): void
     {
         $html = str_replace(
-            '[[project.name]]',
-            '[[project.secret]]',
+            '[COMPONENT:cover]',
+            '[[project.secret]][COMPONENT:cover]',
             self::VALID_HTML
         );
 
@@ -124,6 +125,39 @@ HTML;
         $this->expectExceptionMessage('forbidden HTML or textual content');
 
         $this->validator()->validate($html, '');
+    }
+
+    public function testFontFamilyOverrideIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('base font family or line height');
+
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.report-cover { font-family: Georgia, serif; }'
+        );
+    }
+
+    public function testFontShorthandOverrideIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('base font family or line height');
+
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.report-cover { font: 16px Georgia, serif; }'
+        );
+    }
+
+    public function testLineHeightOverrideIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('base font family or line height');
+
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.report-cover { line-height: 1.8; }'
+        );
     }
 
     public function testRemoteCssResourceIsRejected(): void
