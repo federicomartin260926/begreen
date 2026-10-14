@@ -124,29 +124,33 @@ final readonly class ReportDesignValidator
 
     private function validateCss(string $css): void
     {
-        if (preg_match('/\\b(?:font-family|font|line-height)\\s*:/i', $css) === 1) {
+        if (preg_match('/\b(?:font-family|font|line-height)\s*:/i', $css) === 1) {
             throw new \InvalidArgumentException(
                 'Report design may not override the base font family or line height.'
             );
         }
 
         $forbiddenPatterns = [
-            '/@import\b/i',
-            '/url\s*\(/i',
-            '/expression\s*\(/i',
-            '/behavior\s*:/i',
-            '/-moz-binding\s*:/i',
-            '/javascript\s*:/i',
-            '/@font-face\b/i',
-            '/[<>]/',
+            '/@import\b/i' => '@import',
+            '/url\s*\(/i' => 'url()',
+            '/expression\s*\(/i' => 'expression()',
+            '/behavior\s*:/i' => 'behavior:',
+            '/-moz-binding\s*:/i' => '-moz-binding:',
+            '/javascript\s*:/i' => 'javascript:',
+            '/@font-face\b/i' => '@font-face',
+            '/[<>]/' => 'HTML-like angle brackets',
         ];
 
-        foreach ($forbiddenPatterns as $pattern) {
+        foreach ($forbiddenPatterns as $pattern => $label) {
             if (preg_match($pattern, $css) === 1) {
                 throw new \InvalidArgumentException(
-                    'Report design CSS contains a forbidden construct.'
+                    sprintf(
+                        'Report design CSS may not use %s.',
+                        $label
+                    )
                 );
             }
         }
     }
+
 }
