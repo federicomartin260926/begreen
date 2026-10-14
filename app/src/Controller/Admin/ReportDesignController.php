@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use Psr\Log\LoggerInterface;
 use App\Exception\Ai\AiReportException;
 use App\Exception\ReportDesign\ReportDesignRequiresDevelopmentException;
 use App\Service\Ai\AiReportSettingResolver;
@@ -51,6 +52,7 @@ final class ReportDesignController extends AbstractController
         Request $request,
         ReportDesignCatalog $designCatalog,
         ReportDesignAiGenerator $generator,
+        LoggerInterface $logger,
     ): RedirectResponse {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
@@ -81,7 +83,17 @@ final class ReportDesignController extends AbstractController
                 'danger',
                 'backend.report_design.flash.ai_error',
             );
-        } catch (\InvalidArgumentException) {
+        } catch (\InvalidArgumentException $exception) {
+            $logger->warning(
+                'AI report design proposal rejected by validator.',
+                [
+                    'reason' => $exception->getMessage(),
+                    'exception_class' => $exception::class,
+                    'document' => $definition->document,
+                    'variant' => $definition->variant,
+                ],
+            );
+
             $this->addFlash(
                 'danger',
                 'backend.report_design.flash.invalid_design',
