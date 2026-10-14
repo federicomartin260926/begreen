@@ -132,6 +132,26 @@ final readonly class ReportDesignValidator
             );
         }
 
+        /*
+         * Una propiedad geométrica peligrosa sólo cuenta cuando empieza
+         * realmente una declaración CSS. Así evitamos falsos positivos
+         * como border-top, border-left o border-bottom.
+         */
+        if (
+            preg_match(
+                '/(?:^|[;{])\s*(position|float|clear|overflow(?:-x|-y)?|height|min-height|max-height|top|right|bottom|left|transform)\s*:/i',
+                $css,
+                $unsafeGeometryMatch
+            ) === 1
+        ) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Report design CSS may not use unsafe geometry properties (%s).',
+                    strtolower($unsafeGeometryMatch[1])
+                )
+            );
+        }
+
         $forbiddenPatterns = [
             '/@import\b/i' => '@import',
             '/@font-face\b/i' => '@font-face',
@@ -144,8 +164,6 @@ final readonly class ReportDesignValidator
             '/javascript\s*:/i' => 'javascript:',
             '/\b(?:page-break-(?:before|after|inside)|break-(?:before|after|inside))\s*:/i'
                 => 'pagination properties',
-            '/\b(?:position|float|clear|overflow(?:-x|-y)?|height|min-height|max-height|top|right|bottom|left|transform)\s*:/i'
-                => 'unsafe geometry properties',
             '/\bdisplay\s*:\s*(?:flex|inline-flex|grid|inline-grid)\b/i'
                 => 'unsupported flex/grid layout',
             '/\bcontent\s*:/i' => 'generated content',
@@ -264,7 +282,7 @@ final readonly class ReportDesignValidator
                 if (
                     $targetsPhysicalRoot
                     && preg_match(
-                        '/\b(display|width|min-width|max-width)\s*:/i',
+                        '/(?:^|;)\s*(display|min-width|max-width|width)\s*:/i',
                         $declarations,
                         $geometryMatch
                     ) === 1

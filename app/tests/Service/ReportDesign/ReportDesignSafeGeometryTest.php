@@ -97,4 +97,36 @@ HTML;
             .'}'
         );
     }
+
+    public function testBorderPropertiesAreNotMistakenForGeometry(): void
+    {
+        $this->validator()->validate(
+            self::HTML,
+            '.report-design-cover {'
+            .' border-top: 2px solid #d8c99f;'
+            .' border-right: 2px solid #d8c99f;'
+            .' border-bottom: 2px solid #d8c99f;'
+            .' border-left: 2px solid #d8c99f;'
+            .' border-width: 2px;'
+            .'}'
+        );
+
+        self::assertTrue(true);
+    }
+
+    public function testUnsafeGeometryReportsExactProperty(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'unsafe geometry properties (transform)'
+        );
+
+        $this->validator()->validate(
+            self::HTML,
+            '.report-design-cover .pdf-cover__title {'
+            .' transform: scale(1.1);'
+            .'}'
+        );
+    }
+
 }
