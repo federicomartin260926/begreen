@@ -13,6 +13,15 @@ final readonly class ReportDesignValidator
         '.report-design-ai-report',
         '.report-design-final-conclusion',
     ];
+    private const LOGO_CONTAINER_SELECTOR =
+        '.report-design-cover .pdf-cover-company-logos';
+    private const LOGO_CELL_SELECTOR =
+        '.report-design-cover .pdf-cover-company-logos__cell';
+    private const LOGO_IMAGE_SELECTOR =
+        '.report-design-cover .pdf-cover-company-logos__image';
+    private const LOGO_MIN_SIZE_LIMIT_MM = 8.0;
+    private const LOGO_MAX_SIZE_LIMIT_MM = 40.0;
+    private const LOGO_MAX_SPACING_MM = 2.5;
 
     public function __construct(
         private ReportDesignComponentCatalog $componentCatalog,
@@ -132,26 +141,6 @@ final readonly class ReportDesignValidator
             );
         }
 
-        /*
-         * Una propiedad geométrica peligrosa sólo cuenta cuando empieza
-         * realmente una declaración CSS. Así evitamos falsos positivos
-         * como border-top, border-left o border-bottom.
-         */
-        if (
-            preg_match(
-                '/(?:^|[;{])\s*(position|float|clear|overflow(?:-x|-y)?|height|min-height|max-height|top|right|bottom|left|transform)\s*:/i',
-                $css,
-                $unsafeGeometryMatch
-            ) === 1
-        ) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'Report design CSS may not use unsafe geometry properties (%s).',
-                    strtolower($unsafeGeometryMatch[1])
-                )
-            );
-        }
-
         $forbiddenPatterns = [
             '/@import\b/i' => '@import',
             '/@font-face\b/i' => '@font-face',
@@ -259,6 +248,38 @@ final readonly class ReportDesignValidator
                     );
                 }
 
+                $this->validateLogoRule($selector, $declarations);
+
+                preg_match_all(
+                    '/(?:^|;)\s*(position|float|clear|overflow(?:-x|-y)?|height|min-height|max-height|top|right|bottom|left|transform)\s*:\s*([^;]*)/i',
+                    $declarations,
+                    $unsafeGeometryMatches,
+                    PREG_SET_ORDER
+                );
+
+                foreach ($unsafeGeometryMatches as $unsafeGeometryMatch) {
+                    $property = strtolower($unsafeGeometryMatch[1]);
+                    $value = trim($unsafeGeometryMatch[2]);
+
+                    if (
+                        $selector === self::LOGO_IMAGE_SELECTOR
+                        && $property === 'height'
+                        && preg_match(
+                            '/^auto\s*!important$/i',
+                            $value
+                        ) === 1
+                    ) {
+                        continue;
+                    }
+
+                    throw new \InvalidArgumentException(
+                        sprintf(
+                            'Report design CSS may not use unsafe geometry properties (%s).',
+                            $property
+                        )
+                    );
+                }
+
                 /*
                  * La raíz del hook ES la página física.
                  * Su geometría siempre pertenece a la plantilla estable.
@@ -295,6 +316,148 @@ final readonly class ReportDesignValidator
                     );
                 }
             }
+        }
+    }
+
+    private function validateLogoRule(
+        string $selector,
+        string $declarations,
+    ): void {
+        if (!str_contains($selector, '.pdf-cover-company-logos')) {
+            return;
+        }
+
+        $allowedProperties = match ($selector) {
+            self::LOGO_CONTAINER_SELECTOR => [
+                'margin-left',
+                'margin-right',
+            ],
+            self::LOGO_CELL_SELECTOR => ['padding-right'],
+            self::LOGO_IMAGE_SELECTOR => ['max-width', 'height'],
+            default => throw new \InvalidArgumentException(
+                'Report design CSS may only target authorised logo selectors.'
+            ),
+        };
+
+        $properties = [];
+
+        foreach (explode(';', $declarations) as $declaration) {
+            $declaration = trim($declaration);
+
+            if ($declaration === '') {
+                continue;
+            }
+
+            if (
+                preg_match(
+                    '/^([a-z-]+)\s*:\s*(.+)$/i',
+                    $declaration,
+                    $matches
+                ) !== 1
+            ) {
+                throw new \InvalidArgumentException(
+                    'Report design logo CSS is invalid.'
+                );
+            }
+
+            $property = strtolower($matches[1]);
+            $value = trim($matches[2]);
+
+            if (
+                !in_array($property, $allowedProperties, true)
+                || isset($properties[$property])
+            ) {
+                throw new \InvalidArgumentException(
+                    'Report design logo CSS uses an unsupported property.'
+                );
+            }
+
+            $properties[$property] = $value;
+
+            match ($selector) {
+                self::LOGO_CONTAINER_SELECTOR =>
+                    $this->validateLogoAlignmentValue($value),
+                self::LOGO_CELL_SELECTOR =>
+                    $this->validateLogoSpacingValue($value),
+                self::LOGO_IMAGE_SELECTOR =>
+                    $this->validateLogoImageValue($property, $value),
+            };
+        }
+
+        if (
+            $selector === self::LOGO_IMAGE_SELECTOR
+            && (
+                !isset($properties['max-width'])
+                || !isset($properties['height'])
+            )
+        ) {
+            throw new \InvalidArgumentException(
+                'Report design logo max-width and automatic height must be set together.'
+            );
+        }
+    }
+
+    private function validateLogoAlignmentValue(string $value): void
+    {
+        if (preg_match('/^(?:auto|0(?:mm)?)$/i', $value) !== 1) {
+            throw new \InvalidArgumentException(
+                'Report design logo alignment must use only auto or 0.'
+            );
+        }
+    }
+
+    private function validateLogoSpacingValue(string $value): void
+    {
+        if (preg_match('/^(0|(?:\d+(?:\.\d+)?)mm)$/i', $value, $matches) !== 1) {
+            throw new \InvalidArgumentException(
+                'Report design logo spacing must use millimetres.'
+            );
+        }
+
+        $spacing = (float) $matches[1];
+
+        if ($spacing < 0 || $spacing > self::LOGO_MAX_SPACING_MM) {
+            throw new \InvalidArgumentException(
+                'Report design logo spacing is outside the safe range.'
+            );
+        }
+    }
+
+    private function validateLogoImageValue(
+        string $property,
+        string $value,
+    ): void {
+        if ($property === 'height') {
+            if (preg_match('/^auto\s*!important$/i', $value) !== 1) {
+                throw new \InvalidArgumentException(
+                    'Report design logo height must preserve aspect ratio.'
+                );
+            }
+
+            return;
+        }
+
+        if (
+            preg_match(
+                '/^(\d+(?:\.\d+)?)mm\s*!important$/i',
+                $value,
+                $matches
+            ) !== 1
+        ) {
+            throw new \InvalidArgumentException(
+                'Report design logo max-width must use safe millimetres.'
+            );
+        }
+
+        $sizeLimit = (float) $matches[1];
+
+        if (
+            $sizeLimit < self::LOGO_MIN_SIZE_LIMIT_MM
+            || $sizeLimit > self::LOGO_MAX_SIZE_LIMIT_MM
+        ) {
+            throw new \InvalidArgumentException(
+                'Report design logo max-width is outside the safe range.'
+            );
         }
     }
 }

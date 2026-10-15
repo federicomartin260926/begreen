@@ -285,6 +285,9 @@ USEFUL SAFE STYLE TARGETS
   .report-design-cover .pdf-cover__project-meta
   .report-design-cover .pdf-indicators__cell
   .report-design-cover .pdf-indicators__value
+  .report-design-cover .pdf-cover-company-logos
+  .report-design-cover .pdf-cover-company-logos__cell
+  .report-design-cover .pdf-cover-company-logos__image
   .report-design-cover .pdf-cover-approved__summary
   .report-design-cover .pdf-cover-approved__summary-title
   .report-design-cover .pdf-cover-approved__summary-table
@@ -344,11 +347,16 @@ CSS PRESENTATION RULES
 - Do not control physical PDF pagination, page size or page breaks.
 - Do not use @page, page-break-*, break-before, break-after or break-inside.
 - The stable application template owns A4 geometry and physical pagination.
+- Logo styling may only affect the existing project logos in their current order and location.
+- To reduce or limit logo size without distortion, use exactly .report-design-cover .pdf-cover-company-logos__image with max-width from 8mm to 40mm !important and height: auto !important in the same rule. Never use width: the logos may not grow beyond the safe inline size calculated automatically by the PDF.
+- Align the logo group with margin-left and margin-right set only to auto or 0 on .report-design-cover .pdf-cover-company-logos. Use both auto to centre, auto/0 to align right, and 0/auto to align left.
+- Set horizontal logo separation only with padding-right from 0mm to 2.5mm on .report-design-cover .pdf-cover-company-logos__cell.
+- Never upload, replace, remove, reorder, overlap, rotate or freely position logos, and never change their source files or aspect ratio.
 - Never change geometry on the stable report hook itself (.report-design-cover, .report-design-analytics, .report-design-departments, .report-design-ai-report or .report-design-final-conclusion).
 - On a stable report hook itself, use only page-level colour/background styling. Do not place border, border-radius, margin or padding on the stable hook; apply decorative borders and spacing to descendant elements instead.
 - On DESCENDANT elements only, you may use display:block, display:inline-block, display:table or display:table-cell and width/min-width/max-width when useful for visual composition.
 - Do not use flex, inline-flex, grid or inline-grid.
-- Never use position, float, clear, overflow, fixed heights, min/max heights, top, right, bottom, left or transform.
+- Never use position, float, clear, overflow, fixed heights, min/max heights, top, right, bottom, left or transform. The only height exception is height: auto !important on the exact logo image selector and paired with its safe max-width.
 - Do not change the outer geometry of whole report components.
 
 DATA RULES
