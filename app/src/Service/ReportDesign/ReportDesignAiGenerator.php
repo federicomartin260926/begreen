@@ -286,7 +286,17 @@ USEFUL SAFE STYLE TARGETS
   .report-design-cover .pdf-indicators__cell
   .report-design-cover .pdf-indicators__value
   .report-design-cover .pdf-cover-approved__summary
+  .report-design-cover .pdf-cover-approved__summary-title
+  .report-design-cover .pdf-cover-approved__summary-table
+  .report-design-cover .pdf-cover-approved__summary-table td
+  .report-design-cover .pdf-cover-approved__summary-line
   .report-design-cover .pdf-cover-commitment
+  .report-design-cover .pdf-cover-commitment__heading h3
+  .report-design-cover .pdf-cover-commitment__level
+  .report-design-cover .pdf-cover-commitment__labels td
+  .report-design-cover .pdf-cover-commitment__meta
+  .report-design-cover .pdf-cover-commitment__meta td
+  .report-design-cover .pdf-cover-commitment__message
 - Analytics:
   .report-design-analytics
   .report-design-analytics .pdf-analytics-page__title
@@ -314,12 +324,14 @@ USEFUL SAFE STYLE TARGETS
   .report-design-final-conclusion .pdf-final-page__title
   .report-design-final-conclusion .pdf-final-page__conclusion
   .report-design-final-conclusion .pdf-final-page__commitment
+  .report-design-final-conclusion .pdf-final-page__commitment-label
   .report-design-final-conclusion .pdf-final-page__commitment-level
   .report-design-final-conclusion .pdf-final-page__commitment-score
 
 CSS PRESENTATION RULES
 - CSS is presentation-only.
 - You MAY make strong visual changes using colours, backgrounds, borders, border-radius, font-size, font-weight, letter-spacing, text alignment, text transform, opacity, and internal margin/padding.
+- When changing the text size of a complete block, apply font-size to its relevant descendant text targets when the stable template gives them explicit sizes; do not limit the change to the parent container.
 - You MAY create clearly differentiated cards, stronger visual hierarchy, editorial emphasis and alternate soft backgrounds.
 - No @import.
 - No url().

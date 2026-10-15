@@ -199,6 +199,19 @@ HTML;
         self::assertTrue(true);
     }
 
+    public function testFontSizeOnCoverTextDescendantsIsAccepted(): void
+    {
+        $this->validator()->validate(
+            self::VALID_HTML,
+            '.report-design-cover .pdf-cover-approved__summary-title { font-size: 16px; }'
+            .' .report-design-cover .pdf-cover-commitment__heading h3 { font-size: 15px; }'
+            .' .report-design-cover .pdf-cover-commitment__level { font-size: 14px; }'
+            .' .report-design-cover .pdf-cover-commitment__meta td { font-size: 12px; }'
+        );
+
+        self::assertTrue(true);
+    }
+
     public function testUnscopedCssSelectorIsRejected(): void
     {
         $this->expectException(\InvalidArgumentException::class);

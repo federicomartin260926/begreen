@@ -3759,7 +3759,7 @@ pdf_grouped_visual:
 "backend.report_design.guide_missing_data_title": "When data is unavailable"
 "backend.report_design.guide_missing_data": "If you request information that is not available to the designer, the application will indicate that the data requires development enablement. This means it must first be technically added to the authorised catalogue before it can be used in the design."
 "backend.report_design.guide_ai_title": "AI usage and review"
-"backend.report_design.guide_ai": "Each generation or modification uses the configured AI provider and model and may consume its credits. AI can interpret an instruction slightly differently from what you expected, so always download and review the PDF before approving the design."
+"backend.report_design.guide_ai": "Each generation or modification uses the configured AI provider and model and may consume its credits. AI can interpret an instruction slightly differently from what you expected. Significant changes to text size may alter line breaks and pagination. Always download and review the PDF before approving."
 "backend.report_design.how_to_title": "How to use the designer"
 "backend.report_design.how_to_help": "Write the instruction in natural language. The components on the right are complete PDF blocks that you can reorder, emphasise or present differently. Available data helps identify existing information you want to emphasise; it is not duplicated as new content. You do not need to copy the codes. Base typography and line spacing are preserved."
 "backend.report_design.example_label": "Example"

@@ -3812,7 +3812,7 @@ pdf_grouped_visual:
 "backend.report_design.guide_missing_data_title": "Cuando falta un dato"
 "backend.report_design.guide_missing_data": "Si pides utilizar información que no está disponible para el diseñador, la aplicación indicará que ese dato requiere habilitación de desarrollo. Eso significa que debe incorporarse técnicamente al catálogo autorizado antes de poder utilizarlo en el diseño."
 "backend.report_design.guide_ai_title": "Uso de IA y revisión"
-"backend.report_design.guide_ai": "Cada generación o modificación utiliza el proveedor y modelo IA configurados y puede consumir sus créditos. La IA puede interpretar una instrucción de forma ligeramente distinta a la esperada, por lo que conviene descargar y revisar siempre el PDF antes de aprobar el diseño."
+"backend.report_design.guide_ai": "Cada generación o modificación utiliza el proveedor y modelo IA configurados y puede consumir sus créditos. La IA puede interpretar una instrucción de forma ligeramente distinta a la esperada. Los cambios importantes en tamaño de texto pueden modificar saltos de línea y paginación. Descarga y revisa siempre el PDF antes de aprobar."
 "backend.report_design.how_to_title": "Cómo usar el diseñador"
 "backend.report_design.how_to_help": "Escribe la instrucción en lenguaje natural. Los componentes de la derecha son bloques completos del PDF que puedes ordenar, destacar o presentar de otra forma. Los datos disponibles sirven para indicar qué información existente quieres destacar; no se duplican como contenido nuevo. No necesitas copiar sus códigos. La tipografía base y el interlineado se conservan."
 "backend.report_design.example_label": "Ejemplo"
