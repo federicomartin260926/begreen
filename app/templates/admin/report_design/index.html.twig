@@ -94,21 +94,85 @@
                         {{ 'backend.report_design.instruction_help'|trans }}
                     </p>
 
-                    <div class="alert alert-light border small mb-3">
-                        <div class="fw-semibold mb-1">
-                            <i class="bi bi-lightbulb me-1" aria-hidden="true"></i>
-                            {{ 'backend.report_design.how_to_title'|trans }}
+                    <details class="border rounded bg-body-tertiary mb-4">
+                        <summary class="px-3 py-3 fw-semibold" style="cursor: pointer;">
+                            <i class="bi bi-book me-1" aria-hidden="true"></i>
+                            {{ 'backend.report_design.guide_title'|trans }}
+                        </summary>
+
+                        <div class="px-3 pb-3 small">
+                            <p class="text-muted mb-3">
+                                {{ 'backend.report_design.guide_intro'|trans }}
+                            </p>
+
+                            <h4 class="h6">
+                                {{ 'backend.report_design.guide_flow_title'|trans }}
+                            </h4>
+                            <p>
+                                {{ 'backend.report_design.guide_flow'|trans }}
+                            </p>
+
+                            <h4 class="h6 mt-3">
+                                {{ 'backend.report_design.guide_iteration_title'|trans }}
+                            </h4>
+                            <p>
+                                {{ 'backend.report_design.guide_iteration'|trans }}
+                            </p>
+
+                            <div class="alert alert-light border py-2 mb-3">
+                                <strong>
+                                    {{ 'backend.report_design.guide_iteration_example_label'|trans }}
+                                </strong>
+                                {{ 'backend.report_design.guide_iteration_example'|trans }}
+                            </div>
+
+                            <h4 class="h6 mt-3">
+                                {{ 'backend.report_design.guide_examples_title'|trans }}
+                            </h4>
+                            <ul class="mb-3">
+                                <li>{{ 'backend.report_design.guide_example_1'|trans }}</li>
+                                <li>{{ 'backend.report_design.guide_example_2'|trans }}</li>
+                                <li>{{ 'backend.report_design.guide_example_3'|trans }}</li>
+                                <li>{{ 'backend.report_design.guide_example_4'|trans }}</li>
+                            </ul>
+
+                            <h4 class="h6 mt-3">
+                                {{ 'backend.report_design.guide_can_title'|trans }}
+                            </h4>
+                            <p>
+                                {{ 'backend.report_design.guide_can'|trans }}
+                            </p>
+
+                            <h4 class="h6 mt-3">
+                                {{ 'backend.report_design.guide_limits_title'|trans }}
+                            </h4>
+                            <p>
+                                {{ 'backend.report_design.guide_limits'|trans }}
+                            </p>
+
+                            <h4 class="h6 mt-3">
+                                {{ 'backend.report_design.guide_discard_title'|trans }}
+                            </h4>
+                            <p>
+                                {{ 'backend.report_design.guide_discard'|trans }}
+                            </p>
+
+                            <h4 class="h6 mt-3">
+                                {{ 'backend.report_design.guide_missing_data_title'|trans }}
+                            </h4>
+                            <p>
+                                {{ 'backend.report_design.guide_missing_data'|trans }}
+                            </p>
+
+                            <h4 class="h6 mt-3">
+                                {{ 'backend.report_design.guide_ai_title'|trans }}
+                            </h4>
+                            <p class="mb-0">
+                                {{ 'backend.report_design.guide_ai'|trans }}
+                            </p>
                         </div>
-                        <div>
-                            {{ 'backend.report_design.how_to_help'|trans }}
-                        </div>
-                        <div class="mt-2">
-                            <span class="fw-semibold">
-                                {{ 'backend.report_design.example_label'|trans }}:
-                            </span>
-                            {{ 'backend.report_design.how_to_example'|trans }}
-                        </div>
-                    </div>
+                    </details>
+
 
                     <form
                         method="post"
