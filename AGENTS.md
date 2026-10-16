@@ -16,6 +16,15 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Keep production image-based, not bind-mount based.
 * Do not change production deployment wiring unless explicitly requested.
 
+## Secrets and deployment safety
+
+* Never hard-code, commit, echo or log API keys, tokens, passwords or credentials.
+* Secrets belong in the existing environment/configuration mechanism and must stay outside Git.
+* When inspecting configuration, avoid printing secret values; verify presence/configuration without exposing credentials.
+* DEV is the default deployment and validation target unless the task explicitly authorizes another environment.
+* Never deploy to production or change production deployment/configuration implicitly.
+* Treat any production-affecting action as a separate explicit authorization boundary.
+
 ## Frontend assets
 
 * Source frontend code lives in `app/assets/`.
@@ -85,6 +94,18 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Do not introduce protocol editions, catalog editions, plan snapshots or measure historical versioning unless explicitly requested later.
 * Before changing plan states, navigation, filters, charts, execution, incidents, checklist or verification behavior, consult `docs/sustainability-plan-status-model.md` and keep elaboration, implementation and verification as separate dimensions.
 
+## AI and report-generation boundaries
+
+* AI-generated narrative must only use data explicitly supplied by the application.
+* Never invent, infer or complete sustainability metrics, emission values, states, factors or verification results that are not present in the authorized data context.
+* Calculations remain deterministic application logic; do not move calculation rules into prompts.
+* Manual edits such as text changes, photo metadata, selections or ordering must not call AI unless explicitly required by the feature.
+* Preserve user-edited or manual content unless the user explicitly requests regeneration or replacement.
+* Reuse the existing ReportDesign infrastructure for new report types. Do not create a second AI report designer, draft/approval workflow or parallel storage mechanism.
+* Do not loosen ReportDesign HTML/CSS/security/geometry restrictions merely to satisfy a visual request. If an existing restriction blocks a requested capability, report it before widening the contract.
+* ReportDesign must continue to protect physical A4 geometry, pagination, calculations and authorized data boundaries.
+* Prefer controlled, explicit AI actions over automatic regeneration triggered by unrelated manual edits.
+
 ## CodeGraph and repository exploration
 
 * CodeGraph is available for structural analysis, but use it only when the task genuinely spans multiple files or requires dependency/impact tracing.
@@ -107,6 +128,21 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Prefer existing Bootstrap, Symfony, Doctrine and project patterns over introducing new abstractions or dependencies.
 * For Codex reasoning, start with the lowest effort sufficient for the task and increase only when architecture, payments, security, concurrency, data integrity or a persistent defect requires it.
 * When reporting completion, summarize only changed behavior, relevant files, validation performed and remaining risks. Do not restate the full investigation.
+
+## Scope and budget discipline
+
+* Treat the requested task scope as a hard boundary.
+* Do not turn an MVP into a generic platform, framework, editor or reusable subsystem unless explicitly requested.
+* Prefer the smallest implementation that satisfies the confirmed user flow.
+* Reuse existing entities, services, UI, report infrastructure and calculations before creating new abstractions.
+* If a requested capability would materially increase implementation or QA effort, stop before implementing it and report:
+  * why it exceeds the current scope;
+  * the simplest in-scope alternative;
+  * what would need separate approval.
+* Do not implement "while we are here" improvements.
+* When a task is split into estimated blocks, complete only the currently authorized block.
+* Do not silently consume time from later blocks to absorb scope growth; simplify, defer or request approval instead.
+* Existing audit inventories and technical maps are references, not automatic feature lists. Implement only the subset required by the approved MVP.
 
 ## Command execution policy
 
@@ -162,8 +198,8 @@ A change is complete when:
 ## Development-phase data compatibility
 
 * This project is still in active development.
-* Until explicitly stated otherwise, do not preserve compatibility with historical or legacy data.
-* Do not add legacy fallbacks, compatibility aliases, transitional dual models or synchronization logic for old records.
-* Prefer updating the Doctrine mapping, applying `doctrine:schema:update`, regenerating fixtures and adapting all consumers to the new model.
-* Keep the implementation minimal and remove obsolete paths instead of maintaining them in parallel.
-* Only introduce historical-data compatibility when explicitly requested because the project has entered a production/data-preservation phase.
+* Do not introduce new legacy fallbacks, compatibility aliases, transitional dual models or synchronization logic unless the task explicitly requires them.
+* Existing compatibility behavior that is already intentional, tested or documented is part of the current contract and must not be removed unless the task explicitly authorizes it.
+* For genuinely new development-only schema changes, prefer updating the Doctrine mapping, applying `doctrine:schema:update`, regenerating fixtures and adapting consumers rather than inventing unnecessary migration or compatibility layers.
+* If it is unclear whether an existing compatibility path is intentional, preserve it and report the ambiguity rather than deleting it.
+* Historical-data compatibility may be introduced when explicitly required by the task or by existing deployed/data contracts.
