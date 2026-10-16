@@ -1819,14 +1819,8 @@ class PlanController extends AbstractController
                 $request->getLocale(),
                 CommercialPhase::ELABORATION
             );
-        } catch (AiReportException $exception) {
-            $this->logger->warning('Unified PDF AI report generation failed.', [
-                'event' => 'unified_pdf_ai_report_failed',
-                'exception_class' => $exception::class,
-                'project_id' => $project->getId(),
-                'plan_id' => $plan->getId(),
-                'locale' => $request->getLocale(),
-            ]);
+        } catch (AiReportException) {
+            // The provider records the technical failure once in the AI channel.
             $this->addFlash('danger', 'backend.plan.pdf_visual.ai_report.error');
 
             return $this->redirectToRoute('backend_plan_done');
@@ -2003,16 +1997,8 @@ class PlanController extends AbstractController
                 selectedDetailOnly:   $requireClosure,
                 allowAiGeneration:    !$useDraftReportDesign
             );
-        } catch (AiReportException $exception) {
-            $this->logger->warning('Unified PDF AI report generation failed.', [
-                'event' => 'unified_pdf_ai_report_failed',
-                'exception_class' => $exception::class,
-                'exception_message' => $exception->getMessage(),
-                'project_id' => $project->getId(),
-                'plan_id' => $plan->getId(),
-                'locale' => $request->getLocale(),
-            ]);
-
+        } catch (AiReportException) {
+            // The provider records the technical failure once in the AI channel.
             if ($useDraftReportDesign) {
                 $this->addFlash(
                     'warning',

@@ -47,12 +47,13 @@ final class OpenAiReportProvider implements AiReportProviderInterface
 
     public function generate(AiReportRequest $request): AiReportResult
     {
-        $this->assertConfigured();
+        $feature = $this->feature($request);
+        $this->assertConfigured($feature);
 
         try {
             $context = $this->promptBuilder->buildContext($request);
         } catch (\JsonException) {
-            $this->logFailure('request_encoding');
+            $this->logFailure($feature, 'request_encoding');
 
             throw new AiProviderException('The AI report request could not be prepared safely.');
         }
@@ -75,21 +76,21 @@ final class OpenAiReportProvider implements AiReportProviderInterface
             $statusCode = $response->getStatusCode();
             $body = $response->getContent(false);
         } catch (TimeoutExceptionInterface) {
-            $this->logFailure('timeout');
+            $this->logFailure($feature, 'timeout');
 
             throw new AiTimeoutException('The AI provider request timed out.');
         } catch (TransportExceptionInterface) {
-            $this->logFailure('connection');
+            $this->logFailure($feature, 'connection');
 
             throw new AiConnectionException('The AI provider could not be reached.');
         }
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $this->throwHttpException($statusCode, $body);
+            $this->throwHttpException($feature, $statusCode, $body);
         }
 
         if (trim($body) === '') {
-            $this->logFailure('empty_response', $statusCode);
+            $this->logFailure($feature, 'empty_response', $statusCode);
 
             throw new AiEmptyResponseException('The AI provider returned an empty response.');
         }
@@ -97,32 +98,32 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         try {
             $envelope = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            $this->logFailure('invalid_json', $statusCode);
+            $this->logFailure($feature, 'invalid_json', $statusCode);
 
             throw new AiInvalidJsonResponseException('The AI provider returned invalid JSON.');
         }
 
         if (!is_array($envelope)) {
-            $this->logFailure('invalid_structure', $statusCode);
+            $this->logFailure($feature, 'invalid_structure', $statusCode);
 
             throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
         }
 
         if (($envelope['status'] ?? null) === 'incomplete') {
-            $this->logFailure('incomplete_response', $statusCode);
+            $this->logFailure($feature, 'incomplete_response', $statusCode);
 
             throw new AiProviderException('The AI provider did not complete the response.');
         }
 
         if ($this->hasRefusal($envelope)) {
-            $this->logFailure('refusal', $statusCode);
+            $this->logFailure($feature, 'refusal', $statusCode);
 
             throw new AiProviderException('The AI provider refused the response.');
         }
 
         $outputText = $this->extractOutputText($envelope);
         if ($outputText === '') {
-            $this->logFailure('empty_response', $statusCode);
+            $this->logFailure($feature, 'empty_response', $statusCode);
 
             throw new AiEmptyResponseException('The AI provider returned no generated content.');
         }
@@ -130,7 +131,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         try {
             $data = json_decode($outputText, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            $this->logFailure('invalid_output_json', $statusCode);
+            $this->logFailure($feature, 'invalid_output_json', $statusCode);
 
             throw new AiInvalidJsonResponseException('The AI provider generated invalid JSON.');
         }
@@ -142,13 +143,13 @@ final class OpenAiReportProvider implements AiReportProviderInterface
                 $request->futureCategoryKeys(),
             );
         } catch (AiInvalidStructureException $exception) {
-            $this->logFailure('invalid_structure', $statusCode);
+            $this->logFailure($feature, 'invalid_structure', $statusCode);
 
             throw $exception;
         }
     }
 
-    private function assertConfigured(): void
+    private function assertConfigured(string $feature): void
     {
         if (
             trim($this->openAiConfiguration->apiKey) === ''
@@ -156,7 +157,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
             || trim($this->openAiConfiguration->baseUrl) === ''
             || $this->configuration->timeoutSeconds <= 0
         ) {
-            $this->logFailure('provider_not_configured');
+            $this->logFailure($feature, 'provider_not_configured');
 
             throw new AiProviderNotConfiguredException('The AI report provider is not configured.');
         }
@@ -272,31 +273,31 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         return false;
     }
 
-    private function throwHttpException(int $statusCode, string $body): never
+    private function throwHttpException(string $feature, int $statusCode, string $body): never
     {
         $errorCode = $this->extractErrorCode($body);
 
         if ($statusCode === 401) {
-            $this->logFailure('authentication', $statusCode, $errorCode);
+            $this->logFailure($feature, 'authentication', $statusCode, $errorCode);
 
             throw new AiAuthenticationException('The AI provider rejected authentication.');
         }
 
         if (in_array($errorCode, self::QUOTA_ERROR_CODES, true)) {
             $normalizedCode = $errorCode !== '' ? $errorCode : 'quota_exceeded';
-            $this->logFailure('quota', $statusCode, $normalizedCode);
+            $this->logFailure($feature, 'quota', $statusCode, $normalizedCode);
             $this->quotaAlertNotifier->notify(self::PROVIDER, $this->model(), $normalizedCode);
 
             throw new AiQuotaExceededException('The AI provider has no available credit or quota.');
         }
 
         if ($statusCode === 429) {
-            $this->logFailure('rate_limit', $statusCode, $errorCode);
+            $this->logFailure($feature, 'rate_limit', $statusCode, $errorCode);
 
             throw new AiRateLimitException('The AI provider rate limit was reached.');
         }
 
-        $this->logFailure('provider_error', $statusCode, $errorCode);
+        $this->logFailure($feature, 'provider_error', $statusCode, $errorCode);
 
         throw new AiProviderException('The AI provider returned an error.');
     }
@@ -313,15 +314,21 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         return is_string($code) ? strtolower(trim($code)) : '';
     }
 
-    private function logFailure(string $type, ?int $statusCode = null, string $errorCode = ''): void
+    private function logFailure(
+        string $feature,
+        string $type,
+        ?int $statusCode = null,
+        string $errorCode = '',
+    ): void
     {
-        $this->logger->error('AI report provider failure.', $this->logContext($type, $statusCode, $errorCode));
+        $this->logger->error('AI report provider failure.', $this->logContext($feature, $type, $statusCode, $errorCode));
     }
 
     /** @return array<string, int|string|null> */
-    private function logContext(string $type, ?int $statusCode, string $errorCode): array
+    private function logContext(string $feature, string $type, ?int $statusCode, string $errorCode): array
     {
         return [
+            'feature' => $feature,
             'provider' => self::PROVIDER,
             'model' => $this->model(),
             'error_type' => $type,
@@ -334,5 +341,12 @@ final class OpenAiReportProvider implements AiReportProviderInterface
     {
         return $this->settingResolver?->resolve()->openAiModel
             ?? trim($this->openAiConfiguration->model);
+    }
+
+    private function feature(AiReportRequest $request): string
+    {
+        return $request->purpose === 'final_sustainability_report'
+            ? 'final_report_narrative'
+            : 'general_pdf_ai_report';
     }
 }

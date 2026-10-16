@@ -9,6 +9,7 @@ use App\Entity\Plan;
 use App\Entity\Project;
 use App\Entity\ProjectDocument;
 use App\Enum\ProjectDocumentCatalog;
+use App\Exception\Ai\AiReportException;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\FinalReport\FinalReportContentEditor;
@@ -18,6 +19,7 @@ use App\Service\FinalReport\FinalReportPdfBuilder;
 use App\Service\ProjectDocument\ProjectDocumentStorage;
 use App\Service\ProjectDocument\ProjectDocumentValidationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -81,6 +83,7 @@ final class FinalReportController extends AbstractController
         EntityManagerInterface $entityManager,
         FinalReportDataBuilder $dataBuilder,
         FinalReportNarrativeService $narrativeService,
+        LoggerInterface $aiLogger,
     ): RedirectResponse {
         [$project, $plan] = $this->activeContext($activeProjectService, $entityManager);
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
@@ -101,7 +104,16 @@ final class FinalReportController extends AbstractController
             $entityManager->persist($content);
             $entityManager->flush();
             $this->addFlash('success', sprintf('Narrativa IA actualizada en %d secciones.', count($updated)));
-        } catch (\App\Exception\Ai\AiReportException|\InvalidArgumentException) {
+        } catch (AiReportException) {
+            // The provider records the technical failure once in the AI channel.
+            $this->addFlash('danger', 'No se pudo generar la narrativa IA. Revisa la configuración y vuelve a intentarlo.');
+        } catch (\InvalidArgumentException $exception) {
+            $aiLogger->error('Final report narrative generation failed.', [
+                'feature' => 'final_report_narrative',
+                'exception_class' => $exception::class,
+                'failure_category' => 'application_validation',
+                'project_id' => $project->getId(),
+            ]);
             $this->addFlash('danger', 'No se pudo generar la narrativa IA. Revisa la configuración y vuelve a intentarlo.');
         }
 
@@ -196,6 +208,118 @@ final class FinalReportController extends AbstractController
         return $this->redirectToRoute('backend_final_report_index');
     }
 
+    #[Route('/photos/{documentId}/replace', name: 'photo_replace', methods: ['POST'], requirements: ['documentId' => '\d+'])]
+    public function replacePhoto(
+        int $documentId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        EntityManagerInterface $entityManager,
+        ProjectDocumentStorage $storage,
+        FinalReportContentEditor $editor,
+    ): RedirectResponse {
+        [$project] = $this->activeContext($activeProjectService, $entityManager);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $this->assertCsrf($request, 'final_report_photo_replace_'.$project->getId().'_'.$documentId);
+
+        $file = $request->files->get('photo');
+        if (!$file instanceof UploadedFile) {
+            $this->addFlash('danger', 'backend.final_report.flash.photo_required');
+
+            return $this->redirectToRoute('backend_final_report_index');
+        }
+
+        $original = $entityManager->getRepository(ProjectDocument::class)->find($documentId);
+        $content = $this->findContent($project, $entityManager);
+        $replacement = (new ProjectDocument())
+            ->setProject($project)
+            ->setType('final_report_photo')
+            ->setKind(ProjectDocumentCatalog::KIND_FILE);
+        $transactionStarted = false;
+        $originalPhotos = $content?->getPhotos() ?? [];
+        $originalCoverDocumentId = $content?->getCoverDocumentId();
+
+        try {
+            if (!$original instanceof ProjectDocument || !$content instanceof FinalReportContent) {
+                throw new \InvalidArgumentException('The photograph is not included in the final report.');
+            }
+            $editor->assertPhotoCanBeReplaced($content, $project, $original);
+            $editor->validateImageUpload($file);
+            $storage->store($replacement, $file);
+
+            $connection = $entityManager->getConnection();
+            $connection->beginTransaction();
+            $transactionStarted = true;
+
+            $project->addProjectDocument($replacement);
+            $entityManager->persist($replacement);
+            $entityManager->flush();
+
+            $editor->replacePhoto($content, $project, $original, $replacement);
+            $entityManager->persist($content);
+            $entityManager->flush();
+
+            $connection->commit();
+            $transactionStarted = false;
+        } catch (\Throwable $exception) {
+            if ($transactionStarted) {
+                $connection->rollBack();
+            }
+            if ($content instanceof FinalReportContent) {
+                $content
+                    ->setPhotos($originalPhotos)
+                    ->setCoverDocumentId($originalCoverDocumentId);
+            }
+            $storage->delete($replacement);
+            $project->removeProjectDocument($replacement);
+
+            if ($exception instanceof ProjectDocumentValidationException
+                || $exception instanceof \InvalidArgumentException) {
+                $this->addFlash('danger', $exception->getMessage());
+
+                return $this->redirectToRoute('backend_final_report_index');
+            }
+
+            throw $exception;
+        }
+
+        $this->addFlash('success', 'backend.final_report.flash.photo_replaced');
+
+        return $this->redirectToRoute('backend_final_report_index');
+    }
+
+    #[Route('/photos/{documentId}/remove', name: 'photo_remove', methods: ['POST'], requirements: ['documentId' => '\d+'])]
+    public function removePhoto(
+        int $documentId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        EntityManagerInterface $entityManager,
+        FinalReportContentEditor $editor,
+    ): RedirectResponse {
+        [$project] = $this->activeContext($activeProjectService, $entityManager);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $this->assertCsrf($request, 'final_report_photo_remove_'.$project->getId().'_'.$documentId);
+
+        $document = $entityManager->getRepository(ProjectDocument::class)->find($documentId);
+        $content = $this->findContent($project, $entityManager) ?? (new FinalReportContent())->setProject($project);
+
+        try {
+            if (!$document instanceof ProjectDocument) {
+                throw new \InvalidArgumentException('The photograph does not belong to the active project.');
+            }
+            $editor->excludePhoto($content, $project, $document);
+        } catch (\InvalidArgumentException $exception) {
+            $this->addFlash('danger', $exception->getMessage());
+
+            return $this->redirectToRoute('backend_final_report_index');
+        }
+
+        $entityManager->persist($content);
+        $entityManager->flush();
+        $this->addFlash('success', 'backend.final_report.flash.photo_removed');
+
+        return $this->redirectToRoute('backend_final_report_index');
+    }
+
     #[Route('/photos/{documentId}', name: 'photo_view', methods: ['GET'], requirements: ['documentId' => '\d+'])]
     public function viewPhoto(
         int $documentId,
@@ -269,7 +393,7 @@ final class FinalReportController extends AbstractController
     ): Response {
         $photoValues = [];
         foreach ($content->getPhotos() as $photo) {
-            if (isset($photo['documentId'])) {
+            if (isset($photo['documentId']) && !$editor->isExcludedPhotoEntry($photo)) {
                 $photoValues[(int) $photo['documentId']] = $photo;
             }
         }
@@ -279,10 +403,15 @@ final class FinalReportController extends AbstractController
                 $featuredValues[(int) $featured['planMeasureId']] = $featured;
             }
         }
+        $hiddenDocumentIds = array_fill_keys([
+            ...$editor->supersededPhotoDocumentIds($content),
+            ...$editor->excludedPhotoDocumentIds($content),
+        ], true);
         $gallery = array_values(array_filter(
             $project->getProjectDocuments()->toArray(),
             static fn (mixed $document): bool => $document instanceof ProjectDocument
-                && $editor->isSupportedImageDocument($document),
+                && $editor->isSupportedImageDocument($document)
+                && !isset($hiddenDocumentIds[$document->getId()]),
         ));
 
         return $this->render('backend/final_report/index.html.twig', [

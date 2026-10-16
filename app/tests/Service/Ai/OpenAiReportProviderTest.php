@@ -95,6 +95,46 @@ final class OpenAiReportProviderTest extends TestCase
         self::assertSame('Seguiremos avanzando como equipo.', $result->finalConclusion);
     }
 
+    public function testFinalReportUsesAValidEmptyFutureCollectionSchema(): void
+    {
+        $client = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
+            $payload = json_decode((string) $options['body'], true, 512, JSON_THROW_ON_ERROR);
+            self::assertSame('final_sustainability_report', $payload['text']['format']['name']);
+
+            $schema = $payload['text']['format']['schema'];
+            $summaries = $schema['properties']['categorySummaries'];
+            self::assertSame('object', $summaries['type']);
+            self::assertSame(['implementation'], $summaries['required']);
+            self::assertSame(['implementation'], array_keys($summaries['properties']));
+
+            $future = $schema['properties']['categoryFutureSummaries'];
+            self::assertSame('array', $future['type']);
+            self::assertSame(0, $future['minItems']);
+            self::assertSame(0, $future['maxItems']);
+            self::assertIsArray($future['items']['properties']);
+
+            return $this->successfulResponse([
+                'generalConclusion' => 'Resumen ejecutivo.',
+                'categorySummaries' => [
+                    'implementation' => ['summary' => 'Resumen de implementación.'],
+                ],
+                'categoryFutureSummaries' => [],
+                'finalConclusion' => 'Conclusión final.',
+            ]);
+        });
+
+        $result = $this->createProvider($client)->generate(new AiReportRequest(
+            'es',
+            [],
+            'final_sustainability_report',
+            ['project' => ['name' => 'Proyecto']],
+            ['implementation'],
+        ));
+
+        self::assertSame('Resumen ejecutivo.', $result->generalConclusion);
+        self::assertSame([], $result->categoryFutureSummaries);
+    }
+
     public function testRejectsInvalidResponseEnvelopeJson(): void
     {
         $provider = $this->createProvider(new MockHttpClient(new MockResponse('{invalid')));
@@ -198,6 +238,33 @@ final class OpenAiReportProviderTest extends TestCase
 
         $this->expectException(AiProviderException::class);
         $provider->generate($this->request());
+    }
+
+    public function testLogsFinalReportFailureWithItsFunctionalIdentifier(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects(self::once())
+            ->method('error')
+            ->with(
+                'AI report provider failure.',
+                self::callback(static fn (array $context): bool => $context['feature'] === 'final_report_narrative'
+                    && $context['error_type'] === 'provider_error'
+                    && $context['status_code'] === 500
+                    && !array_key_exists('exception_message', $context)),
+            );
+        $provider = $this->createProvider(
+            new MockHttpClient($this->errorResponse(500, 'invalid_json_schema')),
+            logger: $logger,
+        );
+
+        $this->expectException(AiProviderException::class);
+        $provider->generate(new AiReportRequest(
+            'es',
+            [],
+            'final_sustainability_report',
+            ['project' => ['name' => 'Proyecto']],
+            ['implementation'],
+        ));
     }
 
     public function testRejectsAnUnconfiguredProvider(): void
@@ -413,7 +480,8 @@ final class OpenAiReportProviderTest extends TestCase
             ->method('error')
             ->with(
                 'AI report provider failure.',
-                self::callback(static fn (array $context): bool => ($context['error_type'] ?? null) === $type),
+                self::callback(static fn (array $context): bool => ($context['error_type'] ?? null) === $type
+                    && ($context['feature'] ?? null) === 'general_pdf_ai_report'),
             );
 
         return $logger;

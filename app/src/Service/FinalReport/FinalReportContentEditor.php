@@ -9,6 +9,7 @@ use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Project;
 use App\Entity\ProjectDocument;
+use App\Service\ProjectDocument\ProjectDocumentStorage;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class FinalReportContentEditor
@@ -43,7 +44,12 @@ final class FinalReportContentEditor
         $content
             ->setProject($project)
             ->setFeaturedMeasures($this->normalizeFeaturedMeasures($input['featured'] ?? [], $planMeasures))
-            ->setPhotos($this->normalizePhotos($input['photos'] ?? [], $documents, $planMeasures))
+            ->setPhotos($this->normalizePhotos(
+                $input['photos'] ?? [],
+                $documents,
+                $planMeasures,
+                $content->getPhotos(),
+            ))
             ->setManualTexts($this->normalizeManualTexts(
                 $input['manualTexts'] ?? [],
                 $content->getManualTexts(),
@@ -54,7 +60,10 @@ final class FinalReportContentEditor
         if ($rawCoverDocumentId !== null && $rawCoverDocumentId !== '' && $coverDocumentId === null) {
             throw new \InvalidArgumentException('Invalid cover image reference.');
         }
-        $selectedDocumentIds = array_column($content->getPhotos(), 'documentId');
+        $selectedDocumentIds = array_column(array_filter(
+            $content->getPhotos(),
+            fn (array $photo): bool => !$this->isExcludedPhotoEntry($photo),
+        ), 'documentId');
         if ($coverDocumentId !== null && !in_array($coverDocumentId, $selectedDocumentIds, true)) {
             throw new \InvalidArgumentException('The cover image must belong to the report gallery.');
         }
@@ -83,18 +92,156 @@ final class FinalReportContentEditor
             'planMeasureId' => null,
             'caption' => null,
             'author' => null,
-            'position' => count($photos) + 1,
+            'position' => count(array_filter(
+                $photos,
+                fn (array $photo): bool => !$this->isExcludedPhotoEntry($photo),
+            )) + 1,
         ];
         $content->setPhotos($photos);
     }
 
+    public function assertPhotoCanBeReplaced(
+        FinalReportContent $content,
+        Project $project,
+        ProjectDocument $original,
+    ): void {
+        if ($content->getProject() !== $project
+            || $original->getProject() !== $project
+            || !$this->isSupportedImageDocument($original)) {
+            throw new \InvalidArgumentException('The photograph does not belong to the active project.');
+        }
+
+        foreach ($content->getPhotos() as $photo) {
+            if (($photo['documentId'] ?? null) === $original->getId()
+                && !$this->isExcludedPhotoEntry($photo)) {
+                return;
+            }
+        }
+
+        throw new \InvalidArgumentException('The photograph is not included in the final report.');
+    }
+
+    public function replacePhoto(
+        FinalReportContent $content,
+        Project $project,
+        ProjectDocument $original,
+        ProjectDocument $replacement,
+    ): void {
+        $this->assertPhotoCanBeReplaced($content, $project, $original);
+        if ($replacement->getProject() !== $project
+            || !$this->isSupportedImageDocument($replacement)
+            || $replacement->getId() === null) {
+            throw new \InvalidArgumentException('Invalid replacement photograph.');
+        }
+
+        $photos = $content->getPhotos();
+        foreach ($photos as &$photo) {
+            if (($photo['documentId'] ?? null) === $original->getId()
+                && !$this->isExcludedPhotoEntry($photo)) {
+                $replacedDocumentIds = $this->normalizeDocumentIds($photo['replacedDocumentIds'] ?? []);
+                $replacedDocumentIds[] = $original->getId();
+                $photo['documentId'] = $replacement->getId();
+                $photo['replacedDocumentIds'] = array_values(array_unique($replacedDocumentIds));
+            }
+        }
+        unset($photo);
+        $content->setPhotos($photos);
+
+        if ($content->getCoverDocumentId() === $original->getId()) {
+            $content->setCoverDocumentId($replacement->getId());
+        }
+    }
+
+    public function excludePhoto(
+        FinalReportContent $content,
+        Project $project,
+        ProjectDocument $document,
+    ): void {
+        if ($content->getProject() !== $project
+            || $document->getProject() !== $project
+            || !$this->isSupportedImageDocument($document)
+            || $document->getId() === null) {
+            throw new \InvalidArgumentException('The photograph does not belong to the active project.');
+        }
+
+        $photos = [];
+        $replacedDocumentIds = [];
+        foreach ($content->getPhotos() as $photo) {
+            if (($photo['documentId'] ?? null) === $document->getId()) {
+                $replacedDocumentIds = [
+                    ...$replacedDocumentIds,
+                    ...$this->normalizeDocumentIds($photo['replacedDocumentIds'] ?? []),
+                ];
+                continue;
+            }
+            $photos[] = $photo;
+        }
+        $exclusion = [
+            'documentId' => $document->getId(),
+            'excluded' => true,
+        ];
+        if ($replacedDocumentIds !== []) {
+            $exclusion['replacedDocumentIds'] = array_values(array_unique($replacedDocumentIds));
+        }
+        $photos[] = $exclusion;
+        $content->setPhotos($photos);
+
+        if ($content->getCoverDocumentId() === $document->getId()) {
+            $content->setCoverDocumentId(null);
+        }
+    }
+
+    /** @return list<int> */
+    public function excludedPhotoDocumentIds(FinalReportContent $content): array
+    {
+        $ids = [];
+        foreach ($content->getPhotos() as $photo) {
+            $id = $this->positiveId($photo['documentId'] ?? null);
+            if ($id !== null && $this->isExcludedPhotoEntry($photo)) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /** @return list<int> */
+    public function supersededPhotoDocumentIds(FinalReportContent $content): array
+    {
+        $ids = [];
+        foreach ($content->getPhotos() as $photo) {
+            $ids = [...$ids, ...$this->normalizeDocumentIds($photo['replacedDocumentIds'] ?? [])];
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /** @param array<string, mixed> $photo */
+    public function isExcludedPhotoEntry(array $photo): bool
+    {
+        return ($photo['excluded'] ?? false) === true;
+    }
+
     public function validateImageUpload(UploadedFile $file): void
     {
+        if (in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+            || ($file->getSize() ?: 0) > ProjectDocumentStorage::MAX_FILE_SIZE) {
+            throw new \InvalidArgumentException('backend.final_report.flash.photo_too_large');
+        }
+        if ($file->getError() === UPLOAD_ERR_NO_FILE) {
+            throw new \InvalidArgumentException('backend.final_report.flash.photo_required');
+        }
+        if (!$file->isValid()
+            || $file->getPathname() === ''
+            || !is_readable($file->getPathname())) {
+            throw new \InvalidArgumentException('backend.final_report.flash.photo_upload_failed');
+        }
+
         $extension = strtolower((string) pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
         $mime = $file->getMimeType();
         if (!isset(self::IMAGE_MIME_BY_EXTENSION[$extension])
             || $mime !== self::IMAGE_MIME_BY_EXTENSION[$extension]) {
-            throw new \InvalidArgumentException('Only JPG, JPEG, PNG and WebP images are allowed.');
+            throw new \InvalidArgumentException('backend.final_report.flash.photo_invalid_format');
         }
     }
 
@@ -172,12 +319,34 @@ final class FinalReportContentEditor
      * @param mixed $submitted
      * @param array<int, ProjectDocument> $documents
      * @param array<int, PlanMeasure> $planMeasures
-     * @return array<int, array{documentId:int, planMeasureId:int|null, caption:string|null, author:string|null, position:int}>
+     * @param array<int, array<string, mixed>> $current
+     * @return array<int, array<string, mixed>>
      */
-    private function normalizePhotos(mixed $submitted, array $documents, array $planMeasures): array
+    private function normalizePhotos(mixed $submitted, array $documents, array $planMeasures, array $current): array
     {
         if (!is_array($submitted)) {
             throw new \InvalidArgumentException('Invalid gallery payload.');
+        }
+
+        $replacedByDocumentId = [];
+        $excludedByDocumentId = [];
+        foreach ($current as $photo) {
+            $currentDocumentId = $this->positiveId($photo['documentId'] ?? null);
+            if ($currentDocumentId === null || !isset($documents[$currentDocumentId])) {
+                continue;
+            }
+            $replacedDocumentIds = $this->normalizeDocumentIds($photo['replacedDocumentIds'] ?? []);
+            if ($this->isExcludedPhotoEntry($photo)) {
+                $excludedByDocumentId[$currentDocumentId] = [
+                    'documentId' => $currentDocumentId,
+                    'excluded' => true,
+                ];
+                if ($replacedDocumentIds !== []) {
+                    $excludedByDocumentId[$currentDocumentId]['replacedDocumentIds'] = $replacedDocumentIds;
+                }
+            } else {
+                $replacedByDocumentId[$currentDocumentId] = $replacedDocumentIds;
+            }
         }
 
         $result = [];
@@ -188,6 +357,9 @@ final class FinalReportContentEditor
             $documentId = $this->positiveId($rawDocumentId);
             if ($documentId === null || !isset($documents[$documentId])) {
                 throw new \InvalidArgumentException('A gallery image does not belong to the active project.');
+            }
+            if (isset($excludedByDocumentId[$documentId])) {
+                continue;
             }
             $rawPlanMeasureId = $values['planMeasureId'] ?? null;
             $planMeasureId = $this->positiveId($rawPlanMeasureId);
@@ -201,18 +373,43 @@ final class FinalReportContentEditor
             if ($position === false || $position < 0 || $position > 10000) {
                 throw new \InvalidArgumentException('Invalid gallery image position.');
             }
-            $result[] = [
+            $normalized = [
                 'documentId' => $documentId,
                 'planMeasureId' => $planMeasureId,
                 'caption' => $this->text($values['caption'] ?? null, 500),
                 'author' => $this->text($values['author'] ?? null, 160),
                 'position' => $position,
             ];
+            if (($replacedByDocumentId[$documentId] ?? []) !== []) {
+                $normalized['replacedDocumentIds'] = $replacedByDocumentId[$documentId];
+            }
+            $result[] = $normalized;
         }
         usort($result, static fn (array $left, array $right): int =>
             $left['position'] <=> $right['position'] ?: $left['documentId'] <=> $right['documentId']);
 
+        ksort($excludedByDocumentId);
+        $result = [...$result, ...array_values($excludedByDocumentId)];
+
         return $result;
+    }
+
+    /** @return list<int> */
+    private function normalizeDocumentIds(mixed $values): array
+    {
+        if (!is_array($values)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($values as $value) {
+            $id = $this->positiveId($value);
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

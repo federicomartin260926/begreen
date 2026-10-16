@@ -121,6 +121,12 @@ final class AiReportOutputSchema
      */
     private function strictCategoryCollection(array $categoryKeys): array
     {
+        if ($categoryKeys === []) {
+            // PHP encodes an empty properties array as JSON [], which OpenAI
+            // rejects because JSON Schema requires properties to be an object.
+            return $this->categoryCollection([]);
+        }
+
         $properties = [];
 
         foreach ($categoryKeys as $categoryKey) {

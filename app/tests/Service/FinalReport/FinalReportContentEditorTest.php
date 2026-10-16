@@ -110,6 +110,160 @@ final class FinalReportContentEditorTest extends TestCase
         self::assertSame($storedName, $document->getStoredName());
     }
 
+    public function testExcludesSelectedPhotoAndClearsCoverWithoutDeletingDocument(): void
+    {
+        [$project, , , $document] = $this->context();
+        $storedName = $document->getStoredName();
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setPhotos([[
+                'documentId' => 20,
+                'caption' => 'Pie que se desvincula',
+                'position' => 1,
+                'replacedDocumentIds' => [19],
+            ]])
+            ->setCoverDocumentId(20);
+
+        $this->editor->excludePhoto($content, $project, $document);
+
+        self::assertSame([[
+            'documentId' => 20,
+            'excluded' => true,
+            'replacedDocumentIds' => [19],
+        ]], $content->getPhotos());
+        self::assertSame([20], $this->editor->excludedPhotoDocumentIds($content));
+        self::assertSame([19], $this->editor->supersededPhotoDocumentIds($content));
+        self::assertNull($content->getCoverDocumentId());
+        self::assertTrue($project->getProjectDocuments()->contains($document));
+        self::assertSame($storedName, $document->getStoredName());
+    }
+
+    public function testExcludesAvailablePhotoAndPreservesExclusionOnEditorialSave(): void
+    {
+        [$project, $plan, , $document] = $this->context();
+        $content = (new FinalReportContent())->setProject($project);
+
+        $this->editor->excludePhoto($content, $project, $document);
+        $this->editor->update($content, $project, $plan, [
+            'photos' => [20 => [
+                'selected' => '1',
+                'caption' => 'No debe reactivarse desde el POST',
+                'position' => '1',
+            ]],
+            'coverDocumentId' => '',
+        ]);
+
+        self::assertSame([['documentId' => 20, 'excluded' => true]], $content->getPhotos());
+        self::assertSame([20], $this->editor->excludedPhotoDocumentIds($content));
+        self::assertNull($content->getCoverDocumentId());
+    }
+
+    public function testRejectsExcludingPhotoFromAnotherProject(): void
+    {
+        [$project] = $this->context();
+        $foreignProject = (new Project())->setName('Proyecto B');
+        $foreign = (new ProjectDocument())
+            ->setType('final_report_photo')
+            ->setKind(ProjectDocumentCatalog::KIND_FILE)
+            ->setStoredName(str_repeat('d', 32).'.png')
+            ->setMimeType('image/png');
+        $this->setId($foreign, 40);
+        $foreignProject->addProjectDocument($foreign);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('does not belong');
+        $this->editor->excludePhoto(
+            (new FinalReportContent())->setProject($project),
+            $project,
+            $foreign,
+        );
+    }
+
+    public function testReplacesPhotoReferenceAndPreservesMetadataAndCover(): void
+    {
+        [$project, , , $original] = $this->context();
+        $replacement = (new ProjectDocument())
+            ->setType('final_report_photo')
+            ->setKind(ProjectDocumentCatalog::KIND_FILE)
+            ->setStoredName(str_repeat('b', 32).'.png')
+            ->setMimeType('image/png');
+        $this->setId($replacement, 21);
+        $project->addProjectDocument($replacement);
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setPhotos([[
+                'documentId' => 20,
+                'planMeasureId' => 10,
+                'caption' => 'Pie conservado',
+                'author' => 'Autora',
+                'position' => 7,
+            ]])
+            ->setCoverDocumentId(20);
+
+        $this->editor->replacePhoto($content, $project, $original, $replacement);
+
+        self::assertSame([[
+            'documentId' => 21,
+            'planMeasureId' => 10,
+            'caption' => 'Pie conservado',
+            'author' => 'Autora',
+            'position' => 7,
+            'replacedDocumentIds' => [20],
+        ]], $content->getPhotos());
+        self::assertSame(21, $content->getCoverDocumentId());
+        self::assertTrue($project->getProjectDocuments()->contains($original));
+        self::assertSame([20], $this->editor->supersededPhotoDocumentIds($content));
+    }
+
+    public function testEditorialSavePreservesReplacementLineage(): void
+    {
+        [$project, $plan, , $original] = $this->context();
+        $replacement = (new ProjectDocument())
+            ->setType('final_report_photo')
+            ->setKind(ProjectDocumentCatalog::KIND_FILE)
+            ->setStoredName(str_repeat('b', 32).'.png')
+            ->setMimeType('image/png');
+        $this->setId($replacement, 21);
+        $project->addProjectDocument($replacement);
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setPhotos([['documentId' => 20, 'position' => 1]]);
+        $this->editor->replacePhoto($content, $project, $original, $replacement);
+
+        $this->editor->update($content, $project, $plan, [
+            'photos' => [21 => [
+                'selected' => '1',
+                'caption' => 'Pie editado',
+                'author' => 'Equipo',
+                'position' => '3',
+            ]],
+        ]);
+
+        self::assertSame([20], $content->getPhotos()[0]['replacedDocumentIds']);
+        self::assertSame('Pie editado', $content->getPhotos()[0]['caption']);
+        self::assertSame([20], $this->editor->supersededPhotoDocumentIds($content));
+    }
+
+    public function testRejectsReplacementOfPhotoFromAnotherProject(): void
+    {
+        [$project] = $this->context();
+        $foreignProject = (new Project())->setName('Proyecto B');
+        $foreign = (new ProjectDocument())
+            ->setType('final_report_photo')
+            ->setKind(ProjectDocumentCatalog::KIND_FILE)
+            ->setStoredName(str_repeat('c', 32).'.jpg')
+            ->setMimeType('image/jpeg');
+        $this->setId($foreign, 30);
+        $foreignProject->addProjectDocument($foreign);
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setPhotos([['documentId' => 30, 'position' => 1]]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('does not belong');
+        $this->editor->assertPhotoCanBeReplaced($content, $project, $foreign);
+    }
+
     public function testPreservesAiOriginUntilTextIsManuallyChanged(): void
     {
         [$project, $plan] = $this->context();
@@ -149,6 +303,15 @@ final class FinalReportContentEditorTest extends TestCase
             @unlink($pngPath);
             @unlink($pdfPath);
         }
+    }
+
+    public function testInvalidUploadWithoutTemporaryFileReturnsDomainValidation(): void
+    {
+        $file = new UploadedFile('', 'too-large.png', 'image/png', UPLOAD_ERR_INI_SIZE, false);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('backend.final_report.flash.photo_too_large');
+        $this->editor->validateImageUpload($file);
     }
 
     /** @return array{Project, Plan, PlanMeasure, ProjectDocument} */

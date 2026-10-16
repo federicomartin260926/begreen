@@ -38,12 +38,13 @@ final class AnthropicReportProvider implements AiReportProviderInterface
 
     public function generate(AiReportRequest $request): AiReportResult
     {
-        $this->assertConfigured();
+        $feature = $this->feature($request);
+        $this->assertConfigured($feature);
 
         try {
             $context = $this->promptBuilder->buildContext($request);
         } catch (\JsonException) {
-            $this->logFailure('request_encoding');
+            $this->logFailure($feature, 'request_encoding');
 
             throw new AiProviderException('The AI report request could not be prepared safely.');
         }
@@ -79,21 +80,21 @@ final class AnthropicReportProvider implements AiReportProviderInterface
             $statusCode = $response->getStatusCode();
             $body = $response->getContent(false);
         } catch (TimeoutExceptionInterface) {
-            $this->logFailure('timeout');
+            $this->logFailure($feature, 'timeout');
 
             throw new AiTimeoutException('The AI provider request timed out.');
         } catch (TransportExceptionInterface) {
-            $this->logFailure('connection');
+            $this->logFailure($feature, 'connection');
 
             throw new AiConnectionException('The AI provider could not be reached.');
         }
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            $this->throwHttpException($statusCode, $body);
+            $this->throwHttpException($feature, $statusCode, $body);
         }
 
         if (trim($body) === '') {
-            $this->logFailure('empty_response', $statusCode);
+            $this->logFailure($feature, 'empty_response', $statusCode);
 
             throw new AiEmptyResponseException('The AI provider returned an empty response.');
         }
@@ -101,33 +102,33 @@ final class AnthropicReportProvider implements AiReportProviderInterface
         try {
             $envelope = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            $this->logFailure('invalid_json', $statusCode);
+            $this->logFailure($feature, 'invalid_json', $statusCode);
 
             throw new AiInvalidJsonResponseException('The AI provider returned invalid JSON.');
         }
 
         if (!is_array($envelope)) {
-            $this->logFailure('invalid_structure', $statusCode);
+            $this->logFailure($feature, 'invalid_structure', $statusCode);
 
             throw new AiInvalidStructureException('The AI provider response has an invalid structure.');
         }
 
         $requestId = $this->normalizeRequestId($envelope['request_id'] ?? null);
         if (($envelope['stop_reason'] ?? null) === 'refusal') {
-            $this->logFailure('refusal', $statusCode, 'refusal', $requestId);
+            $this->logFailure($feature, 'refusal', $statusCode, 'refusal', $requestId);
 
             throw new AiProviderException('The AI provider refused the response.');
         }
 
         if (($envelope['stop_reason'] ?? null) === 'max_tokens') {
-            $this->logFailure('incomplete_response', $statusCode, 'max_tokens', $requestId);
+            $this->logFailure($feature, 'incomplete_response', $statusCode, 'max_tokens', $requestId);
 
             throw new AiProviderException('The AI provider did not complete the response.');
         }
 
         $outputText = $this->extractOutputText($envelope);
         if ($outputText === '') {
-            $this->logFailure('empty_response', $statusCode, '', $requestId);
+            $this->logFailure($feature, 'empty_response', $statusCode, '', $requestId);
 
             throw new AiEmptyResponseException('The AI provider returned no generated content.');
         }
@@ -135,7 +136,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
         try {
             $data = json_decode($outputText, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            $this->logFailure('invalid_output_json', $statusCode, '', $requestId);
+            $this->logFailure($feature, 'invalid_output_json', $statusCode, '', $requestId);
 
             throw new AiInvalidJsonResponseException('The AI provider generated invalid JSON.');
         }
@@ -147,13 +148,13 @@ final class AnthropicReportProvider implements AiReportProviderInterface
                 $request->futureCategoryKeys(),
             );
         } catch (AiInvalidStructureException $exception) {
-            $this->logFailure('invalid_structure', $statusCode, '', $requestId);
+            $this->logFailure($feature, 'invalid_structure', $statusCode, '', $requestId);
 
             throw $exception;
         }
     }
 
-    private function assertConfigured(): void
+    private function assertConfigured(string $feature): void
     {
         if (
             trim($this->anthropicConfiguration->apiKey) === ''
@@ -163,7 +164,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
             || $this->anthropicConfiguration->maxTokens <= 0
             || $this->configuration->timeoutSeconds <= 0
         ) {
-            $this->logFailure('provider_not_configured');
+            $this->logFailure($feature, 'provider_not_configured');
 
             throw new AiProviderNotConfiguredException('The AI report provider is not configured.');
         }
@@ -196,37 +197,37 @@ final class AnthropicReportProvider implements AiReportProviderInterface
         return trim(implode('', $parts));
     }
 
-    private function throwHttpException(int $statusCode, string $body): never
+    private function throwHttpException(string $feature, int $statusCode, string $body): never
     {
         [$errorCode, $requestId] = $this->extractSafeErrorMetadata($body);
 
         if ($statusCode === 401) {
-            $this->logFailure('authentication', $statusCode, $errorCode, $requestId);
+            $this->logFailure($feature, 'authentication', $statusCode, $errorCode, $requestId);
 
             throw new AiAuthenticationException('The AI provider rejected authentication.');
         }
 
         if ($statusCode === 402) {
             $normalizedCode = $errorCode !== '' ? $errorCode : 'billing_error';
-            $this->logFailure('quota', $statusCode, $normalizedCode, $requestId);
+            $this->logFailure($feature, 'quota', $statusCode, $normalizedCode, $requestId);
             $this->quotaAlertNotifier->notify(self::PROVIDER, $this->model(), $normalizedCode);
 
             throw new AiQuotaExceededException('The AI provider has no available credit or quota.');
         }
 
         if ($statusCode === 429) {
-            $this->logFailure('rate_limit', $statusCode, $errorCode, $requestId);
+            $this->logFailure($feature, 'rate_limit', $statusCode, $errorCode, $requestId);
 
             throw new AiRateLimitException('The AI provider rate limit was reached.');
         }
 
         if ($statusCode === 504) {
-            $this->logFailure('timeout', $statusCode, $errorCode, $requestId);
+            $this->logFailure($feature, 'timeout', $statusCode, $errorCode, $requestId);
 
             throw new AiTimeoutException('The AI provider request timed out.');
         }
 
-        $this->logFailure('provider_error', $statusCode, $errorCode, $requestId);
+        $this->logFailure($feature, 'provider_error', $statusCode, $errorCode, $requestId);
 
         throw new AiProviderException('The AI provider returned an error.');
     }
@@ -256,12 +257,14 @@ final class AnthropicReportProvider implements AiReportProviderInterface
     }
 
     private function logFailure(
+        string $feature,
         string $type,
         ?int $statusCode = null,
         string $errorCode = '',
         ?string $requestId = null,
     ): void {
         $this->logger->error('AI report provider failure.', [
+            'feature' => $feature,
             'provider' => self::PROVIDER,
             'model' => $this->model(),
             'error_type' => $type,
@@ -275,5 +278,12 @@ final class AnthropicReportProvider implements AiReportProviderInterface
     {
         return $this->settingResolver?->resolve()->anthropicModel
             ?? trim($this->anthropicConfiguration->model);
+    }
+
+    private function feature(AiReportRequest $request): string
+    {
+        return $request->purpose === 'final_sustainability_report'
+            ? 'final_report_narrative'
+            : 'general_pdf_ai_report';
     }
 }

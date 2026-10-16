@@ -70,6 +70,49 @@ final class FinalReportPdfBuilderTest extends TestCase
         self::assertStringStartsWith('%PDF-', $pdf);
     }
 
+    public function testReplacementPhotoBecomesThePdfCoverImage(): void
+    {
+        $project = (new Project())->setName('Informe con sustitución');
+        (new \ReflectionProperty(Project::class, 'id'))->setValue($project, 10);
+        $original = $this->document($project, 50, str_repeat('a', 32).'.png');
+        $replacement = $this->document($project, 51, str_repeat('b', 32).'.png');
+        file_put_contents($this->directory.'/10/'.$original->getStoredName(), 'old-image');
+        file_put_contents($this->directory.'/10/'.$replacement->getStoredName(), 'new-image');
+        $content = (new FinalReportContent())->setProject($project)
+            ->setPhotos([['documentId' => 50, 'caption' => 'Conservado', 'position' => 1]])
+            ->setCoverDocumentId(50);
+
+        (new FinalReportContentEditor())->replacePhoto($content, $project, $original, $replacement);
+        $data = $this->builder()->buildData($project, $content, $this->report());
+
+        self::assertSame(51, $data['coverPhoto']['documentId']);
+        self::assertSame('Conservado', $data['coverPhoto']['caption']);
+        self::assertSame('new-image', base64_decode(substr(
+            $data['coverPhoto']['dataUri'],
+            strpos($data['coverPhoto']['dataUri'], ',') + 1,
+        ), true));
+    }
+
+    public function testExcludedPhotoDoesNotAppearInPdfData(): void
+    {
+        $project = (new Project())->setName('Informe con exclusión');
+        (new \ReflectionProperty(Project::class, 'id'))->setValue($project, 10);
+        $included = $this->document($project, 50, str_repeat('a', 32).'.png');
+        $excluded = $this->document($project, 51, str_repeat('b', 32).'.png');
+        file_put_contents($this->directory.'/10/'.$included->getStoredName(), 'included-image');
+        file_put_contents($this->directory.'/10/'.$excluded->getStoredName(), 'excluded-image');
+        $content = (new FinalReportContent())->setProject($project)->setPhotos([
+            ['documentId' => 50, 'caption' => 'Visible', 'position' => 1],
+            ['documentId' => 51, 'excluded' => true],
+        ]);
+
+        $data = $this->builder()->buildData($project, $content, $this->report());
+
+        self::assertCount(1, $data['photos']);
+        self::assertSame(50, $data['photos'][0]['documentId']);
+        self::assertStringNotContainsString(base64_encode('excluded-image'), $data['photos'][0]['dataUri']);
+    }
+
     private function builder(): FinalReportPdfBuilder
     {
         $twig = new Environment(new FilesystemLoader(dirname(__DIR__, 3).'/templates'));
@@ -84,6 +127,19 @@ final class FinalReportPdfBuilderTest extends TestCase
             new ReportDesignCatalog(),
             new ReportDesignRenderer($designStorage, new ReportDesignValidator($components, $data), $components, $data, $twig),
         );
+    }
+
+    private function document(Project $project, int $id, string $storedName): ProjectDocument
+    {
+        $document = (new ProjectDocument())
+            ->setType('final_report_photo')
+            ->setKind(ProjectDocumentCatalog::KIND_FILE)
+            ->setStoredName($storedName)
+            ->setMimeType('image/png');
+        (new \ReflectionProperty(ProjectDocument::class, 'id'))->setValue($document, $id);
+        $project->addProjectDocument($document);
+
+        return $document;
     }
 
     /** @return array<string, mixed> */

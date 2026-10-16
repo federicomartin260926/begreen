@@ -4,8 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use Psr\Log\LoggerInterface;
+use App\Exception\Ai\AiAuthenticationException;
+use App\Exception\Ai\AiConnectionException;
+use App\Exception\Ai\AiEmptyResponseException;
+use App\Exception\Ai\AiInvalidJsonResponseException;
+use App\Exception\Ai\AiInvalidStructureException;
+use App\Exception\Ai\AiProviderNotConfiguredException;
+use App\Exception\Ai\AiQuotaExceededException;
+use App\Exception\Ai\AiRateLimitException;
 use App\Exception\Ai\AiReportException;
+use App\Exception\Ai\AiTimeoutException;
 use App\Exception\ReportDesign\ReportDesignRequiresDevelopmentException;
 use App\Service\Ai\AiReportSettingResolver;
 use App\Service\ReportDesign\ReportDesignAiGenerator;
@@ -14,6 +22,7 @@ use App\Service\ReportDesign\ReportDesignComponentCatalog;
 use App\Service\ReportDesign\ReportDesignDataCatalog;
 use App\Service\ReportDesign\ReportDesignManager;
 use App\Service\ReportDesign\ReportDesignStorage;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -54,7 +63,7 @@ final class ReportDesignController extends AbstractController
         Request $request,
         ReportDesignCatalog $designCatalog,
         ReportDesignAiGenerator $generator,
-        LoggerInterface $logger,
+        LoggerInterface $aiLogger,
     ): RedirectResponse {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
@@ -80,16 +89,24 @@ final class ReportDesignController extends AbstractController
                 'warning',
                 ReportDesignRequiresDevelopmentException::USER_MESSAGE,
             );
-        } catch (AiReportException) {
+        } catch (AiReportException $exception) {
+            $aiLogger->error('AI report design generation failed.', [
+                'feature' => 'report_designer_ai',
+                'exception_class' => $exception::class,
+                'failure_category' => $this->aiFailureCategory($exception),
+                'document' => $definition->document,
+                'variant' => $definition->variant,
+            ]);
             $this->addFlash(
                 'danger',
                 'backend.report_design.flash.ai_error',
             );
         } catch (\InvalidArgumentException $exception) {
-            $logger->warning(
+            $aiLogger->warning(
                 'AI report design proposal rejected by validator.',
                 [
-                    'reason' => $exception->getMessage(),
+                    'feature' => 'report_designer_ai',
+                    'failure_category' => 'application_validation',
                     'exception_class' => $exception::class,
                     'document' => $definition->document,
                     'variant' => $definition->variant,
@@ -103,6 +120,22 @@ final class ReportDesignController extends AbstractController
         }
 
         return $this->redirectToRoute('admin_report_design_index', $this->definitionParameters($definition));
+    }
+
+    private function aiFailureCategory(AiReportException $exception): string
+    {
+        return match (true) {
+            $exception instanceof AiProviderNotConfiguredException => 'configuration',
+            $exception instanceof AiAuthenticationException => 'authentication',
+            $exception instanceof AiQuotaExceededException => 'quota',
+            $exception instanceof AiRateLimitException => 'rate_limit',
+            $exception instanceof AiTimeoutException => 'timeout',
+            $exception instanceof AiConnectionException => 'connection',
+            $exception instanceof AiEmptyResponseException => 'empty_response',
+            $exception instanceof AiInvalidJsonResponseException,
+            $exception instanceof AiInvalidStructureException => 'invalid_response',
+            default => 'provider',
+        };
     }
 
     #[Route('/approve', name: 'approve', methods: ['POST'])]

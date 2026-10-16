@@ -116,6 +116,14 @@ services:
             $model: '%openai.model%'
             $baseUrl: '%openai.base_url%'
 
+    App\Service\Ai\OpenAiReportProvider:
+        arguments:
+            $logger: '@monolog.logger.ai'
+
+    App\Service\Ai\AnthropicReportProvider:
+        arguments:
+            $logger: '@monolog.logger.ai'
+
     App\Service\Ai\AnthropicReportConfiguration:
         arguments:
             $apiKey: '%anthropic.api_key%'
@@ -126,8 +134,18 @@ services:
 
     App\Service\Ai\AiQuotaAlertNotifier:
         arguments:
+            $logger: '@monolog.logger.ai'
             $environment: '%kernel.environment%'
             $fromEmail: '%app.mail_from%'
+
+    App\Service\Ai\AiReportStorage:
+        arguments:
+            $logger: '@monolog.logger.ai'
+            $storageDirectory: '%ai.report_storage_dir%'
+
+    App\Service\Ai\PlanAiReportService:
+        arguments:
+            $logger: '@monolog.logger.ai'
 
     App\Service\Ai\ConfiguredAiReportProvider:
         arguments:
@@ -140,10 +158,6 @@ services:
     App\Service\CrewImport\CrewImportAiInterpreterInterface: '@App\Service\CrewImport\CrewImportAiInterpreter'
 
     App\Service\Animation\AnimationMeasureProvider: '@App\Service\Animation\DoctrineAnimationMeasureProvider'
-
-    App\Service\Ai\AiReportStorage:
-        arguments:
-            $storageDirectory: '%ai.report_storage_dir%'
 
     App\Service\Emission\EmissionRecordAttachmentStorage:
         arguments:

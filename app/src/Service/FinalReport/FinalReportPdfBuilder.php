@@ -50,6 +50,9 @@ final readonly class FinalReportPdfBuilder
         }
         $photos = [];
         foreach ($content->getPhotos() as $photo) {
+            if ($this->contentEditor->isExcludedPhotoEntry($photo)) {
+                continue;
+            }
             $id = $photo['documentId'] ?? null;
             if (!is_int($id) || !isset($documents[$id])) {
                 continue;

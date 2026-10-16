@@ -53,9 +53,15 @@ final class AiReportOutputSchemaOpenAiTest extends TestCase
             ->getForOpenAi(['category:1'], [])
             ['properties']['categoryFutureSummaries'];
 
-        self::assertSame('object', $future['type']);
-        self::assertFalse($future['additionalProperties']);
-        self::assertSame([], $future['required']);
-        self::assertSame([], $future['properties']);
+        self::assertSame('array', $future['type']);
+        self::assertSame(0, $future['minItems']);
+        self::assertSame(0, $future['maxItems']);
+        self::assertSame('object', $future['items']['type']);
+        self::assertFalse($future['items']['additionalProperties']);
+        self::assertSame(['categoryKey', 'summary'], $future['items']['required']);
+        self::assertSame(['categoryKey', 'summary'], array_keys($future['items']['properties']));
+
+        $encoded = json_encode($future, JSON_THROW_ON_ERROR);
+        self::assertStringNotContainsString('"properties":[]', $encoded);
     }
 }
