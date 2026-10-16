@@ -3,5 +3,5 @@
   <h1>Informe Final de Sostenibilidad</h1><h2>{{ report.project.name }}</h2>
   {% if report.project.type %}<p>{{ report.project.type }}</p>{% endif %}
   {% if report.project.mainLocation or report.project.country %}<p>{{ report.project.mainLocation }}{% if report.project.mainLocation and report.project.country %}, {% endif %}{{ report.project.country }}</p>{% endif %}
-  {% if coverPhoto.caption or coverPhoto.author %}<p class="muted">{{ coverPhoto.caption }}{% if coverPhoto.author %} · {{ coverPhoto.author }}{% endif %}</p>{% endif %}
+  {% if coverPhoto and (coverPhoto.caption or coverPhoto.author) %}<p class="muted">{{ coverPhoto.caption }}{% if coverPhoto.author %} · {{ coverPhoto.author }}{% endif %}</p>{% endif %}
 </section>
