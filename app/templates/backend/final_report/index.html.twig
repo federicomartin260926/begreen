@@ -1,0 +1,165 @@
+{% extends 'base_backend.html.twig' %}
+
+{% block title %}{{ 'backend.final_report.title'|trans }}{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <span class="badge text-bg-success mb-2">{{ 'backend.final_report.phase'|trans }}</span>
+      <h1 class="h2 mb-1">{{ 'backend.final_report.title'|trans }}</h1>
+      <p class="text-muted mb-0">{{ 'backend.final_report.subtitle'|trans({'%project%': project.name}) }}</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{{ path('backend_project_index') }}">
+      <i class="bi bi-arrow-left me-1"></i>{{ 'backend.final_report.back'|trans }}
+    </a>
+  </div>
+
+  <div class="alert alert-info d-flex gap-2" role="status">
+    <i class="bi bi-info-circle-fill"></i>
+    <div>{{ 'backend.final_report.base_notice'|trans }}</div>
+  </div>
+
+  <section class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3"><h2 class="h4 mb-0">{{ 'backend.final_report.base_title'|trans }}</h2></div>
+    <div class="card-body">
+      <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="border rounded p-3 h-100"><div class="small text-muted">{{ 'backend.final_report.project'|trans }}</div><strong>{{ report.project.name }}</strong><div>{{ report.project.country|default('—') }}</div></div></div>
+        <div class="col-md-4"><div class="border rounded p-3 h-100"><div class="small text-muted">{{ 'backend.final_report.measures'|trans }}</div><strong>{{ report.implementation.summary.totalMeasures }}</strong><div>{{ 'backend.final_report.implemented_count'|trans({'%count%': report.implementation.summary.implementedMeasures}) }}</div></div></div>
+        <div class="col-md-4"><div class="border rounded p-3 h-100"><div class="small text-muted">{{ 'backend.final_report.emissions'|trans }}</div><strong>{% if report.emissions.available %}{{ report.emissions.totalKgCo2e|number_format(2, ',', '.') }} kgCO₂e{% else %}{{ 'backend.final_report.unavailable'|trans }}{% endif %}</strong><div>{{ 'backend.final_report.valid_records'|trans({'%count%': report.emissions.validRecordCount}) }}</div></div></div>
+      </div>
+
+      <div class="table-responsive mb-4">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>{{ 'backend.final_report.measure'|trans }}</th><th>{{ 'backend.final_report.decision'|trans }}</th><th>{{ 'backend.final_report.state'|trans }}</th></tr></thead>
+          <tbody>
+          {% for planned in report.plan.measures %}
+            {% set implementation = report.implementation.measures[loop.index0] %}
+            <tr>
+              <td>{{ planned.measure.name|default('—') }}</td>
+              <td>{{ planned.decision.primary|default('—') }}</td>
+              <td><span class="badge text-bg-light border">{{ implementation.state }}</span></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="3" class="text-muted">{{ 'backend.final_report.no_measures'|trans }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <h3 class="h6">{{ 'backend.final_report.emissions_by_category'|trans }}</h3>
+          <ul class="list-group list-group-flush">
+            {% for item in report.emissions.byCategory %}<li class="list-group-item px-0 d-flex justify-content-between"><span>{{ item.name|default('—') }}</span><strong>{{ item.kgCo2e|number_format(2, ',', '.') }} kgCO₂e</strong></li>{% else %}<li class="list-group-item px-0 text-muted">{{ 'backend.final_report.unavailable'|trans }}</li>{% endfor %}
+          </ul>
+        </div>
+        <div class="col-lg-6">
+          <h3 class="h6">{{ 'backend.final_report.ods'|trans }}</h3>
+          <div class="d-flex flex-wrap gap-2">
+            {% for ods in report.ods %}<span class="badge rounded-pill text-bg-success">ODS {{ ods.code }} · {{ ods.name }}</span>{% else %}<span class="text-muted">{{ 'backend.final_report.unavailable'|trans }}</span>{% endfor %}
+          </div>
+          <p class="small text-muted mt-2 mb-0">{{ 'backend.final_report.ods_notice'|trans }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <form method="post" action="{{ path('backend_final_report_save') }}">
+    <input type="hidden" name="_token" value="{{ csrf_token('final_report_save_' ~ project.id) }}">
+
+    <section class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3"><h2 class="h4 mb-0">{{ 'backend.final_report.featured_title'|trans }}</h2></div>
+      <div class="card-body">
+        <p class="text-muted">{{ 'backend.final_report.featured_help'|trans }}</p>
+        {% for planned in report.plan.measures %}
+          {% if planned.planMeasureId %}
+            {% set featured = featuredValues[planned.planMeasureId]|default({}) %}
+            <div class="border rounded p-3 mb-3">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" value="1" id="featured-{{ planned.planMeasureId }}" name="featured[{{ planned.planMeasureId }}][selected]" {% if featured %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="featured-{{ planned.planMeasureId }}">{{ planned.measure.name|default('—') }}</label>
+              </div>
+              <label class="form-label small" for="featured-text-{{ planned.planMeasureId }}">{{ 'backend.final_report.complementary_text'|trans }}</label>
+              <textarea class="form-control" rows="2" maxlength="2000" id="featured-text-{{ planned.planMeasureId }}" name="featured[{{ planned.planMeasureId }}][text]">{{ featured.text|default('') }}</textarea>
+            </div>
+          {% endif %}
+        {% else %}
+          <p class="text-muted mb-0">{{ 'backend.final_report.no_measures'|trans }}</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3"><h2 class="h4 mb-0">{{ 'backend.final_report.manual_title'|trans }}</h2></div>
+      <div class="card-body row g-3">
+        {% for section in manualSections %}
+          {% set manual = content.manualTexts[section]|default({}) %}
+          <div class="col-12">
+            <label class="form-label fw-semibold" for="manual-{{ section }}">{{ ('backend.final_report.sections.' ~ section)|trans }}</label>
+            {% if manual.origin|default('manual') == 'ai' %}<span class="badge text-bg-light border ms-1">IA</span>{% endif %}
+            <textarea class="form-control" rows="3" maxlength="10000" id="manual-{{ section }}" name="manualTexts[{{ section }}]">{{ manual.text|default('') }}</textarea>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3"><h2 class="h4 mb-0">{{ 'backend.final_report.gallery_title'|trans }}</h2></div>
+      <div class="card-body">
+        <p class="text-muted">{{ 'backend.final_report.gallery_help'|trans }}</p>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="radio" name="coverDocumentId" value="" id="cover-none" {% if content.coverDocumentId is null %}checked{% endif %}>
+          <label class="form-check-label" for="cover-none">{{ 'backend.final_report.no_cover'|trans }}</label>
+        </div>
+        <div class="row g-3">
+          {% for document in gallery %}
+            {% set photo = photoValues[document.id]|default({}) %}
+            <div class="col-xl-4 col-md-6">
+              <div class="card h-100">
+                <img src="{{ path('backend_final_report_photo_view', {documentId: document.id}) }}" class="card-img-top object-fit-cover" style="height: 190px" alt="{{ photo.caption|default(document.originalName)|default('') }}">
+                <div class="card-body">
+                  <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" value="1" id="photo-{{ document.id }}" name="photos[{{ document.id }}][selected]" {% if photo %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold" for="photo-{{ document.id }}">{{ 'backend.final_report.include_photo'|trans }}</label>
+                  </div>
+                  <label class="form-label small">{{ 'backend.final_report.caption'|trans }}</label>
+                  <input class="form-control form-control-sm mb-2" maxlength="500" name="photos[{{ document.id }}][caption]" value="{{ photo.caption|default('') }}">
+                  <label class="form-label small">{{ 'backend.final_report.author'|trans }}</label>
+                  <input class="form-control form-control-sm mb-2" maxlength="160" name="photos[{{ document.id }}][author]" value="{{ photo.author|default('') }}">
+                  <label class="form-label small">{{ 'backend.final_report.related_measure'|trans }}</label>
+                  <select class="form-select form-select-sm mb-2" name="photos[{{ document.id }}][planMeasureId]">
+                    <option value="">{{ 'backend.final_report.no_related_measure'|trans }}</option>
+                    {% for planned in report.plan.measures %}{% if planned.planMeasureId %}<option value="{{ planned.planMeasureId }}" {% if photo.planMeasureId|default(null) == planned.planMeasureId %}selected{% endif %}>{{ planned.measure.name|default('—') }}</option>{% endif %}{% endfor %}
+                  </select>
+                  <label class="form-label small">{{ 'backend.final_report.position'|trans }}</label>
+                  <input class="form-control form-control-sm" type="number" min="0" max="10000" name="photos[{{ document.id }}][position]" value="{{ photo.position|default(loop.index) }}">
+                  <div class="form-check mt-3">
+                    <input class="form-check-input" type="radio" name="coverDocumentId" value="{{ document.id }}" id="cover-{{ document.id }}" {% if content.coverDocumentId == document.id %}checked{% endif %}>
+                    <label class="form-check-label" for="cover-{{ document.id }}">{{ 'backend.final_report.cover'|trans }}</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <div class="col-12"><p class="text-muted mb-0">{{ 'backend.final_report.no_photos'|trans }}</p></div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <div class="d-flex justify-content-end mb-4"><button class="btn btn-success btn-lg" type="submit"><i class="bi bi-save me-1"></i>{{ 'backend.final_report.save'|trans }}</button></div>
+  </form>
+
+  <section class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3"><h2 class="h5 mb-0">{{ 'backend.final_report.upload_title'|trans }}</h2></div>
+    <div class="card-body">
+      <form method="post" action="{{ path('backend_final_report_photo_upload') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+        <input type="hidden" name="_token" value="{{ csrf_token('final_report_upload_' ~ project.id) }}">
+        <div class="col-md-8"><label class="form-label" for="report-photo">{{ 'backend.final_report.photo_file'|trans }}</label><input class="form-control" id="report-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required><div class="form-text">{{ 'backend.final_report.photo_rules'|trans }}</div></div>
+        <div class="col-md-4"><button class="btn btn-outline-success w-100" type="submit"><i class="bi bi-upload me-1"></i>{{ 'backend.final_report.upload'|trans }}</button></div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

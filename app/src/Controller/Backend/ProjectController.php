@@ -1768,7 +1768,7 @@ class ProjectController extends AbstractController
             'implementation' => $this->redirectToRoute('backend_plan_review', ['state' => 'all']),
             'bgos' => $this->redirectToRoute('backend_bgos_index'),
             'emissions' => $this->redirectToRoute('backend_emission_index'),
-            'report' => $this->redirectToRoute('report_emission_overview_pdf'),
+            'report' => $this->redirectToRoute('backend_final_report_index'),
             default => $this->redirectToRoute('app_backend'),
         };
     }

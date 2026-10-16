@@ -9,9 +9,9 @@ final class ProjectDocumentCatalogTest extends TestCase
 {
     public function testCatalogContainsExactExpectedCounts(): void
     {
-        self::assertCount(17, ProjectDocumentCatalog::COMMON_TYPES);
+        self::assertCount(18, ProjectDocumentCatalog::COMMON_TYPES);
         self::assertCount(10, ProjectDocumentCatalog::ANIMATION_TYPES);
-        self::assertCount(27, ProjectDocumentCatalog::allTypeCodes());
+        self::assertCount(28, ProjectDocumentCatalog::allTypeCodes());
         self::assertSame(
             ProjectDocumentCatalog::allTypeCodes(),
             array_values(array_unique(ProjectDocumentCatalog::allTypeCodes())),
@@ -31,8 +31,9 @@ final class ProjectDocumentCatalogTest extends TestCase
         $common = ProjectDocumentCatalog::typeChoices(false);
         $animation = ProjectDocumentCatalog::typeChoices(true);
 
-        self::assertCount(17, $common);
-        self::assertCount(27, $animation);
+        self::assertCount(18, $common);
+        self::assertCount(28, $animation);
+        self::assertContains('final_report_photo', $common, true);
         self::assertContains('other', $common, true);
         self::assertNotContains('animatic', $common, true);
         self::assertContains('animatic', $animation, true);

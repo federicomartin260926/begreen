@@ -14,6 +14,7 @@ final class ProjectDocumentCatalog
         'storyboard',
         'budget',
         'report_dossier',
+        'final_report_photo',
         'ppm_dossier',
         'shooting_plan',
         'production_plan',
