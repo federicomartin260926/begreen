@@ -25,6 +25,7 @@ final class ReportDesignController extends AbstractController
 {
     #[Route('/', name: 'index', methods: ['GET'])]
     public function index(
+        Request $request,
         ReportDesignCatalog $designCatalog,
         ReportDesignStorage $storage,
         ReportDesignComponentCatalog $componentCatalog,
@@ -33,15 +34,16 @@ final class ReportDesignController extends AbstractController
     ): Response {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
-        $definition = $designCatalog->sustainabilityPlanGeneral();
+        $definition = $this->definition($request, $designCatalog);
         $settings = $settingResolver->resolve();
 
         return $this->render('admin/report_design/index.html.twig', [
             'definition' => $definition,
             'draft' => $storage->loadDraft($definition),
             'approved' => $storage->loadApproved($definition),
-            'components' => $componentCatalog->all(),
-            'dataTree' => $dataCatalog->tree(),
+            'definitions' => $designCatalog->all(),
+            'components' => $componentCatalog->all($definition),
+            'dataTree' => $dataCatalog->tree($definition),
             'provider' => $settings->provider,
             'model' => $settings->model(),
         ]);
@@ -64,7 +66,7 @@ final class ReportDesignController extends AbstractController
         }
 
         $instruction = (string) $request->request->get('instruction', '');
-        $definition = $designCatalog->sustainabilityPlanGeneral();
+        $definition = $this->definition($request, $designCatalog);
 
         try {
             $generator->generateDraft($definition, $instruction);
@@ -100,7 +102,7 @@ final class ReportDesignController extends AbstractController
             );
         }
 
-        return $this->redirectToRoute('admin_report_design_index');
+        return $this->redirectToRoute('admin_report_design_index', $this->definitionParameters($definition));
     }
 
     #[Route('/approve', name: 'approve', methods: ['POST'])]
@@ -118,10 +120,9 @@ final class ReportDesignController extends AbstractController
             throw $this->createAccessDeniedException();
         }
 
+        $definition = $this->definition($request, $designCatalog);
         try {
-            $manager->approve(
-                $designCatalog->sustainabilityPlanGeneral(),
-            );
+            $manager->approve($definition);
 
             $this->addFlash(
                 'success',
@@ -134,7 +135,7 @@ final class ReportDesignController extends AbstractController
             );
         }
 
-        return $this->redirectToRoute('admin_report_design_index');
+        return $this->redirectToRoute('admin_report_design_index', $this->definitionParameters($definition));
     }
 
     #[Route(
@@ -156,10 +157,9 @@ final class ReportDesignController extends AbstractController
             throw $this->createAccessDeniedException();
         }
 
+        $definition = $this->definition($request, $designCatalog);
         try {
-            $manager->discardDraft(
-                $designCatalog->sustainabilityPlanGeneral(),
-            );
+            $manager->discardDraft($definition);
 
             $this->addFlash(
                 'success',
@@ -173,8 +173,23 @@ final class ReportDesignController extends AbstractController
         }
 
         return $this->redirectToRoute(
-            'admin_report_design_index'
+            'admin_report_design_index',
+            $this->definitionParameters($definition),
         );
+    }
+
+    private function definition(Request $request, ReportDesignCatalog $catalog): \App\Service\ReportDesign\ReportDesignDefinition
+    {
+        return $catalog->get(
+            (string) ($request->request->get('document') ?: $request->query->get('document', ReportDesignCatalog::DOCUMENT_SUSTAINABILITY_PLAN)),
+            (string) ($request->request->get('variant') ?: $request->query->get('variant', ReportDesignCatalog::VARIANT_GENERAL)),
+        );
+    }
+
+    /** @return array{document:string,variant:string} */
+    private function definitionParameters(\App\Service\ReportDesign\ReportDesignDefinition $definition): array
+    {
+        return ['document' => $definition->document, 'variant' => $definition->variant];
     }
 
 }

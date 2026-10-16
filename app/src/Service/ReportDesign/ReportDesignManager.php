@@ -23,7 +23,7 @@ final readonly class ReportDesignManager
         string $css,
         array $metadata = [],
     ): array {
-        $this->validator->validate($html, $css);
+        $this->validator->validate($html, $css, $definition);
 
         return $this->storage->saveDraft(
             $definition,
@@ -89,6 +89,7 @@ final readonly class ReportDesignManager
         $this->validator->validate(
             $draft['html'],
             $draft['css'],
+            $definition,
         );
 
         return $this->storage->approve($definition);

@@ -58,7 +58,7 @@ final class AnthropicReportProvider implements AiReportProviderInterface
                 'json' => [
                     'model' => $this->model(),
                     'max_tokens' => $this->anthropicConfiguration->maxTokens,
-                    'system' => $this->promptBuilder->buildInstructions(),
+                    'system' => $this->promptBuilder->buildInstructions($request),
                     'messages' => [[
                         'role' => 'user',
                         'content' => $context,

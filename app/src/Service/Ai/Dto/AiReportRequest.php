@@ -10,18 +10,28 @@ final readonly class AiReportRequest
     public function __construct(
         public string $locale,
         public array $categories,
+        public string $purpose = 'sustainability_plan',
+        public array $factualContext = [],
+        public array $sectionKeys = [],
     ) {
     }
 
     /** @return list<string> */
     public function categoryKeys(): array
     {
+        if ($this->purpose === 'final_sustainability_report') {
+            return $this->sectionKeys;
+        }
+
         return array_map(static fn (AiReportCategory $category): string => $category->key, $this->categories);
     }
 
     /** @return list<string> */
     public function futureCategoryKeys(): array
     {
+        if ($this->purpose === 'final_sustainability_report') {
+            return [];
+        }
         $keys = [];
         foreach ($this->categories as $category) {
             foreach ($category->measures as $measure) {

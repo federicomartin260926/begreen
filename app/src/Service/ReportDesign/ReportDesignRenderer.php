@@ -34,7 +34,7 @@ final readonly class ReportDesignRenderer
 
         return $design === null
             ? null
-            : $this->renderDesign($design, $context);
+            : $this->renderDesign($definition, $design, $context);
     }
 
     /**
@@ -54,7 +54,7 @@ final readonly class ReportDesignRenderer
 
         return $design === null
             ? null
-            : $this->renderDesign($design, $context);
+            : $this->renderDesign($definition, $design, $context);
     }
 
     /**
@@ -72,6 +72,7 @@ final readonly class ReportDesignRenderer
      * }
      */
     private function renderDesign(
+        ReportDesignDefinition $definition,
         array $design,
         array $context,
     ): array {
@@ -80,18 +81,19 @@ final readonly class ReportDesignRenderer
         $this->validator->validate(
             $design['html'],
             $design['css'],
+            $definition,
         );
 
-        $snapshot = $this->dataCatalog->snapshot($context);
+        $snapshot = $this->dataCatalog->snapshot($context, $definition);
 
         $rendered = preg_replace_callback(
             '/\[COMPONENT:([a-z0-9_-]+)\]|\[\[([a-z0-9_.-]+)\]\]/',
-            function (array $matches) use ($context, $snapshot): string {
+            function (array $matches) use ($context, $snapshot, $definition): string {
                 $component = $matches[1] ?? '';
 
                 if ($component !== '') {
                     return $this->twig->render(
-                        $this->componentCatalog->template($component),
+                        $this->componentCatalog->template($component, $definition),
                         $context,
                     );
                 }
@@ -100,7 +102,7 @@ final readonly class ReportDesignRenderer
 
                 if (
                     $variable === ''
-                    || !$this->dataCatalog->has($variable)
+                    || !$this->dataCatalog->has($variable, $definition)
                     || !array_key_exists($variable, $snapshot)
                 ) {
                     throw new \RuntimeException(
@@ -109,6 +111,7 @@ final readonly class ReportDesignRenderer
                 }
 
                 return $this->formatVariable(
+                    $definition,
                     $variable,
                     $snapshot[$variable],
                 );
@@ -130,6 +133,7 @@ final readonly class ReportDesignRenderer
     }
 
     private function formatVariable(
+        ReportDesignDefinition $reportDefinition,
         string $key,
         string|int|float|bool|null $value,
     ): string {
@@ -137,7 +141,7 @@ final readonly class ReportDesignRenderer
             return '';
         }
 
-        $definition = $this->dataCatalog->all()[$key] ?? null;
+        $definition = $this->dataCatalog->all($reportDefinition)[$key] ?? null;
 
         if ($definition === null) {
             throw new \RuntimeException(

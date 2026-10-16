@@ -13,6 +13,8 @@ use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\FinalReport\FinalReportContentEditor;
 use App\Service\FinalReport\FinalReportDataBuilder;
+use App\Service\FinalReport\FinalReportNarrativeService;
+use App\Service\FinalReport\FinalReportPdfBuilder;
 use App\Service\ProjectDocument\ProjectDocumentStorage;
 use App\Service\ProjectDocument\ProjectDocumentValidationException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -70,6 +72,62 @@ final class FinalReportController extends AbstractController
         $this->addFlash('success', 'backend.final_report.flash.saved');
 
         return $this->redirectToRoute('backend_final_report_index');
+    }
+
+    #[Route('/narrative/generate', name: 'narrative_generate', methods: ['POST'])]
+    public function generateNarrative(
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        EntityManagerInterface $entityManager,
+        FinalReportDataBuilder $dataBuilder,
+        FinalReportNarrativeService $narrativeService,
+    ): RedirectResponse {
+        [$project, $plan] = $this->activeContext($activeProjectService, $entityManager);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $this->assertCsrf($request, 'final_report_ai_'.$project->getId());
+        $content = $this->findContent($project, $entityManager) ?? (new FinalReportContent())->setProject($project);
+        $replace = array_keys(array_filter(
+            $request->request->all('replaceManual'),
+            static fn (mixed $value): bool => (string) $value === '1',
+        ));
+
+        try {
+            $updated = $narrativeService->generate(
+                $content,
+                $dataBuilder->build($project, $plan),
+                $request->getLocale(),
+                $replace,
+            );
+            $entityManager->persist($content);
+            $entityManager->flush();
+            $this->addFlash('success', sprintf('Narrativa IA actualizada en %d secciones.', count($updated)));
+        } catch (\App\Exception\Ai\AiReportException|\InvalidArgumentException) {
+            $this->addFlash('danger', 'No se pudo generar la narrativa IA. Revisa la configuración y vuelve a intentarlo.');
+        }
+
+        return $this->redirectToRoute('backend_final_report_index');
+    }
+
+    #[Route('/preview', name: 'preview', methods: ['GET'])]
+    public function preview(
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        EntityManagerInterface $entityManager,
+        FinalReportDataBuilder $dataBuilder,
+        FinalReportPdfBuilder $pdfBuilder,
+    ): Response {
+        return $this->pdfResponse($request, $activeProjectService, $entityManager, $dataBuilder, $pdfBuilder, true);
+    }
+
+    #[Route('/download', name: 'download', methods: ['GET'])]
+    public function download(
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        EntityManagerInterface $entityManager,
+        FinalReportDataBuilder $dataBuilder,
+        FinalReportPdfBuilder $pdfBuilder,
+    ): Response {
+        return $this->pdfResponse($request, $activeProjectService, $entityManager, $dataBuilder, $pdfBuilder, false);
     }
 
     #[Route('/photos/upload', name: 'photo_upload', methods: ['POST'])]
@@ -236,6 +294,30 @@ final class FinalReportController extends AbstractController
             'photoValues' => $photoValues,
             'featuredValues' => $featuredValues,
             'manualSections' => FinalReportContentEditor::MANUAL_SECTIONS,
+        ]);
+    }
+
+    private function pdfResponse(
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        EntityManagerInterface $entityManager,
+        FinalReportDataBuilder $dataBuilder,
+        FinalReportPdfBuilder $pdfBuilder,
+        bool $inline,
+    ): Response {
+        [$project, $plan] = $this->activeContext($activeProjectService, $entityManager);
+        $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+        $draft = $request->query->get('report_design') === 'draft';
+        if ($draft) {
+            $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        }
+        $content = $this->findContent($project, $entityManager) ?? (new FinalReportContent())->setProject($project);
+        $pdf = $pdfBuilder->generate($project, $content, $dataBuilder->build($project, $plan), $draft);
+
+        return new Response($pdf, Response::HTTP_OK, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment').'; filename="final-sustainability-report.pdf"',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 }

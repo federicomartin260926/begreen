@@ -10,9 +10,12 @@
       <h1 class="h2 mb-1">{{ 'backend.final_report.title'|trans }}</h1>
       <p class="text-muted mb-0">{{ 'backend.final_report.subtitle'|trans({'%project%': project.name}) }}</p>
     </div>
-    <a class="btn btn-outline-secondary" href="{{ path('backend_project_index') }}">
-      <i class="bi bi-arrow-left me-1"></i>{{ 'backend.final_report.back'|trans }}
-    </a>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-success" target="_blank" href="{{ path('backend_final_report_preview') }}"><i class="bi bi-eye me-1"></i>Previsualizar PDF</a>
+      <a class="btn btn-success" href="{{ path('backend_final_report_download') }}"><i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF</a>
+      {% if is_granted('ROLE_SUPER_ADMIN') %}<a class="btn btn-outline-secondary" href="{{ path('admin_report_design_index', {document: 'final-sustainability-report', variant: 'general'}) }}"><i class="bi bi-palette me-1"></i>Personalizar diseño</a>{% endif %}
+      <a class="btn btn-outline-secondary" href="{{ path('backend_project_index') }}"><i class="bi bi-arrow-left me-1"></i>{{ 'backend.final_report.back'|trans }}</a>
+    </div>
   </div>
 
   <div class="alert alert-info d-flex gap-2" role="status">
@@ -62,6 +65,25 @@
           <p class="small text-muted mt-2 mb-0">{{ 'backend.final_report.ods_notice'|trans }}</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3"><h2 class="h4 mb-0">Narrativa asistida por IA</h2></div>
+    <div class="card-body">
+      <p class="text-muted">La IA solo se ejecuta al pulsar el botón. Usa el Informe Base y el contenido editorial guardado; los textos manuales se conservan salvo sustitución explícita.</p>
+      <form method="post" action="{{ path('backend_final_report_narrative_generate') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('final_report_ai_' ~ project.id) }}">
+        <div class="row g-2 mb-3">
+          {% for section in ['executive_summary', 'implementation', 'featured_storytelling', 'deviations_learnings', 'conclusion'] %}
+            {% set editorial = content.manualTexts[section]|default({}) %}
+            {% if editorial.origin|default(null) == 'manual' and editorial.text|default(null) %}
+              <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" value="1" name="replaceManual[{{ section }}]" id="replace-{{ section }}"><label class="form-check-label" for="replace-{{ section }}">Sustituir explícitamente “{{ ('backend.final_report.sections.' ~ section)|trans }}”</label></div></div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <button class="btn btn-outline-success" type="submit"><i class="bi bi-stars me-1"></i>Generar o mejorar narrativa</button>
+      </form>
     </div>
   </section>
 

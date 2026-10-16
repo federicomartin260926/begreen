@@ -29,13 +29,13 @@ final readonly class ReportDesignValidator
     ) {
     }
 
-    public function validate(string $html, string $css): void
+    public function validate(string $html, string $css, ?ReportDesignDefinition $definition = null): void
     {
-        $this->validateHtml($html);
-        $this->validateCss($css);
+        $this->validateHtml($html, $definition);
+        $this->validateCss($css, $definition);
     }
 
-    private function validateHtml(string $html): void
+    private function validateHtml(string $html, ?ReportDesignDefinition $definition): void
     {
         if (
             str_contains($html, '{{')
@@ -56,14 +56,14 @@ final readonly class ReportDesignValidator
         $components = $componentMatches[1] ?? [];
 
         foreach ($components as $component) {
-            if (!$this->componentCatalog->has($component)) {
+            if (!$this->componentCatalog->has($component, $definition)) {
                 throw new \InvalidArgumentException(
                     'Report design references an unknown component.'
                 );
             }
         }
 
-        foreach ($this->componentCatalog->requiredKeys() as $required) {
+        foreach ($this->componentCatalog->requiredKeys($definition) as $required) {
             if (
                 count(
                     array_filter(
@@ -81,7 +81,7 @@ final readonly class ReportDesignValidator
 
         if (
             count($components)
-            !== count($this->componentCatalog->requiredKeys())
+            !== count($this->componentCatalog->requiredKeys($definition))
         ) {
             throw new \InvalidArgumentException(
                 'Report design contains duplicated components.'
@@ -95,7 +95,7 @@ final readonly class ReportDesignValidator
         );
 
         foreach (($variableMatches[1] ?? []) as $variable) {
-            if (!$this->dataCatalog->has($variable)) {
+            if (!$this->dataCatalog->has($variable, $definition)) {
                 throw new \InvalidArgumentException(
                     'Report design references an unavailable variable.'
                 );
@@ -124,7 +124,7 @@ final readonly class ReportDesignValidator
         }
     }
 
-    private function validateCss(string $css): void
+    private function validateCss(string $css, ?ReportDesignDefinition $definition): void
     {
         if (trim($css) === '') {
             return;
@@ -228,7 +228,10 @@ final readonly class ReportDesignValidator
 
                 $matchedScope = null;
 
-                foreach (self::STYLE_SCOPES as $scope) {
+                $styleScopes = $definition === null
+                    ? self::STYLE_SCOPES
+                    : $this->componentCatalog->styleScopes($definition);
+                foreach ($styleScopes as $scope) {
                     if (
                         preg_match(
                             '/^'

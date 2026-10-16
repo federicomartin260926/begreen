@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es"><head><meta charset="UTF-8"><style>
+@page { margin: 14mm; }
+body { font-family: Helvetica, sans-serif; color: #24352c; font-size: 10pt; line-height: 1.4; }
+.pdf-page { page-break-after: always; }
+.pdf-page:last-child { page-break-after: auto; }
+h1,h2,h3 { color: #176b43; }
+table { width: 100%; border-collapse: collapse; }
+th,td { padding: 5px; border-bottom: 1px solid #dce5df; text-align: left; vertical-align: top; }
+.metric { font-size: 20pt; color: #176b43; }
+.photo { max-width: 100%; max-height: 175mm; }
+.muted { color: #64736b; }
+{{ reportDesignCss|default('')|raw }}
+</style></head><body>
+{% if reportDesignHtml %}{{ reportDesignHtml|raw }}{% else %}
+{% include 'backend/final_report/pdf/_cover.html.twig' %}
+{% include 'backend/final_report/pdf/_executive.html.twig' %}
+{% include 'backend/final_report/pdf/_plan.html.twig' %}
+{% include 'backend/final_report/pdf/_implementation.html.twig' %}
+{% include 'backend/final_report/pdf/_featured.html.twig' %}
+{% include 'backend/final_report/pdf/_gallery.html.twig' %}
+{% include 'backend/final_report/pdf/_emissions.html.twig' %}
+{% include 'backend/final_report/pdf/_ods-commitment.html.twig' %}
+{% include 'backend/final_report/pdf/_conclusion.html.twig' %}
+{% endif %}
+</body></html>

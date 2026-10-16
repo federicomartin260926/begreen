@@ -67,6 +67,7 @@ final class OpenAiReportProvider implements AiReportProviderInterface
                     $context,
                     $request->categoryKeys(),
                     $request->futureCategoryKeys(),
+                    $request,
                 ),
                 'timeout' => $this->configuration->timeoutSeconds,
             ]);
@@ -170,12 +171,13 @@ final class OpenAiReportProvider implements AiReportProviderInterface
         string $context,
         array $expectedCategoryKeys,
         array $expectedFutureCategoryKeys,
+        AiReportRequest $request,
     ): array
     {
         return [
             'model' => $this->model(),
             'store' => false,
-            'instructions' => $this->promptBuilder->buildInstructions(),
+            'instructions' => $this->promptBuilder->buildInstructions($request),
             'input' => [[
                 'role' => 'user',
                 'content' => [[
@@ -186,7 +188,9 @@ final class OpenAiReportProvider implements AiReportProviderInterface
             'text' => [
                 'format' => [
                     'type' => 'json_schema',
-                    'name' => 'sustainability_plan_report',
+                    'name' => $request->purpose === 'final_sustainability_report'
+                        ? 'final_sustainability_report'
+                        : 'sustainability_plan_report',
                     'strict' => true,
                     'schema' => $this->outputSchema->getForOpenAi($expectedCategoryKeys, $expectedFutureCategoryKeys),
                 ],

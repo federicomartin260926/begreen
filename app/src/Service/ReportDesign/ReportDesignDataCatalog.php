@@ -15,8 +15,12 @@ final class ReportDesignDataCatalog
      *     description:string
      * }>
      */
-    public function all(): array
+    public function all(?ReportDesignDefinition $definition = null): array
     {
+        if ($definition?->document === ReportDesignCatalog::DOCUMENT_FINAL_SUSTAINABILITY_REPORT) {
+            return $this->finalReportVariables();
+        }
+
         return [
             'project.name' => [
                 'group' => 'project',
@@ -77,9 +81,9 @@ final class ReportDesignDataCatalog
         ];
     }
 
-    public function has(string $key): bool
+    public function has(string $key, ?ReportDesignDefinition $definition = null): bool
     {
-        return isset($this->all()[$key]);
+        return isset($this->all($definition)[$key]);
     }
 
     /**
@@ -90,22 +94,22 @@ final class ReportDesignDataCatalog
      *     variables:array<string, array{label:string,type:string,description:string}>
      * }>
      */
-    public function tree(): array
+    public function tree(?ReportDesignDefinition $definition = null): array
     {
         $tree = [];
 
-        foreach ($this->all() as $key => $definition) {
-            $group = $definition['group'];
+        foreach ($this->all($definition) as $key => $variableDefinition) {
+            $group = $variableDefinition['group'];
 
             $tree[$group] ??= [
-                'label' => $definition['group_label'],
+                'label' => $variableDefinition['group_label'],
                 'variables' => [],
             ];
 
             $tree[$group]['variables'][$key] = [
-                'label' => $definition['label'],
-                'type' => $definition['type'],
-                'description' => $definition['description'],
+                'label' => $variableDefinition['label'],
+                'type' => $variableDefinition['type'],
+                'description' => $variableDefinition['description'],
             ];
         }
 
@@ -121,8 +125,17 @@ final class ReportDesignDataCatalog
      *
      * @return array<string, scalar|null>
      */
-    public function snapshot(array $context): array
+    public function snapshot(array $context, ?ReportDesignDefinition $definition = null): array
     {
+        if ($definition?->document === ReportDesignCatalog::DOCUMENT_FINAL_SUSTAINABILITY_REPORT) {
+            return [
+                'project.name' => $this->scalar($context['report']['project']['name'] ?? null),
+                'final.implemented_measures' => $this->scalar($context['report']['implementation']['summary']['implementedMeasures'] ?? null),
+                'final.emissions_total' => $this->scalar($context['report']['emissions']['totalKgCo2e'] ?? null),
+                'final.commitment_level' => $this->scalar($context['report']['commitment']['implemented']['levelKey'] ?? null),
+            ];
+        }
+
         $project = $context['project'] ?? null;
 
         $projectName = (
@@ -167,5 +180,16 @@ final class ReportDesignDataCatalog
         return is_scalar($value) || $value === null
             ? $value
             : null;
+    }
+
+    /** @return array<string, array{group:string,group_label:string,label:string,type:string,description:string}> */
+    private function finalReportVariables(): array
+    {
+        return [
+            'project.name' => ['group' => 'project', 'group_label' => 'Proyecto', 'label' => 'Nombre', 'type' => 'text', 'description' => 'Nombre del proyecto del Informe Final.'],
+            'final.implemented_measures' => ['group' => 'final', 'group_label' => 'Informe Final', 'label' => 'Medidas implementadas', 'type' => 'number', 'description' => 'Contador real de medidas implementadas.'],
+            'final.emissions_total' => ['group' => 'final', 'group_label' => 'Informe Final', 'label' => 'Emisiones válidas', 'type' => 'number', 'description' => 'Total real de kgCO₂e cuando está disponible.'],
+            'final.commitment_level' => ['group' => 'final', 'group_label' => 'Informe Final', 'label' => 'Nivel de compromiso', 'type' => 'text', 'description' => 'Nivel calculado por el servicio existente.'],
+        ];
     }
 }

@@ -1,0 +1,1 @@
+{% if photos is not empty %}<section class="pdf-page report-design-final-gallery"><h2>Galería</h2>{% for photo in photos %}{% if not photo.isCover %}<div><img class="photo" src="{{ photo.dataUri }}" alt=""><p>{{ photo.caption|default('') }}{% if photo.author %} · {{ photo.author }}{% endif %}</p></div>{% endif %}{% endfor %}</section>{% endif %}

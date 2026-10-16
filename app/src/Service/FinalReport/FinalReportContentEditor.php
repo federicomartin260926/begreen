@@ -15,7 +15,10 @@ final class FinalReportContentEditor
 {
     public const MANUAL_SECTIONS = [
         'introduction',
+        'executive_summary',
         'implementation',
+        'featured_storytelling',
+        'deviations_learnings',
         'emissions',
         'ods',
         'conclusion',
@@ -97,7 +100,8 @@ final class FinalReportContentEditor
 
     public function isSupportedImageDocument(ProjectDocument $document): bool
     {
-        if (!$document->isFile() || $document->getStoredName() === null) {
+        if (!$document->isFile()
+            || $document->getStoredName() === null) {
             return false;
         }
 
