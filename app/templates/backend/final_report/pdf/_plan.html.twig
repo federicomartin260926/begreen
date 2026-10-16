@@ -1,1 +1,71 @@
-{% if report.plan.protocol or report.plan.measures is not empty %}<section class="pdf-page report-design-final-plan"><h2>Plan de Sostenibilidad</h2>{% if report.plan.protocol %}<p><strong>Protocolo:</strong> {{ report.plan.protocol.name }}</p>{% endif %}<p>{{ report.implementation.summary.totalMeasures }} medidas · {{ report.implementation.summary.implementedMeasures }} implementadas · {{ report.implementation.summary.resolvedMeasures }} resueltas</p></section>{% endif %}
+{% if report.plan.protocol or report.plan.measures is not empty %}
+{% set summary = report.implementation.summary %}
+{% set measures = report.implementation.measures|default([]) %}
+{% set states = {
+    'implemented': 'Implementadas',
+    'in_progress': 'En curso',
+    'pending': 'Pendientes',
+    'not_implemented': 'No implementadas',
+    'discarded': 'Descartadas',
+    'not_applicable': 'No aplicables'
+} %}
+<section class="pdf-page report-design-final-plan">
+  <h2>Plan de Sostenibilidad</h2>
+  {% if report.plan.protocol %}
+    <p class="pdf-plan-protocol">
+      Protocolo: <strong>{{ report.plan.protocol.name }}</strong>
+    </p>
+  {% endif %}
+
+  <table class="pdf-plan-metrics">
+    <tr>
+      <td><strong>{{ summary.totalMeasures }}</strong><span>Medidas del plan</span></td>
+      <td><strong>{{ summary.implementedMeasures }}</strong><span>Implementadas</span></td>
+      <td><strong>{{ summary.resolvedMeasures }}</strong><span>Resueltas</span></td>
+    </tr>
+  </table>
+
+  {% if measures is not empty %}
+    <h3>Seguimiento de las medidas</h3>
+    {% set stateColors = {
+      'implemented': '#287b56',
+      'in_progress': '#6fa993',
+      'pending': '#d0a95c',
+      'not_implemented': '#c07869',
+      'discarded': '#80948b',
+      'not_applicable': '#b0bbb4'
+    } %}
+    <table class="pdf-plan-states pdf-plan-state-bars">
+      <tbody>
+        {% for state, label in states %}
+          {% set count = measures|filter(item => item.state == state)|length %}
+          {% if count > 0 %}
+            {% set percentage = measures|length > 0
+              ? (count / (measures|length)) * 100
+              : 0 %}
+            <tr>
+              <td class="pdf-plan-state-name">{{ label }}</td>
+              <td class="pdf-plan-state-chart">
+                <div class="pdf-plan-state-track">
+                  <div class="pdf-plan-state-fill"
+                       style="width: {{ percentage|round(2) }}%; background-color: {{ stateColors[state] }};"></div>
+                </div>
+              </td>
+              <td class="pdf-plan-count">
+                {{ count }}
+                <span class="pdf-plan-state-percent">
+                  ({{ percentage|number_format(0, ',', '.') }}%)
+                </span>
+              </td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="pdf-plan-state-note">
+      Porcentajes respecto al total de medidas con estado registrado.
+      No representan reducciones de emisiones.
+    </p>
+  {% endif %}
+</section>
+{% endif %}

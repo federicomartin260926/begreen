@@ -1,1 +1,69 @@
-{% if report.emissions.available or texts.emissions.text|default(null) %}<section class="pdf-page report-design-final-emissions"><h2>Emisiones reales</h2>{% if texts.emissions.text|default(null) %}<p>{{ texts.emissions.text|nl2br }}</p>{% endif %}{% if report.emissions.available %}<p class="metric">{{ report.emissions.totalKgCo2e|number_format(2, ',', '.') }} kgCO₂e</p><h3>Por categoría</h3><ul>{% for item in report.emissions.byCategory %}<li>{{ item.name|default('Sin categoría') }}: {{ item.kgCo2e|number_format(2, ',', '.') }} kgCO₂e</li>{% endfor %}</ul><h3>Por fase</h3><ul>{% for item in report.emissions.byPhase %}<li>{{ item.code|default('Sin fase') }}: {{ item.kgCo2e|number_format(2, ',', '.') }} kgCO₂e</li>{% endfor %}</ul>{% endif %}</section>{% endif %}
+{% if report.emissions.available or texts.emissions.text|default(null) %}
+<section class="pdf-page report-design-final-emissions">
+  <h2>Huella de carbono del proyecto</h2>
+
+  {% if texts.emissions.text|default(null) %}
+    <p>{{ texts.emissions.text|nl2br }}</p>
+  {% endif %}
+
+  {% if report.emissions.available %}
+    {% set total = report.emissions.totalKgCo2e %}
+
+    <div class="pdf-emission-total">
+      <span>Emisiones registradas</span>
+      <strong>{{ total|number_format(2, ',', '.') }} kg CO2e</strong>
+    </div>
+
+    {% if report.emissions.byCategory is not empty %}
+      <h3>Distribución por categoría</h3>
+      <table class="pdf-emission-bars">
+        <tbody>
+        {% for item in report.emissions.byCategory %}
+          {% set percentage = total > 0
+            ? ((item.kgCo2e / total) * 100)
+            : 0 %}
+          {% set barWidth = percentage < 0 ? 0 : (percentage > 100 ? 100 : percentage) %}
+          <tr>
+            <td class="pdf-emission-name">
+              {{ item.name|default('Sin categoría') }}
+            </td>
+            <td class="pdf-emission-chart">
+              <div class="pdf-emission-track">
+                <div class="pdf-emission-fill"
+                     style="width: {{ barWidth|round(2) }}%;"></div>
+              </div>
+            </td>
+            <td class="pdf-emission-number">
+              {{ item.kgCo2e|number_format(2, ',', '.') }}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="pdf-emission-note">
+        Cifras expresadas en kg CO2e. Longitud de barras proporcional
+        al total registrado.
+      </p>
+    {% endif %}
+
+    {% if report.emissions.byPhase is not empty %}
+      <h3>Emisiones registradas por fase</h3>
+      {% set phaseNames = {
+        'preproduccion': 'Preproducción',
+        'actividad': 'Actividad',
+        'postproduccion': 'Postproducción'
+      } %}
+      <table class="pdf-emission-phases">
+        <tbody>
+        {% for item in report.emissions.byPhase %}
+          <tr>
+            <td>{{ phaseNames[item.code]|default(item.code|default('Sin fase')) }}</td>
+            <td>{{ item.kgCo2e|number_format(2, ',', '.') }} kg CO2e</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% endif %}
+</section>
+{% endif %}
