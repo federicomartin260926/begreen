@@ -3,7 +3,8 @@
 {% block title %}{{ 'backend.final_report.title'|trans }}{% endblock %}
 
 {% block body %}
-<div class="container-fluid py-4" data-controller="final-report-editor" data-final-report-editor-featured-page-size-value="10">
+<div class="container-fluid py-4" data-controller="final-report-editor" data-final-report-editor-featured-page-size-value="10"
+     data-final-report-editor-featured-page-status-format-value="{{ 'backend.final_report.featured_page_status'|trans }}">
   <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
       <span class="badge text-bg-success mb-2">{{ 'backend.final_report.phase'|trans }}</span>
@@ -11,9 +12,9 @@
       <p class="text-muted mb-0">{{ 'backend.final_report.subtitle'|trans({'%project%': project.name}) }}</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a class="btn btn-outline-success" target="_blank" href="{{ path('backend_final_report_preview') }}"><i class="bi bi-eye me-1"></i>Previsualizar PDF</a>
-      <a class="btn btn-success" href="{{ path('backend_final_report_download') }}"><i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF</a>
-      {% if is_granted('ROLE_SUPER_ADMIN') %}<a class="btn btn-outline-secondary" href="{{ path('admin_report_design_index', {document: 'final-sustainability-report', variant: 'general'}) }}"><i class="bi bi-palette me-1"></i>Personalizar diseño</a>{% endif %}
+      <a class="btn btn-outline-success" target="_blank" href="{{ path('backend_final_report_preview') }}"><i class="bi bi-eye me-1"></i>{{ 'backend.final_report.preview_pdf'|trans }}</a>
+      <a class="btn btn-success" href="{{ path('backend_final_report_download') }}"><i class="bi bi-file-earmark-pdf me-1"></i>{{ 'backend.final_report.download_pdf'|trans }}</a>
+      {% if is_granted('ROLE_SUPER_ADMIN') %}<a class="btn btn-outline-secondary" href="{{ path('admin_report_design_index', {document: 'final-sustainability-report', variant: 'general'}) }}"><i class="bi bi-palette me-1"></i>{{ 'backend.final_report.customize_design'|trans }}</a>{% endif %}
       <a class="btn btn-outline-secondary" href="{{ path('backend_project_index') }}"><i class="bi bi-arrow-left me-1"></i>{{ 'backend.final_report.back'|trans }}</a>
     </div>
   </div>
@@ -28,7 +29,7 @@
   </form>
 
   <section class="card border-0 shadow-sm mb-4" aria-labelledby="final-report-project-summary">
-    <div class="card-header bg-white py-3"><h2 class="h4 mb-0" id="final-report-project-summary">1. Resumen del proyecto</h2></div>
+    <div class="card-header bg-white py-3"><h2 class="h4 mb-0" id="final-report-project-summary">1. {{ 'backend.final_report.project_summary'|trans }}</h2></div>
     <div class="card-body">
       <div class="row g-3 mb-4">
         <div class="col-md-4"><div class="border rounded p-3 h-100"><div class="small text-muted">{{ 'backend.final_report.project'|trans }}</div><strong>{{ report.project.name }}</strong><div>{{ report.project.country|default('—') }}</div></div></div>
@@ -46,21 +47,21 @@
         <div class="col-lg-6">
           <h3 class="h6">{{ 'backend.final_report.ods'|trans }}</h3>
           <div class="d-flex flex-wrap gap-2">
-            {% for ods in report.ods %}<span class="badge rounded-pill text-bg-success">ODS {{ ods.code }} · {{ ods.name }}</span>{% else %}<span class="text-muted">{{ 'backend.final_report.unavailable'|trans }}</span>{% endfor %}
+            {% for ods in report.ods %}<span class="badge rounded-pill text-bg-success">ODS {{ ods.code|replace({'ODS': '', 'ods': ''})|trim }} · {{ ods.name }}</span>{% else %}<span class="text-muted">{{ 'backend.final_report.unavailable'|trans }}</span>{% endfor %}
           </div>
           <p class="small text-muted mt-2 mb-0">{{ 'backend.final_report.ods_notice'|trans }}</p>
         </div>
       </div>
 
       <details class="border rounded">
-        <summary class="px-3 py-2 fw-semibold">Ver las {{ report.plan.measures|length }} medidas y sus estados</summary>
+        <summary class="px-3 py-2 fw-semibold">{{ 'backend.final_report.show_measures'|trans({'%count%': report.plan.measures|length}) }}</summary>
         <div class="table-responsive p-3 pt-2">
           <table class="table table-sm align-middle mb-0">
             <thead><tr><th>{{ 'backend.final_report.measure'|trans }}</th><th>{{ 'backend.final_report.decision'|trans }}</th><th>{{ 'backend.final_report.state'|trans }}</th></tr></thead>
             <tbody>
             {% for planned in report.plan.measures %}
               {% set implementation = report.implementation.measures[loop.index0] %}
-              <tr><td>{{ planned.measure.name|default('—') }}</td><td>{{ planned.decision.primary|default('—') }}</td><td><span class="badge text-bg-light border">{{ implementation.state }}</span></td></tr>
+              <tr><td>{{ planned.measure.name|default('—') }}</td><td>{{ planned.decision.primary|default('—') }}</td><td><span class="badge text-bg-light border">{{ ('backend.final_report.states.' ~ implementation.state)|trans }}</span></td></tr>
             {% else %}
               <tr><td colspan="3" class="text-muted">{{ 'backend.final_report.no_measures'|trans }}</td></tr>
             {% endfor %}
@@ -77,20 +78,20 @@
       <p class="text-muted">{{ 'backend.final_report.featured_help'|trans }}</p>
       <div class="row g-3 align-items-end mb-3">
         <div class="col-lg-7">
-          <label class="form-label" for="featured-measure-search">Buscar medida por nombre</label>
+          <label class="form-label" for="featured-measure-search">{{ 'backend.final_report.search_measure'|trans }}</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
-            <input class="form-control" id="featured-measure-search" type="search" placeholder="Escribe para filtrar…" data-final-report-editor-target="featuredSearch" data-action="input->final-report-editor#filterFeatured">
+            <input class="form-control" id="featured-measure-search" type="search" placeholder="{{ 'backend.final_report.search_placeholder'|trans }}" data-final-report-editor-target="featuredSearch" data-action="input->final-report-editor#filterFeatured">
           </div>
         </div>
         <div class="col-sm-7 col-lg-3">
           <div class="form-check mb-2">
             <input class="form-check-input" id="featured-selected-only" type="checkbox" data-final-report-editor-target="featuredSelectedOnly" data-action="change->final-report-editor#filterSelected">
-            <label class="form-check-label" for="featured-selected-only">Solo seleccionadas</label>
+            <label class="form-check-label" for="featured-selected-only">{{ 'backend.final_report.selected_only'|trans }}</label>
           </div>
         </div>
         <div class="col-sm-5 col-lg-2 text-sm-end">
-          <span class="badge text-bg-success" aria-live="polite"><span data-final-report-editor-target="featuredSelectedCount">{{ featuredValues|length }}</span> seleccionadas</span>
+          <span class="badge text-bg-success" aria-live="polite"><span data-final-report-editor-target="featuredSelectedCount">{{ featuredValues|length }}</span> {{ 'backend.final_report.selected_label'|trans }}</span>
         </div>
       </div>
       <div class="list-group">
@@ -112,34 +113,34 @@
           <p class="text-muted mb-0">{{ 'backend.final_report.no_measures'|trans }}</p>
         {% endfor %}
       </div>
-      <nav class="d-flex justify-content-between align-items-center gap-3 mt-3" aria-label="Paginación de medidas destacadas" data-final-report-editor-target="featuredPagination">
-        <button class="btn btn-sm btn-outline-secondary" type="button" data-final-report-editor-target="featuredPrevious" data-action="click->final-report-editor#previousFeaturedPage">Anterior</button>
+      <nav class="d-flex justify-content-between align-items-center gap-3 mt-3" aria-label="{{ 'backend.final_report.featured_pagination'|trans }}" data-final-report-editor-target="featuredPagination">
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-final-report-editor-target="featuredPrevious" data-action="click->final-report-editor#previousFeaturedPage">{{ 'backend.final_report.previous'|trans }}</button>
         <span class="small text-muted text-center" aria-live="polite" data-final-report-editor-target="featuredPageStatus"></span>
-        <button class="btn btn-sm btn-outline-secondary" type="button" data-final-report-editor-target="featuredNext" data-action="click->final-report-editor#nextFeaturedPage">Siguiente</button>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-final-report-editor-target="featuredNext" data-action="click->final-report-editor#nextFeaturedPage">{{ 'backend.final_report.next'|trans }}</button>
       </nav>
     </div>
   </section>
 
   <section class="card border-0 shadow-sm mb-4" aria-labelledby="final-report-editorial">
-    <div class="card-header bg-white py-3"><h2 class="h4 mb-0" id="final-report-editorial">3. Narrativa y textos editoriales</h2></div>
+    <div class="card-header bg-white py-3"><h2 class="h4 mb-0" id="final-report-editorial">3. {{ 'backend.final_report.editorial_title'|trans }}</h2></div>
     <div class="card-body">
       <form method="post" action="{{ path('backend_final_report_narrative_generate') }}" class="border rounded p-3 mb-4" data-action="submit->final-report-editor#submitNarrative">
         <input type="hidden" name="_token" value="{{ csrf_token('final_report_ai_' ~ project.id) }}">
-        <h3 class="h6">Narrativa asistida por IA</h3>
-        <p class="text-muted small">La IA solo se ejecuta al confirmar esta acción. Usa el Informe Base y conserva los textos manuales salvo sustitución explícita.</p>
+        <h3 class="h6">{{ 'backend.final_report.ai_narrative_title'|trans }}</h3>
+        <p class="text-muted small">{{ 'backend.final_report.ai_narrative_help'|trans }}</p>
         <div class="row g-2 mb-3">
           {% for section in ['executive_summary', 'implementation', 'featured_storytelling', 'deviations_learnings', 'conclusion'] %}
             {% set editorial = content.manualTexts[section]|default({}) %}
             {% if editorial.origin|default(null) == 'manual' and editorial.text|default(null) %}
-              <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" value="1" name="replaceManual[{{ section }}]" id="replace-{{ section }}"><label class="form-check-label" for="replace-{{ section }}">Sustituir “{{ ('backend.final_report.sections.' ~ section)|trans }}”</label></div></div>
+              <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" value="1" name="replaceManual[{{ section }}]" id="replace-{{ section }}"><label class="form-check-label" for="replace-{{ section }}">{{ 'backend.final_report.replace_section'|trans({'%section%': ('backend.final_report.sections.' ~ section)|trans}) }}</label></div></div>
             {% endif %}
           {% endfor %}
         </div>
-        <div class="alert alert-warning py-2 small"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>Marca una sección solo si quieres sustituir expresamente su texto manual por contenido generado.</div>
+        <div class="alert alert-warning py-2 small"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>{{ 'backend.final_report.replace_warning'|trans }}</div>
         <button class="btn btn-outline-success" type="submit" data-final-report-editor-target="narrativeSubmit">
-          <span data-final-report-editor-target="narrativeSubmitLabel"><i class="bi bi-stars me-1"></i>Generar o mejorar narrativa</span>
+          <span data-final-report-editor-target="narrativeSubmitLabel"><i class="bi bi-stars me-1"></i>{{ 'backend.final_report.generate_narrative'|trans }}</span>
           <span class="d-none" data-final-report-editor-target="narrativeProcessingLabel">
-            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Generando narrativa…
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>{{ 'backend.final_report.generating_narrative'|trans }}
           </span>
         </button>
       </form>
@@ -180,10 +181,10 @@
         {% for document in gallery %}
           {% set photo = photoValues[document.id]|default({}) %}
           <div class="col-xl-3 col-lg-4 col-sm-6">
-            <article class="card h-100" {% if photo %}data-controller="final-report-photo-replace" data-final-report-photo-replace-confirm-message-value="¿Confirmas la sustitución? Se conservarán el pie, autor, orden y portada." data-final-report-photo-replace-max-size-message-value="La imagen no puede superar 4 MB."{% endif %}>
+            <article class="card h-100" {% if photo %}data-controller="final-report-photo-replace" data-final-report-photo-replace-confirm-message-value="{{ 'backend.final_report.replace_confirm'|trans }}" data-final-report-photo-replace-max-size-message-value="{{ 'backend.final_report.photo_too_large'|trans }}"{% endif %}>
               <div class="position-relative">
                 <img src="{{ path('backend_final_report_photo_view', {documentId: document.id}) }}" class="card-img-top object-fit-cover" style="height: 135px" alt="{{ photo.caption|default(document.originalName)|default('') }}" {% if photo %}data-final-report-photo-replace-target="image"{% endif %}>
-                {% if content.coverDocumentId == document.id %}<span class="badge text-bg-success position-absolute top-0 end-0 m-2"><i class="bi bi-image me-1" aria-hidden="true"></i>Portada</span>{% endif %}
+                {% if content.coverDocumentId == document.id %}<span class="badge text-bg-success position-absolute top-0 end-0 m-2"><i class="bi bi-image me-1" aria-hidden="true"></i>{{ 'backend.final_report.cover_badge'|trans }}</span>{% endif %}
               </div>
               <div class="card-body p-3">
                 <div class="form-check mb-2">
@@ -196,7 +197,7 @@
                 </div>
 
                 <details class="border-top pt-2 mt-2">
-                  <summary class="small fw-semibold">Editar metadatos</summary>
+                  <summary class="small fw-semibold">{{ 'backend.final_report.edit_metadata'|trans }}</summary>
                   <div class="pt-2">
                     <label class="form-label small" for="photo-caption-{{ document.id }}">{{ 'backend.final_report.caption'|trans }}</label>
                     <input class="form-control form-control-sm mb-2" id="photo-caption-{{ document.id }}" maxlength="500" name="photos[{{ document.id }}][caption]" form="final-report-editorial-form" value="{{ photo.caption|default('') }}">
@@ -218,12 +219,12 @@
                     <label class="form-label small fw-semibold" for="replace-photo-{{ document.id }}">{{ 'backend.final_report.replace_photo'|trans }}</label>
                     <input class="form-control form-control-sm mb-2" id="replace-photo-{{ document.id }}" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required data-final-report-photo-replace-target="input" data-action="change->final-report-photo-replace#preview">
                     <div class="form-text mb-2">{{ 'backend.final_report.photo_rules'|trans }}</div>
-                    <button class="btn btn-sm btn-outline-secondary w-100" type="submit" data-final-report-photo-replace-target="submit" data-action="click->final-report-photo-replace#confirmReplacement"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Confirmar cambio</button>
+                    <button class="btn btn-sm btn-outline-secondary w-100" type="submit" data-final-report-photo-replace-target="submit" data-action="click->final-report-photo-replace#confirmReplacement"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>{{ 'backend.final_report.confirm_replace'|trans }}</button>
                   </form>
                 {% endif %}
-                <form class="border-top pt-2 mt-2" method="post" action="{{ path('backend_final_report_photo_remove', {documentId: document.id}) }}" data-action="submit->final-report-editor#confirmPhotoRemoval" data-confirm-message="¿Quitar esta fotografía de la galería del Informe Final? El archivo original no se borrará.">
+                <form class="border-top pt-2 mt-2" method="post" action="{{ path('backend_final_report_photo_remove', {documentId: document.id}) }}" data-action="submit->final-report-editor#confirmPhotoRemoval" data-confirm-message="{{ 'backend.final_report.remove_confirm'|trans }}">
                   <input type="hidden" name="_token" value="{{ csrf_token('final_report_photo_remove_' ~ project.id ~ '_' ~ document.id) }}">
-                  <button class="btn btn-sm btn-outline-danger w-100" type="submit"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Quitar de la galería</button>
+                  <button class="btn btn-sm btn-outline-danger w-100" type="submit"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>{{ 'backend.final_report.remove_photo'|trans }}</button>
                 </form>
               </div>
             </article>

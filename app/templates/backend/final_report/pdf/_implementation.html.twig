@@ -1,1 +1,1 @@
-{% if texts.implementation.text|default(null) %}<section class="pdf-page report-design-final-implementation"><h2>Implementación</h2>{% if texts.implementation.text|default(null) %}<p>{{ texts.implementation.text|nl2br }}</p>{% endif %}</section>{% endif %}
+{% if texts.implementation.text|default(null) %}<section class="pdf-page report-design-final-implementation"><h2>{{ 'backend.final_report.sections.implementation'|trans }}</h2>{% if texts.implementation.text|default(null) %}<p>{{ texts.implementation.text|nl2br }}</p>{% endif %}</section>{% endif %}

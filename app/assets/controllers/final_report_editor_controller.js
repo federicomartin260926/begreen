@@ -19,6 +19,10 @@ export default class extends Controller {
 
   static values = {
     featuredPageSize: { type: Number, default: 10 },
+    featuredPageStatusFormat: {
+      type: String,
+      default: 'Página %page% de %pages% · %count% medidas',
+    },
   };
 
   connect() {
@@ -101,7 +105,10 @@ export default class extends Controller {
       this.featuredSelectedCountTarget.textContent = selectedCount.toString();
     }
     if (this.hasFeaturedPageStatusTarget) {
-      this.featuredPageStatusTarget.textContent = `Página ${this.featuredPage} de ${totalPages} · ${matchingItems.length} medidas`;
+      this.featuredPageStatusTarget.textContent = this.featuredPageStatusFormatValue
+        .replace('%page%', String(this.featuredPage))
+        .replace('%pages%', String(totalPages))
+        .replace('%count%', String(matchingItems.length));
     }
     if (this.hasFeaturedPreviousTarget) {
       this.featuredPreviousTarget.disabled = this.featuredPage === 1;

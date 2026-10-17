@@ -69,6 +69,18 @@ final class FinalReportContentEditorTest extends TestCase
         ]);
     }
 
+    public function testFeaturedMeasureCanBeDeselectedOnEditorialSave(): void
+    {
+        [$project, $plan] = $this->context();
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setFeaturedMeasures([['planMeasureId' => 10, 'text' => 'Comentario previo']]);
+
+        $this->editor->update($content, $project, $plan, ['featured' => []]);
+
+        self::assertSame([], $content->getFeaturedMeasures());
+    }
+
     public function testRejectsDocumentFromAnotherProject(): void
     {
         [$project, $plan] = $this->context();

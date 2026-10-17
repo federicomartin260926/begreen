@@ -29,6 +29,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/backend/final-report', name: 'backend_final_report_')]
 #[IsGranted('ROLE_USER')]
@@ -84,6 +85,7 @@ final class FinalReportController extends AbstractController
         FinalReportDataBuilder $dataBuilder,
         FinalReportNarrativeService $narrativeService,
         LoggerInterface $aiLogger,
+        TranslatorInterface $translator,
     ): RedirectResponse {
         [$project, $plan] = $this->activeContext($activeProjectService, $entityManager);
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
@@ -103,10 +105,15 @@ final class FinalReportController extends AbstractController
             );
             $entityManager->persist($content);
             $entityManager->flush();
-            $this->addFlash('success', sprintf('Narrativa IA actualizada en %d secciones.', count($updated)));
+            $this->addFlash('success', $translator->trans(
+                'backend.final_report.flash.narrative_updated',
+                ['%count%' => count($updated)],
+                'messages',
+                $request->getLocale(),
+            ));
         } catch (AiReportException) {
             // The provider records the technical failure once in the AI channel.
-            $this->addFlash('danger', 'No se pudo generar la narrativa IA. Revisa la configuración y vuelve a intentarlo.');
+            $this->addFlash('danger', 'backend.final_report.flash.narrative_failed');
         } catch (\InvalidArgumentException $exception) {
             $aiLogger->error('Final report narrative generation failed.', [
                 'feature' => 'final_report_narrative',
@@ -114,7 +121,7 @@ final class FinalReportController extends AbstractController
                 'failure_category' => 'application_validation',
                 'project_id' => $project->getId(),
             ]);
-            $this->addFlash('danger', 'No se pudo generar la narrativa IA. Revisa la configuración y vuelve a intentarlo.');
+            $this->addFlash('danger', 'backend.final_report.flash.narrative_failed');
         }
 
         return $this->redirectToRoute('backend_final_report_index');

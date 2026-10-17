@@ -1,14 +1,7 @@
 {% if report.implementation.measures is not empty %}
 <section class="report-design-final-annex">
-  <h2>Anexo I — Detalle de las medidas</h2>
-  <p class="muted">Relación de medidas, estados y registros de implementación del proyecto.</p>
-<table><thead><tr><th>Medida</th><th>Estado</th><th>Acción / incidencia</th></tr></thead><tbody>{% for item in report.implementation.measures %}<tr><td>{{ item.measureName|default('—') }}</td><td>{{ {
-    'implemented': 'Implementada',
-    'in_progress': 'En curso',
-    'pending': 'Pendiente',
-    'not_implemented': 'No implementada',
-    'discarded': 'Descartada',
-    'not_applicable': 'No aplica'
-}[item.state]|default(item.state) }}</td><td>{{ item.actionTaken|default(item.incident|default(item.observations|default('—'))) }}</td></tr>{% endfor %}</tbody></table>
+  <h2>{{ 'backend.final_report.pdf.annex_title'|trans }}</h2>
+  <p class="muted">{{ 'backend.final_report.pdf.annex_help'|trans }}</p>
+<table><thead><tr><th>{{ 'backend.final_report.measure'|trans }}</th><th>{{ 'backend.final_report.state'|trans }}</th><th>{{ 'backend.final_report.pdf.action_incident'|trans }}</th></tr></thead><tbody>{% for item in report.implementation.measures %}<tr><td>{{ item.measureName|default('—') }}</td><td>{{ ('backend.final_report.states.' ~ item.state)|trans }}</td><td>{{ item.actionTaken|default(item.incident|default(item.observations|default('—'))) }}</td></tr>{% endfor %}</tbody></table>
 </section>
 {% endif %}

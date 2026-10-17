@@ -7,6 +7,7 @@ namespace App\Tests\Controller\Backend;
 use App\Controller\Backend\FinalReportController;
 use App\Entity\FinalReportContent;
 use App\Entity\Measure;
+use App\Entity\Ods;
 use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Project;
@@ -72,6 +73,55 @@ final class FinalReportControllerTest extends KernelTestCase
         self::assertStringContainsString('featured-measure-search', (string) $response->getContent());
         self::assertStringContainsString('3. Narrativa y textos editoriales', (string) $response->getContent());
         self::assertStringContainsString('final-report-editorial-form', (string) $response->getContent());
+    }
+
+    public function testEditorNormalizesPrefixedOdsCodeAndUsesEnglishTranslations(): void
+    {
+        self::bootKernel();
+        $project = $this->project();
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure((new Measure())->setName('Low-impact transport'))
+            ->setIsApplicable(true)
+            ->setWillImplement(true)
+            ->setImplemented(true)
+            ->setActionTaken(str_repeat('Implemented action with sufficient detail. ', 2))
+            ->setEvidence('/private/evidence.pdf')
+            ->setOds((new Ods())->setCode('ODS11')->setName('Sustainable cities'));
+        (new \ReflectionProperty(PlanMeasure::class, 'id'))->setValue($planMeasure, 10);
+        $plan = (new Plan())->setProject($project)->addPlanMeasure($planMeasure);
+        $this->authenticateAdmin();
+        $request = $this->request('backend_final_report_index');
+        $request->setLocale('en');
+        self::getContainer()->get('translator')->setLocale('en');
+        [$entityManager] = $this->entityManager($project, $plan, null);
+        $emissionRepository = $this->getMockBuilder(EmissionRecordRepository::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['findByProjectOrderByPhaseAndDate'])
+            ->getMock();
+        $emissionRepository->method('findByProjectOrderByPhaseAndDate')->willReturn([]);
+        $builder = new FinalReportDataBuilder(
+            $emissionRepository,
+            new PlanMeasureOperationalStateResolver(),
+            (new \ReflectionClass(SustainabilityCommitmentLevelService::class))->newInstanceWithoutConstructor(),
+        );
+
+        try {
+            $response = $this->controller()->index(
+                $this->activeProject($project),
+                $entityManager,
+                $builder,
+                new FinalReportContentEditor(),
+            );
+        } finally {
+            self::getContainer()->get('translator')->setLocale('es');
+        }
+
+        $html = (string) $response->getContent();
+        self::assertStringContainsString('ODS 11 · Sustainable cities', $html);
+        self::assertStringNotContainsString('ODS ODS11', $html);
+        self::assertStringContainsString('1. Project summary', $html);
+        self::assertStringContainsString('Search measure by name', $html);
+        self::assertStringContainsString('Implemented', $html);
     }
 
     public function testReplacementUsesDedicatedMultipartFormWithoutNesting(): void
@@ -312,23 +362,27 @@ final class FinalReportControllerTest extends KernelTestCase
         self::assertSame([], $content->getPhotos());
     }
 
-    public function testSavePersistsManualContentWithValidCsrf(): void
+    public function testManualEditOfAiTextPersistsAndIsRecoveredByNormalReportLoad(): void
     {
         self::bootKernel();
         $project = $this->project();
         $plan = (new Plan())->setProject($project);
+        $content = (new FinalReportContent())->setProject($project)->setManualTexts([
+            'executive_summary' => ['text' => 'Resumen generado previamente', 'origin' => 'ai'],
+        ]);
         $this->authenticateAdmin();
         $request = $this->request('backend_final_report_save', [], [], 'POST');
         $token = self::getContainer()->get('security.csrf.token_manager')
             ->getToken('final_report_save_100')->getValue();
         $request->request->replace([
             '_token' => $token,
-            'manualTexts' => ['introduction' => 'Texto conservado'],
+            'manualTexts' => ['executive_summary' => 'Resumen editado manualmente y conservado'],
         ]);
-        [$entityManager] = $this->entityManager($project, $plan, null);
+        [$entityManager] = $this->entityManager($project, $plan, $content);
         $entityManager->expects(self::once())->method('persist')->with(self::callback(
             static fn (object $entity): bool => $entity instanceof FinalReportContent
-                && ($entity->getManualTexts()['introduction']['text'] ?? null) === 'Texto conservado',
+                && ($entity->getManualTexts()['executive_summary']['text'] ?? null) === 'Resumen editado manualmente y conservado'
+                && ($entity->getManualTexts()['executive_summary']['origin'] ?? null) === 'manual',
         ));
         $entityManager->expects(self::once())->method('flush');
 
@@ -341,6 +395,29 @@ final class FinalReportControllerTest extends KernelTestCase
 
         self::assertSame(302, $response->getStatusCode());
         self::assertStringContainsString('/backend/final-report', $response->getTargetUrl());
+
+        $this->request('backend_final_report_index');
+        $emissionRepository = $this->getMockBuilder(EmissionRecordRepository::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['findByProjectOrderByPhaseAndDate'])
+            ->getMock();
+        $emissionRepository->method('findByProjectOrderByPhaseAndDate')->willReturn([]);
+        $builder = new FinalReportDataBuilder(
+            $emissionRepository,
+            new PlanMeasureOperationalStateResolver(),
+            (new \ReflectionClass(SustainabilityCommitmentLevelService::class))->newInstanceWithoutConstructor(),
+        );
+
+        $loaded = $this->controller()->index(
+            $this->activeProject($project),
+            $entityManager,
+            $builder,
+            new FinalReportContentEditor(),
+        );
+
+        self::assertSame(200, $loaded->getStatusCode());
+        self::assertStringContainsString('Resumen editado manualmente y conservado', (string) $loaded->getContent());
+        self::assertSame('manual', $content->getManualTexts()['executive_summary']['origin']);
     }
 
     public function testSavePersistsFeaturedSelectionsAndCommentsFromDifferentClientPages(): void
@@ -439,11 +516,12 @@ final class FinalReportControllerTest extends KernelTestCase
             $dataBuilder,
             new FinalReportNarrativeService($provider),
             $logger,
+            self::getContainer()->get('translator'),
         );
 
         self::assertSame(302, $response->getStatusCode());
         self::assertSame(
-            ['No se pudo generar la narrativa IA. Revisa la configuración y vuelve a intentarlo.'],
+            ['backend.final_report.flash.narrative_failed'],
             $request->getSession()->getFlashBag()->peek('danger'),
         );
     }

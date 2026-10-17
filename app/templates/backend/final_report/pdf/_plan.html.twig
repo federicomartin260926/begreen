@@ -2,31 +2,31 @@
 {% set summary = report.implementation.summary %}
 {% set measures = report.implementation.measures|default([]) %}
 {% set states = {
-    'implemented': 'Implementadas',
-    'in_progress': 'En curso',
-    'pending': 'Pendientes',
-    'not_implemented': 'No implementadas',
-    'discarded': 'Descartadas',
-    'not_applicable': 'No aplicables'
+    'implemented': 'backend.final_report.pdf.states.implemented'|trans,
+    'in_progress': 'backend.final_report.pdf.states.in_progress'|trans,
+    'pending': 'backend.final_report.pdf.states.pending'|trans,
+    'not_implemented': 'backend.final_report.pdf.states.not_implemented'|trans,
+    'discarded': 'backend.final_report.pdf.states.discarded'|trans,
+    'not_applicable': 'backend.final_report.pdf.states.not_applicable'|trans
 } %}
 <section class="pdf-page report-design-final-plan">
-  <h2>Plan de Sostenibilidad</h2>
+  <h2>{{ 'backend.final_report.pdf.plan_title'|trans }}</h2>
   {% if report.plan.protocol %}
     <p class="pdf-plan-protocol">
-      Protocolo: <strong>{{ report.plan.protocol.name }}</strong>
+      {{ 'backend.final_report.pdf.protocol'|trans }}: <strong>{{ report.plan.protocol.name }}</strong>
     </p>
   {% endif %}
 
   <table class="pdf-plan-metrics">
     <tr>
-      <td><strong>{{ summary.totalMeasures }}</strong><span>Medidas del plan</span></td>
-      <td><strong>{{ summary.implementedMeasures }}</strong><span>Implementadas</span></td>
-      <td><strong>{{ summary.resolvedMeasures }}</strong><span>Resueltas</span></td>
+      <td><strong>{{ summary.totalMeasures }}</strong><span>{{ 'backend.final_report.measures'|trans }}</span></td>
+      <td><strong>{{ summary.implementedMeasures }}</strong><span>{{ 'backend.final_report.pdf.implemented'|trans }}</span></td>
+      <td><strong>{{ summary.resolvedMeasures }}</strong><span>{{ 'backend.final_report.pdf.resolved'|trans }}</span></td>
     </tr>
   </table>
 
   {% if measures is not empty %}
-    <h3>Seguimiento de las medidas</h3>
+    <h3>{{ 'backend.final_report.pdf.measure_tracking'|trans }}</h3>
     {% set stateColors = {
       'implemented': '#287b56',
       'in_progress': '#6fa993',
@@ -62,10 +62,7 @@
         {% endfor %}
       </tbody>
     </table>
-    <p class="pdf-plan-state-note">
-      Porcentajes respecto al total de medidas con estado registrado.
-      No representan reducciones de emisiones.
-    </p>
+    <p class="pdf-plan-state-note">{{ 'backend.final_report.pdf.state_note'|trans }}</p>
   {% endif %}
 </section>
 {% endif %}

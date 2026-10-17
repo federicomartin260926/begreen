@@ -115,10 +115,67 @@ final class FinalReportPdfBuilderTest extends TestCase
         self::assertStringNotContainsString(base64_encode('excluded-image'), $data['photos'][0]['dataUri']);
     }
 
+    public function testPdfRendersFeaturedMeasuresPhotosAndTraceableEmissionBreakdowns(): void
+    {
+        $project = (new Project())->setName('Informe trazable');
+        (new \ReflectionProperty(Project::class, 'id'))->setValue($project, 10);
+        $cover = $this->document($project, 50, str_repeat('a', 32).'.png');
+        $gallery = $this->document($project, 51, str_repeat('b', 32).'.png');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+        self::assertIsString($png);
+        file_put_contents($this->directory.'/10/'.$cover->getStoredName(), $png);
+        file_put_contents($this->directory.'/10/'.$gallery->getStoredName(), $png);
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setFeaturedMeasures([['planMeasureId' => 70, 'text' => 'Comentario destacado']])
+            ->setPhotos([
+                ['documentId' => 50, 'planMeasureId' => 70, 'caption' => 'Pie de portada', 'author' => 'Autora', 'position' => 1],
+                ['documentId' => 51, 'planMeasureId' => null, 'caption' => 'Pie de galería', 'author' => 'Equipo', 'position' => 2],
+            ])
+            ->setCoverDocumentId(50);
+        $report = $this->report();
+        $report['plan']['measures'] = [[
+            'planMeasureId' => 70,
+            'measure' => ['name' => 'Movilidad sostenible'],
+        ]];
+        $report['implementation'] = [
+            'summary' => ['totalMeasures' => 1, 'implementedMeasures' => 1, 'resolvedMeasures' => 1],
+            'measures' => [[
+                'planMeasureId' => 70,
+                'measureName' => 'Movilidad sostenible',
+                'state' => 'implemented',
+                'actionTaken' => 'Acción trazable registrada',
+                'incident' => null,
+                'observations' => null,
+            ]],
+        ];
+        $report['emissions'] = [
+            'available' => true,
+            'validRecordCount' => 2,
+            'totalKgCo2e' => 2696.016,
+            'byCategory' => [['name' => 'Energía', 'kgCo2e' => 415.887]],
+            'byPhase' => [['code' => 'actividad', 'kgCo2e' => 2280.129]],
+        ];
+
+        $data = $this->builder()->buildData($project, $content, $report);
+        $html = $this->twig()->render('backend/final_report/pdf.html.twig', $data);
+
+        self::assertSame(70, $data['photos'][0]['planMeasureId']);
+        self::assertSame('Autora', $data['coverPhoto']['author']);
+        self::assertSame('Comentario destacado', $data['featuredMeasures'][0]['text']);
+        self::assertStringContainsString('Movilidad sostenible', $html);
+        self::assertStringContainsString('Comentario destacado', $html);
+        self::assertStringContainsString('Pie de portada', $html);
+        self::assertStringContainsString('Pie de galería', $html);
+        self::assertStringContainsString('2.696,02 kg CO2e', $html);
+        self::assertStringContainsString('Energía', $html);
+        self::assertStringContainsString('2.280,13 kg CO2e', $html);
+        self::assertStringContainsString('Acción trazable registrada', $html);
+    }
+
     private function builder(): FinalReportPdfBuilder
     {
-        $twig = new Environment(new FilesystemLoader(dirname(__DIR__, 3).'/templates'));
-        $twig->addExtension(new TranslationExtension(new IdentityTranslator()));
+        $twig = $this->twig();
         $components = new ReportDesignComponentCatalog();
         $data = new ReportDesignDataCatalog();
         $designStorage = new ReportDesignStorage($this->directory.'/designs');
@@ -130,6 +187,14 @@ final class FinalReportPdfBuilderTest extends TestCase
             new ReportDesignCatalog(),
             new ReportDesignRenderer($designStorage, new ReportDesignValidator($components, $data), $components, $data, $twig),
         );
+    }
+
+    private function twig(): Environment
+    {
+        $twig = new Environment(new FilesystemLoader(dirname(__DIR__, 3).'/templates'));
+        $twig->addExtension(new TranslationExtension(new IdentityTranslator()));
+
+        return $twig;
     }
 
     private function document(Project $project, int $id, string $storedName): ProjectDocument

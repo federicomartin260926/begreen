@@ -82,6 +82,49 @@ final class FinalReportNarrativeServiceTest extends TestCase
         self::assertSame(['text' => 'Nuevo resumen', 'origin' => 'ai'], $content->getManualTexts()['executive_summary']);
     }
 
+    public function testFeaturedMeasureAndEditorialTextAreIncludedInStorytellingContext(): void
+    {
+        $provider = new class implements AiReportProviderInterface {
+            public ?AiReportRequest $request = null;
+
+            public function generate(AiReportRequest $request): AiReportResult
+            {
+                $this->request = $request;
+
+                return new AiReportResult(
+                    'Resumen',
+                    [
+                        new AiReportCategorySummary('implementation', 'Implementación'),
+                        new AiReportCategorySummary('featured_storytelling', 'Relato destacado'),
+                    ],
+                    [],
+                    'Conclusión',
+                );
+            }
+        };
+        $project = $this->project(22);
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setFeaturedMeasures([[
+                'planMeasureId' => 70,
+                'text' => 'Comentario editorial persistido',
+            ]]);
+        $report = $this->report(22);
+        $report['plan']['measures'] = [[
+            'planMeasureId' => 70,
+            'measure' => ['name' => 'Movilidad sostenible'],
+        ]];
+
+        $updated = (new FinalReportNarrativeService($provider))->generate($content, $report, 'es');
+
+        self::assertSame([[
+            'measure' => 'Movilidad sostenible',
+            'editorialText' => 'Comentario editorial persistido',
+        ]], $provider->request?->factualContext['featuredMeasures']);
+        self::assertContains('featured_storytelling', $provider->request?->sectionKeys ?? []);
+        self::assertContains('featured_storytelling', $updated);
+    }
+
     public function testFormatsOnlyEmissionValuesForTheRequestedLocale(): void
     {
         $provider = new class implements AiReportProviderInterface {

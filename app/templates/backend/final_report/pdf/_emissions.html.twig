@@ -1,6 +1,6 @@
 {% if report.emissions.available or texts.emissions.text|default(null) %}
 <section class="pdf-page report-design-final-emissions">
-  <h2>Huella de carbono del proyecto</h2>
+  <h2>{{ 'backend.final_report.pdf.carbon_footprint'|trans }}</h2>
 
   {% if texts.emissions.text|default(null) %}
     <p>{{ texts.emissions.text|nl2br }}</p>
@@ -10,12 +10,12 @@
     {% set total = report.emissions.totalKgCo2e %}
 
     <div class="pdf-emission-total">
-      <span>Emisiones registradas</span>
+      <span>{{ 'backend.final_report.pdf.recorded_emissions'|trans }}</span>
       <strong>{{ total|number_format(2, ',', '.') }} kg CO2e</strong>
     </div>
 
     {% if report.emissions.byCategory is not empty %}
-      <h3>Distribución por categoría</h3>
+      <h3>{{ 'backend.final_report.pdf.category_distribution'|trans }}</h3>
       <table class="pdf-emission-bars">
         <tbody>
         {% for item in report.emissions.byCategory %}
@@ -25,7 +25,7 @@
           {% set barWidth = percentage < 0 ? 0 : (percentage > 100 ? 100 : percentage) %}
           <tr>
             <td class="pdf-emission-name">
-              {{ item.name|default('Sin categoría') }}
+              {{ item.name|default('backend.final_report.pdf.no_category'|trans) }}
             </td>
             <td class="pdf-emission-chart">
               <div class="pdf-emission-track">
@@ -40,24 +40,21 @@
         {% endfor %}
         </tbody>
       </table>
-      <p class="pdf-emission-note">
-        Cifras expresadas en kg CO2e. Longitud de barras proporcional
-        al total registrado.
-      </p>
+      <p class="pdf-emission-note">{{ 'backend.final_report.pdf.emission_note'|trans }}</p>
     {% endif %}
 
     {% if report.emissions.byPhase is not empty %}
-      <h3>Emisiones registradas por fase</h3>
+      <h3>{{ 'backend.final_report.pdf.emissions_by_phase'|trans }}</h3>
       {% set phaseNames = {
-        'preproduccion': 'Preproducción',
-        'actividad': 'Actividad',
-        'postproduccion': 'Postproducción'
+        'preproduccion': 'backend.final_report.pdf.phases.preproduction'|trans,
+        'actividad': 'backend.final_report.pdf.phases.activity'|trans,
+        'postproduccion': 'backend.final_report.pdf.phases.postproduction'|trans
       } %}
       <table class="pdf-emission-phases">
         <tbody>
         {% for item in report.emissions.byPhase %}
           <tr>
-            <td>{{ phaseNames[item.code]|default(item.code|default('Sin fase')) }}</td>
+            <td>{{ phaseNames[item.code]|default(item.code|default('backend.final_report.pdf.no_phase'|trans)) }}</td>
             <td>{{ item.kgCo2e|number_format(2, ',', '.') }} kg CO2e</td>
           </tr>
         {% endfor %}
