@@ -123,7 +123,7 @@
   <section class="card border-0 shadow-sm mb-4" aria-labelledby="final-report-editorial">
     <div class="card-header bg-white py-3"><h2 class="h4 mb-0" id="final-report-editorial">3. Narrativa y textos editoriales</h2></div>
     <div class="card-body">
-      <form method="post" action="{{ path('backend_final_report_narrative_generate') }}" class="border rounded p-3 mb-4">
+      <form method="post" action="{{ path('backend_final_report_narrative_generate') }}" class="border rounded p-3 mb-4" data-action="submit->final-report-editor#submitNarrative">
         <input type="hidden" name="_token" value="{{ csrf_token('final_report_ai_' ~ project.id) }}">
         <h3 class="h6">Narrativa asistida por IA</h3>
         <p class="text-muted small">La IA solo se ejecuta al confirmar esta acción. Usa el Informe Base y conserva los textos manuales salvo sustitución explícita.</p>
@@ -136,7 +136,12 @@
           {% endfor %}
         </div>
         <div class="alert alert-warning py-2 small"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>Marca una sección solo si quieres sustituir expresamente su texto manual por contenido generado.</div>
-        <button class="btn btn-outline-success" type="submit"><i class="bi bi-stars me-1"></i>Generar o mejorar narrativa</button>
+        <button class="btn btn-outline-success" type="submit" data-final-report-editor-target="narrativeSubmit">
+          <span data-final-report-editor-target="narrativeSubmitLabel"><i class="bi bi-stars me-1"></i>Generar o mejorar narrativa</span>
+          <span class="d-none" data-final-report-editor-target="narrativeProcessingLabel">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Generando narrativa…
+          </span>
+        </button>
       </form>
 
       <div class="accordion" id="finalReportEditorialSections">

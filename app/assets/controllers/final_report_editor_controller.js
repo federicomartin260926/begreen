@@ -12,6 +12,9 @@ export default class extends Controller {
     'featuredPageStatus',
     'featuredPrevious',
     'featuredNext',
+    'narrativeSubmit',
+    'narrativeSubmitLabel',
+    'narrativeProcessingLabel',
   ];
 
   static values = {
@@ -22,6 +25,19 @@ export default class extends Controller {
     this.featuredPage = 1;
     this.featuredCheckboxTargets.forEach((checkbox) => this.updateFeaturedComment(checkbox));
     this.refreshFeatured();
+  }
+
+  submitNarrative(event) {
+    if (this.narrativeSubmitting) {
+      event.preventDefault();
+      return;
+    }
+
+    this.narrativeSubmitting = true;
+    this.narrativeSubmitTarget.disabled = true;
+    this.narrativeSubmitTarget.setAttribute('aria-busy', 'true');
+    this.narrativeSubmitLabelTarget.classList.add('d-none');
+    this.narrativeProcessingLabelTarget.classList.remove('d-none');
   }
 
   filterFeatured() {
