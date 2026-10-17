@@ -82,6 +82,51 @@ final class FinalReportNarrativeServiceTest extends TestCase
         self::assertSame(['text' => 'Nuevo resumen', 'origin' => 'ai'], $content->getManualTexts()['executive_summary']);
     }
 
+    public function testFormatsOnlyEmissionValuesForTheRequestedLocale(): void
+    {
+        $provider = new class implements AiReportProviderInterface {
+            /** @var list<AiReportRequest> */
+            public array $requests = [];
+
+            public function generate(AiReportRequest $request): AiReportResult
+            {
+                $this->requests[] = $request;
+
+                return new AiReportResult(
+                    'Resumen',
+                    [new AiReportCategorySummary('implementation', 'Implementación')],
+                    [],
+                    'Conclusión',
+                );
+            }
+        };
+        $report = $this->report(25);
+        $report['implementation']['summary']['totalMeasures'] = 7;
+        $report['emissions'] = [
+            'available' => true,
+            'validRecordCount' => 3,
+            'totalKgCo2e' => 2696.0169437365853,
+            'byCategory' => [['name' => 'Energía', 'kgCo2e' => 415.88765399999994]],
+            'byPhase' => [['code' => 'actividad', 'kgCo2e' => 1328.9682168000002]],
+        ];
+        $service = new FinalReportNarrativeService($provider);
+
+        $service->generate((new FinalReportContent())->setProject($this->project(25)), $report, 'es');
+        $service->generate((new FinalReportContent())->setProject($this->project(25)), $report, 'en_GB');
+
+        $spanish = $provider->requests[0]->factualContext;
+        self::assertSame('2.696,02', $spanish['emissions']['totalKgCo2e']);
+        self::assertSame('415,89', $spanish['emissions']['byCategory'][0]['kgCo2e']);
+        self::assertSame('1.328,97', $spanish['emissions']['byPhase'][0]['kgCo2e']);
+        self::assertSame(3, $spanish['emissions']['validRecordCount']);
+        self::assertSame(7, $spanish['implementation']['summary']['totalMeasures']);
+
+        $english = $provider->requests[1]->factualContext;
+        self::assertSame('2,696.02', $english['emissions']['totalKgCo2e']);
+        self::assertSame('415.89', $english['emissions']['byCategory'][0]['kgCo2e']);
+        self::assertSame('1,328.97', $english['emissions']['byPhase'][0]['kgCo2e']);
+    }
+
     public function testRejectsContentFromAnotherProjectBeforeCallingProvider(): void
     {
         $provider = $this->createMock(AiReportProviderInterface::class);

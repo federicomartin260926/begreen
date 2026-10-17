@@ -100,6 +100,10 @@ final class OpenAiReportProviderTest extends TestCase
         $client = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
             $payload = json_decode((string) $options['body'], true, 512, JSON_THROW_ON_ERROR);
             self::assertSame('final_sustainability_report', $payload['text']['format']['name']);
+            self::assertStringContainsString(
+                'copy them exactly when used, without recalculating or reformatting them',
+                $payload['instructions'],
+            );
 
             $schema = $payload['text']['format']['schema'];
             $summaries = $schema['properties']['categorySummaries'];

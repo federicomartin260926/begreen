@@ -34,7 +34,7 @@ final readonly class FinalReportNarrativeService
         array $replaceManualSections = [],
     ): array {
         $this->assertProject($content, $report);
-        $context = $this->factualContext($content, $report);
+        $context = $this->factualContext($content, $report, $locale);
         $keys = ['implementation'];
         if ($context['featuredMeasures'] !== []) {
             $keys[] = 'featured_storytelling';
@@ -109,7 +109,7 @@ final readonly class FinalReportNarrativeService
     }
 
     /** @param array<string, mixed> $report @return array<string, mixed> */
-    private function factualContext(FinalReportContent $content, array $report): array
+    private function factualContext(FinalReportContent $content, array $report, string $locale): array
     {
         $planById = [];
         foreach ($report['plan']['measures'] ?? [] as $measure) {
@@ -142,10 +142,46 @@ final readonly class FinalReportNarrativeService
             'implementation' => $report['implementation'] ?? [],
             'featuredMeasures' => $featured,
             'deviationsAndLearnings' => $deviations,
-            'emissions' => $report['emissions'] ?? [],
+            'emissions' => $this->formatEmissionsForNarrative(
+                $report['emissions'] ?? [],
+                $locale,
+            ),
             'associatedSdgsNotCertification' => $report['ods'] ?? [],
             'commitment' => $report['commitment'] ?? [],
             'savedEditorialTexts' => $content->getManualTexts(),
         ];
+    }
+
+    /** @param array<string, mixed> $emissions @return array<string, mixed> */
+    private function formatEmissionsForNarrative(array $emissions, string $locale): array
+    {
+        $language = strtolower(explode('-', str_replace('_', '-', $locale), 2)[0]);
+        [$decimalSeparator, $thousandsSeparator] = $language === 'en'
+            ? ['.', ',']
+            : [',', '.'];
+
+        if (is_numeric($emissions['totalKgCo2e'] ?? null)) {
+            $emissions['totalKgCo2e'] = number_format(
+                (float) $emissions['totalKgCo2e'],
+                2,
+                $decimalSeparator,
+                $thousandsSeparator,
+            );
+        }
+
+        foreach (['byCategory', 'byPhase'] as $breakdown) {
+            foreach ($emissions[$breakdown] ?? [] as $index => $item) {
+                if (is_array($item) && is_numeric($item['kgCo2e'] ?? null)) {
+                    $emissions[$breakdown][$index]['kgCo2e'] = number_format(
+                        (float) $item['kgCo2e'],
+                        2,
+                        $decimalSeparator,
+                        $thousandsSeparator,
+                    );
+                }
+            }
+        }
+
+        return $emissions;
     }
 }

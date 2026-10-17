@@ -19,6 +19,8 @@ use App\Service\ReportDesign\ReportDesignRenderer;
 use App\Service\ReportDesign\ReportDesignStorage;
 use App\Service\ReportDesign\ReportDesignValidator;
 use PHPUnit\Framework\TestCase;
+use Symfony\Bridge\Twig\Extension\TranslationExtension;
+use Symfony\Component\Translation\IdentityTranslator;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 
@@ -116,6 +118,7 @@ final class FinalReportPdfBuilderTest extends TestCase
     private function builder(): FinalReportPdfBuilder
     {
         $twig = new Environment(new FilesystemLoader(dirname(__DIR__, 3).'/templates'));
+        $twig->addExtension(new TranslationExtension(new IdentityTranslator()));
         $components = new ReportDesignComponentCatalog();
         $data = new ReportDesignDataCatalog();
         $designStorage = new ReportDesignStorage($this->directory.'/designs');

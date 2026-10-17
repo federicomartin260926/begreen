@@ -4,6 +4,11 @@
 body { font-family: 'DejaVu Sans', sans-serif; color: #24352c; font-size: 10pt; line-height: 1.4; }
 .pdf-page { page-break-after: always; }
 .pdf-page:last-child { page-break-after: auto; }
+.report-design-final-executive {
+  page-break-after: auto;
+  margin-bottom: 8mm;
+}
+.report-design-final-executive h2 { page-break-after: avoid; }
 h1,h2,h3 { color: #176b43; }
 table { width: 100%; border-collapse: collapse; }
 th,td { padding: 5px; border-bottom: 1px solid #dce5df; text-align: left; vertical-align: top; }
@@ -174,8 +179,13 @@ th,td { padding: 5px; border-bottom: 1px solid #dce5df; text-align: left; vertic
   overflow-wrap: break-word;
 }
 
+.report-design-final-implementation {
+  page-break-inside: avoid;
+}
+
 {{ reportDesignCss|default('')|raw }}
-</style></head><body>
+
+    </style></head><body>
 {% if reportDesignHtml %}{{ reportDesignHtml|raw }}{% else %}
 {% include 'backend/final_report/pdf/_cover.html.twig' %}
 {% include 'backend/final_report/pdf/_executive.html.twig' %}
