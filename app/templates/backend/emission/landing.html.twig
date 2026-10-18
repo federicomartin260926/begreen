@@ -4,7 +4,7 @@
 {% block title %}{{ 'backend.emission.landing.title'|trans }}{% endblock %}
 
 {% block breadcrumb %}
-    {{ parent() }}
+    {% include 'backend/project/_breadcrumb_context.html.twig' with {breadcrumbProject: project} only %}
     <li class="breadcrumb-item active">{{ 'backend.emission.landing.breadcrumb'|trans }}</li>
 {% endblock %}
 

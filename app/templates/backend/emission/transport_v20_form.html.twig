@@ -157,7 +157,7 @@
 {% endblock %}
 
 {% block breadcrumb %}
-  {{ parent() }}
+  {% include 'backend/project/_breadcrumb_context.html.twig' with {breadcrumbProject: project} only %}
   <li class="breadcrumb-item"><a href="{{ path('backend_emission_index', backQuery) }}" class="text-decoration-none">{{ 'backend.emission.transport_v20.breadcrumb_list'|trans }}</a></li>
   <li class="breadcrumb-item active">{{ duplicate ? 'backend.emission.transport_v20.breadcrumb_duplicate'|trans : (edit ? 'backend.emission.transport_v20.breadcrumb_edit'|trans : 'backend.emission.transport_v20.breadcrumb_new'|trans) }}</li>
 {% endblock %}

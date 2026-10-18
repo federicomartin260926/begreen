@@ -1,0 +1,12 @@
+<li class="breadcrumb-item">
+    <a href="{{ path('backend_project_index') }}" class="text-decoration-none">
+        {{ 'backend.projects.list.breadcrumb'|trans }}
+    </a>
+</li>
+<li class="breadcrumb-item">
+    <span
+        class="d-inline-block text-truncate align-bottom"
+        style="max-width: min(30vw, 20rem);"
+        title="{{ breadcrumbProject.name }}"
+    >{{ breadcrumbProject.name }}</span>
+</li>

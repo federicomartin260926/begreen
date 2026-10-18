@@ -2,6 +2,11 @@
 
 {% block title %}{{ 'backend.final_report.title'|trans }}{% endblock %}
 
+{% block breadcrumb %}
+  {% include 'backend/project/_breadcrumb_context.html.twig' with {breadcrumbProject: project} only %}
+  <li class="breadcrumb-item active" aria-current="page">{{ 'backend.final_report.title'|trans }}</li>
+{% endblock %}
+
 {% block body %}
 <div class="container-fluid py-4" data-controller="final-report-editor" data-final-report-editor-featured-page-size-value="10"
      data-final-report-editor-featured-page-status-format-value="{{ 'backend.final_report.featured_page_status'|trans }}">

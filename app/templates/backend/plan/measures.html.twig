@@ -3,7 +3,7 @@
 {% block title %}{{ 'backend.plan.elaboration.title'|trans }}{% endblock %}
 
 {% block breadcrumb %}
-    {{ parent() }}
+    {% include 'backend/project/_breadcrumb_context.html.twig' with {breadcrumbProject: project} only %}
     <li class="breadcrumb-item active" aria-current="page">{{ 'backend.plan.elaboration.breadcrumb'|trans }}</li>
 {% endblock %}
 
