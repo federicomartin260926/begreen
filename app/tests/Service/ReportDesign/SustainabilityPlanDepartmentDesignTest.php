@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service\ReportDesign;
 
+use Doctrine\ORM\EntityManagerInterface;
 use App\Controller\Admin\ReportDesignController;
 use App\Controller\Backend\SustainabilityPlanExportController;
 use App\Entity\Plan;
@@ -11,16 +12,23 @@ use App\Entity\Project;
 use App\Entity\User;
 use App\Repository\PlanRepository;
 use App\Service\ActiveProjectService;
-use App\Service\SustainabilityPlanGroupedPdfExporter;
-use App\Service\ReportDesign\ReportDesignCatalog;
+use App\Service\Ai\AiReportConfiguration;
+use App\Service\Ai\AiReportPromptConfiguration;
+use App\Service\Ai\AiReportSettingResolver;
+use App\Service\Ai\AnthropicReportConfiguration;
+use App\Service\Ai\OpenAiReportConfiguration;
 use App\Service\ReportDesign\ReportDesignAiGenerator;
+use App\Service\ReportDesign\ReportDesignCatalog;
 use App\Service\ReportDesign\ReportDesignComponentCatalog;
 use App\Service\ReportDesign\ReportDesignDataCatalog;
 use App\Service\ReportDesign\ReportDesignManager;
 use App\Service\ReportDesign\ReportDesignRenderer;
 use App\Service\ReportDesign\ReportDesignStorage;
 use App\Service\ReportDesign\ReportDesignValidator;
+use App\Service\SustainabilityPlanGroupedPdfExporter;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
@@ -189,6 +197,80 @@ final class SustainabilityPlanDepartmentDesignTest extends KernelTestCase
                 '[COMPONENT:cover], [COMPONENT:grouped_analytics] and [COMPONENT:grouped_report]',
                 $instructions,
             );
+            self::assertStringContainsString(
+                '.report-design-grouped-analytics .pdf-analytics-page__title',
+                $instructions,
+            );
+            self::assertStringContainsString(
+                '.report-design-grouped-report .pdf-group-measure__title',
+                $instructions,
+            );
+            self::assertStringNotContainsString('.report-design-analytics', $instructions);
+            self::assertStringNotContainsString('.report-design-departments', $instructions);
+        }
+    }
+
+    public function testValidGroupedAiResponseIsSavedAsDraft(): void
+    {
+        $root = sys_get_temp_dir().'/begreen-73-ai-valid-'.bin2hex(random_bytes(7));
+        try {
+            $storage = new ReportDesignStorage($root);
+            $manager = new ReportDesignManager(
+                $storage,
+                new ReportDesignValidator(new ReportDesignComponentCatalog(), new ReportDesignDataCatalog()),
+            );
+            $generator = $this->aiGenerator(
+                new MockHttpClient($this->openAiDesignResponse([
+                    'html' => '[COMPONENT:cover] [COMPONENT:grouped_analytics] [COMPONENT:grouped_report]',
+                    'css' => '.report-design-grouped-analytics .pdf-analytics-page__title { color: #123456; }',
+                    'unavailableData' => [],
+                ])),
+                $manager,
+            );
+            $definition = (new ReportDesignCatalog())->sustainabilityPlanDepartment();
+
+            $generator->generateDraft($definition, 'Mejora el contraste de la analítica agrupada.');
+
+            $draft = $storage->loadDraft($definition);
+            self::assertNotNull($draft);
+            self::assertSame(
+                '.report-design-grouped-analytics .pdf-analytics-page__title { color: #123456; }',
+                $draft['css'],
+            );
+        } finally {
+            $this->removeDirectory($root);
+        }
+    }
+
+    public function testAiResponseWithGeneralSelectorIsStillRejectedForGroupedDraft(): void
+    {
+        $root = sys_get_temp_dir().'/begreen-73-ai-invalid-'.bin2hex(random_bytes(7));
+        try {
+            $storage = new ReportDesignStorage($root);
+            $manager = new ReportDesignManager(
+                $storage,
+                new ReportDesignValidator(new ReportDesignComponentCatalog(), new ReportDesignDataCatalog()),
+            );
+            $generator = $this->aiGenerator(
+                new MockHttpClient($this->openAiDesignResponse([
+                    'html' => '[COMPONENT:cover] [COMPONENT:grouped_analytics] [COMPONENT:grouped_report]',
+                    'css' => '.report-design-analytics .pdf-analytics-page__title { color: #123456; }',
+                    'unavailableData' => [],
+                ])),
+                $manager,
+            );
+            $definition = (new ReportDesignCatalog())->sustainabilityPlanDepartment();
+
+            try {
+                $generator->generateDraft($definition, 'Mejora el contraste de la analítica agrupada.');
+                self::fail('A grouped response with a general-report selector was accepted.');
+            } catch (\InvalidArgumentException $exception) {
+                self::assertStringContainsString('selectors must be scoped', $exception->getMessage());
+            }
+
+            self::assertNull($storage->loadDraft($definition));
+        } finally {
+            $this->removeDirectory($root);
         }
     }
 
@@ -569,6 +651,63 @@ final class SustainabilityPlanDepartmentDesignTest extends KernelTestCase
         self::assertIsString($output);
 
         return $output;
+    }
+
+    private function aiGenerator(
+        MockHttpClient $httpClient,
+        ReportDesignManager $manager,
+    ): ReportDesignAiGenerator {
+        $openAi = new OpenAiReportConfiguration(
+            'test-key',
+            'gpt-test',
+            'https://openai.test/v1',
+        );
+        $anthropic = new AnthropicReportConfiguration(
+            '',
+            '',
+            'https://anthropic.test/v1',
+            '2023-06-01',
+            4096,
+        );
+        $configuration = new AiReportConfiguration(
+            'openai',
+            15,
+            3,
+            '',
+            $openAi,
+            $anthropic,
+        );
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->method('find')->willReturn(null);
+
+        return new ReportDesignAiGenerator(
+            $httpClient,
+            $configuration,
+            $openAi,
+            $anthropic,
+            new AiReportSettingResolver(
+                $entityManager,
+                $configuration,
+                new AiReportPromptConfiguration(dirname(__DIR__, 3).'/config/ai_report_prompt.yaml'),
+            ),
+            new ReportDesignComponentCatalog(),
+            new ReportDesignDataCatalog(),
+            $manager,
+        );
+    }
+
+    /** @param array<string, mixed> $design */
+    private function openAiDesignResponse(array $design): MockResponse
+    {
+        return new MockResponse(json_encode([
+            'output' => [[
+                'type' => 'message',
+                'content' => [[
+                    'type' => 'output_text',
+                    'text' => json_encode($design, JSON_THROW_ON_ERROR),
+                ]],
+            ]],
+        ], JSON_THROW_ON_ERROR), ['http_code' => 200]);
     }
 
     private function removeDirectory(string $root): void

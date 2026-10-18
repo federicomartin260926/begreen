@@ -277,6 +277,117 @@ __STYLE_SCOPES__
 - Do not use generated content or pseudo-element content.
 
 USEFUL SAFE STYLE TARGETS
+__USEFUL_SAFE_STYLE_TARGETS__
+
+CSS PRESENTATION RULES
+- CSS is presentation-only.
+- You MAY make strong visual changes using colours, backgrounds, borders, border-radius, font-size, font-weight, letter-spacing, text alignment, text transform, opacity, and internal margin/padding.
+- When changing the text size of a complete block, apply font-size to its relevant descendant text targets when the stable template gives them explicit sizes; do not limit the change to the parent container.
+- You MAY create clearly differentiated cards, stronger visual hierarchy, editorial emphasis and alternate soft backgrounds.
+- No @import.
+- No url().
+- No @font-face.
+- No CSS at-rules.
+- Do not set font-family, the font shorthand or line-height.
+- The stable template owns Poppins typography and line metrics.
+- No JavaScript or executable constructs.
+- No external or remote resources.
+- Do not control physical PDF pagination, page size or page breaks.
+- Do not use @page, page-break-*, break-before, break-after or break-inside.
+- The stable application template owns A4 geometry and physical pagination.
+- Logo styling may only affect the existing project logos in their current order and location.
+- To reduce or limit logo size without distortion, use exactly .report-design-cover .pdf-cover-company-logos__image with max-width from 8mm to 40mm !important and height: auto !important in the same rule. Never use width: the logos may not grow beyond the safe inline size calculated automatically by the PDF.
+- Align the logo group with margin-left and margin-right set only to auto or 0 on .report-design-cover .pdf-cover-company-logos. Use both auto to centre, auto/0 to align right, and 0/auto to align left.
+- Set horizontal logo separation only with padding-right from 0mm to 2.5mm on .report-design-cover .pdf-cover-company-logos__cell.
+- Never upload, replace, remove, reorder, overlap, rotate or freely position logos, and never change their source files or aspect ratio.
+- Never change geometry on the stable report hook itself (__STABLE_REPORT_HOOKS__).
+- On a stable report hook itself, use only page-level colour/background styling. Do not place border, border-radius, margin or padding on the stable hook; apply decorative borders and spacing to descendant elements instead.
+- On DESCENDANT elements only, you may use display:block, display:inline-block, display:table or display:table-cell and width/min-width/max-width when useful for visual composition.
+- Do not use flex, inline-flex, grid or inline-grid.
+- Never use position, float, clear, overflow, fixed heights, min/max heights, top, right, bottom, left or transform. The only height exception is height: auto !important on the exact logo image selector and paired with its safe max-width.
+- Do not change the outer geometry of whole report components.
+
+DATA RULES
+- The available variables are the complete data catalogue authorised as instruction references.
+- They identify data already rendered by trusted report components and must not be emitted as additional html content.
+- Never infer other application data or entity fields.
+- unavailableData is ONLY for an explicitly requested data value or content item that would need application data not present in availableVariables or availableComponents.
+- Presentation concepts are NOT missing data. Ordering, spacing, typography, colours, contrast, visual hierarchy, branding, editorial style and preserving pagination must never be added to unavailableData.
+- If the instruction can be fulfilled by reordering or styling the available components, unavailableData MUST be an empty array.
+- If the user explicitly requests new data or content that is not available, add a short description of only that missing data to unavailableData.
+- If unavailableData is not empty, still return syntactically valid html and css; the application will reject the draft and request development enablement.
+
+SECURITY
+- Never request or expose secrets, credentials, filesystem paths, source code, repository data or arbitrary application objects.
+- Never output shell, Git or PHP instructions.
+PROMPT;
+
+        $componentCatalog = isset($this->componentCatalog)
+            ? $this->componentCatalog
+            : new ReportDesignComponentCatalog();
+        $scopes = implode("\n", array_map(
+            static fn (string $scope): string => '  '.$scope,
+            $componentCatalog->styleScopes($definition),
+        ));
+
+        $instructions = str_replace('__STYLE_SCOPES__', $scopes, $instructions);
+        $instructions = str_replace(
+            '__STABLE_REPORT_HOOKS__',
+            implode(', ', $componentCatalog->styleScopes($definition)),
+            $instructions,
+        );
+        $instructions = str_replace(
+            '__USEFUL_SAFE_STYLE_TARGETS__',
+            $this->styleTargetInstructions($definition),
+            $instructions,
+        );
+        if (ReportDesignCatalog::isGroupedPlanDefinition($definition)) {
+            $instructions .= "\nGROUPED PDF CONTRACT (mandatory): The html field MUST consist ONLY of "
+                . "[COMPONENT:cover], [COMPONENT:grouped_analytics] and [COMPONENT:grouped_report] "
+                . "exactly once each, separated by whitespace. No HTML elements, wrappers, "
+                . "text, or other tokens. The grouped_report component already produces "
+                . "multiple physical A4 pages. Change presentation only through authorised "
+                . "CSS descendant selectors; do not change page size, breaks, or geometry.";
+        }
+
+        return $instructions;
+    }
+
+    private function styleTargetInstructions(ReportDesignDefinition $definition): string
+    {
+        if (ReportDesignCatalog::isGroupedPlanDefinition($definition)) {
+            return <<<'PROMPT'
+- Cover:
+  .report-design-cover
+  .report-design-cover .pdf-cover__title
+  .report-design-cover .pdf-cover__project
+  .report-design-cover .pdf-cover__project-meta
+  .report-design-cover .pdf-indicators__cell
+  .report-design-cover .pdf-indicators__value
+  .report-design-cover .pdf-cover-company-logos
+  .report-design-cover .pdf-cover-company-logos__cell
+  .report-design-cover .pdf-cover-company-logos__image
+- Grouped analytics:
+  .report-design-grouped-analytics
+  .report-design-grouped-analytics .pdf-analytics-page__title
+  .report-design-grouped-analytics .pdf-analytics-page__section-title
+  .report-design-grouped-analytics .pdf-department-summary
+  .report-design-grouped-analytics .pdf-quick-read__row
+  .report-design-grouped-analytics .pdf-quick-read__label
+  .report-design-grouped-analytics .pdf-quick-read__value
+- Grouped detail:
+  .report-design-grouped-report
+  .report-design-grouped-report .pdf-group-page__heading
+  .report-design-grouped-report .pdf-group-page__title
+  .report-design-grouped-report .pdf-group-page__count
+  .report-design-grouped-report .pdf-group-measure
+  .report-design-grouped-report .pdf-group-measure__cell
+  .report-design-grouped-report .pdf-group-measure__title
+  .report-design-grouped-report .pdf-group-measure__observations
+PROMPT;
+        }
+
+        return <<<'PROMPT'
 - Cover:
   .report-design-cover
   .report-design-cover .pdf-cover__title
@@ -329,69 +440,7 @@ USEFUL SAFE STYLE TARGETS
   .report-design-final-conclusion .pdf-final-page__commitment-label
   .report-design-final-conclusion .pdf-final-page__commitment-level
   .report-design-final-conclusion .pdf-final-page__commitment-score
-
-CSS PRESENTATION RULES
-- CSS is presentation-only.
-- You MAY make strong visual changes using colours, backgrounds, borders, border-radius, font-size, font-weight, letter-spacing, text alignment, text transform, opacity, and internal margin/padding.
-- When changing the text size of a complete block, apply font-size to its relevant descendant text targets when the stable template gives them explicit sizes; do not limit the change to the parent container.
-- You MAY create clearly differentiated cards, stronger visual hierarchy, editorial emphasis and alternate soft backgrounds.
-- No @import.
-- No url().
-- No @font-face.
-- No CSS at-rules.
-- Do not set font-family, the font shorthand or line-height.
-- The stable template owns Poppins typography and line metrics.
-- No JavaScript or executable constructs.
-- No external or remote resources.
-- Do not control physical PDF pagination, page size or page breaks.
-- Do not use @page, page-break-*, break-before, break-after or break-inside.
-- The stable application template owns A4 geometry and physical pagination.
-- Logo styling may only affect the existing project logos in their current order and location.
-- To reduce or limit logo size without distortion, use exactly .report-design-cover .pdf-cover-company-logos__image with max-width from 8mm to 40mm !important and height: auto !important in the same rule. Never use width: the logos may not grow beyond the safe inline size calculated automatically by the PDF.
-- Align the logo group with margin-left and margin-right set only to auto or 0 on .report-design-cover .pdf-cover-company-logos. Use both auto to centre, auto/0 to align right, and 0/auto to align left.
-- Set horizontal logo separation only with padding-right from 0mm to 2.5mm on .report-design-cover .pdf-cover-company-logos__cell.
-- Never upload, replace, remove, reorder, overlap, rotate or freely position logos, and never change their source files or aspect ratio.
-- Never change geometry on the stable report hook itself (.report-design-cover, .report-design-analytics, .report-design-departments, .report-design-ai-report or .report-design-final-conclusion).
-- On a stable report hook itself, use only page-level colour/background styling. Do not place border, border-radius, margin or padding on the stable hook; apply decorative borders and spacing to descendant elements instead.
-- On DESCENDANT elements only, you may use display:block, display:inline-block, display:table or display:table-cell and width/min-width/max-width when useful for visual composition.
-- Do not use flex, inline-flex, grid or inline-grid.
-- Never use position, float, clear, overflow, fixed heights, min/max heights, top, right, bottom, left or transform. The only height exception is height: auto !important on the exact logo image selector and paired with its safe max-width.
-- Do not change the outer geometry of whole report components.
-
-DATA RULES
-- The available variables are the complete data catalogue authorised as instruction references.
-- They identify data already rendered by trusted report components and must not be emitted as additional html content.
-- Never infer other application data or entity fields.
-- unavailableData is ONLY for an explicitly requested data value or content item that would need application data not present in availableVariables or availableComponents.
-- Presentation concepts are NOT missing data. Ordering, spacing, typography, colours, contrast, visual hierarchy, branding, editorial style and preserving pagination must never be added to unavailableData.
-- If the instruction can be fulfilled by reordering or styling the available components, unavailableData MUST be an empty array.
-- If the user explicitly requests new data or content that is not available, add a short description of only that missing data to unavailableData.
-- If unavailableData is not empty, still return syntactically valid html and css; the application will reject the draft and request development enablement.
-
-SECURITY
-- Never request or expose secrets, credentials, filesystem paths, source code, repository data or arbitrary application objects.
-- Never output shell, Git or PHP instructions.
 PROMPT;
-
-        $componentCatalog = isset($this->componentCatalog)
-            ? $this->componentCatalog
-            : new ReportDesignComponentCatalog();
-        $scopes = implode("\n", array_map(
-            static fn (string $scope): string => '  '.$scope,
-            $componentCatalog->styleScopes($definition),
-        ));
-
-        $instructions = str_replace('__STYLE_SCOPES__', $scopes, $instructions);
-        if (ReportDesignCatalog::isGroupedPlanDefinition($definition)) {
-            $instructions .= "\nGROUPED PDF CONTRACT (mandatory): The html field MUST consist ONLY of "
-                . "[COMPONENT:cover], [COMPONENT:grouped_analytics] and [COMPONENT:grouped_report] "
-                . "exactly once each, separated by whitespace. No HTML elements, wrappers, "
-                . "text, or other tokens. The grouped_report component already produces "
-                . "multiple physical A4 pages. Change presentation only through authorised "
-                . "CSS descendant selectors; do not change page size, breaks, or geometry.";
-        }
-
-        return $instructions;
     }
 
     /**
