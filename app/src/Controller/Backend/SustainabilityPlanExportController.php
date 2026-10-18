@@ -8,6 +8,8 @@ use App\Enum\CommercialPhase;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
+use App\Service\ReportDesign\ReportDesignCatalog;
+use App\Service\ReportDesign\ReportDesignRenderer;
 use App\Service\SustainabilityPlanExcelExporter;
 use App\Service\SustainabilityPlanGroupedPdfExporter;
 use App\Service\SustainabilityPlanGroupingService;
@@ -15,6 +17,7 @@ use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\ProjectFeatureGate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Annotation\Route;
@@ -33,6 +36,9 @@ final class SustainabilityPlanExportController extends AbstractController
         private readonly SustainabilityPlanGroupingService $groupingService,
         private readonly SustainabilityCommitmentLevelService $commitmentLevelService,
         private readonly SustainabilityPlanGroupedPdfExporter $pdfExporter,
+        private readonly ReportDesignCatalog $reportDesignCatalog,
+        private readonly ReportDesignRenderer $reportDesignRenderer,
+        private readonly RequestStack $requestStack,
         private readonly SustainabilityPlanExcelExporter $excelExporter,
         private readonly TranslatorInterface $translator
     ) {
@@ -109,6 +115,11 @@ final class SustainabilityPlanExportController extends AbstractController
             ]);
         }
 
+        $useDraftReportDesign = $this->requestStack->getCurrentRequest()?->query->get('report_design') === 'draft';
+        if ($useDraftReportDesign) {
+            $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        }
+
         $groups = $this->groupingService->groupPlanMeasures(
             $plan,
             $project,
@@ -125,9 +136,7 @@ final class SustainabilityPlanExportController extends AbstractController
             $project
         );
 
-        $pdf = $this->pdfExporter->generate(
-            'backend/plan/export/grouped_pdf_visual.html.twig',
-            [
+        $pdfContext = [
                 'project' => $project,
                 'plan' => $plan,
                 'grouping' => $grouping,
@@ -200,7 +209,17 @@ final class SustainabilityPlanExportController extends AbstractController
                         'image/png'
                     ),
                 ],
-            ]
+            ];
+
+        $pdfContext = $this->applyGroupedReportDesign(
+            $grouping,
+            $pdfContext,
+            $useDraftReportDesign,
+        );
+
+        $pdf = $this->pdfExporter->generate(
+            'backend/plan/export/grouped_pdf_visual.html.twig',
+            $pdfContext,
         );
 
         $filename = $this->buildFilename($project, $grouping, 'pdf');
@@ -213,6 +232,34 @@ final class SustainabilityPlanExportController extends AbstractController
         );
 
         return $response;
+    }
+
+    /** @param array<string, mixed> $pdfContext @return array<string, mixed> */
+    private function applyGroupedReportDesign(
+        string $grouping,
+        array $pdfContext,
+        bool $useDraftReportDesign,
+    ): array {
+        $definition = $this->reportDesignCatalog->sustainabilityPlanGrouped($grouping);
+        try {
+            $design = $useDraftReportDesign
+                ? $this->reportDesignRenderer->renderDraft($definition, $pdfContext)
+                : $this->reportDesignRenderer->renderApproved($definition, $pdfContext);
+            if ($useDraftReportDesign && $design === null) {
+                throw $this->createNotFoundException('No grouped draft design to preview.');
+            }
+            $pdfContext['reportDesignHtml'] = $design['html'] ?? null;
+            $pdfContext['reportDesignCss'] = $design['css'] ?? '';
+        } catch (\Throwable $exception) {
+            if ($useDraftReportDesign) {
+                throw $this->createNotFoundException('Grouped draft design is invalid.', $exception);
+            }
+            // An invalid approved visual snapshot must not block the base PDF.
+            $pdfContext['reportDesignHtml'] = null;
+            $pdfContext['reportDesignCss'] = '';
+        }
+
+        return $pdfContext;
     }
 
     #[Route('/{id}/export/{grouping}/excel', name: 'export_excel', methods: ['GET'])]

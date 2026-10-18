@@ -17,6 +17,16 @@ final class ReportDesignDataCatalog
      */
     public function all(?ReportDesignDefinition $definition = null): array
     {
+        if (ReportDesignCatalog::isGroupedPlanDefinition($definition)) {
+            return array_intersect_key($this->all(), array_flip([
+                'project.name',
+                'report.generated_by',
+                'score.gained',
+                'score.max',
+                'score.percent',
+                'commitment.planned_percentage',
+            ]));
+        }
         if ($definition?->document === ReportDesignCatalog::DOCUMENT_FINAL_SUSTAINABILITY_REPORT) {
             return $this->finalReportVariables();
         }

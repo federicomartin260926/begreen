@@ -1,5 +1,5 @@
 {% for page in groupedDetailPages %}
-    <section class="pdf-group-page{% if loop.last %} pdf-group-page--last{% endif %}">
+    <section class="pdf-group-page report-design-grouped-report{% if loop.last %} pdf-group-page--last{% endif %}">
         {% include 'backend/plan/pdf/_watermark.html.twig' %}
 
         {% include 'backend/plan/pdf/_header.html.twig' with {

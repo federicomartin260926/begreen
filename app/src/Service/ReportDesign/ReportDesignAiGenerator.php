@@ -381,7 +381,17 @@ PROMPT;
             $componentCatalog->styleScopes($definition),
         ));
 
-        return str_replace('__STYLE_SCOPES__', $scopes, $instructions);
+        $instructions = str_replace('__STYLE_SCOPES__', $scopes, $instructions);
+        if (ReportDesignCatalog::isGroupedPlanDefinition($definition)) {
+            $instructions .= "\nGROUPED PDF CONTRACT (mandatory): The html field MUST consist ONLY of "
+                . "[COMPONENT:cover], [COMPONENT:grouped_analytics] and [COMPONENT:grouped_report] "
+                . "exactly once each, separated by whitespace. No HTML elements, wrappers, "
+                . "text, or other tokens. The grouped_report component already produces "
+                . "multiple physical A4 pages. Change presentation only through authorised "
+                . "CSS descendant selectors; do not change page size, breaks, or geometry.";
+        }
+
+        return $instructions;
     }
 
     /**

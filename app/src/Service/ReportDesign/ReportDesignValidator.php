@@ -55,6 +55,17 @@ final readonly class ReportDesignValidator
 
         $components = $componentMatches[1] ?? [];
 
+        // #73: each grouped report component owns one or many physical pages.
+        // Only naked component tokens are allowed; wrappers could change page flow.
+        if (ReportDesignCatalog::isGroupedPlanDefinition($definition)) {
+            $remaining = preg_replace('/\[COMPONENT:[a-z0-9_-]+\]/', '', $html);
+            if ($remaining === null || trim($remaining) !== '') {
+                throw new \InvalidArgumentException(
+                    'Grouped report designs must contain only the three page components.'
+                );
+            }
+        }
+
         foreach ($components as $component) {
             if (!$this->componentCatalog->has($component, $definition)) {
                 throw new \InvalidArgumentException(

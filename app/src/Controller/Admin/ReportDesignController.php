@@ -15,6 +15,8 @@ use App\Exception\Ai\AiRateLimitException;
 use App\Exception\Ai\AiReportException;
 use App\Exception\Ai\AiTimeoutException;
 use App\Exception\ReportDesign\ReportDesignRequiresDevelopmentException;
+use App\Repository\PlanRepository;
+use App\Service\ActiveProjectService;
 use App\Service\Ai\AiReportSettingResolver;
 use App\Service\ReportDesign\ReportDesignAiGenerator;
 use App\Service\ReportDesign\ReportDesignCatalog;
@@ -211,8 +213,49 @@ final class ReportDesignController extends AbstractController
         );
     }
 
+    #[Route('/preview-grouped/{variant}', name: 'preview_grouped', methods: ['GET'])]
+    public function previewGrouped(
+        string $variant,
+        ActiveProjectService $activeProjectService,
+        PlanRepository $planRepository,
+    ): RedirectResponse {
+        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        $grouping = ReportDesignCatalog::groupingForVariant($variant);
+        if ($grouping === null) {
+            throw $this->createNotFoundException('Unknown grouped report design.');
+        }
+        $project = $activeProjectService->getActiveProject();
+        if ($project === null) {
+            throw $this->createNotFoundException('An active project is required.');
+        }
+        $plan = $planRepository->findOneBy(['project' => $project]);
+        if ($plan === null) {
+            throw $this->createNotFoundException('The active project has no plan.');
+        }
+
+        // The export endpoint retains its project/plan voters, phase and tier gate.
+        $route = $grouping === 'category'
+            ? 'backend_plan_export_pdf'
+            : 'backend_plan_closure_export_pdf';
+
+        return $this->redirectToRoute($route, [
+            'id' => $plan->getId(),
+            'grouping' => $grouping,
+            'report_design' => 'draft',
+        ]);
+    }
+
     private function definition(Request $request, ReportDesignCatalog $catalog): \App\Service\ReportDesign\ReportDesignDefinition
     {
+        $design = (string) $request->query->get('design', '');
+        if ($request->isMethod('GET') && $design !== '') {
+            $parts = explode('/', $design);
+            if (count($parts) !== 2) {
+                throw new \InvalidArgumentException('Unknown report design.');
+            }
+            return $catalog->get($parts[0], $parts[1]);
+        }
+
         return $catalog->get(
             (string) ($request->request->get('document') ?: $request->query->get('document', ReportDesignCatalog::DOCUMENT_SUSTAINABILITY_PLAN)),
             (string) ($request->request->get('variant') ?: $request->query->get('variant', ReportDesignCatalog::VARIANT_GENERAL)),

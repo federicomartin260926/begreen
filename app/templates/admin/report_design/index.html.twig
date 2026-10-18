@@ -10,6 +10,8 @@
 {% endblock %}
 
 {% block body %}
+{% set isGroupedVariant = definition.document == 'sustainability-plan' and definition.variant != 'general' %}
+{% set designHelpSuffix = isGroupedVariant ? '_grouped' : '' %}
 <div class="container-fluid px-0 backend-admin-shell">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
@@ -34,12 +36,11 @@
             <form method="get" class="row g-2 align-items-end mb-3">
                 <div class="col-md-8">
                     <label class="form-label" for="report-design-document">Tipo de informe</label>
-                    <select class="form-select" id="report-design-document" name="document">
+                    <select class="form-select" id="report-design-document" name="design">
                         {% for item in definitions %}
-                            <option value="{{ item.document }}" {% if item.key == definition.key %}selected{% endif %}>{{ item.label }}</option>
+                            <option value="{{ item.key }}" {% if item.key == definition.key %}selected{% endif %}>{{ item.label }}</option>
                         {% endfor %}
                     </select>
-                    <input type="hidden" name="variant" value="general">
                 </div>
                 <div class="col-md-4"><button class="btn btn-outline-secondary w-100" type="submit">Abrir diseño</button></div>
             </form>
@@ -49,6 +50,9 @@
                         {{ 'backend.report_design.document'|trans }}
                     </div>
                     <div class="fw-semibold">{{ definition.label }}</div>
+                    {% if isGroupedVariant %}
+                        <p class="small text-muted mt-2 mb-0">{{ 'backend.report_design.grouped_help'|trans }}</p>
+                    {% endif %}
                 </div>
 
                 <div class="d-flex flex-wrap gap-2 align-items-start">
@@ -103,7 +107,7 @@
                     </h3>
 
                     <p class="text-muted small">
-                        {{ 'backend.report_design.instruction_help'|trans }}
+                        {{ ('backend.report_design.instruction_help' ~ designHelpSuffix)|trans }}
                     </p>
 
                     <details class="border rounded bg-body-tertiary mb-4">
@@ -114,7 +118,7 @@
 
                         <div class="px-3 pb-3 small">
                             <p class="text-muted mb-3">
-                                {{ 'backend.report_design.guide_intro'|trans }}
+                                {{ ('backend.report_design.guide_intro' ~ designHelpSuffix)|trans }}
                             </p>
 
                             <h4 class="h6">
@@ -135,18 +139,18 @@
                                 <strong>
                                     {{ 'backend.report_design.guide_iteration_example_label'|trans }}
                                 </strong>
-                                {{ 'backend.report_design.guide_iteration_example'|trans }}
+                                {{ ('backend.report_design.guide_iteration_example' ~ designHelpSuffix)|trans }}
                             </div>
 
                             <h4 class="h6 mt-3">
                                 {{ 'backend.report_design.guide_examples_title'|trans }}
                             </h4>
                             <ul class="mb-3">
-                                <li>{{ 'backend.report_design.guide_example_1'|trans }}</li>
-                                <li>{{ 'backend.report_design.guide_example_2'|trans }}</li>
-                                <li>{{ 'backend.report_design.guide_example_3'|trans }}</li>
-                                <li>{{ 'backend.report_design.guide_example_4'|trans }}</li>
-                                <li>{{ 'backend.report_design.guide_example_5'|trans }}</li>
+                                <li>{{ ('backend.report_design.guide_example_1' ~ designHelpSuffix)|trans }}</li>
+                                <li>{{ ('backend.report_design.guide_example_2' ~ designHelpSuffix)|trans }}</li>
+                                <li>{{ ('backend.report_design.guide_example_3' ~ designHelpSuffix)|trans }}</li>
+                                <li>{{ ('backend.report_design.guide_example_4' ~ designHelpSuffix)|trans }}</li>
+                                <li>{{ ('backend.report_design.guide_example_5' ~ designHelpSuffix)|trans }}</li>
                             </ul>
 
                             <h4 class="h6 mt-3">
@@ -210,7 +214,7 @@
                             rows="8"
                             maxlength="5000"
                             required
-                            placeholder="{{ 'backend.report_design.instruction_placeholder'|trans }}"
+                            placeholder="{{ ('backend.report_design.instruction_placeholder' ~ designHelpSuffix)|trans }}"
                         ></textarea>
 
                         <div class="form-text">
@@ -275,7 +279,11 @@
                                 <div class="d-flex flex-wrap gap-2">
                                     <a
                                         class="btn btn-outline-secondary"
-                                        href="{{ definition.document == 'final-sustainability-report' ? path('backend_final_report_preview', {'report_design': 'draft'}) : path('backend_plan_closure_download_pdf', {'report_design': 'draft'}) }}"
+                                        href="{{ definition.document == 'final-sustainability-report'
+                                            ? path('backend_final_report_preview', {'report_design': 'draft'})
+                                            : (definition.variant != 'general'
+                                                ? path('admin_report_design_preview_grouped', {'variant': definition.variant})
+                                                : path('backend_plan_closure_download_pdf', {'report_design': 'draft'})) }}"
                                     >
                                         <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>
                                         {{ 'backend.report_design.download_draft'|trans }}
@@ -334,7 +342,7 @@
                         <span class="fw-semibold">
                             {{ 'backend.report_design.example_label'|trans }}:
                         </span>
-                        {{ 'backend.report_design.components_example'|trans }}
+                        {{ ('backend.report_design.components_example' ~ designHelpSuffix)|trans }}
                     </div>
 
                     <div class="d-flex flex-column gap-3">
@@ -367,7 +375,7 @@
                         <span class="fw-semibold">
                             {{ 'backend.report_design.example_label'|trans }}:
                         </span>
-                        {{ 'backend.report_design.variables_example'|trans }}
+                        {{ ('backend.report_design.variables_example' ~ designHelpSuffix)|trans }}
                     </div>
 
                     <div class="accordion" id="reportDesignDataCatalog">

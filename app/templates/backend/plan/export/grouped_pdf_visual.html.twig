@@ -8,6 +8,34 @@
 {% endblock %}
 
 {% block pdf_extra_styles %}
+    {% if reportDesignCss is defined and reportDesignCss %}
+        {{ reportDesignCss|raw }}
+        /* #73: physical page geometry remains owned by original grouped template. */
+        .report-design-cover {
+            width: 210mm !important;
+            height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            page-break-after: always !important;
+        }
+        .report-design-grouped-analytics,
+        .report-design-grouped-report {
+            width: 210mm !important;
+            height: 296mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            page-break-after: always !important;
+        }
+        .report-design-grouped-report.pdf-group-page--last {
+            page-break-after: auto !important;
+        }
+    {% endif %}
         .pdf-group-page {
             position: relative;
             width: 210mm;
@@ -104,7 +132,11 @@
 {% endblock %}
 
 {% block pdf_body %}
-    {% include 'backend/plan/pdf/_cover.html.twig' %}
-    {% include 'backend/plan/pdf/_grouped_analytics.html.twig' %}
-    {% include 'backend/plan/pdf/_grouped_report.html.twig' %}
+    {% if reportDesignHtml is defined and reportDesignHtml is not null %}
+        {{ reportDesignHtml|raw }}
+    {% else %}
+        {% include 'backend/plan/pdf/_cover.html.twig' %}
+        {% include 'backend/plan/pdf/_grouped_analytics.html.twig' %}
+        {% include 'backend/plan/pdf/_grouped_report.html.twig' %}
+    {% endif %}
 {% endblock %}

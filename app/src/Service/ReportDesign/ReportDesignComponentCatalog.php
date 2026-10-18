@@ -16,6 +16,10 @@ final class ReportDesignComponentCatalog
      */
     public function all(?ReportDesignDefinition $definition = null): array
     {
+        if (ReportDesignCatalog::isGroupedPlanDefinition($definition)) {
+            return $this->groupedPlanComponents();
+        }
+
         if ($definition?->document === ReportDesignCatalog::DOCUMENT_FINAL_SUSTAINABILITY_REPORT) {
             return $this->finalReportComponents();
         }
@@ -91,6 +95,31 @@ final class ReportDesignComponentCatalog
             static fn (string $key): string => '.report-design-'.str_replace('_', '-', $key),
             array_keys($this->all($definition)),
         );
+    }
+
+    /** @return array<string, array{label:string,description:string,template:string,required:bool}> */
+    private function groupedPlanComponents(): array
+    {
+        return [
+            'cover' => [
+                'label' => 'Portada',
+                'description' => 'Portada existente de la exportación agrupada.',
+                'template' => 'backend/plan/pdf/_cover.html.twig',
+                'required' => true,
+            ],
+            'grouped_analytics' => [
+                'label' => 'Analítica agrupada',
+                'description' => 'Resumen y métricas existentes por agrupación.',
+                'template' => 'backend/plan/pdf/_grouped_analytics.html.twig',
+                'required' => true,
+            ],
+            'grouped_report' => [
+                'label' => 'Detalle agrupado',
+                'description' => 'Todas las páginas de detalle ya paginadas por el exportador.',
+                'template' => 'backend/plan/pdf/_grouped_report.html.twig',
+                'required' => true,
+            ],
+        ];
     }
 
     /** @return array<string, array{label:string,description:string,template:string,required:bool}> */
