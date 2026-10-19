@@ -1,0 +1,16 @@
+{
+  "baseUrl": "https://begreen.tech-investments.net",
+  "loginPath": "/login/es",
+  "projectName": "Fede",
+  "browser": {
+    "channel": "chrome",
+    "headless": true
+  },
+  "activeUser": "calculatorQa",
+  "users": {
+    "calculatorQa": {
+      "email": "SUSTITUIR_POR_EMAIL_QA",
+      "password": "SUSTITUIR_POR_PASSWORD_QA"
+    }
+  }
+}

@@ -391,3 +391,18 @@ deploy-prod-full:
 	$(MAKE) assets-build-prod
 	$(MAKE) cache-clear-prod
 	$(MAKE) schema-update-prod
+# BEGREEN #74 PLAYWRIGHT BEGIN — QA Calculadora desde equipo local contra DEV
+.PHONY: qa-smoke qa-calculator qa-calculator-transport qa-calculator-materials qa-failed qa-report
+qa-smoke:
+	@bash qa-playwright/scripts/run.sh smoke
+qa-calculator:
+	@bash qa-playwright/scripts/run.sh calculator
+qa-calculator-transport:
+	@bash qa-playwright/scripts/run.sh transport
+qa-calculator-materials:
+	@bash qa-playwright/scripts/run.sh materials
+qa-failed:
+	@bash qa-playwright/scripts/run.sh failed
+qa-report:
+	@cd qa-playwright && npm run qa:report
+# BEGREEN #74 PLAYWRIGHT END

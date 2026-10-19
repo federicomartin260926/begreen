@@ -1,0 +1,17 @@
+{
+  "name": "begreen-calculator-qa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "qa:smoke": "bash scripts/run.sh smoke",
+    "qa:calculator": "bash scripts/run.sh calculator",
+    "qa:transport": "bash scripts/run.sh transport",
+    "qa:materials": "bash scripts/run.sh materials",
+    "qa:failed": "bash scripts/run.sh failed",
+    "qa:report": "playwright show-report artifacts/html-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}
