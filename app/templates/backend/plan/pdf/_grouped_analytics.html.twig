@@ -1,3 +1,10 @@
+{# Explicit A4 pages: prevent Dompdf from continuing a decorated page without its header. #}
+{% set summaryPageRows = pdfGroupSummary|batch(12) %}
+{% if summaryPageRows is empty %}
+    {% set summaryPageRows = [[]] %}
+{% endif %}
+{% for summaryRows in summaryPageRows %}
+    {% set isLastSummaryPage = loop.last %}
 <section class="pdf-analytics-page report-design-grouped-analytics">
     {% include 'backend/plan/pdf/_watermark.html.twig' %}
 
@@ -29,7 +36,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for item in pdfGroupSummary %}
+                {% for item in summaryRows %}
                     <tr>
                         <td>{{ item.name }}</td>
                         <td>{{ item.total }}</td>
@@ -41,6 +48,7 @@
             </tbody>
         </table>
 
+        {% if isLastSummaryPage %}
         <h2 class="pdf-analytics-page__section-title pdf-analytics-page__section-title--quick">
             {{ 'backend.plan.pdf_visual.analytics.quick_read.title'|trans }}
         </h2>
@@ -85,5 +93,7 @@
                 </table>
             {% endfor %}
         </div>
+        {% endif %}
     </main>
 </section>
+{% endfor %}

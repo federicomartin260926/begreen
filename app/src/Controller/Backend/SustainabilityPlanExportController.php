@@ -603,7 +603,9 @@ final class SustainabilityPlanExportController extends AbstractController
 
                 if (
                     $currentRows !== []
-                    && $currentEstimatedHeight + $estimatedHeight > 236.0
+                    // Conservative A4 budget: leave headroom for font wrapping
+                    // so Dompdf does not create a continuation without branding.
+                    && $currentEstimatedHeight + $estimatedHeight > 192.0
                 ) {
                     $pages[] = [
                         'groupLabel' => (string) (
