@@ -360,7 +360,7 @@ final class TransportEmissionController extends AbstractController
     private function createDefaults(Project $project): array
     {
         return [
-            'category' => 'local',
+            'category' => '',
             'mode' => '',
             'method' => '',
             'country' => '',
