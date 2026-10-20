@@ -13,6 +13,7 @@ export type QaSettings = {
   activeUser: string;
   auth: { email: string; password: string };
   browser: { channel: 'chrome'; headless: boolean };
+  writeMode: { enabled: boolean };
 };
 
 export function loadQaSettings(): QaSettings {
@@ -49,8 +50,8 @@ export function loadQaSettings(): QaSettings {
       || typeof password !== 'string' || password.length === 0 || password.includes('SUSTITUIR')) {
     throw new Error('Rellena users[activeUser].email y .password en qa.local.json (privado y fuera de Git).');
   }
-  if (user?.projectName !== 'Fede') {
-    throw new Error('Bloqueado: esta suite #74 está preparada solo para el proyecto QA Fede.');
+  if (user?.projectName !== 'Proyecto Fede') {
+    throw new Error('Bloqueado: esta suite #74 está preparada solo para el proyecto QA Proyecto Fede.');
   }
   const loginPath = String(user?.loginPath || '/login/es');
   if (!/^\/login\/(es|en)$/.test(loginPath)) {
@@ -62,9 +63,10 @@ export function loadQaSettings(): QaSettings {
   return {
     baseUrl: parsed.origin,
     loginPath,
-    projectName: 'Fede',
+    projectName: 'Proyecto Fede',
     activeUser,
     auth: { email, password },
     browser: { channel: 'chrome', headless: user?.browser?.headless !== false },
+    writeMode: { enabled: user?.writeMode?.enabled === true },
   };
 }

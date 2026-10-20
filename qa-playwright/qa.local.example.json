@@ -2,6 +2,9 @@
   "baseUrl": "https://begreen.tech-investments.net",
   "loginPath": "/login/es",
   "projectName": "Fede",
+  "writeMode": {
+    "enabled": false
+  },
   "browser": {
     "channel": "chrome",
     "headless": true

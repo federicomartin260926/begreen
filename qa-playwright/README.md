@@ -12,6 +12,7 @@ Entorno fijado: `https://begreen.tech-investments.net` exclusivamente. No hay ac
 2. Edita `qa.local.json` y rellena `users.calculatorQa.email`, `users.calculatorQa.password`; `activeUser` indica cuál usar, y el proyecto QA será `Fede`. Puedes añadir otras cuentas bajo `users` en el futuro.
 3. Este archivo está ignorado por Git. Los datos se conservan entre ejecuciones y pueden cambiarse cuando sea necesario. `chmod 600 qa.local.json`.
 4. No enviar este JSON, archivos `.auth/` ni las trazas sin revisión. Nunca almacenar secretos en README, capturas o commits.
+5. El modo persistente P2 requiere activar temporalmente `writeMode.enabled: true`. El ejemplo y el valor por defecto permanecen en `false`.
 
 `qa.local.json` permite registrar de forma estable URL, login, proyecto, múltiples cuentas y opciones de navegador. No almacena identificadores efímeros de emisiones o categorías. Para varias cuentas futuras se puede ampliar el esquema sin alterar los tests.
 
@@ -34,6 +35,7 @@ make qa-smoke
 make qa-calculator
 make qa-calculator-transport
 make qa-calculator-materials
+make qa-persistence
 make qa-failed
 make qa-report
 ```
@@ -46,15 +48,16 @@ Informes: `qa-playwright/artifacts/html-report/index.html`, `results.json`, capt
 
 - URL exacta obligatoria: solo DEV. Un cambio accidental a producción impide arrancar.
 - Guard por navegador: se bloquean navegaciones fuera de DEV, GET a URLs peligrosas (duplicación/eliminación) y métodos mutantes salvo POST de login o previsualización explícitamente enumerada.
+- `qa-persistence` usa una fixture independiente: exige proyecto `Fede`, marcador `QA74`, allowlist de altas Agua/Catering y restringe edición, duplicación y borrado a IDs descubiertos como nuevos durante esa ejecución.
 - Los siete métodos de preview se revisaron en #74 y no muestran persistencia directa. Verificar servicios internos antes de incorporar tests que dependan de previews.
-- NO hay tests de guardar/editar/duplicar/eliminar en fase 2. Aunque DEV admite datos persistentes, las escrituras explícitas se añadirán por separado. Nunca producción.
+- El smoke y las regresiones funcionales conservan el guard READ-ONLY. Solo `qa-persistence`, con activación local explícita, puede guardar/editar/duplicar/eliminar en DEV.
 - Los errores JS no controlados provocan FAIL. No se utiliza `test.skip` para excepciones pendientes de Franc.
 
 ## Diagnóstico de fallos
 
 Si falla `auth-setup`, comprobar credenciales, permisos para la calculadora y que el proyecto activo del usuario sea Fede. Las páginas requieren `ProjectVoter::EDIT` para preview. No guardar ID numéricos de categoría ni reutilizar sesiones de producción. Si falla un enlace de alta, el test lo indica sin adivinar el ID; revisar el HTML Twig local y actualizar el helper de navegación. No se deben transformar estos fallos en PASS.
 
-La selección activa del proyecto Fede no se puede comprobar de manera inequívoca con los fragmentos documentales disponibles. **Antes de ejecutar pruebas que escriban, se debe implementar una comprobación de identidad del proyecto desde una señal fiable del backend.**
+Antes de cualquier escritura P2 se comprueba el nombre del proyecto en el encabezado del listado renderizado por backend. Si no es exactamente `Fede`, la fixture falla antes de usar los formularios.
 
 ## Referencias y ampliación
 

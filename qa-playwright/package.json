@@ -8,6 +8,7 @@
     "qa:calculator": "bash scripts/run.sh calculator",
     "qa:transport": "bash scripts/run.sh transport",
     "qa:materials": "bash scripts/run.sh materials",
+    "qa:persistence": "bash scripts/run.sh p2",
     "qa:failed": "bash scripts/run.sh failed",
     "qa:report": "playwright show-report artifacts/html-report"
   },

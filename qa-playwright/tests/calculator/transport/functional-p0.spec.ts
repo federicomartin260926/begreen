@@ -8,6 +8,12 @@ test.beforeEach(async ({ page }) => {
 test('COM-02 — el alta limpia de Transporte no preselecciona selectores principales', async ({ page }) => {
   await expect(page.getByLabel('País')).toHaveValue('');
   await expect(page.locator('input[name="category"]:checked')).toHaveCount(0);
+  // Sin categoría elegida, las etiquetas dependientes aún no están disponibles.
+  await expect(page.locator('select[name="mode"]')).toHaveValue('');
+  await expect(page.locator('select[name="method"]')).toHaveValue('');
+
+  // Al elegir Desplazamientos aparecen las etiquetas correctas, sin valores por defecto.
+  await page.locator('label[for="transport-category-local"]').click();
   await expect(page.getByLabel('¿Cómo te has desplazado?')).toHaveValue('');
   await expect(page.getByLabel('¿Qué dato tienes?')).toHaveValue('');
 });

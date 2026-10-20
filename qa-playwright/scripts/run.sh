@@ -19,6 +19,10 @@ case "$mode" in
   calculator) args=(--project=chrome-dev tests/calculator) ;;
   transport) args=(--project=chrome-dev tests/calculator/transport) ;;
   materials) args=(--project=chrome-dev tests/calculator/materials) ;;
+  p2)
+    export QA74_RUN_ID="${QA74_RUN_ID:-QA74-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+    args=(--project=chrome-dev tests/persistence)
+    ;;
   failed) args=(--project=chrome-dev --last-failed) ;;
   *) echo "Modo no admitido: $mode" >&2; exit 2 ;;
 esac
@@ -39,6 +43,7 @@ log="artifacts/logs/${stamp}_${mode}.txt"
   echo "MODO=$mode"
   echo "ENTORNO=https://begreen.tech-investments.net"
   echo "COMMIT=$(git -C .. rev-parse --short HEAD 2>/dev/null || echo 'no-disponible')"
+  if [[ "$mode" == "p2" ]]; then echo "RUN_ID=$QA74_RUN_ID"; fi
   echo 'SIN GUARDADO DE CREDENCIALES EN LOG POR EL RUNNER'
 } > "$log"
 # El formulario real de login nunca se imprime. Playwright puede mostrar URLs de red
