@@ -1393,6 +1393,7 @@ backend:
           Título: %title%
           Descripción: %description%
           Fecha: %date%
+    concurrent_update: "El plan está siendo actualizado por otra petición. Inténtalo de nuevo en unos segundos."
     animation:
       current_measures: "Medidas Animation actuales"
       expected_impact: "Impacto esperado"
@@ -3742,6 +3743,7 @@ pdf_grouped_visual:
 'backend.projects.form.documents.types.other': 'Otro'
 'backend.projects.form.documents.summary_value': 'Archivo / enlace'
 'backend.projects.form.documents.validation.file_too_large': 'El archivo supera el tamaño máximo permitido.'
+'backend.projects.form.uploads.request_too_large': 'El total del formulario supera la capacidad máxima de %size%. Reduce el número o tamaño de los archivos.'
 'backend.projects.form.documents.validation.file_type_not_allowed': 'El formato del archivo no está permitido.'
 'backend.projects.form.documents.validation.storage_cleanup_error': 'El proyecto se guardó, pero no se pudo eliminar un archivo documental antiguo.'
 
@@ -3954,3 +3956,22 @@ pdf_grouped_visual:
 "backend.final_report.flash.photo_invalid_format": "Solo se admiten imágenes JPG, JPEG, PNG o WebP."
 "backend.final_report.flash.narrative_updated": "Narrativa IA actualizada en %count% secciones."
 "backend.final_report.flash.narrative_failed": "No se pudo generar la narrativa IA. Revisa la configuración y vuelve a intentarlo."
+
+# BEGREEN #78 - ayudas de subida de archivos (ES/EN)
+'begreen_upload_help_excel_5m': 'Formatos admitidos: XLS y XLSX. Tamaño máximo: 5 MiB por archivo.'
+'begreen_upload_help_communication_5m': 'Formatos admitidos: PDF, DOC/DOCX y XLS/XLSX. Tamaño máximo: 5 MiB por archivo.'
+'begreen_upload_help_excel_2m': 'Formatos admitidos: XLS y XLSX. Tamaño máximo: 2 MiB por archivo.'
+'begreen_upload_help_admin_logo_3m': 'Formatos admitidos: PNG, JPG/JPEG y SVG. Tamaño máximo: 3 MiB por imagen.'
+'begreen_upload_help_plan_evidence': 'Tamaño máximo: 4 MiB por archivo. Una evidencia por subida.'
+
+begreen_upload_security_logo_label: "Imagen (PNG/JPG)"
+
+begreen_upload_security_invalid_format: "Formato no admitido. Utiliza PDF, JPG/JPEG, PNG o WebP para evidencias."
+
+begreen_upload_security_invalid_file: "El archivo no se ha recibido correctamente."
+
+begreen_upload_security_evidence_help: "Formatos: PDF, JPG/JPEG, PNG y WebP. Máximo 4 MiB por archivo; una evidencia por subida."
+
+begreen_upload_security_logo_help: "Formatos: PNG y JPG/JPEG. Máximo 3 MiB por archivo. SVG no permitido."
+
+begreen_upload_security_logo_format_error: "Formato de logo no permitido. Utiliza PNG o JPG/JPEG."

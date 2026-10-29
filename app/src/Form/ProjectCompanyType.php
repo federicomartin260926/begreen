@@ -50,9 +50,11 @@ class ProjectCompanyType extends AbstractType
                 'attr' => [
                     'accept' => '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp',
                     'data-action' => 'change->project-collection#validateLogoFile',
-                    'data-logo-max-size' => 2 * 1024 * 1024,
-                    'data-logo-size-error' => $this->translator->trans('backend.projects.form.project_company.logo_size_error'),
-                    'data-logo-format-error' => $this->translator->trans('backend.projects.form.project_company.logo_format_error'),
+                    'data-upload-max-size' => 2 * 1024 * 1024,
+                    'data-upload-extensions' => 'png,jpg,jpeg,webp',
+                    'data-upload-mime-types' => 'image/png,image/jpeg,image/webp',
+                    'data-upload-size-error' => $this->translator->trans('backend.projects.form.project_company.logo_size_error'),
+                    'data-upload-format-error' => $this->translator->trans('backend.projects.form.project_company.logo_format_error'),
                 ],
             ])
             ->add('removeLogo', CheckboxType::class, [

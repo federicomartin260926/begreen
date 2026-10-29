@@ -103,7 +103,7 @@
                         {{ 'backend.plan.review.plan_context'|trans }} {{ projectTierLabel }}
                     </span>
 
-                    <span class="badge bg-light text-dark border ms-1">
+                    <span class="badge bg-light text-dark border ms-1" data-project-evidence-usage>
                         {{ 'backend.plan.tier.evidence_used'|trans({'%used%': evidenceCount, '%limit%': evidenceLimit is not null ? evidenceLimit : '∞'}) }}
                     </span>
 

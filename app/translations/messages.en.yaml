@@ -1392,6 +1392,7 @@ backend:
           Title: %title%
           Description: %description%
           Date: %date%
+    concurrent_update: "The plan is being updated by another request. Please try again in a few seconds."
     animation:
       current_measures: "Current Animation measures"
       expected_impact: "Expected impact"
@@ -3689,6 +3690,7 @@ pdf_grouped_visual:
 'backend.projects.form.documents.types.other': 'Other'
 'backend.projects.form.documents.summary_value': 'File / link'
 'backend.projects.form.documents.validation.file_too_large': 'The file exceeds the maximum allowed size.'
+'backend.projects.form.uploads.request_too_large': 'The complete form exceeds the %size% request capacity. Reduce the number or size of the files.'
 'backend.projects.form.documents.validation.file_type_not_allowed': 'This file format is not allowed.'
 'backend.projects.form.documents.validation.storage_cleanup_error': 'The project was saved, but an old project document file could not be removed.'
 
@@ -3901,3 +3903,22 @@ pdf_grouped_visual:
 "backend.final_report.flash.photo_invalid_format": "Only JPG, JPEG, PNG or WebP images are allowed."
 "backend.final_report.flash.narrative_updated": "AI narrative updated in %count% sections."
 "backend.final_report.flash.narrative_failed": "The AI narrative could not be generated. Check the configuration and try again."
+
+# BEGREEN #78 - ayudas de subida de archivos (ES/EN)
+'begreen_upload_help_excel_5m': 'Allowed formats: XLS and XLSX. Maximum 5 MiB per file.'
+'begreen_upload_help_communication_5m': 'Allowed formats: PDF, DOC/DOCX and XLS/XLSX. Maximum 5 MiB per file.'
+'begreen_upload_help_excel_2m': 'Allowed formats: XLS and XLSX. Maximum 2 MiB per file.'
+'begreen_upload_help_admin_logo_3m': 'Allowed formats: PNG, JPG/JPEG and SVG. Maximum 3 MiB per image.'
+'begreen_upload_help_plan_evidence': 'Maximum 4 MiB per file. One evidence file per upload.'
+
+begreen_upload_security_logo_label: "Image (PNG/JPG)"
+
+begreen_upload_security_invalid_format: "Unsupported format. Evidence files must be PDF, JPG/JPEG, PNG, or WebP."
+
+begreen_upload_security_invalid_file: "The file could not be uploaded correctly."
+
+begreen_upload_security_evidence_help: "Formats: PDF, JPG/JPEG, PNG and WebP. Maximum 4 MiB per file; one evidence file per upload."
+
+begreen_upload_security_logo_help: "Formats: PNG and JPG/JPEG. Maximum 3 MiB per file. SVG is not allowed."
+
+begreen_upload_security_logo_format_error: "Unsupported logo format. Use PNG or JPG/JPEG."

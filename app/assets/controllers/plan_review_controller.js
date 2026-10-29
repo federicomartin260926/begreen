@@ -1,3 +1,4 @@
+import { validateUploadInput } from "../lib/file_upload_validation";
 // assets/controllers/plan_review_controller.js
 import { Controller } from '@hotwired/stimulus';
 
@@ -501,18 +502,6 @@ export default class extends Controller {
     });
   }
 
-  async closeMeasureAfterSuccessfulSave(measureContainer, measureId) {
-    const collapse = measureContainer?.querySelector('[data-implementation-measure-collapse]');
-    if (collapse?.classList.contains('show')) {
-      await new Promise((resolve) => {
-        collapse.addEventListener('hidden.bs.collapse', resolve, { once: true });
-        bootstrap.Collapse.getOrCreateInstance(collapse).hide();
-      });
-    }
-
-    this.reloadReviewWithQuery({ open: null }, null, measureId);
-  }
-
   extractFilename(contentDisposition) {
     if (!contentDisposition) return null;
     const match = /filename\*?=(?:UTF-8'')?"?([^\";]+)/i.exec(contentDisposition);
@@ -734,7 +723,7 @@ export default class extends Controller {
         }
       }
 
-      await this.closeMeasureAfterSuccessfulSave(measureContainer, measureId);
+      this.reloadReviewWithQuery({ open: measureId }, null, measureId);
     } catch (err) {
       console.error(err);
       this.showModal(this.t('modal.error_title'), err.message || this.t('network_error'));
@@ -811,6 +800,10 @@ export default class extends Controller {
     sourceSelect.focus();
   }
 
+  validateEvidenceUpload(event) {
+    return validateUploadInput(event.currentTarget, { report: true });
+  }
+
   async submitEvidenceModal(event) {
     const btn = event.currentTarget;
     const measureId = btn.dataset.measureId;
@@ -827,6 +820,7 @@ export default class extends Controller {
       this.showModal(this.t('modal.error_title'), this.t('evidence_add_modal_file_required'));
       return;
     }
+    if (!validateUploadInput(fileInput, { report: true })) return;
     if (!sourceCode) {
       this.showEvidenceModalSourceError(modalEl);
       return;
@@ -854,8 +848,8 @@ export default class extends Controller {
         throw new Error(data.error || this.t('evidence_upload_failed'));
       }
 
-      bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-      this.reloadReviewWithQuery({ open: measureId }, null, measureId);
+      await this.hideEvidenceModal(modalEl);
+      this.replaceEvidenceBlock(measureId, data);
     } catch (err) {
       console.error(err);
       if (this.isEvidenceModalSourceRequiredError(err?.message)) {
@@ -865,6 +859,53 @@ export default class extends Controller {
       this.showModal(this.t('modal.error_title'), err.message || this.t('evidence_upload_failed'));
     } finally {
       btn.disabled = false;
+    }
+  }
+
+  hideEvidenceModal(modalEl) {
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    if (!modalEl.classList.contains('show')) {
+      modal.hide();
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      let resolved = false;
+      const done = () => {
+        if (resolved) return;
+        resolved = true;
+        resolve();
+      };
+      modalEl.addEventListener('hidden.bs.modal', done, { once: true });
+      modal.hide();
+      window.setTimeout(done, 500);
+    });
+  }
+
+  replaceEvidenceBlock(measureId, data) {
+    const current = this.element.querySelector(
+      `[data-evidence-block][data-measure-id="${CSS.escape(String(measureId))}"]`
+    );
+    if (!current || !data?.evidenceHtml) {
+      throw new Error(this.t('evidence_upload_failed'));
+    }
+
+    const template = document.createElement('template');
+    template.innerHTML = String(data.evidenceHtml).trim();
+    const replacement = template.content.firstElementChild;
+    if (!replacement?.matches('[data-evidence-block]')) {
+      throw new Error(this.t('evidence_upload_failed'));
+    }
+
+    current.replaceWith(replacement);
+    replacement.querySelectorAll('[data-bs-toggle="popover"]').forEach((element) => {
+      bootstrap.Popover.getOrCreateInstance(element);
+    });
+
+    const usage = this.element.querySelector('[data-project-evidence-usage]');
+    if (usage && data.projectEvidenceUsage) {
+      usage.textContent = data.projectEvidenceUsage;
+      usage.dataset.evidenceCount = String(data.projectEvidenceCount ?? '');
     }
   }
 

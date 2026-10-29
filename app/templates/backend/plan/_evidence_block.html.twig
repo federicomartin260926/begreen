@@ -1,6 +1,6 @@
 {% set evidenceCountLabel = evidenceCount == 1 ? ('backend.plan.review.evidences_attached_count_one'|trans) : ('backend.plan.review.evidences_attached_count_other'|trans) %}
 {% set evidenceBlockWrapperClass = evidenceBlockWrapperClass|default('') %}
-<div class="{{ evidenceBlockWrapperClass }} mb-3" data-measure-id="{{ measure.id }}" data-evidence-count="{{ evidenceCount }}">
+<div class="{{ evidenceBlockWrapperClass }} mb-3" data-evidence-block data-measure-id="{{ measure.id }}" data-evidence-count="{{ evidenceCount }}">
     <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <label class="form-label small mb-0">
@@ -146,7 +146,8 @@
                         {% if verificationSources is not empty %}
                             <div class="mb-3">
                                 <label for="evidence-file-{{ measure.id }}" class="form-label">{{ 'backend.plan.review.evidence_add_modal.file'|trans }}</label>
-                                <input type="file" class="form-control" id="evidence-file-{{ measure.id }}" data-evidence-modal-file="1" required>
+                                <input type="file" class="form-control" id="evidence-file-{{ measure.id }}" data-evidence-modal-file="1" data-upload-max-size="4194304" accept=".pdf,.jpg,.jpeg,.png,.webp" data-upload-extensions="pdf,jpg,jpeg,png,webp" data-upload-format-error="{{ 'begreen_upload_security_invalid_format'|trans }}" data-action="change->plan-review#validateEvidenceUpload" required>
+          <div class="form-text text-muted small mt-1">{{ 'begreen_upload_security_evidence_help'|trans }}</div>
                             </div>
                             <div class="mb-0">
                                 <label for="evidence-source-modal-{{ measure.id }}" class="form-label">{{ 'backend.plan.review.evidence_add_modal.source'|trans }}</label>

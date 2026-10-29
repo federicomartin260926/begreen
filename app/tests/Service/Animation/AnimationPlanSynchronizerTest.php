@@ -6,6 +6,7 @@ use App\Entity\AnimationMeasureMetadata;
 use App\Entity\AnimationProjectConfiguration;
 use App\Entity\Measure;
 use App\Entity\Plan;
+use App\Entity\PlanMeasure;
 use App\Entity\Project;
 use App\Entity\Protocol;
 use App\Enum\CommercialPhase;
@@ -21,6 +22,7 @@ use App\Service\Animation\AnimationPlanSynchronizer;
 use App\Service\Animation\AnimationProjectMeasureResolver;
 use App\Service\PlanMeasureCatalogResolver;
 use App\Service\PlanMeasureElaborationDecisionValidator;
+use App\Service\PlanMeasureGetOrCreate;
 use App\Service\SustainabilityPlanCompletionService;
 use App\Service\SustainabilityPlanMeasureOrderer;
 use App\Tests\Support\CommercialPlanTestHelpers;
@@ -109,8 +111,33 @@ final class AnimationPlanSynchronizerTest extends TestCase
         $this->synchronizer([])->synchronize((new Plan())->setProject($project)->setProtocol($protocol), $project);
     }
 
+    public function testPersistedPlanUsesSharedGetOrCreateForMissingMeasures(): void
+    {
+        $protocol = $this->animationProtocol();
+        $measure = $this->measure($protocol, 'ANI-A', 20, ['TEC_2D_DIGITAL'], ['basic']);
+        $project = $this->animationProject('basic');
+        $plan = (new Plan())->setProject($project)->setProtocol($protocol);
+        $id = new \ReflectionProperty(Plan::class, 'id');
+        $id->setValue($plan, 99);
+
+        $relation = (new PlanMeasure())->setMeasure($measure);
+        $getOrCreate = $this->createMock(PlanMeasureGetOrCreate::class);
+        $getOrCreate->expects(self::once())->method('getOrCreateMany')
+            ->with($plan, [$measure])
+            ->willReturnCallback(static function () use ($plan, $relation, $measure): array {
+                $plan->addPlanMeasure($relation);
+
+                return [$measure->getId() => $relation];
+            });
+
+        $result = $this->synchronizer([$measure], $getOrCreate)->synchronize($plan, $project);
+
+        self::assertSame([$relation], $result);
+        self::assertCount(1, $plan->getPlanMeasures());
+    }
+
     /** @param list<Measure> $measures */
-    private function synchronizer(array $measures): AnimationPlanSynchronizer
+    private function synchronizer(array $measures, ?PlanMeasureGetOrCreate $getOrCreate = null): AnimationPlanSynchronizer
     {
         $provider = new class($measures) implements AnimationMeasureProvider {
             /** @param list<Measure> $measures */
@@ -118,12 +145,15 @@ final class AnimationPlanSynchronizerTest extends TestCase
             public function forProtocol(Protocol $protocol): array { return $this->measures; }
         };
 
-        return new AnimationPlanSynchronizer(new AnimationProjectMeasureResolver(
-            $provider,
-            new AnimationConfigurationFactory(),
-            new AnimationMeasureSelector(),
-            $this->makeProjectFeatureGate(),
-        ));
+        return new AnimationPlanSynchronizer(
+            new AnimationProjectMeasureResolver(
+                $provider,
+                new AnimationConfigurationFactory(),
+                new AnimationMeasureSelector(),
+                $this->makeProjectFeatureGate(),
+            ),
+            $getOrCreate,
+        );
     }
 
     private function animationProject(string $tier): Project

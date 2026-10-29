@@ -5,16 +5,14 @@ namespace App\Service;
 use App\Entity\Measure;
 use App\Entity\MeasureBlock;
 use App\Entity\Plan;
-use App\Entity\PlanMeasure;
 use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Entity\User;
-use App\Repository\PlanMeasureRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class PlanBlockQuestionService
 {
     public function __construct(
-        private readonly PlanMeasureRepository $planMeasureRepository,
+        private readonly PlanMeasureGetOrCreate $planMeasureGetOrCreate,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -33,6 +31,17 @@ final class PlanBlockQuestionService
         if ($blockId === null) {
             return;
         }
+
+        $uniqueMeasures = [];
+        foreach ($blockMeasures as $blockMeasure) {
+            if ($blockMeasure instanceof Measure && $blockMeasure->getId() !== null) {
+                $uniqueMeasures[$blockMeasure->getId()] = $blockMeasure;
+            }
+        }
+
+        // One lock at most for the whole block. Do this before mutating the
+        // block answer so a lock timeout cannot leave a partial unit of work.
+        $relations = $this->planMeasureGetOrCreate->getOrCreateMany($plan, $uniqueMeasures);
 
         $blockAnswer = null;
         foreach ($plan->getBlockAnswers() as $existingBlockAnswer) {
@@ -60,18 +69,8 @@ final class PlanBlockQuestionService
             ->setAnsweredAt(new \DateTimeImmutable())
             ->setAnsweredBy($answeredBy);
 
-        foreach ($blockMeasures as $blockMeasure) {
-            if (!$blockMeasure instanceof Measure) {
-                continue;
-            }
-
-            $item = $this->planMeasureRepository->findOneBy(['plan' => $plan, 'measure' => $blockMeasure]);
-            if (!$item instanceof PlanMeasure) {
-                $item = new PlanMeasure();
-                $plan->addPlanMeasure($item);
-                $item->setMeasure($blockMeasure);
-                $this->entityManager->persist($item);
-            }
+        foreach ($uniqueMeasures as $measureId => $blockMeasure) {
+            $item = $relations[$measureId];
 
             if ($applies) {
                 if ($item->getApplicabilitySource() === 'block_skip' && $item->getBlockSkipAnswer()?->getId() === $blockAnswer->getId()) {

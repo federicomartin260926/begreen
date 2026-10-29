@@ -222,7 +222,8 @@
                   <form class="border-top pt-2 mt-2" method="post" action="{{ path('backend_final_report_photo_replace', {documentId: document.id}) }}" enctype="multipart/form-data">
                     <input type="hidden" name="_token" value="{{ csrf_token('final_report_photo_replace_' ~ project.id ~ '_' ~ document.id) }}">
                     <label class="form-label small fw-semibold" for="replace-photo-{{ document.id }}">{{ 'backend.final_report.replace_photo'|trans }}</label>
-                    <input class="form-control form-control-sm mb-2" id="replace-photo-{{ document.id }}" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required data-final-report-photo-replace-target="input" data-action="change->final-report-photo-replace#preview">
+                    <input class="form-control form-control-sm mb-2" id="replace-photo-{{ document.id }}" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required data-final-report-photo-replace-target="input" data-action="change- data-upload-max-size="4194304" data-upload-extensions="jpg,jpeg,png,webp" data-upload-mime-types="image/jpeg,image/png,image/webp">
+final-report-photo-replace#preview">
                     <div class="form-text mb-2">{{ 'backend.final_report.photo_rules'|trans }}</div>
                     <button class="btn btn-sm btn-outline-secondary w-100" type="submit" data-final-report-photo-replace-target="submit" data-action="click->final-report-photo-replace#confirmReplacement"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>{{ 'backend.final_report.confirm_replace'|trans }}</button>
                   </form>
@@ -241,7 +242,8 @@
 
       <form method="post" action="{{ path('backend_final_report_photo_upload') }}" enctype="multipart/form-data" class="row g-3 align-items-end border-top mt-4 pt-3">
         <input type="hidden" name="_token" value="{{ csrf_token('final_report_upload_' ~ project.id) }}">
-        <div class="col-md-8"><label class="form-label" for="report-photo">{{ 'backend.final_report.photo_file'|trans }}</label><input class="form-control" id="report-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required></div>
+        <div class="col-md-8"><label class="form-label" for="report-photo">{{ 'backend.final_report.photo_file'|trans }}</label><input class="form-control" id="report-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required data-upload-max-size="4194304" data-upload-extensions="jpg,jpeg,png,webp" data-upload-mime-types="image/jpeg,image/png,image/webp">
+</div>
         <div class="col-md-4"><button class="btn btn-outline-success w-100" type="submit"><i class="bi bi-upload me-1"></i>{{ 'backend.final_report.upload'|trans }}</button></div>
         <div class="col-12 mt-1"><div class="form-text mt-0">{{ 'backend.final_report.photo_rules'|trans }}</div></div>
       </form>

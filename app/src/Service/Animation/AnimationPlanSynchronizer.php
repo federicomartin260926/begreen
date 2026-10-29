@@ -7,11 +7,15 @@ use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Project;
 use App\Enum\ProjectCatalog;
+use App\Service\PlanMeasureDuplicateResolver;
+use App\Service\PlanMeasureGetOrCreate;
 
 final readonly class AnimationPlanSynchronizer
 {
-    public function __construct(private AnimationProjectMeasureResolver $measureResolver)
-    {
+    public function __construct(
+        private AnimationProjectMeasureResolver $measureResolver,
+        private ?PlanMeasureGetOrCreate $planMeasureGetOrCreate = null,
+    ) {
     }
 
     public function supports(Plan $plan, Project $project): bool
@@ -30,22 +34,41 @@ final readonly class AnimationPlanSynchronizer
 
         $eligibleMeasures = $this->measureResolver->resolve($project, $plan->getProtocol());
         $existingByCatalogId = [];
-        foreach ($plan->getPlanMeasures() as $planMeasure) {
+        foreach (PlanMeasureDuplicateResolver::unique($plan->getPlanMeasures()) as $planMeasure) {
             $catalogId = $planMeasure->getMeasure()?->getCatalogId();
             if (null !== $catalogId && !isset($existingByCatalogId[$catalogId])) {
                 $existingByCatalogId[$catalogId] = $planMeasure;
             }
         }
 
-        $eligiblePlanMeasures = [];
+        $missingMeasures = [];
         foreach ($eligibleMeasures as $measure) {
             $catalogId = $measure->getCatalogId();
             if (null === $catalogId) {
                 throw new \LogicException('Una medida Animation elegible no tiene catalogId.');
             }
 
+            if (!isset($existingByCatalogId[$catalogId])) {
+                $missingMeasures[] = $measure;
+            }
+        }
+
+        if ($missingMeasures !== [] && $plan->getId() !== null && $this->planMeasureGetOrCreate !== null) {
+            foreach ($this->planMeasureGetOrCreate->getOrCreateMany($plan, $missingMeasures) as $planMeasure) {
+                $catalogId = $planMeasure->getMeasure()?->getCatalogId();
+                if ($catalogId !== null) {
+                    $existingByCatalogId[$catalogId] = $planMeasure;
+                }
+            }
+        }
+
+        $eligiblePlanMeasures = [];
+        foreach ($eligibleMeasures as $measure) {
+            $catalogId = $measure->getCatalogId();
             $planMeasure = $existingByCatalogId[$catalogId] ?? null;
             if (!$planMeasure instanceof PlanMeasure) {
+                // Preserve the existing pure in-memory contract for new plans and
+                // isolated unit consumers without a persistence service.
                 $planMeasure = (new PlanMeasure())->setMeasure($measure);
                 $plan->addPlanMeasure($planMeasure);
                 $existingByCatalogId[$catalogId] = $planMeasure;

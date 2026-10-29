@@ -171,9 +171,12 @@
                                id="crewFile"
                                class="form-control"
                                required
-                               accept=".xlsx,.xls,.pdf"
+                               accept=".xlsx,.xls"
+                               data-upload-max-size="2097152"
+                               data-upload-extensions="xls,xlsx"
                                data-crew-import-target="file">
                         <div class="form-text">{{ 'backend.projects.crew.import_modal.help'|trans }}</div>
+                        <div class="form-text text-muted small mt-1">{{ 'begreen_upload_help_excel_2m'|trans }}</div>
                         <div class="form-text">
                             <a href="{{ path('backend_project_template_download') }}" class="btn btn-outline-primary btn-sm mt-2" download>
                                 <i class="bi bi-download"></i> {{ 'backend.projects.crew.import_modal.download_template'|trans }}

@@ -553,7 +553,7 @@
 
           <div class="mb-0">
             <label class="form-label" for="transport-attachments">{{ 'backend.emission.attachments.add'|trans }}</label>
-            <input class="form-control" id="transport-attachments" type="file" name="attachments[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp">
+            <input class="form-control" id="transport-attachments" type="file" name="attachments[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" data-upload-max-size="4194304" data-upload-max-files="4" data-upload-extensions="pdf,jpg,jpeg,png,webp" data-upload-mime-types="application/pdf,image/jpeg,image/png,image/webp">
             <div class="form-text">{{ 'backend.emission.attachments.help'|trans }}</div>
           </div>
         </div>

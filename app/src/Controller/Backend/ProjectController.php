@@ -32,6 +32,7 @@ use App\Service\CrewImport\Dto\CrewImportProposal;
 use App\Entity\ProjectSubscription;
 use App\Service\ProjectFeatureGate;
 use App\Service\ProjectCompanyLogoStorage;
+use App\Service\ProjectUploadPolicy;
 use App\Service\StripeInvoiceStorageService;
 use App\Service\SustainabilityPlanCollaborationService;
 use App\Service\SustainabilityPlanImplementationPhaseService;
@@ -571,7 +572,15 @@ class ProjectController extends AbstractController
             'show_commercial_tier' => false,
             'show_emission_source' => false,
         ]);
-        $form->handleRequest($request);
+        if (ProjectUploadPolicy::requestExceedsLimit($request)) {
+            $form->addError(new FormError(
+                'backend.projects.form.uploads.request_too_large',
+                null,
+                ['%size%' => '32 MiB']
+            ));
+        } else {
+            $form->handleRequest($request);
+        }
         $this->normalizeProject($project);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -675,7 +684,15 @@ class ProjectController extends AbstractController
         $form = $this->createForm(ProjectType::class, $project, [
             'show_commercial_tier' => false,
         ]);
-        $form->handleRequest($request);
+        if (ProjectUploadPolicy::requestExceedsLimit($request)) {
+            $form->addError(new FormError(
+                'backend.projects.form.uploads.request_too_large',
+                null,
+                ['%size%' => '32 MiB']
+            ));
+        } else {
+            $form->handleRequest($request);
+        }
         $this->normalizeProject($project);
 
         $canSaveCurrentStep = false;

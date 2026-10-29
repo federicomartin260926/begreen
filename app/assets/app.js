@@ -1,3 +1,4 @@
+import { installGlobalUploadValidation } from "./lib/file_upload_validation";
 // assets/app.js
 
 // 1) Estilos base
@@ -119,3 +120,6 @@ $(function () {
     .querySelectorAll('[data-bs-toggle="tooltip"]')
     .forEach(el => new window.bootstrap.Tooltip(el));
 });
+
+// Prevención uniforme de subidas no válidas en formularios de BEGREEN.
+installGlobalUploadValidation();

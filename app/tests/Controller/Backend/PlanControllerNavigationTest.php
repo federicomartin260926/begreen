@@ -23,6 +23,8 @@ use App\Repository\PlanRepository;
 use App\Repository\SustainabilityPlanBlockAnswerRepository;
 use App\Service\ActiveProjectService;
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\PlanMeasureDuplicateResolver;
+use App\Service\PlanMeasureGetOrCreate;
 use App\Service\ProjectFeatureGate;
 use App\Service\SustainabilityCommitmentLevelService;
 use App\Service\SustainabilityGamificationMessageCatalog;
@@ -44,6 +46,161 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 final class PlanControllerNavigationTest extends KernelTestCase
 {
     use CommercialPlanTestHelpers;
+
+    public function testInvalidDecisionDoesNotCreateEmptyPlanMeasure(): void
+    {
+        [$controller, $request, $measureRepository, , $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $planMeasure] = $this->buildDecisionScenario('invalid', true, false);
+        $plan = $planMeasure->getPlan();
+        self::assertInstanceOf(Plan::class, $plan);
+        $measure = $planMeasure->getMeasure();
+        self::assertInstanceOf(Measure::class, $measure);
+        $plan->removePlanMeasure($planMeasure);
+        $getOrCreate = $this->createMock(PlanMeasureGetOrCreate::class);
+        $getOrCreate->expects(self::never())->method('getOrCreate');
+        (new \ReflectionProperty(PlanController::class, 'planMeasureGetOrCreate'))->setValue($controller, $getOrCreate);
+        $repository = $this->createMock(PlanMeasureRepository::class);
+        $repository->expects(self::never())->method('findAllForPlanAndMeasures');
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $repository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertNull(PlanMeasureDuplicateResolver::forMeasure($plan, $measure));
+    }
+
+    public function testInvalidCompleteDecisionDoesNotCreateEmptyPlanMeasure(): void
+    {
+        [$controller, , $measureRepository, , $planRepository, $blockAnswerRepository, $activeProjectService, $entityManager, $planMeasure] = $this->buildDecisionScenario('true', true, false);
+        $plan = $planMeasure->getPlan();
+        self::assertInstanceOf(Plan::class, $plan);
+        $measure = $planMeasure->getMeasure();
+        self::assertInstanceOf(Measure::class, $measure);
+        $plan->removePlanMeasure($planMeasure);
+        $getOrCreate = $this->createMock(PlanMeasureGetOrCreate::class);
+        $getOrCreate->expects(self::never())->method('getOrCreate');
+        (new \ReflectionProperty(PlanController::class, 'planMeasureGetOrCreate'))->setValue($controller, $getOrCreate);
+        $repository = $this->createMock(PlanMeasureRepository::class);
+        $repository->expects(self::once())->method('findAllForPlanAndMeasures')->willReturn([]);
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+            'field' => 'completeDecision',
+            'value' => 'demasiado corta',
+        ]);
+
+        $response = $this->invokeUpdateSelection(
+            $controller,
+            $request,
+            $measureRepository,
+            $repository,
+            $planRepository,
+            $blockAnswerRepository,
+            $activeProjectService,
+            $entityManager
+        );
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertNull(PlanMeasureDuplicateResolver::forMeasure($plan, $measure));
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function rejectedSelectionWithoutInsertionCases(): array
+    {
+        return [
+            'unknown_field' => ['unrecognized_field', 'test'],
+            'short_action' => ['action_taken', 'corto'],
+            'invalid_decision' => ['decision', 'nonsense'],
+            'implemented_without_prior_decision' => ['implemented', 'true'],
+            'implemented_invalid_value' => ['implemented', 'nonsense'],
+            'complete_decision_without_relation' => ['completeDecision', str_repeat('texto valido ', 5)],
+            'block_without_question' => ['blockQuestion', 'true'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('rejectedSelectionWithoutInsertionCases')]
+    public function testUpdateSelectionRejectedSelectionDoesNotInsertPlanMeasure(string $field, string $value): void
+    {
+        $controller = $this->getControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
+        $this->setAdminToken();
+
+        $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_PRO);
+        $protocol = (new Protocol())
+            ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')
+            ->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+        $plan = (new Plan())->setProject($project)->setUser(new User())
+            ->setProtocol($protocol)->setStatus('completo');
+        $measure = (new Measure())->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)->setName('Medida para rechazo');
+        $this->setEntityId($measure, 99771);
+
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(),
+            'field' => $field,
+            'value' => $value,
+        ]);
+        $pmRepository = $this->createMock(PlanMeasureRepository::class);
+        $pmRepository->method('findAllForPlanAndMeasures')->willReturn([]);
+        $em = $this->createEntityManagerMockForIgnoredSelection();
+
+        $response = $this->invokeUpdateSelection(
+            $controller, $request, $this->createMeasureRepositoryMock([$measure], $measure),
+            $pmRepository, $this->createPlanRepositoryMock($plan),
+            self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class),
+            $this->createActiveProjectServiceMock($project), $em
+        );
+
+        self::assertSame(400, $response->getStatusCode());
+        $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertFalse($data['success']);
+        self::assertCount(0, $plan->getPlanMeasures());
+    }
+
+    public function testUpdateSelectionRejectedEmptyExecutionIncidentPreservesExistingRelation(): void
+    {
+        $controller = $this->getControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
+        $this->setAdminToken();
+        $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_PRO);
+        $protocol = (new Protocol())->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
+            ->setName('Be Green My Film')->setType(Protocol::TYPE_RODAJE)
+            ->setGroupingBy(Protocol::GROUP_BY_CATEGORY);
+        $this->setEntityId($protocol, 1);
+        $plan = (new Plan())->setProject($project)->setUser(new User())
+            ->setProtocol($protocol)->setStatus('completo');
+        $measure = (new Measure())->setProtocol($protocol)
+            ->setImportVersion(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_IMPORT_VERSION)
+            ->setScore(5)->setName('Medida no implementada');
+        $this->setEntityId($measure, 99772);
+        $relation = (new PlanMeasure())->setMeasure($measure)->setImplemented(false);
+        $plan->addPlanMeasure($relation);
+        $request = $this->createRequest([
+            'measureId' => (string) $measure->getId(), 'field' => 'executionIncident', 'value' => '',
+        ]);
+        $response = $this->invokeUpdateSelection(
+            $controller, $request, $this->createMeasureRepositoryMock([$measure], $measure),
+            $this->createMock(PlanMeasureRepository::class), $this->createPlanRepositoryMock($plan),
+            self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class),
+            $this->createActiveProjectServiceMock($project),
+            $this->createEntityManagerMockForIgnoredSelection()
+        );
+        self::assertSame(400, $response->getStatusCode());
+        self::assertCount(1, $plan->getPlanMeasures());
+        self::assertSame('', $relation->getExecutionIncident() ?? '');
+    }
 
     public function testTerminalSelectionNextUrlPointsToDoneWhenCustomMeasuresStepIsComplete(): void
     {
@@ -1760,7 +1917,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
     public function testDeleteEvidenceAlsoRemovesItsMetadata(): void
     {
         self::bootKernel();
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -1828,7 +1985,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
     public function testUploadEvidencesStoresNonPriorityCatalogSourceForTheNewFile(): void
     {
         self::bootKernel();
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -1880,7 +2039,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
         self::assertNotFalse($tmpFile);
-        file_put_contents($tmpFile, 'fake pdf content');
+        // PDF valido: la comprobacion MIME usa el contenido real.
+        file_put_contents($tmpFile, base64_decode(
+            'JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4K' .
+            'ZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4K' .
+            'ZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAg' .
+            'MCAzMDAgMzAwXSAvUmVzb3VyY2VzIDw8ID4+IC9Db250ZW50cyA0IDAgUiA+PgplbmRvYmoKNCAw' .
+            'IG9iago8PCAvTGVuZ3RoIDAgPj4Kc3RyZWFtCgplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAw' .
+            'MDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDY0IDAwMDAwIG4g' .
+            'CjAwMDAwMDAxMjEgMDAwMDAgbiAKMDAwMDAwMDIyNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXpl' .
+            'IDUgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjI3NAolJUVPRgo=',
+            true
+        ));
         $uploadedFile = new UploadedFile($tmpFile, 'factura.pdf', 'application/pdf', null, true);
 
         $request = $this->createRequest([
@@ -1919,6 +2089,10 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertTrue($data['success']);
         self::assertCount(1, $data['files']);
         self::assertStringStartsWith('/uploads/evidences/', $data['files'][0]);
+        self::assertStringContainsString('data-evidence-block', $data['evidenceHtml']);
+        self::assertStringContainsString(basename($data['files'][0]), $data['evidenceHtml']);
+        self::assertSame(2, $data['projectEvidenceCount']);
+        self::assertNotSame('', $data['projectEvidenceUsage']);
         self::assertSame('/uploads/evidences/existing.pdf' . "\n" . $data['files'][0], $planMeasure->getEvidence());
         self::assertSame([
             '/uploads/evidences/existing.pdf' => 'invoice',
@@ -1929,7 +2103,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
     public function testUploadEvidencesUsesImplementationBasicLimitEvenWhenElaborationIsPro(): void
     {
         self::bootKernel();
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_BASIC);
@@ -1976,7 +2152,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
         self::assertNotFalse($tmpFile);
-        file_put_contents($tmpFile, 'fake pdf content');
+        // PDF valido: la comprobacion MIME usa el contenido real.
+        file_put_contents($tmpFile, base64_decode(
+            'JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4K' .
+            'ZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4K' .
+            'ZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAg' .
+            'MCAzMDAgMzAwXSAvUmVzb3VyY2VzIDw8ID4+IC9Db250ZW50cyA0IDAgUiA+PgplbmRvYmoKNCAw' .
+            'IG9iago8PCAvTGVuZ3RoIDAgPj4Kc3RyZWFtCgplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAw' .
+            'MDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDY0IDAwMDAwIG4g' .
+            'CjAwMDAwMDAxMjEgMDAwMDAgbiAKMDAwMDAwMDIyNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXpl' .
+            'IDUgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjI3NAolJUVPRgo=',
+            true
+        ));
         $uploadedFile = new UploadedFile($tmpFile, 'limite.pdf', 'application/pdf', null, true);
 
         $request = $this->createRequest([
@@ -2079,7 +2266,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
         self::assertNotFalse($tmpFile);
-        file_put_contents($tmpFile, 'fake pdf content');
+        // PDF valido: la comprobacion MIME usa el contenido real.
+        file_put_contents($tmpFile, base64_decode(
+            'JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4K' .
+            'ZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4K' .
+            'ZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAg' .
+            'MCAzMDAgMzAwXSAvUmVzb3VyY2VzIDw8ID4+IC9Db250ZW50cyA0IDAgUiA+PgplbmRvYmoKNCAw' .
+            'IG9iago8PCAvTGVuZ3RoIDAgPj4Kc3RyZWFtCgplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAw' .
+            'MDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDY0IDAwMDAwIG4g' .
+            'CjAwMDAwMDAxMjEgMDAwMDAgbiAKMDAwMDAwMDIyNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXpl' .
+            'IDUgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjI3NAolJUVPRgo=',
+            true
+        ));
         $uploadedFile = new UploadedFile($tmpFile, 'denegada.pdf', 'application/pdf', null, true);
         $request->files->set('evidences', [$uploadedFile]);
 
@@ -2110,7 +2308,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
     public function testUploadEvidencesRejectsInvalidSourceWithoutPersistingPlanMeasure(): void
     {
         self::bootKernel();
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate(
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans())
+        );
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -2147,7 +2347,18 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $tmpFile = tempnam(sys_get_temp_dir(), 'evidence_');
         self::assertNotFalse($tmpFile);
-        file_put_contents($tmpFile, 'fake pdf content');
+        // PDF valido: la comprobacion MIME usa el contenido real.
+        file_put_contents($tmpFile, base64_decode(
+            'JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4K' .
+            'ZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4K' .
+            'ZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAg' .
+            'MCAzMDAgMzAwXSAvUmVzb3VyY2VzIDw8ID4+IC9Db250ZW50cyA0IDAgUiA+PgplbmRvYmoKNCAw' .
+            'IG9iago8PCAvTGVuZ3RoIDAgPj4Kc3RyZWFtCgplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA1CjAw' .
+            'MDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDY0IDAwMDAwIG4g' .
+            'CjAwMDAwMDAxMjEgMDAwMDAgbiAKMDAwMDAwMDIyNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXpl' .
+            'IDUgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjI3NAolJUVPRgo=',
+            true
+        ));
         $uploadedFile = new UploadedFile($tmpFile, 'fuente-invalida.pdf', 'application/pdf', null, true);
 
         $request = $this->createRequest([
@@ -2190,9 +2401,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         @unlink($tmpFile);
     }
 
-    public function testUpdateSelectionRedirectsTerminalActionToFirstPendingVisibleMeasure(): void
+    public function testUpdateSelectionReturnsMeasuresEntryWhenAnEarlierMeasureIsPending(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
@@ -2268,19 +2479,16 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $response);
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=0', (string) $data['nextUrl']);
+        self::assertSame('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringNotContainsString('only_pending=1', (string) $data['nextUrl']);
-        self::assertSame([
-            self::getContainer()->get('translator')->trans('backend.plan.flash.pending_observations', [
-                '%min%' => \App\Service\PlanMeasureElaborationDecisionValidator::MIN_OBSERVATIONS_LENGTH,
-            ]),
-        ], $request->getSession()->getFlashBag()->peek('warning'));
+        self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
+        self::assertNull($pendingPlanMeasure->getObservations());
+        self::assertSame(str_repeat('a', 50), $currentPlanMeasure->getObservations());
     }
 
     public function testUpdateSelectionDoesNotAppendOnlyPendingWhenFilterIsInactive(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
@@ -2326,7 +2534,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => 'Observación válida',
+            'value' => str_repeat('x', 50),
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$currentMeasure, $nextMeasure], $currentMeasure);
@@ -2350,14 +2558,13 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $response);
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertSame('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertStringNotContainsString('only_pending=1', (string) $data['nextUrl']);
     }
 
-    public function testUpdateSelectionAdvancesToNextVisibleMeasureWithoutWarningWhenPendingExistsEarlier(): void
+    public function testUpdateSelectionReturnsMeasuresEntryWithoutWarningWhenEarlierPendingExists(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
@@ -2409,7 +2616,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $currentMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => 'Observación actual',
+            'value' => str_repeat('x', 50),
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$pendingMeasure, $currentMeasure, $nextMeasure], $currentMeasure);
@@ -2433,14 +2640,13 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $response);
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=2', (string) $data['nextUrl']);
+        self::assertSame('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertSame([], $request->getSession()->getFlashBag()->peek('warning'));
     }
 
     public function testUpdateSelectionRedirectsTerminalActionToDoneWhenPlanIsComplete(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_PRO);
@@ -2474,7 +2680,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setIsApplicable(true)
             ->setIsCritical(false)
             ->setWillImplement(true)
-            ->setObservations('Observación de la primera medida')
+            ->setObservations(str_repeat('a', 50))
             ->markAsManual();
         $plan->addPlanMeasure($firstPlanMeasure);
 
@@ -2489,7 +2695,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $lastMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => 'Observación de la última medida',
+            'value' => str_repeat('b', 50),
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$firstMeasure, $lastMeasure], $lastMeasure);
@@ -2590,7 +2796,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $completeRequest = $this->createRequest([
             'measureId' => '901',
             'field' => 'completeDecision',
-            'value' => 'Observación no crítica',
+            'value' => str_repeat('Observación no crítica con contenido suficiente. ', 2),
         ]);
         $completeResponse = $this->invokeUpdateSelection(
             $controller,
@@ -2604,7 +2810,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         );
         $completeData = json_decode((string) $completeResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertStringContainsString('/backend/plan/measures', (string) $completeData['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $completeData['nextUrl']);
+        self::assertStringNotContainsString('i=', (string) $completeData['nextUrl']);
 
         $nextRequest = $this->createRequest([], ['i' => 1]);
         $nextRequest->attributes->set('_route', 'backend_plan_measures');
@@ -2792,7 +2998,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     public function testUpdateSelectionObservationsForDecisionNoOnLastMeasureRedirectsToDone(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -2826,7 +3032,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $lastMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => 'No se incluirá en el plan',
+            'value' => 'No se incluirá en el plan. ' . str_repeat('x', 50),
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
@@ -2855,7 +3061,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     public function testUpdateSelectionObservationsForNotApplicableLastMeasureRedirectsToDone(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -2889,7 +3095,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $lastMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => 'No aplica al proyecto',
+            'value' => 'No aplica al proyecto. ' . str_repeat('x', 50),
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
@@ -2918,7 +3124,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     public function testUpdateSelectionObservationsOnLastMeasureRedirectsToDone(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -2945,7 +3151,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
             ->setMeasure($lastMeasure)
             ->setIsApplicable(true)
             ->setIsCritical(true)
-            ->setObservations('Observación válida')
+            ->setObservations(str_repeat('a', 50))
             ->setWillImplement(true)
             ->setApplicabilitySource('manual');
         $plan->addPlanMeasure($currentPlanMeasure);
@@ -2953,7 +3159,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $request = $this->createRequest([
             'measureId' => (string) $lastMeasure->getId(),
             'field' => 'completeDecision',
-            'value' => 'Observación válida',
+            'value' => str_repeat('b', 50),
         ]);
 
         $measureRepository = $this->createMeasureRepositoryMock([$lastMeasure], $lastMeasure);
@@ -2982,7 +3188,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     public function testUpdateSelectionCriticalNoWaitsForObservations(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -3058,7 +3264,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     public function testUpdateSelectionCriticalYesCanBeUnsetToNoAndPreservesObservations(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -3135,7 +3341,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     public function testUpdateSelectionCriticalYesRequiresObservationsBeforeAdvancing(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -3212,7 +3418,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     public function testUpdateSelectionCompleteDecisionRejectsFortyNineTrimmedObservationCharacters(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -3289,7 +3495,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
     public function testUpdateSelectionCompleteDecisionWithObservationsAdvances(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -3358,14 +3564,13 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertInstanceOf(JsonResponse::class, $response);
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
-        self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=1', (string) $data['nextUrl']);
+        self::assertSame('/backend/plan/measures', (string) $data['nextUrl']);
         self::assertSame(str_repeat('b', 50), $currentPlanMeasure->getObservations());
     }
 
-    public function testBlockQuestionYesKeepsCurrentMeasurePendingAndReturnsCurrentIndex(): void
+    public function testBlockQuestionYesKeepsCurrentMeasurePendingAndReturnsMeasuresEntry(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -3442,7 +3647,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=0', (string) $data['nextUrl']);
+        self::assertSame('/backend/plan/measures', $data['nextUrl']);
         self::assertCount(1, $persistedEntities);
         self::assertSame($currentPlanMeasure, $persistedEntities[0]);
         self::assertNull($currentPlanMeasure->isApplicable());
@@ -3451,9 +3656,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertNull($currentPlanMeasure->getObservations());
     }
 
-    public function testBlockQuestionNoSkipsBlockAndReturnsFirstVisibleMeasureAfterBlock(): void
+    public function testBlockQuestionNoSkipsBlockAndReturnsMeasuresEntry(): void
     {
-        $controller = $this->getController();
+        $controller = $this->getControllerWithFeatureGate($this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()));
         $this->setAdminToken();
 
         $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
@@ -3563,7 +3768,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $data = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertTrue($data['success']);
         self::assertStringContainsString('/backend/plan/measures', (string) $data['nextUrl']);
-        self::assertStringContainsString('i=0', (string) $data['nextUrl']);
+        self::assertSame('/backend/plan/measures', $data['nextUrl']);
         self::assertCount(1, $persistedEntities);
         self::assertSame($currentPlanMeasure, $persistedEntities[0]);
     }
@@ -4075,6 +4280,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
     {
         $repository = $this->createMock(EntityRepository::class);
         $repository->method('findAll')->willReturn($sources);
+        $repository->method('findBy')->willReturn($sources);
 
         return $repository;
     }
@@ -4110,12 +4316,16 @@ final class PlanControllerNavigationTest extends KernelTestCase
      *     8: PlanMeasure
      * }
      */
-    private function buildDecisionScenario(string $decisionValue, bool $resultingLevelAlreadyPresented = true): array
+    private function buildDecisionScenario(
+        string $decisionValue,
+        bool $resultingLevelAlreadyPresented = true,
+        bool $expectPersistence = true,
+    ): array
     {
         self::bootKernel();
         $this->setAdminToken();
 
-        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC);
+        $project = $this->makeProjectWithTier(ProjectSubscription::TIER_BASIC)->setType(Protocol::TYPE_RODAJE);
         $protocol = (new Protocol())
             ->setCode(PlanMeasureCatalogResolver::BE_GREEN_MY_FILM_CODE)
             ->setName('Be Green My Film')
@@ -4169,7 +4379,9 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $planMeasureRepository = $this->createPlanMeasureRepositoryMock($currentMeasure, $currentPlanMeasure);
         $blockAnswerRepository = self::getContainer()->get(SustainabilityPlanBlockAnswerRepository::class);
         $activeProjectService = $this->createActiveProjectServiceMock($project);
-        $entityManager = $this->createEntityManagerMock($currentPlanMeasure);
+        $entityManager = $expectPersistence
+            ? $this->createEntityManagerMock($currentPlanMeasure)
+            : $this->createEntityManagerMockForIgnoredSelection();
 
         return [
             $controller,
@@ -4190,6 +4402,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
     private function getControllerWithGamificationMeasures(array $measures): PlanController
     {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
+        self::getContainer()->set(ProjectFeatureGate::class, $gate);
         $resolver = new PlanMeasureCatalogResolver($gate);
         $measureRepository = $this->createMock(MeasureRepository::class);
         $measureRepository->method('getCatalogMeasuresForProtocol')->willReturn($measures);

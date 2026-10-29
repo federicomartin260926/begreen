@@ -37,7 +37,7 @@ final class SustainabilityPlanGroupingService
         $groups = [];
         $planProtocolId = $plan->getProtocol()?->getId();
 
-        foreach ($plan->getPlanMeasures() as $planMeasure) {
+        foreach (PlanMeasureDuplicateResolver::unique($plan->getPlanMeasures()) as $planMeasure) {
             if (!$planMeasure instanceof PlanMeasure) {
                 continue;
             }

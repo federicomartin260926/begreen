@@ -8,6 +8,8 @@ use App\Enum\ProjectCatalog;
 use App\Exception\Ai\AiReportException;
 use App\Repository\{CommercialPlanRepository, PlanRepository, MeasureRepository, PlanMeasureRepository, ProtocolRepository, SustainabilityPlanBlockAnswerRepository};
 use App\Service\PlanMeasureCatalogResolver;
+use App\Service\PlanMeasureDuplicateResolver;
+use App\Service\PlanMeasureGetOrCreate;
 use App\Service\MeasureTaxonomyPresenter;
 use App\Service\PlanBlockQuestionService;
 use App\Service\SustainabilityPlanCompletionService;
@@ -92,6 +94,7 @@ class PlanController extends AbstractController
         private AnimationPlanSynchronizer $animationPlanSynchronizer,
         private AnimationComplianceService $animationComplianceService,
         private AnimationNotApplicableValidator $animationNotApplicableValidator,
+        private PlanMeasureGetOrCreate $planMeasureGetOrCreate,
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -353,7 +356,7 @@ class PlanController extends AbstractController
 
         // ===== PM actual (si existe) y lógica de navegación =====
         $currentPm = $currentMeasure
-            ? $planMeasureRepository->findOneBy(['plan' => $plan, 'measure' => $currentMeasure])
+            ? (PlanMeasureDuplicateResolver::forMeasure($plan, $currentMeasure) ?? $planMeasureRepository->findOneBy(['plan' => $plan, 'measure' => $currentMeasure]))
             : null;
         $currentBlockAnswer = ($currentMeasure && $currentMeasure->getMeasureBlock())
             ? $blockAnswerRepository->findOneByPlanAndBlock($plan, (int) $currentMeasure->getMeasureBlock()->getId())
@@ -920,6 +923,51 @@ class PlanController extends AbstractController
             return $this->implementationNotReadyResponse();
         }
 
+        // Respect edit permissions before validation, without creating a Plan for rejected requests.
+        if ($plan instanceof Plan) {
+            $this->denyAccessUnlessGranted(PlanVoter::EDIT, $plan);
+        } else {
+            $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        }
+
+        // F1: reject malformed payloads before creating a Plan or PlanMeasure.
+        $allowedFields = [
+            'blockQuestion', 'isApplicable', 'decision', 'isCritical', 'critical',
+            'willImplement', 'implemented', 'verification', 'action_taken',
+            'evidence', 'evidence_metadata', 'evidenceMetadata', 'completeDecision',
+            'executionIncident', 'internalNotes', 'internal_notes', 'responsibles',
+        ];
+        if (!in_array($field, $allowedFields, true)) {
+            return new JsonResponse(['success' => false, 'error' => 'Unknown field'], 400);
+        }
+        if ($field === 'decision' && !in_array((string) $value, ['true', 'false', 'na'], true)) {
+            return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
+        }
+        if ($field === 'action_taken' && mb_strlen(trim((string) $value)) < PlanMeasure::MIN_ACTION_TAKEN_LENGTH) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => $this->t->trans('backend.plan.review.stimulus.action_taken_required', [
+                    '%min%' => PlanMeasure::MIN_ACTION_TAKEN_LENGTH,
+                ]),
+            ], 400);
+        }
+        if ($field === 'blockQuestion') {
+            $requestedBlock = $measure->getMeasureBlock();
+            if (!$requestedBlock || !$requestedBlock->hasScreeningQuestion()) {
+                return new JsonResponse(['success' => false, 'error' => 'Unknown field'], 400);
+            }
+            if (filter_var((string) $value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === null) {
+                return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
+            }
+        }
+
+        if (!$plan && $field === 'completeDecision') {
+            return new JsonResponse([
+                'success' => false,
+                'error' => $this->t->trans('backend.plan.flash.pending_measure'),
+            ], 400);
+        }
+
         if (!$plan) {
             // Vas a CREAR plan -> requiere EDIT del proyecto
             $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
@@ -934,17 +982,74 @@ class PlanController extends AbstractController
         // A partir de aquí, vas a modificar datos del plan -> requiere EDIT del plan
         $this->denyAccessUnlessGranted(PlanVoter::EDIT, $plan);
 
-        // Asegura PlanMeasure
-        $planMeasure = $planMeasureRepo->findOneBy(['plan' => $plan, 'measure' => $measure]);
-        if (!$planMeasure) {
-            $planMeasure = new PlanMeasure();
-            $plan->addPlanMeasure($planMeasure);
-            $planMeasure->setMeasure($measure);
-            // Deja el resto en NULL hasta respuesta explícita del usuario
+        $planMeasure = null;
+        if ($field === 'completeDecision') {
+            $planMeasure = PlanMeasureDuplicateResolver::forMeasure($plan, $measure);
+            if (!$planMeasure instanceof PlanMeasure) {
+                $persistedRelations = PlanMeasureDuplicateResolver::unique(
+                    $planMeasureRepo->findAllForPlanAndMeasures($plan, [$measure])
+                );
+                $planMeasure = $persistedRelations[0] ?? null;
+                if ($planMeasure instanceof PlanMeasure) {
+                    $plan->addPlanMeasure($planMeasure);
+                }
+            }
+
+            if (!$planMeasure instanceof PlanMeasure) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error' => $this->t->trans('backend.plan.flash.pending_measure'),
+                ], 400);
+            }
+
+            $observations = trim((string) $value);
+            if ($response = $this->validateCompletedDecision($planMeasure, $observations)) {
+                return $response;
+            }
+        }
+
+        // F1: inspect existing state without creating a relation for requests that can be rejected.
+        if ($field === 'implemented' || ($field === 'executionIncident' && trim((string) $value) === '')) {
+            $existing = PlanMeasureDuplicateResolver::forMeasure($plan, $measure);
+            if (!$existing instanceof PlanMeasure) {
+                $existingRelations = PlanMeasureDuplicateResolver::unique(
+                    $planMeasureRepo->findAllForPlanAndMeasures($plan, [$measure])
+                );
+                $existing = $existingRelations[0] ?? null;
+            }
+
+            if ($field === 'implemented') {
+                if (!$existing instanceof PlanMeasure || $existing->willImplement() !== true) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => 'Solo puedes marcar como implementada una medida marcada para implementar.',
+                    ], 400);
+                }
+                if (!in_array($value, ['true', 'false', 'null'], true)) {
+                    return new JsonResponse(['success' => false, 'error' => 'Invalid parameters'], 400);
+                }
+                if ($value === 'false' && trim((string) $existing->getExecutionIncident()) === '') {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => $this->t->trans('backend.plan.review.stimulus.not_implemented_requires_incident'),
+                    ], 400);
+                }
+            }
+            if ($field === 'executionIncident' && $existing instanceof PlanMeasure && $existing->isImplemented() === false) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error' => $this->t->trans('backend.plan.review.stimulus.not_implemented_requires_incident'),
+                ], 400);
+            }
+        }
+
+        // Las preguntas por bloques aseguran todas sus relaciones de una vez.
+        if ($field !== 'blockQuestion' && !$planMeasure instanceof PlanMeasure) {
+            $planMeasure = $this->planMeasureGetOrCreate->getOrCreate($plan, $measure);
         }
 
         $samePrimaryDecision = $field === 'decision'
-            && $planMeasure->getPrimaryDecision() === (string) $value;
+            && $planMeasure?->getPrimaryDecision() === (string) $value;
         $gamificationBefore = $field === 'decision' && !$samePrimaryDecision
             ? $this->gamificationService->captureTransition($plan, $project, $planMeasure)
             : null;
@@ -968,6 +1073,7 @@ class PlanController extends AbstractController
                     $visibleMeasures,
                     static fn (Measure $candidate) => $candidate->getMeasureBlock()?->getId() === $block->getId()
                 ));
+                $blockMeasures[] = $measure;
                 $this->blockQuestionService->applyAnswer(
                     $plan,
                     $block,
@@ -975,6 +1081,10 @@ class PlanController extends AbstractController
                     $user instanceof User ? $user : null,
                     $blockMeasures
                 );
+                $planMeasure = PlanMeasureDuplicateResolver::forMeasure($plan, $measure);
+                if (!$planMeasure instanceof PlanMeasure) {
+                    throw new \LogicException('The block answer did not resolve its PlanMeasure.');
+                }
 
                 // La propia entrada a Elaboración resuelve la primera medida
                 // que siga pendiente después de aplicar la respuesta del bloque.
@@ -1118,11 +1228,7 @@ class PlanController extends AbstractController
                 break;
 
             case 'completeDecision':
-                $text = trim((string) $value);
-                if ($response = $this->validateCompletedDecision($planMeasure, $text)) {
-                    return $response;
-                }
-                $planMeasure->setObservations($text);
+                $planMeasure->setObservations($observations);
                 break;
 
             case 'executionIncident':
@@ -1490,6 +1596,20 @@ class PlanController extends AbstractController
                 return new JsonResponse(['success' => false, 'error' => 'Cada archivo debe pesar como máximo 4 MB.'], 400);
             }
         }
+        // Seguridad #78: comprobar extensión y MIME real de todos los archivos
+        // antes de procesar una petición parcialmente válida.
+        foreach ($files as $file) {
+            if (!$file instanceof \Symfony\Component\HttpFoundation\File\UploadedFile || !$file->isValid()) {
+                return new JsonResponse(['success' => false, 'error' => $this->t->trans('begreen_upload_security_invalid_file')], 400);
+            }
+            if (!\App\Service\PlanEvidenceUploadPolicy::accepts(
+                $file->getClientOriginalExtension(),
+                (string) $file->getMimeType()
+            )) {
+                return new JsonResponse(['success' => false, 'error' => $this->t->trans('begreen_upload_security_invalid_format')], 400);
+            }
+        }
+
         if (!$measureId || empty($files)) {
             return new JsonResponse(['success' => false, 'error' => 'Parámetros inválidos'], 400);
         }
@@ -1549,12 +1669,7 @@ class PlanController extends AbstractController
         }
 
         // Asegurar PlanMeasure (solo cuando las validaciones previas ya pasaron)
-        $pm = $pmRepo->findOneBy(['plan' => $plan, 'measure' => $measure]);
-        if (!$pm) {
-            $pm = (new PlanMeasure())->setPlan($plan)->setMeasure($measure);
-            $em->persist($pm);
-            $em->flush();
-        }
+        $pm = $this->planMeasureGetOrCreate->getOrCreate($plan, $measure);
 
         // Directorio de subida
         $publicDir  = $this->getParameter('kernel.project_dir') . '/public';
@@ -1595,7 +1710,34 @@ class PlanController extends AbstractController
         $em->persist($pm);
         $em->flush();
 
-        return new JsonResponse(['success' => true, 'files' => $added]);
+        $verificationSources = $this->taxonomyPresenter->verificationSourceCatalog(
+            $em->getRepository(VerificationSource::class)->findBy([], [
+                'sortOrder' => 'ASC',
+                'name' => 'ASC',
+                'id' => 'ASC',
+            ])
+        );
+        $projectEvidenceCount = $this->countProjectEvidenceFiles($plan);
+        $evidenceLimit = $this->featureGate->getMaxEvidenceCount($project, CommercialPhase::IMPLEMENTATION);
+
+        return new JsonResponse([
+            'success' => true,
+            'files' => $added,
+            'evidenceHtml' => $this->renderView('backend/plan/_evidence_block.html.twig', [
+                'measure' => $measure,
+                'canManageEvidence' => true,
+                'evidenceList' => $existing,
+                'evidenceMetadata' => $metadata,
+                'verificationSources' => $verificationSources,
+                'evidenceCount' => count($existing),
+                'evidenceBlockWrapperClass' => '',
+            ]),
+            'projectEvidenceCount' => $projectEvidenceCount,
+            'projectEvidenceUsage' => $this->t->trans('backend.plan.tier.evidence_used', [
+                '%used%' => $projectEvidenceCount,
+                '%limit%' => $evidenceLimit ?? '∞',
+            ]),
+        ]);
     }
 
     /** @return array<string, true> */
@@ -1660,7 +1802,8 @@ class PlanController extends AbstractController
             return $this->implementationNotReadyResponse();
         }
 
-        $pm = $pmRepo->findOneBy(['plan' => $plan, 'measure' => $measure]);
+        $pm = PlanMeasureDuplicateResolver::forMeasure($plan, $measure)
+            ?? $pmRepo->findOneBy(['plan' => $plan, 'measure' => $measure]);
         if (!$pm) {
             return new JsonResponse(['success' => false, 'error' => 'PlanMeasure not found'], 404);
         }
@@ -3486,7 +3629,7 @@ HTML;
         $result = [];
         $state = $filters['state'] ?? PlanMeasureOperationalStateResolver::ALL;
 
-        foreach ($plan->getPlanMeasures() as $pm) {
+        foreach (PlanMeasureDuplicateResolver::unique($plan->getPlanMeasures()) as $pm) {
             $m = $pm->getMeasure();
             if (!$m || !$this->catalogResolver->isCatalogMeasure($m, $project)) {
                 continue;

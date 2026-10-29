@@ -8,8 +8,8 @@ use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Protocol;
 use App\Entity\SustainabilityPlanBlockAnswer;
-use App\Repository\PlanMeasureRepository;
 use App\Service\PlanBlockQuestionService;
+use App\Service\PlanMeasureGetOrCreate;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -35,11 +35,7 @@ final class PlanBlockQuestionServiceTest extends TestCase
                 ->setApplicabilitySource('manual'),
         ];
 
-        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
-        $planMeasureRepository->method('findOneBy')
-            ->willReturnCallback(static function (array $criteria) use ($planMeasures): ?PlanMeasure {
-                return $planMeasures[$criteria['measure']->getId() ?? 0] ?? null;
-            });
+        $getOrCreate = $this->getOrCreateReturning($planMeasures);
 
         $persistedAnswer = null;
         $entityManager = $this->createMock(EntityManagerInterface::class);
@@ -50,7 +46,7 @@ final class PlanBlockQuestionServiceTest extends TestCase
                 $persistedAnswer = $entity;
             });
 
-        $service = new PlanBlockQuestionService($planMeasureRepository, $entityManager);
+        $service = new PlanBlockQuestionService($getOrCreate, $entityManager);
         $service->applyAnswer($plan, $block, false, null, $blockMeasures);
 
         self::assertCount(1, $plan->getBlockAnswers());
@@ -119,16 +115,12 @@ final class PlanBlockQuestionServiceTest extends TestCase
                 ->setObservations('Otra observación'),
         ];
 
-        $planMeasureRepository = $this->createMock(PlanMeasureRepository::class);
-        $planMeasureRepository->method('findOneBy')
-            ->willReturnCallback(static function (array $criteria) use ($planMeasures): ?PlanMeasure {
-                return $planMeasures[$criteria['measure']->getId() ?? 0] ?? null;
-            });
+        $getOrCreate = $this->getOrCreateReturning($planMeasures);
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::never())->method('persist');
 
-        $service = new PlanBlockQuestionService($planMeasureRepository, $entityManager);
+        $service = new PlanBlockQuestionService($getOrCreate, $entityManager);
         $service->applyAnswer($plan, $block, true, null, $blockMeasures);
 
         self::assertSame(true, $blockAnswer->applies());
@@ -147,6 +139,66 @@ final class PlanBlockQuestionServiceTest extends TestCase
         self::assertFalse($planMeasures[203]->isApplicable());
         self::assertSame('block_skip', $planMeasures[203]->getApplicabilitySource());
         self::assertSame($otherBlockAnswer, $planMeasures[203]->getBlockSkipAnswer());
+    }
+
+    public function testReusesUnflushedRelationCreatedBeforeBlockQuestion(): void
+    {
+        $plan = new Plan();
+        $block = $this->createBlock(101, 'biodiversidad', 'Biodiversidad');
+        $measure = $this->createMeasure(201, 'Medida 1', $block);
+
+        // Mirrors PlanController::updateSelection before its first flush.
+        $pending = (new PlanMeasure())->setMeasure($measure);
+        $plan->addPlanMeasure($pending);
+
+        $getOrCreate = $this->getOrCreateReturning([201 => $pending]);
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::once())->method('persist')
+            ->with(self::isInstanceOf(SustainabilityPlanBlockAnswer::class));
+
+        (new PlanBlockQuestionService($getOrCreate, $em))
+            ->applyAnswer($plan, $block, false, null, [$measure]);
+
+        self::assertCount(1, $plan->getPlanMeasures());
+        self::assertSame($pending, $plan->getPlanMeasures()->first());
+        self::assertFalse($pending->isApplicable());
+        self::assertSame('block_skip', $pending->getApplicabilitySource());
+    }
+
+    public function testRepeatedMeasureInBlockInputIsCreatedOnlyOnce(): void
+    {
+        $plan = new Plan();
+        $block = $this->createBlock(101, 'biodiversidad', 'Biodiversidad');
+        $measure = $this->createMeasure(201, 'Medida 1', $block);
+
+        $getOrCreate = $this->createMock(PlanMeasureGetOrCreate::class);
+        $getOrCreate->expects(self::once())->method('getOrCreateMany')
+            ->willReturnCallback(static function (Plan $plan, iterable $measures): array {
+                $measure = array_values(is_array($measures) ? $measures : iterator_to_array($measures))[0];
+                $item = (new PlanMeasure())->setMeasure($measure);
+                $plan->addPlanMeasure($item);
+
+                return [$measure->getId() => $item];
+            });
+        $em = $this->createMock(EntityManagerInterface::class);
+        $em->expects(self::once())->method('persist'); // block answer; relation is owned by get-or-create
+
+        (new PlanBlockQuestionService($getOrCreate, $em))
+            ->applyAnswer($plan, $block, false, null, [$measure, $measure]);
+
+        self::assertCount(1, $plan->getPlanMeasures());
+        self::assertFalse($plan->getPlanMeasures()->first()->isApplicable());
+    }
+
+    /** @param array<int, PlanMeasure> $relations */
+    private function getOrCreateReturning(array $relations): PlanMeasureGetOrCreate
+    {
+        $service = $this->createMock(PlanMeasureGetOrCreate::class);
+        $service->expects(self::once())
+            ->method('getOrCreateMany')
+            ->willReturn($relations);
+
+        return $service;
     }
 
     private function createBlock(int $id, string $code, string $name): MeasureBlock

@@ -17,9 +17,14 @@ use Symfony\Component\Form\FormEvents;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class ProjectDocumentType extends AbstractType
 {
+    public function __construct(private readonly TranslatorInterface $translator)
+    {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $accept = implode(',', array_map(
@@ -69,6 +74,10 @@ final class ProjectDocumentType extends AbstractType
                 ],
                 'attr' => [
                     'accept' => $accept,
+                    'data-upload-max-size' => 4 * 1024 * 1024,
+                    'data-upload-extensions' => implode(',', ProjectDocumentCatalog::ALLOWED_EXTENSIONS),
+                    'data-upload-size-error' => $this->translator->trans('backend.projects.form.documents.validation.file_too_large'),
+                    'data-upload-format-error' => $this->translator->trans('backend.projects.form.documents.validation.file_type_not_allowed'),
                 ],
             ])
             ->add('url', UrlType::class, [

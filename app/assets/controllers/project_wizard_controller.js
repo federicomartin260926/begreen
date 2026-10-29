@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { validateUploadInput } from "../lib/file_upload_validation";
 
 export default class extends Controller {
   static targets = [
@@ -9,6 +10,7 @@ export default class extends Controller {
     "nextButton",
     "submitButton",
     "currentStepInput",
+    "uploadFeedback",
   ];
 
   static values = {
@@ -37,10 +39,15 @@ export default class extends Controller {
     noFundingLabel: String,
     documentsLabel: String,
     documentValueLabel: String,
+    maxRequestSize: Number,
+    requestSizeError: String,
   };
 
   connect() {
     this.currentStep = this.findInitialStep();
+    this.multipartValidationVersion = 0;
+    this.multipartSizeValid = true;
+    this.multipartValidationPending = false;
 
     this.onFormMutation = this.onFormMutation.bind(this);
     this.onStepClick = this.onStepClick.bind(this);
@@ -66,6 +73,7 @@ export default class extends Controller {
     }
 
     this.refresh();
+    this.scheduleMultipartValidation();
   }
 
   disconnect() {
@@ -88,7 +96,15 @@ export default class extends Controller {
     }
   }
 
-  onFormMutation() {
+  onFormMutation(event) {
+    if (event?.target?.matches?.('input[type="file"][data-upload-max-size]')) {
+      validateUploadInput(event.target, { report: true });
+    }
+    if ((event?.type === "change" && event?.target?.matches?.('input[type="file"]'))
+      || event?.type === "project-collection:changed"
+      || event?.type === "project-documents:changed") {
+      this.scheduleMultipartValidation();
+    }
     this.refresh();
   }
 
@@ -113,7 +129,31 @@ export default class extends Controller {
     this.goToStep(this.currentStep + 1, { focus: true, allowForward: true });
   }
 
-  submit(event) {
+  async submit(event) {
+    if (!this.multipartSubmitApproved && this.hasMaxRequestSizeValue) {
+      event.preventDefault();
+      await this.validateMultipartNow();
+      if (!this.multipartSizeValid) {
+        this.goToStep(2, { focus: true });
+        this.focusFirstInvalidControl(2);
+        return;
+      }
+
+      if (!this.isReadyForSubmit() && !this.editModeValue) {
+        this.goToStep(this.firstInvalidStep() || this.currentStep, { focus: true });
+        return;
+      }
+      if (this.editModeValue && !this.isStepValid(this.currentStep)) {
+        this.focusFirstInvalidControl(this.currentStep);
+        return;
+      }
+
+      this.multipartSubmitApproved = true;
+      this.element.requestSubmit(event.submitter || undefined);
+      return;
+    }
+
+    this.multipartSubmitApproved = false;
     if (this.editModeValue) {
       if (!this.isStepValid(this.currentStep)) {
         event.preventDefault();
@@ -656,9 +696,11 @@ export default class extends Controller {
 
   validateStepTwo() {
     const rows = this.collectCollectionRows("company");
-    if (!rows.length) {
-      return true;
+    if (!this.uploadsAreValid()) {
+      return false;
     }
+
+    if (!rows.length) return true;
 
     const names = new Set();
     return rows.every((row, index) => {
@@ -672,6 +714,63 @@ export default class extends Controller {
       names.add(normalizedName);
       return true;
     });
+  }
+
+  uploadsAreValid() {
+    const individualFilesValid = Array.from(
+      this.element.querySelectorAll('input[type="file"][data-upload-max-size]')
+    ).every((input) => validateUploadInput(input));
+
+    return individualFilesValid && !this.multipartValidationPending && this.multipartSizeValid;
+  }
+
+  scheduleMultipartValidation() {
+    if (!this.hasMaxRequestSizeValue || this.maxRequestSizeValue <= 0) {
+      return;
+    }
+
+    void this.validateMultipartNow();
+  }
+
+  async validateMultipartNow() {
+    const version = ++this.multipartValidationVersion;
+    this.multipartValidationPending = true;
+    this.refresh();
+
+    try {
+      const body = await new Response(new FormData(this.element)).blob();
+      if (version !== this.multipartValidationVersion) return false;
+      this.multipartSizeValid = body.size <= this.maxRequestSizeValue;
+      this.multipartValidationPending = false;
+      this.updateUploadFeedback(body.size);
+      this.refresh();
+      return this.multipartSizeValid;
+    } catch (error) {
+      if (version !== this.multipartValidationVersion) return false;
+      console.warn("project-wizard: could not measure multipart request", error);
+      this.multipartSizeValid = false;
+      this.multipartValidationPending = false;
+      this.updateUploadFeedback(null);
+      this.refresh();
+      return false;
+    }
+  }
+
+  updateUploadFeedback(actualSize) {
+    if (!this.hasUploadFeedbackTarget) return;
+
+    const invalid = !this.multipartSizeValid;
+    this.uploadFeedbackTarget.classList.toggle("d-none", !invalid);
+    this.uploadFeedbackTarget.textContent = invalid
+      ? this.requestSizeErrorValue.replace("%size%", this.formatBytes(this.maxRequestSizeValue))
+      : "";
+    if (actualSize !== null) {
+      this.uploadFeedbackTarget.dataset.actualSize = String(actualSize);
+    }
+  }
+
+  formatBytes(bytes) {
+    return `${Math.round(bytes / (1024 * 1024))} MB`;
   }
 
   validateStepThree() {
@@ -845,6 +944,20 @@ export default class extends Controller {
     } catch {
       target.focus();
     }
+  }
+
+  focusFirstInvalidControl(step) {
+    const panel = this.panelForStep(step);
+    if (!panel) return;
+
+    const invalidControl = Array.from(panel.querySelectorAll("input, select, textarea"))
+      .find((control) => this.isFocusableStepControl(control) && !control.checkValidity());
+    const target = invalidControl || (step === 2 && this.hasUploadFeedbackTarget
+      ? this.uploadFeedbackTarget
+      : panel);
+
+    target.focus({ preventScroll: true });
+    invalidControl?.reportValidity();
   }
 
   isFocusableStepControl(control) {

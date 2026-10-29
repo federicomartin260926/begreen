@@ -125,6 +125,34 @@ final class SustainabilityPlanGroupingServiceTest extends TestCase
         self::assertSame(['Puntuación 5'], array_column($groups[0]['rows'], 'displayName'));
     }
 
+    public function testDuplicateUnansweredRelationCannotOverrideApplicableMeasure(): void
+    {
+        $service = $this->createService();
+        [$plan, $project, $protocol] = $this->createPlanContext(ProjectSubscription::TIER_BASIC);
+        $measure = $this->createCanonicalMeasure(5638, 'Medida duplicada', 5, $protocol);
+        $measure->addDepartment($this->createDepartment(11, 'prod', 'Producción'));
+
+        $answered = $this->createPlanMeasure($measure)
+            ->setImplemented(false)
+            ->setObservations('Respuesta conservada')
+            ->setEvidence('/uploads/evidences/original.pdf');
+        $unanswered = (new PlanMeasure())->setMeasure($measure);
+
+        foreach ([[$answered, $unanswered], [$unanswered, $answered]] as $order) {
+            $testPlan = (new Plan())->setProject($project)->setProtocol($protocol);
+            foreach ($order as $relation) {
+                $testPlan->addPlanMeasure($relation);
+            }
+            $groups = $service->groupPlanMeasures($testPlan, $project, 'department');
+            self::assertCount(1, $groups);
+            $rows = $groups[0]['rows'];
+            self::assertCount(1, $rows);
+            self::assertTrue($rows[0]['applicable']);
+            self::assertSame('Respuesta conservada', $rows[0]['observations']);
+            self::assertSame(1, $rows[0]['evidenceCount']);
+        }
+    }
+
     private function createService(): SustainabilityPlanGroupingService
     {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());

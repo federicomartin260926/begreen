@@ -16,6 +16,12 @@ class ImportExcelType extends AbstractType
             'translation_domain' => 'messages',
             'mapped' => false,
             'required' => true,
+            'help' => 'begreen_upload_help_excel_5m',
+            'attr' => [
+                'accept' => '.xls,.xlsx',
+                'data-upload-max-size' => 5 * 1024 * 1024,
+                'data-upload-extensions' => 'xls,xlsx',
+            ],
             'constraints' => [
                 new File([
                     'mimeTypes' => [

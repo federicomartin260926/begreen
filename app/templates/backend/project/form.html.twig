@@ -76,6 +76,8 @@
         'data-project-wizard-no-funding-label-value': 'backend.projects.form.wizard.no_funding'|trans,
         'data-project-wizard-documents-label-value': 'backend.projects.form.documents.title'|trans,
         'data-project-wizard-document-value-label-value': 'backend.projects.form.documents.summary_value'|trans,
+        'data-project-wizard-max-request-size-value': constant('App\\Service\\ProjectUploadPolicy::MAX_MULTIPART_REQUEST_SIZE'),
+        'data-project-wizard-request-size-error-value': 'backend.projects.form.uploads.request_too_large'|trans({'%size%': '32 MiB'}),
         'data-project-wizard-edit-mode-value': edit ? 'true' : 'false',
         'data-project-wizard-initial-step-value': wizardInitialStep,
 
@@ -99,7 +101,9 @@
       <div class="alert alert-danger mb-4">
         {% for error in form.vars.errors %}
           {% set errorStep = 1 %}
-          {% if error.messageTemplate == 'backend.projects.form.validation.funding_total_invalid' %}
+          {% if error.messageTemplate == 'backend.projects.form.uploads.request_too_large' %}
+            {% set errorStep = 2 %}
+          {% elseif error.messageTemplate == 'backend.projects.form.validation.funding_total_invalid' %}
             {% set errorStep = 4 %}
           {% elseif error.messageTemplate starts with 'backend.project.validation.' %}
             {% set errorStep = 3 %}
@@ -349,6 +353,8 @@
               <span>{{ 'backend.projects.form.wizard.step_2'|trans }}</span>
             </h3>
           </div>
+
+          <div class="alert alert-danger d-none" role="alert" tabindex="-1" data-project-wizard-target="uploadFeedback"></div>
 
         <div class="pt-3">
             <div class="row">

@@ -38,10 +38,11 @@
 
         <div class="col-md-6">
           {{ form_row(form.imageFile, {
-            label: 'backend.logo.form.image'|trans,
-            attr: { accept: '.png,.jpg,.jpeg,.svg' }
+            label: 'begreen_upload_security_logo_label'|trans,
+            attr: { accept: '.png,.jpg,.jpeg', 'data-upload-max-size': '3145728', 'data-upload-extensions': 'png,jpg,jpeg', 'data-upload-format-error': 'begreen_upload_security_logo_format_error'|trans }
           }) }}
-          <small class="text-muted d-block">{{ 'backend.logo.form.image_help'|trans }}</small>
+
+          <div class="form-text text-muted small mt-1">{{ 'begreen_upload_security_logo_help'|trans }}</div>
         </div>
 
         <div class="col-md-3">

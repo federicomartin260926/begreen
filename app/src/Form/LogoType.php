@@ -23,11 +23,11 @@ class LogoType extends AbstractType
                 'required' => false,
             ])
             ->add('imageFile', T\FileType::class, [
-                'label' => 'Imagen (PNG/JPG/SVG)',
+                'label' => 'Imagen (PNG/JPG)',
                 'mapped' => false,
                 'required' => $options['is_edit'] ? false : true,
                 'constraints' => [
-                    new Assert\File(maxSize: '3M'),
+                    new Assert\File(maxSize: '3M', extensions: ['png', 'jpg', 'jpeg']),
                 ],
                 'help' => 'Se guardará en /uploads/logos',
             ])

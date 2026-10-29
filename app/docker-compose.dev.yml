@@ -10,7 +10,6 @@ services:
       - app_var:/app/var
       - app_uploads:/app/public/uploads
       - ./public/build:/app/public/build
-      - ./docker/php/conf.d/zz-upload.dev.ini:/usr/local/etc/php/conf.d/zz-upload.dev.ini:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:

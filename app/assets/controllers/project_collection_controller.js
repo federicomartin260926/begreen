@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { validateUploadInput } from "../lib/file_upload_validation";
 
 export default class extends Controller {
   static targets = ["list", "addButton", "total", "feedback", "percentage", "companyModal", "companyModalHost", "companyModalFeedback"];
@@ -120,25 +121,7 @@ export default class extends Controller {
 
   validateLogoFile(event) {
     const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.setCustomValidity("");
-
-    if (!file) {
-      return;
-    }
-
-    const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
-    const allowedExtensions = ["png", "jpg", "jpeg", "webp"];
-    const extension = file.name.split(".").pop()?.toLowerCase();
-    if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(extension)) {
-      input.setCustomValidity(input.dataset.logoFormatError || "Invalid image format.");
-      input.reportValidity();
-      return;
-    }
-
-    if (file.size > Number(input.dataset.logoMaxSize || 2097152)) {
-      input.setCustomValidity(input.dataset.logoSizeError || "File is too large.");
-      input.reportValidity();
+    if (!validateUploadInput(input, { report: true })) {
       return;
     }
 

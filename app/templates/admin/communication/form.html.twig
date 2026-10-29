@@ -23,7 +23,8 @@
             {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
                 <div class="mb-3">
                     {{ form_label(form.file) }}
-                    {{ form_widget(form.file, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_widget(form.file, {'attr': {'class': 'form-control', 'accept': '.pdf,.doc,.docx,.xls,.xlsx', 'data-upload-max-size': '5242880', 'data-upload-extensions': 'pdf,doc,docx,xls,xlsx'}}) }}
+                    <div class="form-text text-muted small mt-1">{{ 'begreen_upload_help_communication_5m'|trans }}</div>
                     {% if is_edit and file is defined and file is not null and file.getFilename is defined and file.getFilename() %}
                         <small class="form-text text-muted mt-1">
                             {{ 'backend.admin.communication.form.current_file'|trans }} {{ file.getOriginalFilename() }}

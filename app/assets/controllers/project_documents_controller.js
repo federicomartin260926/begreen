@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { validateUploadInput } from "../lib/file_upload_validation";
 
 export default class extends Controller {
   static targets = ["list"];
@@ -45,6 +46,10 @@ export default class extends Controller {
   }
 
   onCollectionChange(event) {
+    if (event.target.matches('input[type="file"][data-upload-max-size]')) {
+      validateUploadInput(event.target, { report: true });
+    }
+
     if (event.target.matches('[name$="[type]"]')) {
       this.refreshRow(event.target.closest("[data-project-document-row]"));
     }

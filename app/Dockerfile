@@ -26,6 +26,7 @@ RUN set -eux; \
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY docker/php/conf.d/zz-memory.ini /usr/local/etc/php/conf.d/zz-memory.ini
+COPY docker/php/conf.d/zz-upload.ini /usr/local/etc/php/conf.d/zz-upload.ini
 COPY docker/php/entrypoint.sh /usr/local/bin/begreen-entrypoint
 RUN chmod +x /usr/local/bin/begreen-entrypoint
 

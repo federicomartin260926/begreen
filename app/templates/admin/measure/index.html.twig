@@ -469,7 +469,8 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            {{ form_widget(importForm.file, {'attr': {'class': 'form-control'}}) }}
+            {{ form_widget(importForm.file, {'attr': {'class': 'form-control', 'accept': '.xls,.xlsx', 'data-upload-max-size': '5242880', 'data-upload-extensions': 'xls,xlsx'}}) }}
+            <div class="form-text text-muted small mt-1">{{ 'begreen_upload_help_excel_5m'|trans }}</div>
             {{ form_errors(importForm.file) }}
             <div class="form-text">
               {{ 'backend.measures.import.lang_info_title'|trans }}
