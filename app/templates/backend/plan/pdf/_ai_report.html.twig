@@ -181,7 +181,7 @@
                 {% for measure in chunk %}
                     {% set titlesLength =
                         titlesLength
-                        + measure.title|default('')|length
+                        + measure.name|default('')|length
                     %}
 
                     {% if showObservations %}
@@ -226,7 +226,7 @@
     Empaquetado secuencial conservador.
 
     - máximo 2 fragmentos por página;
-    - nunca juntamos dos fragmentos de la misma categoría;
+    - se permiten dos fragmentos consecutivos de la misma categoría si caben;
     - presupuesto máximo aproximado: 2600;
     - si no hay seguridad suficiente, se conserva página exclusiva.
 #}
@@ -234,19 +234,16 @@
 {% set reportPages = [] %}
 {% set currentPageFragments = [] %}
 {% set currentPageWeight = 0 %}
-{% set currentPageCategoryKey = null %}
 
 {% for fragment in categoryFragments %}
     {% set canJoinCurrentPage =
         currentPageFragments|length == 1
-        and currentPageCategoryKey != fragment.categoryKey
         and (currentPageWeight + fragment.weight) <= pageWeightLimit
     %}
 
     {% if currentPageFragments is empty %}
         {% set currentPageFragments = [fragment] %}
         {% set currentPageWeight = fragment.weight %}
-        {% set currentPageCategoryKey = fragment.categoryKey %}
     {% elseif canJoinCurrentPage %}
         {% set currentPageFragments = currentPageFragments|merge([fragment]) %}
         {% set currentPageWeight = currentPageWeight + fragment.weight %}
@@ -259,7 +256,6 @@
 
         {% set currentPageFragments = [] %}
         {% set currentPageWeight = 0 %}
-        {% set currentPageCategoryKey = null %}
     {% else %}
         {% set reportPages = reportPages|merge([{
             fragments: currentPageFragments,
@@ -268,7 +264,6 @@
 
         {% set currentPageFragments = [fragment] %}
         {% set currentPageWeight = fragment.weight %}
-        {% set currentPageCategoryKey = fragment.categoryKey %}
     {% endif %}
 {% endfor %}
 
@@ -292,16 +287,30 @@
         } %}
 
         <main class="pdf-ai-page__content">
-            {% for categoryPage in reportPage.fragments %}
+            {% if reportPage.fragments|length == 2
+                and reportPage.fragments[0].categoryKey == reportPage.fragments[1].categoryKey %}
+                {% set firstFragment = reportPage.fragments[0] %}
+                {% set secondFragment = reportPage.fragments[1] %}
                 {{ report.categoryContent(
-                    categoryPage.category,
-                    categoryPage.measures,
-                    categoryPage.showSummary,
-                    categoryPage.showFutureSummary,
-                    categoryPage.continuation,
+                    firstFragment.category,
+                    firstFragment.measures|merge(secondFragment.measures),
+                    firstFragment.showSummary,
+                    secondFragment.showFutureSummary,
+                    firstFragment.continuation,
                     showObservations
                 ) }}
-            {% endfor %}
+            {% else %}
+                {% for categoryPage in reportPage.fragments %}
+                    {{ report.categoryContent(
+                        categoryPage.category,
+                        categoryPage.measures,
+                        categoryPage.showSummary,
+                        categoryPage.showFutureSummary,
+                        categoryPage.continuation,
+                        showObservations
+                    ) }}
+                {% endfor %}
+            {% endif %}
         </main>
     </section>
 {% endfor %}

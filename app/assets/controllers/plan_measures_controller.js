@@ -83,23 +83,14 @@ export default class extends Controller {
                 nextUrl = data.nextUrl || nextUrl;
             }
 
-            let sectionToScroll = null;
             if (field === 'decision' && !lastResponse?.unchangedDecision) {
                 this.applyDecisionState(measureId, value);
-                sectionToScroll = this.syncMeasureState(measureId);
-                if (String(value) === 'true') {
-                    sectionToScroll = card?.querySelector('[data-plan-measures-section="critical"]') || sectionToScroll;
-                }
             } else {
                 this.setSelectedButtonState(measureId, field, value);
-                sectionToScroll = this.syncMeasureState(measureId);
-                if (field === 'critical') {
-                    sectionToScroll = card?.querySelector('[data-plan-measures-section="observations"]') || sectionToScroll;
-                }
             }
-            if (field === 'critical' || field === 'decision') {
-                this.scrollToSection(sectionToScroll);
-            }
+            // D3: actualizar campos y respuesta sin desplazar la ventana.
+            // La navegación al siguiente registro ocurre solo al pulsar Continuar.
+            this.syncMeasureState(measureId);
 
             if (nextUrl) {
                 window.location.assign(nextUrl);
@@ -343,34 +334,6 @@ export default class extends Controller {
 
         alert.textContent = '';
         alert.classList.add('d-none');
-    }
-
-    scrollToSection(sectionElement) {
-        const planSummary = this.element.querySelector('#plan-commercial-summary');
-        const target = planSummary || sectionElement;
-        if (!target || target.classList.contains('d-none')) {
-            return;
-        }
-
-        this.scrollToElement(target);
-    }
-
-    scrollToElement(element) {
-        if (!element) {
-            return;
-        }
-
-        window.requestAnimationFrame(() => {
-            try {
-                const fixedHeader = document.querySelector('.backend-topbar');
-                const offset = fixedHeader?.getBoundingClientRect().height || 0;
-                const top = element.getBoundingClientRect().top + window.scrollY - offset;
-                window.scrollTo({
-                    top: Math.max(top, 0),
-                    behavior: 'smooth',
-                });
-            } catch (_) {}
-        });
     }
 
     navigateAfterSave(field, value) {
