@@ -103,6 +103,8 @@ La ruta respeta las comprobaciones del flujo de cierre. Los estilos adicionales 
 
 ## Documentación de la app
 
+- [Registro de decisiones funcionales — Calculadora CO₂](docs/registro-decisiones-funcionales.md)
+
 La documentación funcional y técnica específica de Symfony está en:
 
 - [app/README.md](app/README.md)
