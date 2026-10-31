@@ -6,6 +6,7 @@ const settings = loadQaSettings();
 
 export default defineConfig({
   testDir: path.join(qaRoot, 'tests'),
+  testIgnore: '**/verifier/**', // Suite #82 ejecutada sólo por make qa-verifier.
   timeout: 30_000,
   expect: { timeout: 8_000 },
   workers: 1, // Evitar concurrencia sobre la misma cuenta/proyecto QA.

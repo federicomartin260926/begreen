@@ -1,6 +1,6 @@
 {% set executionValue = pm and pm.isImplemented is same as(true) ? 'true' : (pm and pm.isImplemented is same as(false) ? 'false' : 'null') %}
 {% set executionDecisionLocked = not (pm and pm.willImplement is same as(true)) %}
-{% set canAll = is_granted('ROLE_SUPER_ADMIN') or is_granted('ROLE_ADMIN') %}
+{% set canAll = is_granted('ROLE_SUPER_ADMIN') or is_granted('ROLE_ADMIN') or is_granted('PLAN_VERIFY', plan) %}
 {% set canVerify = not executionDecisionLocked and canAll %}
 {% set canManageEvidence = not executionDecisionLocked and (canAll or is_granted('ROLE_MANAGER')) %}
 {% set canUseChecklist = canUseChecklist|default(false) %}

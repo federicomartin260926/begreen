@@ -19,6 +19,7 @@ use Doctrine\Persistence\ObjectManager;
 class ProjectFixtures extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
     private const FRANC_EMAIL = 'francplanas@gmail.com';
+    private const VERIFIER_EMAIL = 'verificadora.qa82@example.test';
 
     public function __construct(
         private readonly UserRepository $userRepository,
@@ -49,6 +50,11 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
 
         foreach ($users as $index => $user) {
             if (!$user instanceof User) {
+                continue;
+            }
+
+            if ($user->getEmail() === self::VERIFIER_EMAIL) {
+                // Certificadora externa: sólo proyectos asignados; nunca uno propio.
                 continue;
             }
 
@@ -98,6 +104,11 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
 
     private function createFrancProjects(ObjectManager $manager, User $franc): void
     {
+        $verifier = $this->userRepository->findOneBy(['email' => self::VERIFIER_EMAIL]);
+        if (!$verifier instanceof User) {
+            throw new \RuntimeException('No se encontró la certificadora QA #82 en fixtures.');
+        }
+
         $event = (new Project())
             ->setName('EVENTO FRANC')
             ->setCountry('ES')
@@ -123,6 +134,10 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
                 ['postproduccion', '2026-07-17', '2026-07-17'],
             ],
         );
+        $manager->persist((new ProjectMembership())
+            ->setUser($verifier)
+            ->setProject($event)
+            ->setProjectRole('member'));
 
         $film = (new Project())
             ->setName('RODAJE ELABORADO')
@@ -146,6 +161,10 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
                 ['postproduccion', '2026-08-18', '2026-08-31'],
             ],
         );
+        $manager->persist((new ProjectMembership())
+            ->setUser($verifier)
+            ->setProject($film)
+            ->setProjectRole('member'));
     }
 
     /**

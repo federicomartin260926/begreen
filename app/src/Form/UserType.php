@@ -37,6 +37,7 @@ class UserType extends AbstractType
                 'choices' => [
                     'backend.roles.ROLE_SUPER_ADMIN'        => 'ROLE_SUPER_ADMIN',
                     'backend.roles.ROLE_ADMIN'              => 'ROLE_ADMIN',
+                    'backend.roles.ROLE_VERIFIER'           => 'ROLE_VERIFIER',
                     'backend.roles.ROLE_MANAGER'            => 'ROLE_MANAGER',
                     'backend.roles.ROLE_USER'               => 'ROLE_USER',
                     'backend.roles.ROLE_ALLOWED_TO_SWITCH'  => 'ROLE_ALLOWED_TO_SWITCH',

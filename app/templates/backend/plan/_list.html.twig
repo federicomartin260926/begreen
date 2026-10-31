@@ -50,6 +50,7 @@
                     {% include 'backend/plan/_implementation_measure_detail.html.twig' with {
                         measure: measure,
                         pm: pm,
+                        plan: plan,
                         taxonomyPresenter: taxonomyPresenter,
                         project: project,
                         crewMembersByMeasure: crewMembersByMeasure|default([]),

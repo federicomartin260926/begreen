@@ -176,7 +176,7 @@
                                 <label for="f-country" class="form-label">{{ 'backend.projects.filters.country'|trans }}</label>
                                 <input type="text" name="country" id="f-country" class="form-control" value="{{ filters.country|default('') }}" placeholder="{{ 'backend.projects.filters.country'|trans }}">
                             </div>
-                            {% if is_admin %}
+                            {% if can_filter_by_owner %}
                                 <div class="col-12 col-md-6 col-xl">
                                     <label for="f-owner" class="form-label">{{ 'backend.projects.filters.owner'|trans }}</label>
                                     <input type="text" name="owner" id="f-owner" class="form-control" value="{{ filters.owner|default('') }}" placeholder="{{ 'backend.projects.filters.owner'|trans }}">

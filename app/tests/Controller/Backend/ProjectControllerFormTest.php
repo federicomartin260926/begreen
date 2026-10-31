@@ -4,6 +4,7 @@ namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\ProjectController;
 use App\Entity\Project;
+use App\Entity\ProjectMembership;
 use App\Entity\ProjectPhaseDate;
 use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
@@ -15,11 +16,13 @@ use App\Service\ProjectFeatureGate;
 use App\Service\ProjectCompanyLogoStorage;
 use App\Service\StripeInvoiceStorageService;
 use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 final class ProjectControllerFormTest extends KernelTestCase
 {
@@ -298,6 +301,63 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertInstanceOf(Project::class, $clonedProject);
         self::assertSame(ProjectSubscription::TIER_BASIC, $clonedProject->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
         self::assertSame(ProjectSubscription::TIER_BASIC, $clonedProject->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
+    }
+
+    #[DataProvider('cloneAuthorizationCases')]
+    public function testCloneRequiresProjectViewPermission(
+        string $role,
+        bool $hasMembership,
+        bool $isAllowed,
+    ): void {
+        self::bootKernel();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $owner = $this->createAdminUser($entityManager);
+        $actor = $this->createUserWithRole($entityManager, $role);
+        $projectName = sprintf('Proyecto autorización clon %s', uniqid());
+        $project = $this->createProject($entityManager, $owner, $projectName);
+
+        if ($hasMembership) {
+            $membership = (new ProjectMembership())
+                ->setUser($actor)
+                ->setProject($project)
+                ->setProjectRole('member');
+            $entityManager->persist($membership);
+            $entityManager->flush();
+        }
+
+        $this->setUserToken($actor);
+        $this->createRequest('backend_project_clone', ['id' => $project->getId()]);
+        $clonedProjectName = $projectName . ' (copia)';
+
+        if ($isAllowed) {
+            $response = $this->createController()->clone($project, $entityManager);
+
+            self::assertSame(302, $response->getStatusCode());
+            self::assertInstanceOf(
+                Project::class,
+                $entityManager->getRepository(Project::class)->findOneBy(['name' => $clonedProjectName])
+            );
+
+            return;
+        }
+
+        try {
+            $this->createController()->clone($project, $entityManager);
+            self::fail('El clonado debía ser denegado para un usuario sin membresía.');
+        } catch (AccessDeniedException) {
+            self::assertNull(
+                $entityManager->getRepository(Project::class)->findOneBy(['name' => $clonedProjectName])
+            );
+        }
+    }
+
+    public static function cloneAuthorizationCases(): iterable
+    {
+        yield 'verifier miembro' => ['ROLE_VERIFIER', true, true];
+        yield 'verifier no miembro' => ['ROLE_VERIFIER', false, false];
+        yield 'admin sin membresía' => ['ROLE_ADMIN', false, true];
+        yield 'usuario miembro' => ['ROLE_USER', true, true];
+        yield 'usuario no miembro' => ['ROLE_USER', false, false];
     }
 
     public function testCloneCopiesAnimationConfigurationIndependently(): void
@@ -681,6 +741,22 @@ final class ProjectControllerFormTest extends KernelTestCase
         return $admin;
     }
 
+    private function createUserWithRole(EntityManagerInterface $entityManager, string $role): User
+    {
+        $user = (new User())
+            ->setName('Usuario')
+            ->setSurnames('Clonado')
+            ->setEmail(sprintf('clone.authorization.%s@example.test', uniqid()))
+            ->setPassword('password')
+            ->setRoles([$role])
+            ->setIsVerified(true);
+
+        $entityManager->persist($user);
+        $entityManager->flush();
+
+        return $user;
+    }
+
     private function createProject(EntityManagerInterface $entityManager, User $owner, string $name): Project
     {
         $project = (new Project())
@@ -738,6 +814,11 @@ final class ProjectControllerFormTest extends KernelTestCase
     }
 
     private function setAdminToken(User $user): void
+    {
+        $this->setUserToken($user);
+    }
+
+    private function setUserToken(User $user): void
     {
         self::getContainer()->get('security.token_storage')->setToken(
             new UsernamePasswordToken($user, 'main', $user->getRoles())

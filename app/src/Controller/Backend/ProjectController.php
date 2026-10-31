@@ -77,8 +77,9 @@ class ProjectController extends AbstractController
         Request $request
     ): Response {
         /** @var User $user */
-        $user    = $this->getUser();
-        $isAdmin = $this->isGranted('ROLE_ADMIN'); // SUPER_ADMIN incluido
+        $user                   = $this->getUser();
+        $hasGlobalProjectAccess = $this->isGranted('ROLE_ADMIN'); // SUPER_ADMIN incluido
+        $canFilterByOwner       = $hasGlobalProjectAccess || $this->isGranted('ROLE_VERIFIER');
 
         // Filtros GET
         $name     = trim((string) $request->query->get('name', ''));
@@ -108,7 +109,7 @@ class ProjectController extends AbstractController
             ->addSelect('pm', 'mu', 'cu', 'sub', 'pc');
 
         // Alcance por rol
-        if (!$isAdmin) {
+        if (!$hasGlobalProjectAccess) {
             $qb->andWhere('pm.user = :me')->setParameter('me', $user);
         }
 
@@ -123,7 +124,7 @@ class ProjectController extends AbstractController
         if ($country !== '') {
             $qb->andWhere('p.country = :country')->setParameter('country', $country);
         }
-        if ($isAdmin && $owner !== '') {
+        if ($canFilterByOwner && $owner !== '') {
             $qb->andWhere('LOWER(cu.email) LIKE :owner')
                ->setParameter('owner', '%'.mb_strtolower($owner).'%');
         }
@@ -303,7 +304,7 @@ class ProjectController extends AbstractController
                 'date_to'   => $dateTo,
                 'sort'      => $sort,
             ],
-            'is_admin'     => $isAdmin,
+            'can_filter_by_owner' => $canFilterByOwner,
             'currentPage'  => $page,
             'totalPages'   => max(1, (int) ceil($total / $perPage)),
         ]);
@@ -884,6 +885,8 @@ class ProjectController extends AbstractController
     #[Route('/{id}/clone', name: 'clone', methods: ['GET'])]
     public function clone(Project $project, EntityManagerInterface $em): RedirectResponse
     {
+        $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+
         /** @var User $creator */
         $creator = $this->getUser();
 

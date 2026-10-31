@@ -181,6 +181,7 @@ backend:
   roles:
     ROLE_SUPER_ADMIN: "Super Administrador"
     ROLE_ADMIN: "Administrador"
+    ROLE_VERIFIER: "Certificadora / Verificadora"
     ROLE_MANAGER: "Gestor"
     ROLE_USER: "Editor"
     ROLE_ALLOWED_TO_SWITCH: "Impersonar usuarios"

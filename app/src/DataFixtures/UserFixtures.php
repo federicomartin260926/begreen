@@ -76,6 +76,15 @@ class UserFixtures extends Fixture implements FixtureGroupInterface
                 'roles' => [
                     'ROLE_USER'
                 ]
+            ],
+            [
+                'name' => 'Verificadora',
+                'surnames' => 'QA 82',
+                'email' => 'verificadora.qa82@example.test',
+                'isVerified' => true,
+                'roles' => [
+                    'ROLE_VERIFIER'
+                ]
             ]
         ];
 

@@ -16,8 +16,8 @@ use App\Repository\PlanRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Service\ActiveProjectService;
-use App\Service\ProjectFeatureGate;
 use App\Service\ProjectCompanyLogoStorage;
+use App\Tests\Support\CommercialPlanTestHelpers;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,6 +27,65 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 
 final class ProjectControllerDashboardTest extends KernelTestCase
 {
+    use CommercialPlanTestHelpers;
+
+    public function testVerifierDashboardIsScopedToAssignedProjectsAndReflectsMembershipChanges(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $suffix = uniqid();
+
+        $ownerA = $this->createUser('Owner A', 'owner.a.'.$suffix.'@example.test', ['ROLE_USER']);
+        $ownerB = $this->createUser('Owner B', 'owner.b.'.$suffix.'@example.test', ['ROLE_USER']);
+        $verifierA = $this->createUser('Verifier A', 'verifier.a.'.$suffix.'@example.test', ['ROLE_VERIFIER']);
+        $verifierB = $this->createUser('Verifier B', 'verifier.b.'.$suffix.'@example.test', ['ROLE_VERIFIER']);
+        foreach ([$ownerA, $ownerB, $verifierA, $verifierB] as $user) {
+            $entityManager->persist($user);
+        }
+
+        $projectA = $this->createProject($ownerA, 'Verifier project A '.$suffix);
+        $projectB = $this->createProject($ownerB, 'Verifier project B '.$suffix);
+        $membershipA = (new ProjectMembership())
+            ->setUser($verifierA)
+            ->setProject($projectA)
+            ->setProjectRole('member');
+        $membershipB = (new ProjectMembership())
+            ->setUser($verifierB)
+            ->setProject($projectB)
+            ->setProjectRole('member');
+        $entityManager->persist($membershipA);
+        $entityManager->persist($membershipB);
+        $entityManager->flush();
+
+        $contentA = $this->renderDashboardFor($verifierA, $projectA);
+        self::assertStringContainsString($projectA->getName(), $contentA);
+        self::assertStringNotContainsString($projectB->getName(), $contentA);
+        self::assertStringContainsString('id="f-owner"', $contentA);
+
+        $contentB = $this->renderDashboardFor($verifierB, $projectB);
+        self::assertStringContainsString($projectB->getName(), $contentB);
+        self::assertStringNotContainsString($projectA->getName(), $contentB);
+
+        $secondMembership = (new ProjectMembership())
+            ->setUser($verifierA)
+            ->setProject($projectB)
+            ->setProjectRole('member');
+        $entityManager->persist($secondMembership);
+        $entityManager->flush();
+
+        $contentWithSecondProject = $this->renderDashboardFor($verifierA, $projectA);
+        self::assertStringContainsString($projectA->getName(), $contentWithSecondProject);
+        self::assertStringContainsString($projectB->getName(), $contentWithSecondProject);
+
+        $entityManager->remove($secondMembership);
+        $entityManager->flush();
+
+        $contentAfterRemoval = $this->renderDashboardFor($verifierA, $projectA);
+        self::assertStringContainsString($projectA->getName(), $contentAfterRemoval);
+        self::assertStringNotContainsString($projectB->getName(), $contentAfterRemoval);
+    }
+
     public function testDashboardActionsDropdownOnlyShowsExpectedActions(): void
     {
         self::bootKernel();
@@ -107,7 +166,7 @@ final class ProjectControllerDashboardTest extends KernelTestCase
 
         $controller = new ProjectController(
             $container->get('translator'),
-            $container->get(ProjectFeatureGate::class),
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()),
             $billingRepository,
             $invoiceStorage,
             $container->get(\App\Service\SustainabilityPlanCollaborationService::class),
@@ -236,6 +295,62 @@ final class ProjectControllerDashboardTest extends KernelTestCase
         $entityManager->persist($membership);
 
         return $project;
+    }
+
+    /** @param list<string> $roles */
+    private function createUser(string $name, string $email, array $roles): User
+    {
+        return (new User())
+            ->setName($name)
+            ->setSurnames('Dashboard')
+            ->setEmail($email)
+            ->setPassword('password')
+            ->setRoles($roles)
+            ->setIsVerified(true);
+    }
+
+    private function renderDashboardFor(User $user, Project $activeProject): string
+    {
+        $container = self::getContainer();
+        $container->get('security.token_storage')->setToken(
+            new UsernamePasswordToken($user, 'main', $user->getRoles())
+        );
+
+        $request = new Request();
+        $request->attributes->set('_route', 'backend_project_index');
+        $request->setLocale('es');
+        $request->setSession(new Session(new MockArraySessionStorage()));
+        $request->getSession()->set('active_project_id', $activeProject->getId());
+        $container->get('request_stack')->push($request);
+
+        $twig = $container->get('twig');
+        $twig->addGlobal('userProjects', [$activeProject]);
+        $twig->addGlobal('activeProject', $activeProject);
+        $twig->addGlobal('is_admin', false);
+
+        $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
+        $billingRepository->method('count')->willReturn(0);
+        $controller = new ProjectController(
+            $container->get('translator'),
+            $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans()),
+            $billingRepository,
+            $this->createMock(\App\Service\StripeInvoiceStorageService::class),
+            $container->get(\App\Service\SustainabilityPlanCollaborationService::class),
+            $container->get(\App\Service\SustainabilityPlanImplementationPhaseService::class),
+            $container->get(ProjectCompanyLogoStorage::class),
+            $container->get(\App\Service\Animation\AnimationProjectConfigurationUpdater::class),
+        );
+        $controller->setContainer($container);
+
+        $response = $controller->index(
+            $container->get(ProjectRepository::class),
+            $container->get(PlanRepository::class),
+            $container->get(EmissionRecordRepository::class),
+            $container->get(ActiveProjectService::class),
+            $request
+        );
+
+        return (string) $response->getContent();
     }
 
     private function setAdminToken(User $user): void

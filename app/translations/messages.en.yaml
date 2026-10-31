@@ -179,6 +179,7 @@ backend:
   roles:
     ROLE_SUPER_ADMIN: "Super Administrator"
     ROLE_ADMIN: "Administrator"
+    ROLE_VERIFIER: "Certifier / Verifier"
     ROLE_MANAGER: "Manager"
     ROLE_USER: "Editor"
     ROLE_ALLOWED_TO_SWITCH: "Impersonate users"

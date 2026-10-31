@@ -42,6 +42,7 @@ security:
     role_hierarchy:
         ROLE_SUPER_ADMIN: [ROLE_ADMIN, ROLE_USER]
         ROLE_ADMIN:       ROLE_USER
+        ROLE_VERIFIER:    ROLE_USER
         ROLE_USER:        []
 
     access_control:

@@ -930,6 +930,15 @@ class PlanController extends AbstractController
             $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
         }
 
+        // ROLE_VERIFIER sólo puede verificar planes de proyectos asignados.
+        // El resto de roles conserva el comportamiento backend previo.
+        if ($field === 'verification' && $this->isGranted('ROLE_VERIFIER')) {
+            if (!$plan instanceof Plan) {
+                throw $this->createAccessDeniedException();
+            }
+            $this->denyAccessUnlessGranted(PlanVoter::VERIFY, $plan);
+        }
+
         // F1: reject malformed payloads before creating a Plan or PlanMeasure.
         $allowedFields = [
             'blockQuestion', 'isApplicable', 'decision', 'isCritical', 'critical',

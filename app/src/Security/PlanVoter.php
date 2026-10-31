@@ -12,12 +12,13 @@ class PlanVoter extends Voter
 {
     public const VIEW = 'PLAN_VIEW';
     public const EDIT = 'PLAN_EDIT';
+    public const VERIFY = 'PLAN_VERIFY';
 
     public function __construct(private readonly ProjectMembershipRepository $pmRepo) {}
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return in_array($attribute, [self::VIEW, self::EDIT], true) && $subject instanceof Plan;
+        return in_array($attribute, [self::VIEW, self::EDIT, self::VERIFY], true) && $subject instanceof Plan;
     }
 
     /**
@@ -40,6 +41,10 @@ class PlanVoter extends Voter
         $project = $plan->getProject();
         if (!$project) {
             // Plan sin proyecto asociado => denegar por seguridad
+            return false;
+        }
+
+        if ($attribute === self::VERIFY && !in_array('ROLE_VERIFIER', $roles, true)) {
             return false;
         }
 

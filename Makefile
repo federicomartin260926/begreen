@@ -408,3 +408,9 @@ qa-failed:
 qa-report:
 	@cd qa-playwright && npm run qa:report
 # BEGREEN #74 PLAYWRIGHT END
+
+# BEGREEN #82 QA VERIFIER BEGIN
+.PHONY: qa-verifier
+qa-verifier:
+	@bash qa-playwright/scripts/run-verifier.sh
+# BEGREEN #82 QA VERIFIER END
