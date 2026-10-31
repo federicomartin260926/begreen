@@ -51,7 +51,7 @@ async function projectEditUrl(page: Page, name: string): Promise<URL> {
  * Este GET sólo cambia el proyecto activo en la SESIÓN. No permite clonar,
  * borrar, guardar formularios ni acceder a proyectos no listados.
  */
-async function selectAuthorizedProject(page: Page, name: string, target: 'plan' | 'emissions') {
+async function selectAuthorizedProject(page: Page, name: string, target: 'plan' | 'elaboration_done' | 'emissions') {
   await projectList(page);
   const card = page.locator('.backend-project-pill').filter({
     has: page.locator('.backend-project-pill__name', { hasText: new RegExp(`^${name}$`) }),
@@ -128,7 +128,9 @@ test('VER-07 — No puede acceder a la administración de usuarios', async ({ pa
 });
 
 test('VER-08 — Puede acceder al Plan desde un proyecto asignado', async ({ page }) => {
-  await selectAuthorizedProject(page, ALLOWED_NAMES[0], 'plan');
+  // La fase 1 de EVENTO FRANC está completada: el dashboard enlaza a
+  // target=elaboration_done, que redirige al Plan completado (backend_plan_done).
+  await selectAuthorizedProject(page, ALLOWED_NAMES[0], 'elaboration_done');
   await expect(page).not.toHaveURL(/\/login\//);
   expect(new URL(page.url()).pathname).toMatch(/\/backend\/plan(?:\/|$)/);
 });
