@@ -60,7 +60,7 @@ PHP_PROD := $(COMPOSE_PROD) exec php
 
 .PHONY: \
 	help \
-	up up-build down restart ps logs shell php console composer-install assets-install assets-build cache-clear schema-dump schema-update fixtures db-dump-fixtures test doctor prepare-private-storage \
+	up up-build down restart ps logs shell php console composer-install assets-install assets-build cache-clear schema-dump schema-update fixtures db-dump-fixtures test manual-admin-pdf manual-super-admin-pdf manual-pdfs doctor prepare-private-storage \
 	dev-pull dev-update dev-update-build dev-reset-fixtures \
 	up-prod up-prod-build prod-up down-prod restart-prod prod-restart ps-prod logs-prod prod-logs shell-prod php-prod console-prod prod-console composer-install-prod assets-install-prod assets-build-prod cache-clear-prod prod-cache-clear schema-dump-prod schema-update-prod prod-schema-update prepare-private-storage-prod db-backup-prod db-import-prod \
 	prod-pull deploy-prod deploy-prod-build deploy-prod-full
@@ -97,6 +97,9 @@ help:
 	@echo "  make fixtures                   Recarga fixtures dev"
 	@echo "  make db-dump-fixtures           Crea dump local de la BD dev actual en backups/"
 	@echo "  make test                       Ejecuta PHPUnit dev"
+	@echo "  make manual-admin-pdf           Regenera el manual PDF de Administrador"
+	@echo "  make manual-super-admin-pdf     Regenera el manual PDF de Super Administrador"
+	@echo "  make manual-pdfs                 Regenera los dos manuales PDF"
 	@echo "  make doctor                     Diagnóstico rápido dev"
 	@echo ""
 	@echo "PROD - uso común"
@@ -202,6 +205,14 @@ db-dump-fixtures:
 
 test:
 	$(PHP_DEV) ./vendor/bin/phpunit
+
+manual-admin-pdf:
+	$(COMPOSE_DEV) run --rm --no-deps -v "$(CURDIR)/docs/manuales:/manual-docs:ro" php php bin/generate-user-manual.php /manual-docs/roles/administrador.md /manual-docs resources/manuales/manual-administrador.pdf "Administrador / Consultora"
+
+manual-super-admin-pdf:
+	$(COMPOSE_DEV) run --rm --no-deps -v "$(CURDIR)/docs/manuales:/manual-docs:ro" php php bin/generate-user-manual.php /manual-docs/roles/super-administrador.md /manual-docs resources/manuales/manual-super-administrador.pdf "Super Administrador"
+
+manual-pdfs: manual-admin-pdf manual-super-admin-pdf
 
 doctor:
 	$(COMPOSE_DEV) ps

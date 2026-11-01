@@ -207,6 +207,7 @@ backend:
     sustainability_plan: "Sustainability plan"
     emissions: "CO₂ emissions"
     frontend: "Frontend"
+    user_manual_pdf: "User manual (PDF)"
   ai:
     title: "AI configuration"
     breadcrumb: "AI"

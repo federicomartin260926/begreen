@@ -321,6 +321,13 @@
                                     <i class="bi bi-person-circle me-1"></i> {{ 'auth.profile'|trans }}
                                 </a>
                             </li>
+                            {% if user_manual_available() %}
+                            <li>
+                                <a class="dropdown-item" href="{{ path('backend_user_manual_download', {'_locale': app.request.locale}) }}">
+                                    <i class="bi bi-file-earmark-arrow-down me-1"></i> {{ 'backend.menu.user_manual_pdf'|trans }}
+                                </a>
+                            </li>
+                            {% endif %}
                             <li><hr class="dropdown-divider"></li>
                             {# BOTÓN SALIR DE IMPERSONACIÓN: mira directamente el token #}
                             {% if is_granted('IS_IMPERSONATOR') %}

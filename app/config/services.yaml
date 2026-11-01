@@ -15,6 +15,7 @@ parameters:
     ai.report_prompt_file: '%kernel.project_dir%/config/ai_report_prompt.yaml'
     ai.report_lock_wait_seconds: 120
     emission_record_attachment_storage_dir: '%kernel.project_dir%/var/storage/emission-records'
+    user_manual_directory: '%kernel.project_dir%/resources/manuales'
     openai.api_key: '%env(default:ai.empty_api_key:AI_API_KEY)%'
     openai.model: '%env(string:AI_MODEL)%'
     openai.base_url: '%env(string:AI_BASE_URL)%'
@@ -59,6 +60,10 @@ services:
     Symfony\Component\Translation\TranslatorBagInterface: '@translator'
 
     App\Service\PdfService: ~
+
+    App\Service\UserManualProvider:
+        arguments:
+            $manualDirectory: '%user_manual_directory%'
 
     App\Service\Animation\AnimationConfiguration:
         autowire: false
