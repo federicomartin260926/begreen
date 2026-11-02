@@ -21,9 +21,14 @@ final class HomeController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        // Proyectos en los que el usuario es miembro
-        $projects = $membershipRepo->projectsOf($user);
+        // Administrador y Super Administrador ven todos los proyectos,
+        // aunque todavía no figuren como miembros de ninguno.
+        if ($this->isGranted('ROLE_ADMIN')) {
+            return $this->redirectToRoute('backend_project_index');
+        }
 
+        // El resto de perfiles entra en el Dashboard solo con proyectos asignados.
+        $projects = $membershipRepo->projectsOf($user);
         if (count($projects) > 0) {
             return $this->redirectToRoute('backend_project_index');
         }
