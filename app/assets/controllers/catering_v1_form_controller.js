@@ -87,7 +87,7 @@ export default class extends Controller {
     if (result.tablewareEmissionKgCo2e !== null) lines.push(`${this.i18nValue.tableware}: ${this.formatDecimal(result.tablewareEmissionKgCo2e)} kg CO₂e`);
 
     (result.factorTraces || []).forEach((trace) => {
-      const component = trace.component === 'tableware' ? this.i18nValue.tableware : this.i18nValue.food;
+      const component = trace.component === 'tableware' ? this.i18nValue.tableware : (trace.component === 'gas' ? this.i18nValue.gas : this.i18nValue.food);
       const parts = [component];
       if (trace.factorId) parts.push(`${this.i18nValue.factorId}: ${trace.factorId}`);
       if (trace.temporalType) parts.push(`${this.i18nValue.temporalType}: ${trace.temporalType}`);

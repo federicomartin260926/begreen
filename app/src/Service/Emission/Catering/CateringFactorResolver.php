@@ -6,6 +6,9 @@ namespace App\Service\Emission\Catering;
 
 use App\Entity\EmissionFactor;
 use App\Service\Emission\EmissionFactorResolver;
+use App\Service\Emission\Energy\StationaryCombustionFactorInput;
+use App\Service\Emission\Energy\StationaryCombustionFactorResolution;
+use App\Service\Emission\Energy\StationaryCombustionFactorResolver;
 
 final readonly class CateringFactorResolver
 {
@@ -13,6 +16,23 @@ final readonly class CateringFactorResolver
 
     public function __construct(private EmissionFactorResolver $factorResolver)
     {
+    }
+
+    /** Use the already approved stationary-combustion factor (Energy), without duplicating it in Catering. */
+    public function resolveGas(string $gasType, string $country, int $activityYear): StationaryCombustionFactorResolution
+    {
+        $fuel = match ($gasType) {
+            'propane' => 'Gas propano',
+            'butane' => 'Gas butano',
+            default => throw new \InvalidArgumentException(sprintf('Unsupported catering gas type "%s".', $gasType)),
+        };
+
+        return (new StationaryCombustionFactorResolver($this->factorResolver))->resolve(new StationaryCombustionFactorInput(
+            country: $country,
+            activityYear: $activityYear,
+            fuel: $fuel,
+            unit: 'kg',
+        ));
     }
 
     public function resolveFood(string $menuVariant, int $activityYear): CateringFactorResolution

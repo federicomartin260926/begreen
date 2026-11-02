@@ -193,7 +193,37 @@ final readonly class CateringEmissionCalculator
             return $this->pending($activityYear, ['gas_input_invalid']);
         }
 
-        return $this->notCalculable($activityYear, $this->multiply($cylinders, $kg), 'kg');
+        $amountKg = $this->multiply($cylinders, $kg);
+        $resolution = $this->factorResolver->resolveGas($input->gasType, (string) $input->country, $activityYear);
+        if (!$resolution->hasFactor()) {
+            return $this->notCalculable($activityYear, $amountKg, 'kg');
+        }
+
+        $cateringResolution = CateringFactorResolution::fromResolution($resolution->resolution, 'gas', $input->gasType);
+        $factorValue = $resolution->resolution->factor?->getValue();
+        $emission = $resolution->isCalculable() && null !== $factorValue
+            ? $this->multiply($amountKg, $factorValue)
+            : null;
+        $trace = CateringFactorTrace::fromResolution(
+            $cateringResolution,
+            $amountKg,
+            'kg',
+            $emission,
+            $resolution->isGeographicProxy,
+            $resolution->proxyGeography,
+        );
+        if (null === $emission) {
+            return $this->notCalculable($activityYear, $amountKg, 'kg', [$trace], ['emission_factor_not_calculable']);
+        }
+
+        return new CateringEmissionResult(
+            EmissionRecord::STATUS_CALCULATED,
+            $emission,
+            $amountKg,
+            'kg',
+            $activityYear,
+            [$trace],
+        );
     }
 
     private function emptyMenuLine(CateringMenuLine $line): bool

@@ -37,10 +37,12 @@ final readonly class CateringFactorTrace
         string $normalizedAmount,
         string $normalizedUnit,
         ?string $emissionKgCo2e,
+        ?bool $isGeographicProxyOverride = null,
+        ?string $proxyGeographyOverride = null,
     ): self {
         $factorVersion = $resolution->metadata['factorVersion'] ?? null;
         $isTemporalFallback = true === ($resolution->metadata['isTemporalFallback'] ?? false);
-        $isGeographicProxy = true === ($resolution->metadata['isGeographicProxy'] ?? false);
+        $isGeographicProxy = $isGeographicProxyOverride ?? (true === ($resolution->metadata['isGeographicProxy'] ?? false));
 
         return new self(
             $resolution->component,
@@ -58,7 +60,7 @@ final readonly class CateringFactorTrace
             $isTemporalFallback,
             $isTemporalFallback ? 'source_marked_fallback' : null,
             $isGeographicProxy,
-            is_string($resolution->metadata['proxyGeography'] ?? null) ? $resolution->metadata['proxyGeography'] : null,
+            $proxyGeographyOverride ?? (is_string($resolution->metadata['proxyGeography'] ?? null) ? $resolution->metadata['proxyGeography'] : null),
             is_string($resolution->metadata['qualityStatus'] ?? null) ? $resolution->metadata['qualityStatus'] : null,
             $resolution->criteria,
             $resolution->metadata,
