@@ -5,7 +5,18 @@ export default class extends Controller {
 
   static values = { i18n: Object, previewUrl: String, previewToken: String };
 
-  connect() { this.updateFields(); }
+  connect() {
+    // BEGREEN_78_COUNTRY_SELECT_CHROME_LINUX_V4
+    const ua = navigator.userAgent || "";
+    const isChromeLinuxX11 = /\bX11;\s*Linux\b/.test(ua) && !/Android/i.test(ua)
+      && /\bChrome\/\d+/.test(ua)
+      && !/\b(?:Edg|OPR|Chromium|Vivaldi|YaBrowser)\//.test(ua)
+      && (!navigator.userAgentData?.brands || navigator.userAgentData.brands.some(b => b.brand === "Google Chrome"));
+    if (isChromeLinuxX11) {
+      this.element.querySelector('select[name="country"].begreen-catering-country-chrome-x11')?.classList.add("begreen-catering-country-chrome-linux-active");
+    }
+    this.updateFields();
+  }
 
   disconnect() {
     clearTimeout(this.previewTimer);

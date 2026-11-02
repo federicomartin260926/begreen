@@ -4084,3 +4084,12 @@ thead .bgos-daily-breakdown__row-heading {
 .bgos-agenda-category > .accordion-header {
     scroll-margin-top: 76px;
 }
+
+/* BEGREEN #78 — selector Pais/Catering, Chrome en Linux X11.
+   El font-size de Bootstrap provoca seleccion inmediata del menu nativo;
+   recuperar el tamano del navegador conservando la tipografia de BEGREEN. */
+select.begreen-catering-country-chrome-x11.begreen-catering-country-chrome-linux-active {
+  font-size: revert !important;
+  font-family: var(--bs-body-font-family, inherit) !important;
+  font-weight: 400 !important;
+}
