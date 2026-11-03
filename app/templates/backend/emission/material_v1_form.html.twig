@@ -98,7 +98,7 @@
       </div></section>
     {% endif %}
 
-    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate data-material-v1-form-target="form" data-action="input->material-v1-form#queuePreview submit->material-v1-form#validate">
+    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate data-emission-date-default data-material-v1-form-target="form" data-action="input->material-v1-form#queuePreview submit->material-v1-form#validate">
       <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
       <input type="hidden" name="batteryChemistry" value="{{ values.batteryChemistry|default('') }}" data-material-v1-form-target="batteryChemistry">
       <input type="hidden" name="woodType" value="{{ values.woodType|default('') }}" data-material-v1-form-target="woodType">

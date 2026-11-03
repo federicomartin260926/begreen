@@ -328,7 +328,7 @@
       </section>
     {% endif %}
 
-    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate data-transport-v20-form-target="form" data-action="input->transport-v20-form#queuePreview change->transport-v20-form#queuePreview submit->transport-v20-form#validate">
+    <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate data-emission-date-default data-transport-v20-form-target="form" data-action="input->transport-v20-form#queuePreview change->transport-v20-form#queuePreview submit->transport-v20-form#validate">
       <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
 
       <section class="transport-v20-section mb-4">

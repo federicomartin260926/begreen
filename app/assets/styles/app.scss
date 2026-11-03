@@ -2319,8 +2319,9 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         border-color: #9dceae;
     }
     .implementation-measure-row--not_implemented .implementation-measure-row {
-        background-color: #e9ecef;
-        border-color: #b9c1c9;
+        background-color: #f8d7da;
+        border-color: #dc3545;
+        border-left-width: 3px;
     }
     .implementation-measure-row--discarded .implementation-measure-row,
     .implementation-measure-row--not_applicable .implementation-measure-row {
@@ -2342,9 +2343,9 @@ table.table.dataTable.table-hover.green_table_1>tbody>tr:hover>* {
         border-color: #9dceae;
     }
     .implementation-measure-row--not_implemented .implementation-measure-row__state {
-        color: #343a40;
-        background-color: #dce1e6;
-        border-color: #adb5bd;
+        color: #842029;
+        background-color: #f1aeb5;
+        border-color: #dc3545;
     }
     .implementation-measure-detail {
         margin-top: .35rem;

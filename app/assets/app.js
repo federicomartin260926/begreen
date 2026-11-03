@@ -1,4 +1,5 @@
 import { installGlobalUploadValidation } from "./lib/file_upload_validation";
+import { installEmissionDateDefault } from "./lib/emission_date_default";
 // assets/app.js
 
 // 1) Estilos base
@@ -123,3 +124,4 @@ $(function () {
 
 // Prevención uniforme de subidas no válidas en formularios de BEGREEN.
 installGlobalUploadValidation();
+installEmissionDateDefault();

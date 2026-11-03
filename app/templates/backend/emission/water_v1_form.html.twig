@@ -89,7 +89,7 @@
     {% endif %}
 
     <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate
-          data-water-v1-form-target="form"
+          data-emission-date-default data-water-v1-form-target="form"
           data-action="input->water-v1-form#queuePreview change->water-v1-form#queuePreview submit->water-v1-form#validate">
       <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
 

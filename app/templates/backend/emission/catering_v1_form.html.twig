@@ -101,7 +101,7 @@
     {% endif %}
 
     <form method="post" action="{{ formAction }}" enctype="multipart/form-data" novalidate
-          data-catering-v1-form-target="form"
+          data-emission-date-default data-catering-v1-form-target="form"
           data-action="input->catering-v1-form#queuePreview change->catering-v1-form#updateFields submit->catering-v1-form#validate">
       <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
 
