@@ -332,7 +332,8 @@ export default class extends Controller {
     this.fillSelect(this.thermalFuelTarget, this.configValue.thermalFuels, initial.thermalFuel);
     this.fillSelect(this.tripTypeTarget, this.configValue.tripTypes, initial.tripType);
     this.fillSelect(this.travelClassTarget, this.configValue.travelClasses, initial.travelClass);
-    this.fillSelect(this.weightUnitTarget, this.configValue.weightUnits, initial.weightUnit);
+    const preferredWeightUnit = initial.weightUnit || (this.isSpain ? 'kg' : null);
+    this.fillSelect(this.weightUnitTarget, this.configValue.weightUnits, preferredWeightUnit);
     this.fillSelect(this.accompanimentTarget, this.configValue.accompanimentOptions, initial.accompaniment);
   }
 
@@ -440,13 +441,19 @@ export default class extends Controller {
     this.toggle(this.activityFieldsTarget, Boolean(method), clearInactive);
 
     this.activityLabelTarget.textContent = this.i18nValue.activityLabels[method] || '';
-    this.refreshActivityUnits(method, clearInactive ? null : this.initialValue.activityUnit);
+    // #78 C1: mantener una unidad manual vigente al reconstruir opciones compatibles.
+    // Si cambia método/modo (clearInactive), aplicar el valor predeterminado válido.
+    const preferredActivityUnit = clearInactive
+      ? null
+      : (this.activityUnitTarget.value || this.initialValue.activityUnit);
+    this.refreshActivityUnits(method, preferredActivityUnit);
   }
 
   refreshActivityUnits(method, preferred) {
     let units = this.configValue.unitsByMethod[method] || [];
     if (method === 'fuel') units = this.fuelUnits();
-    this.fillSelect(this.activityUnitTarget, units, units.includes(preferred) ? preferred : null);
+    const defaultUnit = this.isSpain && units.includes('km') ? 'km' : null;
+    this.fillSelect(this.activityUnitTarget, units, units.includes(preferred) ? preferred : defaultUnit);
   }
 
   fuelUnits() {

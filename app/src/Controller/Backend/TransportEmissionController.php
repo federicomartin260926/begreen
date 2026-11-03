@@ -363,7 +363,7 @@ final class TransportEmissionController extends AbstractController
             'category' => '',
             'mode' => '',
             'method' => '',
-            'country' => '',
+            'country' => $this->countryCatalog->iso3ForForm((string) ($project->getCountry() ?? '')),
             'startDate' => '',
             'endDate' => '',
             'activityValue' => '',

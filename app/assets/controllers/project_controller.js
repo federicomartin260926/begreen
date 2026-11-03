@@ -44,6 +44,8 @@ export default class extends Controller {
     this.toggleConditionalRows();
     this.animationShootingForced = null;
     this.updateAnimationShooting();
+    // #78 D1: completar únicamente inicios vacíos cuando ya hay fin previo.
+    this.syncPhaseStartDates();
   }
 
   typeTargetConnected() {
@@ -278,6 +280,32 @@ export default class extends Controller {
     return map[key] || key;
   }
 
+  // #78 D1: la fecha inicial de una fase toma el fin de la fase previa,
+  // exclusivamente si está vacía. No cambia fechas introducidas a mano.
+  syncPhaseStartDates(event) {
+    if (event && !event.target.matches('input[type="date"][name$="[endDate]"]')) return;
+    if (!this.hasListTarget) return;
+
+    const order = { preproduccion: 1, montaje: 1, actividad: 2, postproduccion: 3, desmontaje: 3 };
+    const rows = Array.from(this.listTarget.querySelectorAll('[data-collection-id]'))
+      .map((row) => ({
+        phase: row.querySelector('input[type="hidden"][name$="[phase]"]')?.value,
+        start: row.querySelector('input[type="date"][name$="[startDate]"]'),
+        end: row.querySelector('input[type="date"][name$="[endDate]"]'),
+      }))
+      .filter((row) => row.phase && row.start && row.end)
+      .sort((a, b) => (order[a.phase] ?? 99) - (order[b.phase] ?? 99));
+
+    for (let i = 1; i < rows.length; i++) {
+      const previousEnd = rows[i - 1].end.value;
+      if (!rows[i].start.value && previousEnd && !rows[i].start.disabled) {
+        rows[i].start.value = previousEnd;
+        rows[i].start.dispatchEvent(new Event('input', { bubbles: true }));
+        rows[i].start.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  }
+
   // === Botón añadir fase postproducción (igual que antes)
   addPostproduccion(event) {
     event.preventDefault();
@@ -311,6 +339,7 @@ export default class extends Controller {
 
     this.indexValue++;
     this.listTarget.appendChild(newItem);
+    this.syncPhaseStartDates();
 
     this.updateLabels();
     this.toggleAddButton();
