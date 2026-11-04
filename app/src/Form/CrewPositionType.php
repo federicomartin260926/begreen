@@ -12,6 +12,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints\NotBlank;
 
 final class CrewPositionType extends AbstractType
 {
@@ -26,7 +27,8 @@ final class CrewPositionType extends AbstractType
             ->add('name_en', TextType::class, [
                 'label' => 'backend.crew_catalog.form.name_en',
                 'mapped' => false,
-                'required' => false,
+                'required' => true,
+                'constraints' => [new NotBlank()],
                 'data' => $translations['en']['name'] ?? null,
             ])
             ->add('description', TextareaType::class, [

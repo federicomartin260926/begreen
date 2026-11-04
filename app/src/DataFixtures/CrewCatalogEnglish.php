@@ -13,6 +13,9 @@ final class CrewCatalogEnglish
     private const DEPARTMENT_OVERRIDES = [];
 
     private const DEPARTMENTS = [
+        'ACTORES Y FIGURACIÓN' => 'ACTORS AND EXTRAS',
+        'AGENCIA DE PUBLICIDAD O MARKETING' => 'ADVERTISING OR MARKETING AGENCY',
+        'CLIENTES' => 'CLIENTS',
         'ACCESIBILIDAD' => 'ACCESSIBILITY',
         'ADMINISTRACIÓN' => 'ADMINISTRATION',
         'ADMINISTRACIÓN Y LEGAL' => 'ADMINISTRATION AND LEGAL',
@@ -79,6 +82,11 @@ final class CrewCatalogEnglish
     ];
 
     private const POSITIONS = [
+        'Actor' => 'Actor',
+        'Actriz' => 'Actress',
+        'Modelo' => 'Model',
+        'Modelo de manos' => 'Hand Model',
+        'Figurante' => 'Extra',
         '2º Ayudante de dirección' => 'Second Assistant Director',
         '2º/2ª Operador/a' => 'Second Camera Operator',
         '3er. Ayudante de dirección' => 'Third Assistant Director',
@@ -419,6 +427,10 @@ final class CrewCatalogEnglish
         'Rotoscopista' => 'Rotoscope Artist',
         'Rotulista' => 'Signwriter',
         'Runner' => 'Runner',
+        'Becario/a' => 'Trainee',
+        'Ayudante de estilista' => 'Assistant Stylist',
+        'Auxiliar de estilista' => 'Stylist Assistant',
+        'Veterinario/a' => 'Veterinarian',
         'Sastre/a' => 'Tailor',
         'Script' => 'Script Supervisor',
         'Script / continuidad' => 'Script / Continuity Supervisor',

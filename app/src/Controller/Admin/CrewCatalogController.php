@@ -4,6 +4,7 @@ namespace App\Controller\Admin;
 
 use App\Entity\CrewDepartment;
 use App\Entity\CrewPosition;
+use App\Entity\CrewMemberAssignment;
 use App\Form\CrewDepartmentType;
 use App\Form\CrewPositionType;
 use App\Repository\CrewDepartmentRepository;
@@ -124,6 +125,16 @@ final class CrewCatalogController extends AbstractController
             return $this->redirectToRoute('admin_crew_catalog_index', ['scope' => $scope]);
         }
 
+        // E1: nunca eliminar un departamento con cargos o asignaciones.
+        // La FK de asignaciones utiliza ON DELETE CASCADE.
+        $assignmentCount = $entityManager->getRepository(CrewMemberAssignment::class)
+            ->count(['crewDepartment' => $department]);
+        if ($assignmentCount > 0 || !$department->getPositions()->isEmpty()) {
+            $this->addFlash('danger', 'No se puede eliminar un departamento que tenga cargos o personas asignadas.');
+
+            return $this->redirectToRoute('admin_crew_catalog_index', ['scope' => $scope]);
+        }
+
         $entityManager->remove($department);
         $entityManager->flush();
         $this->addFlash('success', 'backend.crew_catalog.flash.department_deleted');
@@ -205,6 +216,19 @@ final class CrewCatalogController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // E1: mantener consistentes las asignaciones existentes si se cambia de departamento.
+            $selectedDepartment = $position->getCrewDepartment();
+            if ($returnDepartment instanceof CrewDepartment
+                && $selectedDepartment instanceof CrewDepartment
+                && $selectedDepartment->getId() !== $returnDepartment->getId()
+                && $entityManager->getRepository(CrewMemberAssignment::class)->count(['crewPosition' => $position]) > 0
+            ) {
+                $this->addFlash('danger', 'No se puede cambiar de departamento un cargo que tenga personas asignadas.');
+                $this->restoreLocale($request, $translatableListener);
+
+                return $this->redirectToRoute('admin_crew_catalog_positions', ['id' => $returnDepartment->getId()]);
+            }
+
             $this->saveTranslations($entityManager, $position, $form, ['name', 'description']);
             $entityManager->flush();
             $this->restoreLocale($request, $translatableListener);
@@ -231,6 +255,13 @@ final class CrewCatalogController extends AbstractController
         $departmentId = $position->getCrewDepartment()?->getId();
         if (!$this->isCsrfTokenValid('delete_crew_position_'.$position->getId(), (string) $request->request->get('_token'))) {
             $this->addFlash('danger', 'backend.common.csrf_invalid');
+
+            return $this->redirectToRoute('admin_crew_catalog_positions', ['id' => $departmentId]);
+        }
+
+        // E1: ON DELETE SET NULL alteraria asignaciones existentes.
+        if ($entityManager->getRepository(CrewMemberAssignment::class)->count(['crewPosition' => $position]) > 0) {
+            $this->addFlash('danger', 'No se puede eliminar un cargo que tenga personas asignadas.');
 
             return $this->redirectToRoute('admin_crew_catalog_positions', ['id' => $departmentId]);
         }

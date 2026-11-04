@@ -122,6 +122,16 @@ final class CrewCatalogFixtures extends Fixture implements DependentFixtureInter
                 ],
             ],
             [
+                'department' => 'ACTORES Y FIGURACIÓN',
+                'positions' => [
+                    'Actor',
+                    'Actriz',
+                    'Modelo',
+                    'Modelo de manos',
+                    'Figurante',
+                ],
+            ],
+            [
                 'department' => 'CATERING',
                 'positions' => [
                     'Jefe/a de catering',
@@ -386,6 +396,9 @@ final class CrewCatalogFixtures extends Fixture implements DependentFixtureInter
                     'Modista',
                     'Sastre/a',
                     'Lavandería',
+                    'Estilista',
+                    'Ayudante de estilista',
+                    'Auxiliar de estilista',
                 ],
             ],
             [
@@ -395,7 +408,16 @@ final class CrewCatalogFixtures extends Fixture implements DependentFixtureInter
                     'Adiestrador/a canino',
                     'Adiestrador/a cetrería',
                     'Caballista',
+                    'Veterinario/a',
                 ],
+            ],
+            [
+                'department' => 'AGENCIA DE PUBLICIDAD O MARKETING',
+                'positions' => [],
+            ],
+            [
+                'department' => 'CLIENTES',
+                'positions' => [],
             ],
         ],
         CrewDepartment::SCOPE_EVENT => [
@@ -641,8 +663,26 @@ final class CrewCatalogFixtures extends Fixture implements DependentFixtureInter
                     'Traductor/a - intérprete',
                 ],
             ],
+            [
+                'department' => 'AGENCIA DE PUBLICIDAD O MARKETING',
+                'positions' => [],
+            ],
+            [
+                'department' => 'CLIENTES',
+                'positions' => [],
+            ],
         ],
         CrewDepartment::SCOPE_ANIMATION => [
+            [
+                'department' => 'ACTORES Y FIGURACIÓN',
+                'positions' => [
+                    'Actor',
+                    'Actriz',
+                    'Modelo',
+                    'Modelo de manos',
+                    'Figurante',
+                ],
+            ],
             [
                 'department' => 'DESARROLLO Y GUION',
                 'positions' => [
@@ -965,7 +1005,12 @@ final class CrewCatalogFixtures extends Fixture implements DependentFixtureInter
                     ->setScope($scope)
                     ->setSortOrder(($departmentIndex + 1) * 10);
 
-                foreach ($definition['positions'] as $positionIndex => $positionName) {
+                // E1: el puesto transversal Becario/a está disponible en todos los departamentos.
+                $positionNames = $definition['positions'];
+                if (!in_array('Becario/a', $positionNames, true)) {
+                    $positionNames[] = 'Becario/a';
+                }
+                foreach ($positionNames as $positionIndex => $positionName) {
                     $position = (new CrewPosition())
                         ->setName($positionName)
                         ->setSortOrder(($positionIndex + 1) * 10);
