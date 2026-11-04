@@ -85,10 +85,11 @@ final class SustainabilityPlanCompletionService
             $measures = $qb->getQuery()->getResult();
         }
 
+        // D5: presentar las medidas por grupo funcional, sin separar Basic de Standard.
+        // La elegibilidad por plan comercial se decide antes, en el filtro del catalogo.
         return $this->measureOrderer->sortVisibleMeasures(
             $measures,
-            $protocol->getGroupingBy(),
-            $this->catalogResolver->isCanonicalProtocol($protocol)
+            $protocol->getGroupingBy()
         );
     }
 

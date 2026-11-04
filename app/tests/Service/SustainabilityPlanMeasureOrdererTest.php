@@ -41,6 +41,34 @@ final class SustainabilityPlanMeasureOrdererTest extends TestCase
         ], array_map(static fn (Measure $measure): string => (string) $measure->getName(), $sorted));
     }
 
+    public function testStandardElaborationMixesBasicAndStandardMeasuresByCategory(): void
+    {
+        $office = (new Category())->setName('Oficina')->setSortOrder(10);
+        $energy = (new Category())->setName('Energía')->setSortOrder(20);
+        $department = (new Department())->setName('Producción')->setSortOrder(10);
+        $block = (new MeasureBlock())->setName('Bloque')->setSortOrder(10);
+        $measures = [
+            $this->createMeasure('Energía Basic', $energy, $department, $block, 4, 0, 5),
+            $this->createMeasure('Oficina Standard', $office, $department, $block, 2, 0, 3),
+            $this->createMeasure('Energía Standard', $energy, $department, $block, 3, 0, 3),
+            $this->createMeasure('Oficina Basic', $office, $department, $block, 1, 0, 4),
+        ];
+
+        // Misma llamada que utiliza la navegación de elaboración después de D5.
+        $sorted = (new SustainabilityPlanMeasureOrderer())->sortVisibleMeasures(
+            $measures,
+            Protocol::GROUP_BY_CATEGORY
+        );
+
+        self::assertSame([
+            'Oficina Basic',
+            'Oficina Standard',
+            'Energía Standard',
+            'Energía Basic',
+        ], array_map(static fn (Measure $measure): string => (string) $measure->getName(), $sorted));
+        self::assertSame([4, 3, 3, 5], array_map(static fn (Measure $measure): ?int => $measure->getScore(), $sorted));
+    }
+
     public function testCategoryGroupingOrdersOfficeBeforeEnergyThenBlockThenMeasure(): void
     {
         $office = (new Category())->setName('Oficina')->setSortOrder(10);
