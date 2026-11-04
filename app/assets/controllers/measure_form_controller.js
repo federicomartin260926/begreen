@@ -13,7 +13,14 @@ export default class extends Controller {
     // Si ya hay un protocolo seleccionado al entrar (edit o default), cargar departamentos
     const protoId = this.protocolTarget?.value;
     if (protoId) {
-      this.loadDepartments(protoId, this.currentDepartmentValue || null);
+      // Symfony already rendered the full multiple selection; preserve it across AJAX.
+      const selectedIds = Array.from(this.departmentTarget.selectedOptions)
+        .map((option) => option.value)
+        .filter(Boolean);
+      const preselectIds = selectedIds.length
+        ? selectedIds
+        : (this.currentDepartmentValue ? [this.currentDepartmentValue] : []);
+      this.loadDepartments(protoId, preselectIds);
       this.loadMeasureBlocks(protoId, this.currentMeasureBlockValue || null);
     }
   }
@@ -29,7 +36,7 @@ export default class extends Controller {
     }
   }
 
-  async loadDepartments(protocolId, preselectId = null) {
+  async loadDepartments(protocolId, preselectIds = []) {
     const url = `${this.departmentsBaseValue}?id=${encodeURIComponent(protocolId)}`;
 
     // Deshabilitar select y poner "Cargando…"
@@ -39,7 +46,7 @@ export default class extends Controller {
       const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
       const data = await resp.json(); // [{id,name}, ...]
 
-      this.populateDepartment(data, preselectId);
+      this.populateDepartment(data, preselectIds);
     } catch (e) {
       console.error('Error cargando departamentos:', e);
       this.populateDepartment([]);
@@ -48,9 +55,10 @@ export default class extends Controller {
     }
   }
 
-  populateDepartment(items, preselectId = null) {
+  populateDepartment(items, preselectIds = []) {
     const select = this.departmentTarget;
     if (!select) return;
+    const selectedIds = new Set(preselectIds.map(String));
 
     // Vaciar
     while (select.firstChild) select.removeChild(select.firstChild);
@@ -66,7 +74,7 @@ export default class extends Controller {
       const opt = document.createElement('option');
       opt.value = String(id);
       opt.textContent = name;
-      if (preselectId && String(preselectId) === String(id)) {
+      if (selectedIds.has(String(id))) {
         opt.selected = true;
       }
       select.appendChild(opt);
