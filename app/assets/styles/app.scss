@@ -4094,3 +4094,11 @@ select.begreen-catering-country-chrome-x11.begreen-catering-country-chrome-linux
   font-family: var(--bs-body-font-family, inherit) !important;
   font-weight: 400 !important;
 }
+
+/* BEGREEN #78 A3 — mismo workaround Chrome/Linux X11 para Tipo de empresa.
+   Solo se activa por Stimulus en el paso 2 del asistente de proyectos. */
+select.begreen-project-company-type-chrome-linux-active {
+  font-size: revert !important;
+  font-family: var(--bs-body-font-family, inherit) !important;
+  font-weight: 400 !important;
+}

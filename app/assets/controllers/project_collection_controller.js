@@ -30,10 +30,26 @@ export default class extends Controller {
       }
     }
 
+    if (this.kindValue === "company") {
+      this.activateChromeLinuxCompanySelects(this.listTarget);
+    }
     this.toggleAddButton();
     this.updateFundingSummary();
     this.synchronizeFundingCompanyOptions();
     this.emitChanged();
+  }
+
+  activateChromeLinuxCompanySelects(root) {
+    const ua = navigator.userAgent;
+    const isChromeLinuxX11 = /\bX11;\s*Linux\b/.test(ua) && !/Android/i.test(ua)
+      && /\bChrome\/\d+/.test(ua)
+      && !/\b(?:Edg|OPR|Chromium|Vivaldi|YaBrowser)\//.test(ua)
+      && (!navigator.userAgentData?.brands || navigator.userAgentData.brands.some(b => b.brand === "Google Chrome"));
+    if (!isChromeLinuxX11) return;
+
+    root.querySelectorAll('select[name$="[type]"]').forEach((select) => {
+      select.classList.add("begreen-project-company-type-chrome-linux-active");
+    });
   }
 
   disconnect() {
@@ -84,6 +100,9 @@ export default class extends Controller {
 
   appendItem(item) {
     this.listTarget.appendChild(item);
+    if (this.kindValue === "company") {
+      this.activateChromeLinuxCompanySelects(item);
+    }
     this.toggleAddButton();
     this.updateFundingSummary();
     this.synchronizeFundingCompanyOptions();
