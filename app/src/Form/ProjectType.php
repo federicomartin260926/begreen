@@ -82,6 +82,7 @@ class ProjectType extends AbstractType
             ->add('country', CountryType::class, [
                 'label' => 'backend.projects.form.country',
                 'placeholder' => 'backend.projects.form.country_placeholder',
+                'attr' => ['class' => 'begreen-project-country-chrome-x11'],
             ])
             ->add('commercialTier', ChoiceType::class, [
                 'label' => 'backend.projects.form.commercial_tier',

@@ -41,6 +41,16 @@ export default class extends Controller {
     }
     this.updateLabels();
     this.toggleAddButton();
+    // #78 A3: mismo workaround probado para Pais/Catering en Chrome Linux X11.
+    const ua = navigator.userAgent;
+    const isChromeLinuxX11 = /\bX11;\s*Linux\b/.test(ua) && !/Android/i.test(ua)
+      && /\bChrome\/\d+/.test(ua)
+      && !/\b(?:Edg|OPR|Chromium|Vivaldi|YaBrowser)\//.test(ua)
+      && (!navigator.userAgentData?.brands || navigator.userAgentData.brands.some(b => b.brand === 'Google Chrome'));
+    if (isChromeLinuxX11) {
+      this.element.querySelector('select.begreen-project-country-chrome-x11')
+        ?.classList.add('begreen-project-country-chrome-linux-active');
+    }
     this.toggleConditionalRows();
     this.animationShootingForced = null;
     this.updateAnimationShooting();

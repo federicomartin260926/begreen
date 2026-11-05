@@ -4094,3 +4094,10 @@ select.begreen-catering-country-chrome-x11.begreen-catering-country-chrome-linux
   font-family: var(--bs-body-font-family, inherit) !important;
   font-weight: 400 !important;
 }
+
+/* #78 A3: selector Pais de Proyecto, solo Chrome/Linux X11. */
+select.begreen-project-country-chrome-x11.begreen-project-country-chrome-linux-active {
+  font-size: revert !important;
+  font-family: var(--bs-body-font-family, inherit) !important;
+  font-weight: 400 !important;
+}
