@@ -1686,6 +1686,8 @@ backend:
         verified: "Checked"
       execution_decision:
         not_executed: "Not executed"
+        undecided: "Undecided"
+        not_executable: "Not executable"
         standby: "Standby"
         executed: "Executed"
         help: "Select Not executed, Standby or Executed. To be marked as Implemented, Executed requires an Action taken and Evidence."

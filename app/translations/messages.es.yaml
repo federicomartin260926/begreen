@@ -1691,6 +1691,8 @@ backend:
         verified: "Chequeada"
       execution_decision:
         not_executed: "No ejecutada"
+        undecided: "Sin decidir"
+        not_executable: "No ejecutable"
         standby: "Standby"
         executed: "Ejecutada"
         help: "Selecciona No ejecutada, Standby o Ejecutada. Para quedar Implementada, Ejecutada requiere Acción realizada y Evidencia."

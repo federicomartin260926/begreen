@@ -94,6 +94,34 @@ final class SustainabilityPlanExcelExporterTest extends TestCase
         self::assertSame('Medida personalizada', (string) $sheet->getCell('D3')->getValue());
     }
 
+    public function testExcelLayoutHasBoundedWidthsAndWrappedBody(): void
+    {
+        $exporter = new SustainabilityPlanExcelExporter($this->createTranslator());
+        $plan = (new Plan())->setProject($this->createProject(ProjectSubscription::TIER_STANDARD));
+        $long = str_repeat('Descripción extensa. ', 100);
+        $spreadsheet = $exporter->buildSpreadsheet($plan, $plan->getProject(), 'department', [[
+            'label' => 'Producción',
+            'rows' => [[
+                'measureId' => 200,
+                'selected' => true,
+                'displayName' => 'Medida larga',
+                'description' => $long,
+                'implemented' => null,
+            ]],
+        ]]);
+        $sheet = $spreadsheet->getActiveSheet();
+        self::assertSame('P', $sheet->getHighestColumn());
+        self::assertSame(2, $sheet->getHighestDataRow());
+        self::assertSame($long, $sheet->getCell('O2')->getValue());
+        self::assertSame('Undecided', $sheet->getCell('K2')->getValue());
+        self::assertFalse($sheet->getColumnDimension('O')->getAutoSize());
+        self::assertLessThanOrEqual(60, $sheet->getColumnDimension('O')->getWidth());
+        self::assertTrue($sheet->getStyle('O2')->getAlignment()->getWrapText());
+        self::assertSame(72.0, $sheet->getRowDimension(2)->getRowHeight());
+        self::assertSame('A1:P2', $sheet->getAutoFilter()->getRange());
+        self::assertSame('A2', $sheet->getFreezePane());
+    }
+
     private function createTranslator(): TranslatorInterface
     {
         $translator = $this->createMock(TranslatorInterface::class);

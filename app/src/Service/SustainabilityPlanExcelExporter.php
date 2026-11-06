@@ -76,9 +76,30 @@ final class SustainabilityPlanExcelExporter
             $sheet->setAutoFilter('A1:P' . ($rowIndex - 1));
         }
 
-        foreach (range('A', 'P') as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
+        // F6: anchuras acotadas para evitar hojas de cientos de columnas visuales.
+        // Se mantienen las 16 columnas originales y una fila por medida seleccionada.
+        $columnWidths = [
+            'A' => 32, 'B' => 22, 'C' => 22, 'D' => 52,
+            'E' => 10, 'F' => 36, 'G' => 20, 'H' => 26,
+            'I' => 22, 'J' => 38, 'K' => 23, 'L' => 14,
+            'M' => 24, 'N' => 38, 'O' => 60, 'P' => 24,
+        ];
+        foreach ($columnWidths as $column => $width) {
+            $sheet->getColumnDimension($column)->setAutoSize(false);
+            $sheet->getColumnDimension($column)->setWidth($width);
         }
+        $sheet->getStyle('A2:P' . max(2, $rowIndex - 1))
+            ->getAlignment()
+            ->setVertical(Alignment::VERTICAL_TOP)
+            ->setWrapText(true);
+        // Alto limitado: los textos largos permanecen íntegros en la celda
+        // y pueden consultarse en la barra de fórmulas sin ensanchar la hoja.
+        for ($r = 2; $r < $rowIndex; $r++) {
+            $sheet->getRowDimension($r)->setRowHeight(72);
+        }
+        $sheet->getRowDimension(1)->setRowHeight(30);
+        $sheet->getStyle('A2:A' . max(2, $rowIndex - 1))
+            ->getFont()->setBold(true);
 
         $sheet->getStyle('A1:P1')->applyFromArray([
             'font' => ['bold' => true],
@@ -89,6 +110,7 @@ final class SustainabilityPlanExcelExporter
             'alignment' => [
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
                 'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
             ],
             'borders' => [
                 'bottom' => [
