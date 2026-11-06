@@ -28,6 +28,8 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 #[\Symfony\Component\Security\Http\Attribute\IsGranted('ROLE_USER')]
 final class SustainabilityPlanExportController extends AbstractController
 {
+    use PdfPlanCoverAssetsTrait;
+
     private const VALID_GROUPINGS = ['category', 'department', 'impact_area', 'triple_balance', 'ods'];
     private const CLOSURE_GROUPINGS = ['department', 'impact_area', 'triple_balance', 'ods'];
 
@@ -190,6 +192,14 @@ final class SustainabilityPlanExportController extends AbstractController
                     'logo' => $this->pdfAssetDataUri(
                         'assets/images/logo-white.svg',
                         'image/svg+xml'
+                    ),
+                    // Misma preparación, recorte y proporciones que el PDF general.
+                    'companyLogos' => $this->buildPdfCompanyLogos($project),
+                    'commitmentChart' => $this->pdfCommitmentChartDataUri(
+                        $commitmentSummary['planned'] ?? []
+                    ),
+                    'scoreRing' => $this->pdfScoreRingDataUri(
+                        $visualMetrics['scorePct']
                     ),
                     'poppinsRegular' => $this->pdfAssetDataUri(
                         'public/fonts/poppins/Poppins-Regular.ttf',
