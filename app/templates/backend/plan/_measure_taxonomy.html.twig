@@ -30,26 +30,10 @@
     </dd>
 {% endif %}
 
-{% set impactAreas = showImpactAreas ? taxonomyPresenter.impactAreas(measure) : [] %}
 {% set axes = showTripleBalance ? taxonomyPresenter.tripleBalanceAxes(measure) : [] %}
-{% if impactAreas is not empty or axes is not empty %}
-    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">
-        <span class="d-inline-flex flex-wrap align-items-center gap-1">
-            <span>Áreas de impacto</span>
-            <span class="text-muted">|</span>
-            <span>Triple balance</span>
-        </span>
-    </dt>
+{% if axes is not empty %}
+    <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">Triple balance</dt>
     <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap align-items-center gap-1 mb-0">
-        {% for impactArea in impactAreas %}
-            <span class="badge bg-success-subtle text-success-emphasis border">{{ impactArea.name }}</span>
-        {% endfor %}
-
-        {% if impactAreas is not empty and axes is not empty %}
-            <span class="text-muted mx-1" aria-hidden="true">|</span>
-        {% endif %}
-
-        {% if axes is not empty %}
             {% for axis in axes %}
                 {% set axisName = (axis.name|default('')|lower)|replace({
                     'á': 'a',
@@ -69,7 +53,6 @@
                 {% endif %}
                 <span class="badge {{ axisBadgeClass }}">{{ axis.name }}</span>
             {% endfor %}
-        {% endif %}
     </dd>
 {% endif %}
 
