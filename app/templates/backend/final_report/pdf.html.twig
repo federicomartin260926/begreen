@@ -2,7 +2,8 @@
 <html lang="es"><head><meta charset="UTF-8"><style>
 @page { margin: 14mm; }
 body { font-family: 'DejaVu Sans', sans-serif; color: #24352c; font-size: 10pt; line-height: 1.4; }
-.pdf-page { page-break-after: always; }
+.pdf-page { page-break-after: auto; }
+.report-design-final-cover { page-break-after: always; }
 .pdf-page:last-child { page-break-after: auto; }
 .report-design-final-executive {
   page-break-after: auto;
@@ -15,6 +16,24 @@ th,td { padding: 5px; border-bottom: 1px solid #dce5df; text-align: left; vertic
 .metric { font-size: 20pt; color: #176b43; }
 .photo { max-width: 100%; max-height: 175mm; }
 .muted { color: #64736b; }
+
+/* #79 — Formato editorial limitado */
+.report-design-final-featured ul, .report-design-final-featured ol,
+.report-design-final-conclusion ul, .report-design-final-conclusion ol { margin: 2mm 0 3mm 6mm; }
+.pdf-featured-story p { margin: 0 0 2mm; }
+
+/* #79 — Relato al lado de fotografía en Dompdf, sin floats ni flex */
+.report-design-final-featured { page-break-after: auto; margin-bottom: 5mm; }
+.pdf-featured-measure { page-break-inside: avoid; margin: 0 0 6mm; }
+.pdf-featured-measure h3, .pdf-featured-state { page-break-after: avoid; }
+.pdf-featured-state { margin-bottom: 2mm; }
+.pdf-featured-layout { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.pdf-featured-layout td { border: 0; padding: 0; vertical-align: top; }
+.pdf-featured-image-cell { width: 26%; padding-right: 5mm !important; }
+.pdf-featured-story-cell { width: 74%; }
+.pdf-featured-photo { display: block; width: auto; height: auto; max-width: 42mm; max-height: 55mm; }
+.pdf-featured-caption { font-size: 8pt; line-height: 1.25; margin-top: 2mm; overflow-wrap: break-word; }
+.pdf-featured-story { margin: 0; overflow-wrap: break-word; }
 
 /* Plan de Sostenibilidad — composición compatible con Dompdf */
 .report-design-final-plan {
@@ -183,6 +202,16 @@ th,td { padding: 5px; border-bottom: 1px solid #dce5df; text-align: left; vertic
   page-break-inside: avoid;
 }
 
+/* #79 Portada con resumen, y espaciado editorial compacto (Dompdf). */
+.pdf-cover-photo { display: block; width: 100%; max-width: 100%; height: auto; max-height: none; margin: 0 0 4mm; }
+.pdf-cover-project { font-size: 13pt; margin: 0 0 2mm; }
+.pdf-cover-credit { font-size: 8pt; margin: 0 0 4mm; }
+.pdf-cover-summary-title { font-size: 12pt; margin: 4mm 0 2mm; }
+.pdf-rich-text, .pdf-featured-story { line-height: 1.3; }
+.pdf-rich-text p, .pdf-featured-story p { margin: 0 0 1.5mm; }
+.pdf-rich-text ul, .pdf-rich-text ol, .pdf-featured-story ul, .pdf-featured-story ol { margin: 0 0 1.5mm; padding-left: 5mm; }
+.pdf-rich-text li, .pdf-featured-story li { margin: 0; padding: 0; }
+
 {{ reportDesignCss|default('')|raw }}
 
     </style></head><body>
@@ -197,5 +226,5 @@ th,td { padding: 5px; border-bottom: 1px solid #dce5df; text-align: left; vertic
 {% include 'backend/final_report/pdf/_ods-commitment.html.twig' %}
 {% include 'backend/final_report/pdf/_conclusion.html.twig' %}
 {% endif %}
-{% include 'backend/final_report/pdf/_annex.html.twig' %}
+{% if includeTechnicalAnnex is not defined or includeTechnicalAnnex %}{% include 'backend/final_report/pdf/_annex.html.twig' %}{% endif %}
 </body></html>

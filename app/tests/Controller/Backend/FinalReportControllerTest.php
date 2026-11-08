@@ -17,6 +17,9 @@ use App\Exception\Ai\AiTimeoutException;
 use App\Repository\EmissionRecordRepository;
 use App\Service\ActiveProjectService;
 use App\Service\Ai\AiReportProviderInterface;
+use App\Service\Ai\Dto\AiReportCategorySummary;
+use App\Service\Ai\Dto\AiReportRequest;
+use App\Service\Ai\Dto\AiReportResult;
 use App\Service\FinalReport\FinalReportContentEditor;
 use App\Service\FinalReport\FinalReportDataBuilder;
 use App\Service\FinalReport\FinalReportNarrativeService;
@@ -69,10 +72,14 @@ final class FinalReportControllerTest extends KernelTestCase
         self::assertStringContainsString('Informe Base', (string) $response->getContent());
         self::assertStringContainsString('Proyecto final', (string) $response->getContent());
         self::assertStringContainsString('Sin datos disponibles', (string) $response->getContent());
-        self::assertStringContainsString('1. Resumen del proyecto', (string) $response->getContent());
+        self::assertStringContainsString('1. Portada', (string) $response->getContent());
         self::assertStringContainsString('featured-measure-search', (string) $response->getContent());
-        self::assertStringContainsString('3. Narrativa y textos editoriales', (string) $response->getContent());
+        self::assertStringContainsString('5. Medidas destacadas', (string) $response->getContent());
+        self::assertStringContainsString('9. Anexo técnico', (string) $response->getContent());
         self::assertStringContainsString('final-report-editorial-form', (string) $response->getContent());
+        self::assertStringContainsString('data-bs-target="#finalReportPhotosModal"', (string) $response->getContent());
+        self::assertStringNotContainsString('Volver a proyectos', (string) $response->getContent());
+        self::assertStringNotContainsString('Personalizar diseño', (string) $response->getContent());
     }
 
     public function testEditorNormalizesPrefixedOdsCodeAndUsesEnglishTranslations(): void
@@ -119,9 +126,32 @@ final class FinalReportControllerTest extends KernelTestCase
         $html = (string) $response->getContent();
         self::assertStringContainsString('ODS 11 · Sustainable cities', $html);
         self::assertStringNotContainsString('ODS ODS11', $html);
-        self::assertStringContainsString('1. Project summary', $html);
+        self::assertStringContainsString('1. Cover', $html);
+        self::assertStringContainsString('5. Featured measures', $html);
+        self::assertStringContainsString('9. Technical annex', $html);
         self::assertStringContainsString('Search measure by name', $html);
         self::assertStringContainsString('Implemented', $html);
+    }
+
+    public function testOnlySuperAdminSeesReportDesignAction(): void
+    {
+        self::bootKernel();
+        $project = $this->project();
+        $plan = (new Plan())->setProject($project);
+        $this->authenticateSuperAdmin();
+        $this->request('backend_final_report_index');
+        [$entityManager] = $this->entityManager($project, $plan, null);
+
+        $response = $this->controller()->index(
+            $this->activeProject($project),
+            $entityManager,
+            $this->finalReportDataBuilder(),
+            new FinalReportContentEditor(),
+        );
+
+        self::assertStringContainsString('Personalizar diseño', (string) $response->getContent());
+        self::assertStringContainsString('/admin/report-design/', (string) $response->getContent());
+        self::assertStringNotContainsString('Volver a proyectos', (string) $response->getContent());
     }
 
     public function testReplacementUsesDedicatedMultipartFormWithoutNesting(): void
@@ -134,7 +164,13 @@ final class FinalReportControllerTest extends KernelTestCase
         $document = $this->photoDocument($project, 20, str_repeat('a', 32).'.png');
         $content = (new FinalReportContent())->setProject($project)
             ->setPhotos([['documentId' => 20, 'caption' => 'Imagen', 'position' => 1]])
-            ->setFeaturedMeasures([['planMeasureId' => 10, 'text' => 'Comentario conservado']]);
+            ->setCoverDocumentId(20)
+            ->setFeaturedMeasures([[
+                'planMeasureId' => 10,
+                'text' => 'Comentario conservado',
+                'origin' => 'ai',
+                'photoDocumentId' => 20,
+            ]]);
         $this->authenticateAdmin();
         $this->request('backend_final_report_index');
         [$entityManager] = $this->entityManager($project, $plan, $content, $document);
@@ -170,7 +206,20 @@ final class FinalReportControllerTest extends KernelTestCase
         self::assertSame(0, $xpath->query('ancestor::form', $form)?->length);
         self::assertSame(1, $xpath->query('//input[@id="featured-10" and @checked and @form="final-report-editorial-form"]')?->length);
         self::assertSame('Comentario conservado', trim((string) $xpath->query('//textarea[@id="featured-text-10"]')?->item(0)?->textContent));
-        self::assertSame(1, $xpath->query('//form[@action="/backend/final-report/narrative/generate" and @method="post"]')?->length);
+        self::assertSame(1, $xpath->query('//input[@id="cover-20" and @checked]')?->length);
+        self::assertSame(1, $xpath->query('//select[@id="featured-photo-10"]/option[@value="20" and @selected]')?->length);
+        self::assertSame(1, $xpath->query('//*[@data-final-report-editor-target="featuredPhotoPreviewContainer" and not(@hidden)]')?->length);
+        self::assertSame(1, $xpath->query('//*[@data-final-report-editor-target="featuredOrigin" and normalize-space(.)="IA"]')?->length);
+        self::assertSame(1, $xpath->query('//button[@data-endpoint="/backend/final-report/featured/10/narrative/generate" and string-length(@data-csrf-token) > 0]')?->length);
+        self::assertSame(1, $xpath->query('//input[@id="replace-photo-20" and @data-action="change->final-report-photo-replace#preview"]')?->length);
+        self::assertSame(1, $xpath->query('//*[@id="finalReportPhotosModal" and contains(@class, "modal")]')?->length);
+        self::assertSame(1, $xpath->query('//form[@action="/backend/final-report/photos/20/replace" and @data-action="submit->final-report-editor#submitPhotoOperation"]')?->length);
+        self::assertSame(1, $xpath->query('//form[@action="/backend/final-report/photos/20/remove" and @data-action="submit->final-report-editor#submitPhotoOperation"]')?->length);
+        self::assertSame(1, $xpath->query('//form[@action="/backend/final-report/photos/upload" and @data-action="submit->final-report-editor#submitPhotoOperation"]')?->length);
+        self::assertSame(0, $xpath->query('//*[@id="finalReportPhotosModal"]//*[@disabled]')?->length);
+        self::assertSame(0, $xpath->query('//form[@action="/backend/final-report/narrative/generate" and @method="post"]')?->length);
+        self::assertSame(3, $xpath->query('//button[contains(@data-action, "generateSectionNarrative") and string-length(@data-csrf-token) > 0]')?->length);
+        self::assertSame(7, $xpath->query('//textarea[starts-with(@name, "manualTexts[") and @form="final-report-editorial-form"]')?->length);
     }
 
     public function testFeaturedMeasuresKeepAllInputsForPaginationAndSelectedFilter(): void
@@ -186,7 +235,8 @@ final class FinalReportControllerTest extends KernelTestCase
         $content = (new FinalReportContent())->setProject($project)->setFeaturedMeasures([
             ['planMeasureId' => 2, 'text' => 'Comentario página uno'],
             ['planMeasureId' => 12, 'text' => 'Comentario página dos'],
-        ]);
+        ])->setPhotos([['documentId' => 20, 'caption' => 'Foto reutilizable', 'position' => 1]]);
+        $this->photoDocument($project, 20, str_repeat('a', 32).'.png');
         $this->authenticateAdmin();
         $this->request('backend_final_report_index');
         [$entityManager] = $this->entityManager($project, $plan, $content);
@@ -212,7 +262,13 @@ final class FinalReportControllerTest extends KernelTestCase
         $xpath = new \DOMXPath($dom);
 
         self::assertSame(12, $xpath->query('//*[@data-final-report-editor-target="featuredItem"]')?->length);
+        self::assertSame(12, $xpath->query('//details[@data-final-report-editor-target="featuredItem"]')?->length);
         self::assertSame(12, $xpath->query('//input[contains(@name, "featured[") and @form="final-report-editorial-form"]')?->length);
+        self::assertSame(12, $xpath->query('//textarea[starts-with(@name, "featured[") and @form="final-report-editorial-form"]')?->length);
+        self::assertSame(12, $xpath->query('//select[contains(@name, "[photoDocumentId]") and @form="final-report-editorial-form"]')?->length);
+        self::assertSame(12, $xpath->query('//select[contains(@name, "[photoDocumentId]")]/option[@value="20"]')?->length);
+        self::assertSame(12, $xpath->query('//select[contains(@name, "[photoDocumentId]")]/option[@value=""]')?->length);
+        self::assertSame(0, $xpath->query('//*[@data-final-report-editor-target="featuredItem"]//*[@disabled]')?->length);
         self::assertSame(2, $xpath->query('//input[@data-final-report-editor-target="featuredCheckbox" and @checked]')?->length);
         self::assertSame('Comentario página uno', trim((string) $xpath->query('//textarea[@id="featured-text-2"]')?->item(0)?->textContent));
         self::assertSame('Comentario página dos', trim((string) $xpath->query('//textarea[@id="featured-text-12"]')?->item(0)?->textContent));
@@ -444,8 +500,8 @@ final class FinalReportControllerTest extends KernelTestCase
         $entityManager->expects(self::once())->method('persist')->with(self::callback(
             static fn (object $entity): bool => $entity instanceof FinalReportContent
                 && $entity->getFeaturedMeasures() === [
-                    ['planMeasureId' => 2, 'text' => 'Comentario página uno'],
-                    ['planMeasureId' => 12, 'text' => 'Comentario página dos'],
+                    ['planMeasureId' => 2, 'text' => 'Comentario página uno', 'origin' => 'manual', 'photoDocumentId' => null],
+                    ['planMeasureId' => 12, 'text' => 'Comentario página dos', 'origin' => 'manual', 'photoDocumentId' => null],
                 ],
         ));
         $entityManager->expects(self::once())->method('flush');
@@ -477,6 +533,75 @@ final class FinalReportControllerTest extends KernelTestCase
             $entityManager,
             new FinalReportContentEditor(),
         );
+    }
+
+    public function testEditorialSaveReturnsExplicitJsonSuccessForSafePhotoSequence(): void
+    {
+        self::bootKernel();
+        $project = $this->project();
+        $planMeasure = (new PlanMeasure())->setMeasure((new Measure())->setName('Medida segura'));
+        (new \ReflectionProperty(PlanMeasure::class, 'id'))->setValue($planMeasure, 10);
+        $plan = (new Plan())->setProject($project)->addPlanMeasure($planMeasure);
+        $content = (new FinalReportContent())->setProject($project);
+        $this->authenticateAdmin();
+        $request = $this->request('backend_final_report_save', [], [], 'POST');
+        $request->headers->set('Accept', 'application/json');
+        $request->request->replace([
+            '_token' => self::getContainer()->get('security.csrf.token_manager')
+                ->getToken('final_report_save_100')->getValue(),
+            'featured' => [
+                10 => ['selected' => '1', 'text' => 'Texto de otra página'],
+            ],
+            'manualTexts' => ['conclusion' => 'Conclusión desde tarjeta cerrada'],
+        ]);
+        [$entityManager] = $this->entityManager($project, $plan, $content);
+        $entityManager->expects(self::once())->method('persist')->with($content);
+        $entityManager->expects(self::once())->method('flush');
+
+        $response = $this->controller()->save(
+            $request,
+            $this->activeProject($project),
+            $entityManager,
+            new FinalReportContentEditor(),
+        );
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(['ok' => true], json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR));
+        self::assertSame('Texto de otra página', $content->getFeaturedMeasures()[0]['text']);
+        self::assertSame('Conclusión desde tarjeta cerrada', $content->getManualTexts()['conclusion']['text']);
+    }
+
+    public function testEditorialSaveReturnsExplicitJsonErrorWithoutPersistence(): void
+    {
+        self::bootKernel();
+        $project = $this->project();
+        $plan = (new Plan())->setProject($project);
+        $content = (new FinalReportContent())->setProject($project)->setManualTexts([
+            'conclusion' => ['text' => 'Contenido anterior', 'origin' => 'manual'],
+        ]);
+        $this->authenticateAdmin();
+        $request = $this->request('backend_final_report_save', [], [], 'POST');
+        $request->headers->set('Accept', 'application/json');
+        $request->request->replace([
+            '_token' => self::getContainer()->get('security.csrf.token_manager')
+                ->getToken('final_report_save_100')->getValue(),
+            'featured' => [99 => ['selected' => '1', 'text' => 'No válido']],
+            'manualTexts' => ['conclusion' => 'No debe persistirse parcialmente'],
+        ]);
+        [$entityManager] = $this->entityManager($project, $plan, $content);
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::never())->method('flush');
+
+        $response = $this->controller()->save(
+            $request,
+            $this->activeProject($project),
+            $entityManager,
+            new FinalReportContentEditor(),
+        );
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertSame(['ok' => false], json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR));
+        self::assertSame('Contenido anterior', $content->getManualTexts()['conclusion']['text']);
     }
 
     public function testNarrativeProviderFailureIsNotLoggedTwiceAndKeepsGenericFlash(): void
@@ -524,6 +649,171 @@ final class FinalReportControllerTest extends KernelTestCase
             ['backend.final_report.flash.narrative_failed'],
             $request->getSession()->getFlashBag()->peek('danger'),
         );
+    }
+
+    public function testGeneratesFeaturedNarrativeAsLocalizedJson(): void
+    {
+        self::bootKernel();
+        $project = $this->project();
+        $planMeasure = (new PlanMeasure())
+            ->setMeasure((new Measure())->setName('Sustainable mobility'))
+            ->setIsApplicable(true)
+            ->setWillImplement(true);
+        (new \ReflectionProperty(PlanMeasure::class, 'id'))->setValue($planMeasure, 10);
+        $plan = (new Plan())->setProject($project)->addPlanMeasure($planMeasure);
+        $content = (new FinalReportContent())->setProject($project)->setFeaturedMeasures([[
+            'planMeasureId' => 10,
+            'text' => null,
+            'origin' => 'manual',
+            'photoDocumentId' => null,
+        ]]);
+        $this->authenticateAdmin();
+        $request = $this->request(
+            'backend_final_report_featured_narrative_generate',
+            ['planMeasureId' => 10],
+            [],
+            'POST',
+        );
+        $request->setLocale('en');
+        $request->request->set('_token', self::getContainer()->get('security.csrf.token_manager')
+            ->getToken('final_report_featured_ai_100_10')->getValue());
+        [$entityManager] = $this->entityManager($project, $plan, $content);
+        $entityManager->expects(self::once())->method('persist')->with($content);
+        $entityManager->expects(self::once())->method('flush');
+        $provider = $this->createMock(AiReportProviderInterface::class);
+        $provider->expects(self::once())->method('generate')->with(self::callback(
+            static fn (AiReportRequest $aiRequest): bool => $aiRequest->locale === 'en'
+                && $aiRequest->sectionKeys === ['featured_measure'],
+        ))->willReturn(new AiReportResult('Unused', [
+            new AiReportCategorySummary('featured_measure', 'A factual narrative.'),
+        ], [], 'Unused'));
+
+        $response = $this->controller()->generateFeaturedNarrative(
+            10,
+            $request,
+            $this->activeProject($project),
+            $entityManager,
+            $this->finalReportDataBuilder(),
+            new FinalReportNarrativeService($provider),
+            $this->createStub(LoggerInterface::class),
+            self::getContainer()->get('translator'),
+        );
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame([
+            'planMeasureId' => 10,
+            'text' => 'A factual narrative.',
+            'origin' => 'ai',
+            'message' => 'AI narrative updated in 1 sections.',
+        ], json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR));
+        self::assertSame('ai', $content->getFeaturedMeasures()[0]['origin']);
+    }
+
+    public function testFeaturedNarrativeRejectsInvalidCsrfBeforeCallingProvider(): void
+    {
+        self::bootKernel();
+        $project = $this->project();
+        $plan = (new Plan())->setProject($project);
+        $content = (new FinalReportContent())->setProject($project);
+        $this->authenticateAdmin();
+        $request = $this->request(
+            'backend_final_report_featured_narrative_generate',
+            ['planMeasureId' => 10],
+            ['_token' => 'invalid'],
+            'POST',
+        );
+        [$entityManager] = $this->entityManager($project, $plan, $content);
+        $entityManager->expects(self::never())->method('persist');
+        $provider = $this->createMock(AiReportProviderInterface::class);
+        $provider->expects(self::never())->method('generate');
+
+        $this->expectException(AccessDeniedException::class);
+        $this->controller()->generateFeaturedNarrative(
+            10,
+            $request,
+            $this->activeProject($project),
+            $entityManager,
+            $this->finalReportDataBuilder(),
+            new FinalReportNarrativeService($provider),
+            $this->createStub(LoggerInterface::class),
+            self::getContainer()->get('translator'),
+        );
+    }
+
+    public function testFeaturedNarrativeRequiresProjectEditPermission(): void
+    {
+        self::bootKernel();
+        $project = $this->project();
+        $plan = (new Plan())->setProject($project);
+        $content = (new FinalReportContent())->setProject($project);
+        $request = $this->request(
+            'backend_final_report_featured_narrative_generate',
+            ['planMeasureId' => 10],
+            [],
+            'POST',
+        );
+        self::getContainer()->get('security.token_storage')->setToken(null);
+        [$entityManager] = $this->entityManager($project, $plan, $content);
+        $provider = $this->createMock(AiReportProviderInterface::class);
+        $provider->expects(self::never())->method('generate');
+
+        $this->expectException(AccessDeniedException::class);
+        $this->controller()->generateFeaturedNarrative(
+            10,
+            $request,
+            $this->activeProject($project),
+            $entityManager,
+            $this->finalReportDataBuilder(),
+            new FinalReportNarrativeService($provider),
+            $this->createStub(LoggerInterface::class),
+            self::getContainer()->get('translator'),
+        );
+    }
+
+    public function testFeaturedNarrativeRejectsMeasureOutsideActivePlanWithoutPersistence(): void
+    {
+        self::bootKernel();
+        $project = $this->project();
+        $plan = (new Plan())->setProject($project);
+        $content = (new FinalReportContent())->setProject($project)->setFeaturedMeasures([[
+            'planMeasureId' => 99,
+            'text' => 'Previous AI text',
+            'origin' => 'ai',
+        ]]);
+        $this->authenticateAdmin();
+        $request = $this->request(
+            'backend_final_report_featured_narrative_generate',
+            ['planMeasureId' => 99],
+            [],
+            'POST',
+        );
+        $request->request->set('_token', self::getContainer()->get('security.csrf.token_manager')
+            ->getToken('final_report_featured_ai_100_99')->getValue());
+        [$entityManager] = $this->entityManager($project, $plan, $content);
+        $entityManager->expects(self::never())->method('persist');
+        $entityManager->expects(self::never())->method('flush');
+        $provider = $this->createMock(AiReportProviderInterface::class);
+        $provider->expects(self::never())->method('generate');
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects(self::once())->method('error');
+
+        $response = $this->controller()->generateFeaturedNarrative(
+            99,
+            $request,
+            $this->activeProject($project),
+            $entityManager,
+            $this->finalReportDataBuilder(),
+            new FinalReportNarrativeService($provider),
+            $logger,
+            self::getContainer()->get('translator'),
+        );
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertSame(
+            ['error' => 'No se pudo generar la narrativa IA. Revisa la configuración y vuelve a intentarlo.'],
+            json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR),
+        );
+        self::assertSame('Previous AI text', $content->getFeaturedMeasures()[0]['text']);
     }
 
     public function testUploadsSupportedImageAndAddsItToGallery(): void
@@ -938,10 +1228,20 @@ final class FinalReportControllerTest extends KernelTestCase
 
     private function authenticateAdmin(): void
     {
+        $this->authenticateWithRole('ROLE_ADMIN');
+    }
+
+    private function authenticateSuperAdmin(): void
+    {
+        $this->authenticateWithRole('ROLE_SUPER_ADMIN');
+    }
+
+    private function authenticateWithRole(string $role): void
+    {
         $user = (new User())
             ->setEmail('final-report-admin@example.test')
             ->setName('Admin')
-            ->setRoles(['ROLE_ADMIN']);
+            ->setRoles([$role]);
         self::getContainer()->get('security.token_storage')->setToken(
             new UsernamePasswordToken($user, 'main', $user->getRoles()),
         );
@@ -973,6 +1273,21 @@ final class FinalReportControllerTest extends KernelTestCase
         $service->method('getActiveProject')->willReturn($project);
 
         return $service;
+    }
+
+    private function finalReportDataBuilder(): FinalReportDataBuilder
+    {
+        $emissionRepository = $this->getMockBuilder(EmissionRecordRepository::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['findByProjectOrderByPhaseAndDate'])
+            ->getMock();
+        $emissionRepository->method('findByProjectOrderByPhaseAndDate')->willReturn([]);
+
+        return new FinalReportDataBuilder(
+            $emissionRepository,
+            new PlanMeasureOperationalStateResolver(),
+            (new \ReflectionClass(SustainabilityCommitmentLevelService::class))->newInstanceWithoutConstructor(),
+        );
     }
 
     /** @return array{EntityManagerInterface&MockObject} */

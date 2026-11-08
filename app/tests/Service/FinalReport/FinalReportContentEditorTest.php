@@ -31,7 +31,11 @@ final class FinalReportContentEditorTest extends TestCase
         $content = (new FinalReportContent())->setProject($project);
 
         $this->editor->update($content, $project, $plan, [
-            'featured' => [10 => ['selected' => '1', 'text' => 'Resultado especialmente relevante']],
+            'featured' => [10 => [
+                'selected' => '1',
+                'text' => 'Resultado especialmente relevante',
+                'photoDocumentId' => '20',
+            ]],
             'photos' => [20 => [
                 'selected' => '1',
                 'caption' => 'Equipo reutilizando materiales',
@@ -43,7 +47,12 @@ final class FinalReportContentEditorTest extends TestCase
             'manualTexts' => ['introduction' => 'Introducción editorial'],
         ]);
 
-        self::assertSame([['planMeasureId' => 10, 'text' => 'Resultado especialmente relevante']], $content->getFeaturedMeasures());
+        self::assertSame([[
+            'planMeasureId' => 10,
+            'text' => 'Resultado especialmente relevante',
+            'origin' => 'manual',
+            'photoDocumentId' => 20,
+        ]], $content->getFeaturedMeasures());
         self::assertSame([[
             'documentId' => 20,
             'planMeasureId' => 10,
@@ -55,6 +64,42 @@ final class FinalReportContentEditorTest extends TestCase
         self::assertSame(['text' => 'Introducción editorial', 'origin' => 'manual'], $content->getManualTexts()['introduction']);
         self::assertSame($evidence, $planMeasure->getEvidence());
         self::assertSame($project, $document->getProject());
+    }
+
+    public function testTechnicalAnnexDefaultsToIncludedAndCanBeToggled(): void
+    {
+        [$project, $plan] = $this->context();
+        $content = (new FinalReportContent())->setProject($project);
+        self::assertTrue($content->isTechnicalAnnexIncluded());
+
+        $this->editor->update($content, $project, $plan, ['includeTechnicalAnnex' => '0']);
+        self::assertFalse($content->isTechnicalAnnexIncluded());
+
+        // An older client omitting the setting must not silently reactivate it.
+        $this->editor->update($content, $project, $plan, []);
+        self::assertFalse($content->isTechnicalAnnexIncluded());
+
+        $this->editor->update($content, $project, $plan, ['includeTechnicalAnnex' => '1']);
+        self::assertTrue($content->isTechnicalAnnexIncluded());
+    }
+
+    public function testInvalidTechnicalAnnexValueDoesNotPartiallyUpdateContent(): void
+    {
+        [$project, $plan] = $this->context();
+        $content = (new FinalReportContent())->setProject($project)->setManualTexts([
+            'conclusion' => ['text' => 'Texto anterior', 'origin' => 'manual'],
+        ]);
+        try {
+            $this->editor->update($content, $project, $plan, [
+                'includeTechnicalAnnex' => 'invalid',
+                'manualTexts' => ['conclusion' => 'Texto nuevo'],
+            ]);
+            self::fail('Expected an invalid annex preference exception.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('technical annex', $exception->getMessage());
+        }
+        self::assertTrue($content->isTechnicalAnnexIncluded());
+        self::assertSame('Texto anterior', $content->getManualTexts()['conclusion']['text']);
     }
 
     public function testRejectsMeasureFromAnotherPlan(): void
@@ -79,6 +124,221 @@ final class FinalReportContentEditorTest extends TestCase
         $this->editor->update($content, $project, $plan, ['featured' => []]);
 
         self::assertSame([], $content->getFeaturedMeasures());
+    }
+
+    public function testNormalizesLegacyFeaturedMeasureAsManual(): void
+    {
+        [$project, $plan] = $this->context();
+        $content = (new FinalReportContent())->setFeaturedMeasures([[
+            'planMeasureId' => 10,
+            'text' => 'Relato anterior',
+        ]]);
+
+        $this->editor->update($content, $project, $plan, [
+            'featured' => [10 => ['selected' => '1', 'text' => 'Relato anterior']],
+        ]);
+
+        self::assertSame([[
+            'planMeasureId' => 10,
+            'text' => 'Relato anterior',
+            'origin' => 'manual',
+            'photoDocumentId' => null,
+        ]], $content->getFeaturedMeasures());
+    }
+
+    public function testPreservesExistingFeaturedPhotoWhenFieldIsOmitted(): void
+    {
+        [$project, $plan] = $this->context();
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setFeaturedMeasures([[
+                'planMeasureId' => 10,
+                'text' => 'Relato anterior',
+                'photoDocumentId' => 20,
+            ]])
+            ->setPhotos([['documentId' => 20, 'position' => 1]]);
+
+        $this->editor->update($content, $project, $plan, [
+            'featured' => [10 => ['selected' => '1', 'text' => 'Relato anterior']],
+            'photos' => [20 => ['selected' => '1', 'position' => '1']],
+        ]);
+
+        self::assertSame([[
+            'planMeasureId' => 10,
+            'text' => 'Relato anterior',
+            'origin' => 'manual',
+            'photoDocumentId' => 20,
+        ]], $content->getFeaturedMeasures());
+    }
+
+    public function testPreservesFeaturedAiOriginUntilTextIsManuallyChanged(): void
+    {
+        [$project, $plan] = $this->context();
+        $content = (new FinalReportContent())->setFeaturedMeasures([[
+            'planMeasureId' => 10,
+            'text' => 'Relato generado',
+            'origin' => 'ai',
+            'photoDocumentId' => null,
+        ]]);
+
+        $this->editor->update($content, $project, $plan, [
+            'featured' => [10 => ['selected' => '1', 'text' => 'Relato generado']],
+        ]);
+        self::assertSame('ai', $content->getFeaturedMeasures()[0]['origin']);
+
+        $this->editor->update($content, $project, $plan, [
+            'featured' => [10 => ['selected' => '1', 'text' => 'Relato editado']],
+        ]);
+
+        self::assertSame('manual', $content->getFeaturedMeasures()[0]['origin']);
+        self::assertSame('Relato editado', $content->getFeaturedMeasures()[0]['text']);
+    }
+
+    public function testRejectsClientControlledFeaturedOriginWithoutChangingContent(): void
+    {
+        [$project, $plan] = $this->context();
+        $original = [[
+            'planMeasureId' => 10,
+            'text' => 'Relato manual',
+            'origin' => 'manual',
+            'photoDocumentId' => null,
+        ]];
+        $content = (new FinalReportContent())->setProject($project)->setFeaturedMeasures($original);
+
+        try {
+            $this->editor->update($content, $project, $plan, [
+                'featured' => [10 => [
+                    'selected' => '1',
+                    'text' => 'Relato manual',
+                    'origin' => 'ai',
+                ]],
+            ]);
+            self::fail('Expected a server-controlled origin validation error.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('server-controlled', $exception->getMessage());
+        }
+
+        self::assertSame($original, $content->getFeaturedMeasures());
+        self::assertSame($project, $content->getProject());
+    }
+
+    public function testRejectsFeaturedPhotoThatIsNotSelectedWithoutPartialChanges(): void
+    {
+        [$project, $plan] = $this->context();
+        $originalFeatured = [['planMeasureId' => 10, 'text' => 'Anterior']];
+        $originalPhotos = [['documentId' => 20, 'position' => 4]];
+        $originalTexts = ['introduction' => ['text' => 'Anterior', 'origin' => 'manual']];
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setFeaturedMeasures($originalFeatured)
+            ->setPhotos($originalPhotos)
+            ->setManualTexts($originalTexts)
+            ->setCoverDocumentId(20);
+
+        try {
+            $this->editor->update($content, $project, $plan, [
+                'featured' => [10 => [
+                    'selected' => '1',
+                    'text' => 'Nuevo',
+                    'photoDocumentId' => '20',
+                ]],
+                'manualTexts' => ['introduction' => 'Nueva introducción'],
+            ]);
+            self::fail('Expected a selected gallery validation error.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('selected report gallery', $exception->getMessage());
+        }
+
+        self::assertSame($originalFeatured, $content->getFeaturedMeasures());
+        self::assertSame($originalPhotos, $content->getPhotos());
+        self::assertSame($originalTexts, $content->getManualTexts());
+        self::assertSame(20, $content->getCoverDocumentId());
+    }
+
+    public function testRejectsExcludedFeaturedPhoto(): void
+    {
+        [$project, $plan] = $this->context();
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setPhotos([['documentId' => 20, 'excluded' => true]]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('selected report gallery');
+
+        $this->editor->update($content, $project, $plan, [
+            'featured' => [10 => [
+                'selected' => '1',
+                'photoDocumentId' => '20',
+            ]],
+            'photos' => [20 => ['selected' => '1', 'position' => '1']],
+        ]);
+    }
+
+    public function testRejectsUnsupportedFeaturedPhoto(): void
+    {
+        [$project, $plan] = $this->context();
+        $unsupported = (new ProjectDocument())
+            ->setType('final_report_photo')
+            ->setKind(ProjectDocumentCatalog::KIND_FILE)
+            ->setStoredName(str_repeat('e', 32).'.pdf')
+            ->setMimeType('application/pdf');
+        $this->setId($unsupported, 30);
+        $project->addProjectDocument($unsupported);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('does not belong');
+
+        $this->editor->update(new FinalReportContent(), $project, $plan, [
+            'featured' => [10 => [
+                'selected' => '1',
+                'photoDocumentId' => '30',
+            ]],
+            'photos' => [30 => ['selected' => '1', 'position' => '1']],
+        ]);
+    }
+
+    public function testRejectsFeaturedPhotoFromAnotherProject(): void
+    {
+        [$project, $plan] = $this->context();
+        $foreignProject = (new Project())->setName('Proyecto B');
+        $foreignPhoto = (new ProjectDocument())
+            ->setType('final_report_photo')
+            ->setKind(ProjectDocumentCatalog::KIND_FILE)
+            ->setStoredName(str_repeat('f', 32).'.jpg')
+            ->setMimeType('image/jpeg');
+        $this->setId($foreignPhoto, 30);
+        $foreignProject->addProjectDocument($foreignPhoto);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('selected report gallery');
+
+        $this->editor->update(new FinalReportContent(), $project, $plan, [
+            'featured' => [10 => [
+                'selected' => '1',
+                'photoDocumentId' => '30',
+            ]],
+        ]);
+    }
+
+    public function testAllowsOneSelectedPhotoForSeveralFeaturedMeasures(): void
+    {
+        [$project, $plan] = $this->context();
+        $secondPlanMeasure = (new PlanMeasure())->setMeasure((new Measure())->setName('Segunda medida'));
+        $this->setId($secondPlanMeasure, 11);
+        $plan->addPlanMeasure($secondPlanMeasure);
+        $content = new FinalReportContent();
+
+        $this->editor->update($content, $project, $plan, [
+            'featured' => [
+                10 => ['selected' => '1', 'text' => 'Primera', 'photoDocumentId' => '20'],
+                11 => ['selected' => '1', 'text' => 'Segunda', 'photoDocumentId' => '20'],
+            ],
+            'photos' => [20 => ['selected' => '1', 'position' => '1']],
+            'coverDocumentId' => '20',
+        ]);
+
+        self::assertSame([20, 20], array_column($content->getFeaturedMeasures(), 'photoDocumentId'));
+        self::assertSame(20, $content->getCoverDocumentId());
     }
 
     public function testRejectsDocumentFromAnotherProject(): void
@@ -128,6 +388,12 @@ final class FinalReportContentEditorTest extends TestCase
         $storedName = $document->getStoredName();
         $content = (new FinalReportContent())
             ->setProject($project)
+            ->setFeaturedMeasures([[
+                'planMeasureId' => 10,
+                'text' => 'Relato conservado',
+                'origin' => 'ai',
+                'photoDocumentId' => 20,
+            ]])
             ->setPhotos([[
                 'documentId' => 20,
                 'caption' => 'Pie que se desvincula',
@@ -203,6 +469,12 @@ final class FinalReportContentEditorTest extends TestCase
         $project->addProjectDocument($replacement);
         $content = (new FinalReportContent())
             ->setProject($project)
+            ->setFeaturedMeasures([[
+                'planMeasureId' => 10,
+                'text' => 'Relato conservado',
+                'origin' => 'ai',
+                'photoDocumentId' => 20,
+            ]])
             ->setPhotos([[
                 'documentId' => 20,
                 'planMeasureId' => 10,
@@ -223,6 +495,12 @@ final class FinalReportContentEditorTest extends TestCase
             'replacedDocumentIds' => [20],
         ]], $content->getPhotos());
         self::assertSame(21, $content->getCoverDocumentId());
+        self::assertSame([[
+            'planMeasureId' => 10,
+            'text' => 'Relato conservado',
+            'origin' => 'ai',
+            'photoDocumentId' => 21,
+        ]], $content->getFeaturedMeasures());
         self::assertTrue($project->getProjectDocuments()->contains($original));
         self::assertSame([20], $this->editor->supersededPhotoDocumentIds($content));
     }
@@ -254,6 +532,40 @@ final class FinalReportContentEditorTest extends TestCase
         self::assertSame([20], $content->getPhotos()[0]['replacedDocumentIds']);
         self::assertSame('Pie editado', $content->getPhotos()[0]['caption']);
         self::assertSame([20], $this->editor->supersededPhotoDocumentIds($content));
+    }
+
+    public function testExcludingPhotoClearsFeaturedReferencesAndPreservesEditorialData(): void
+    {
+        [$project, , , $document] = $this->context();
+        $featured = [
+            [
+                'planMeasureId' => 10,
+                'text' => 'Relato manual',
+                'origin' => 'manual',
+                'photoDocumentId' => 20,
+            ],
+            [
+                'planMeasureId' => 11,
+                'text' => 'Relato IA',
+                'origin' => 'ai',
+                'photoDocumentId' => 20,
+            ],
+        ];
+        $content = (new FinalReportContent())
+            ->setProject($project)
+            ->setFeaturedMeasures($featured)
+            ->setPhotos([['documentId' => 20, 'position' => 1]])
+            ->setCoverDocumentId(20);
+
+        $this->editor->excludePhoto($content, $project, $document);
+
+        self::assertSame('Relato manual', $content->getFeaturedMeasures()[0]['text']);
+        self::assertSame('manual', $content->getFeaturedMeasures()[0]['origin']);
+        self::assertNull($content->getFeaturedMeasures()[0]['photoDocumentId']);
+        self::assertSame('Relato IA', $content->getFeaturedMeasures()[1]['text']);
+        self::assertSame('ai', $content->getFeaturedMeasures()[1]['origin']);
+        self::assertNull($content->getFeaturedMeasures()[1]['photoDocumentId']);
+        self::assertNull($content->getCoverDocumentId());
     }
 
     public function testRejectsReplacementOfPhotoFromAnotherProject(): void

@@ -3,7 +3,7 @@
   <h2>{{ 'backend.final_report.pdf.carbon_footprint'|trans }}</h2>
 
   {% if texts.emissions.text|default(null) %}
-    <p>{{ texts.emissions.text|nl2br }}</p>
+    <p>{{ formattedTexts.emissions|default('')|raw }}</p>
   {% endif %}
 
   {% if report.emissions.available %}

@@ -41,33 +41,52 @@ final class FinalReportContentEditor
 
         $planMeasures = $this->indexPlanMeasures($plan);
         $documents = $this->indexImageDocuments($project);
-        $content
-            ->setProject($project)
-            ->setFeaturedMeasures($this->normalizeFeaturedMeasures($input['featured'] ?? [], $planMeasures))
-            ->setPhotos($this->normalizePhotos(
-                $input['photos'] ?? [],
-                $documents,
-                $planMeasures,
-                $content->getPhotos(),
-            ))
-            ->setManualTexts($this->normalizeManualTexts(
-                $input['manualTexts'] ?? [],
-                $content->getManualTexts(),
-            ));
+        $photos = $this->normalizePhotos(
+            $input['photos'] ?? [],
+            $documents,
+            $planMeasures,
+            $content->getPhotos(),
+        );
+        $selectedDocumentIds = array_column(array_filter(
+            $photos,
+            fn (array $photo): bool => !$this->isExcludedPhotoEntry($photo),
+        ), 'documentId');
+        $featuredMeasures = $this->normalizeFeaturedMeasures(
+            $input['featured'] ?? [],
+            $planMeasures,
+            $selectedDocumentIds,
+            $content->getFeaturedMeasures(),
+        );
+        $manualTexts = $this->normalizeManualTexts(
+            $input['manualTexts'] ?? [],
+            $content->getManualTexts(),
+        );
+
+        $includeTechnicalAnnex = $content->isTechnicalAnnexIncluded();
+        if (array_key_exists('includeTechnicalAnnex', $input)) {
+            $rawIncludeTechnicalAnnex = $input['includeTechnicalAnnex'];
+            if (!in_array($rawIncludeTechnicalAnnex, ['0', '1', 0, 1], true)) {
+                throw new \InvalidArgumentException('Invalid technical annex preference.');
+            }
+            $includeTechnicalAnnex = (string) $rawIncludeTechnicalAnnex === '1';
+        }
 
         $rawCoverDocumentId = $input['coverDocumentId'] ?? null;
         $coverDocumentId = $this->positiveId($rawCoverDocumentId);
         if ($rawCoverDocumentId !== null && $rawCoverDocumentId !== '' && $coverDocumentId === null) {
             throw new \InvalidArgumentException('Invalid cover image reference.');
         }
-        $selectedDocumentIds = array_column(array_filter(
-            $content->getPhotos(),
-            fn (array $photo): bool => !$this->isExcludedPhotoEntry($photo),
-        ), 'documentId');
         if ($coverDocumentId !== null && !in_array($coverDocumentId, $selectedDocumentIds, true)) {
             throw new \InvalidArgumentException('The cover image must belong to the report gallery.');
         }
-        $content->setCoverDocumentId($coverDocumentId);
+
+        $content
+            ->setProject($project)
+            ->setFeaturedMeasures($featuredMeasures)
+            ->setPhotos($photos)
+            ->setManualTexts($manualTexts)
+            ->setCoverDocumentId($coverDocumentId)
+            ->setIncludeTechnicalAnnex($includeTechnicalAnnex);
     }
 
     public function appendPhoto(FinalReportContent $content, ProjectDocument $document): void
@@ -145,7 +164,16 @@ final class FinalReportContentEditor
             }
         }
         unset($photo);
-        $content->setPhotos($photos);
+        $featuredMeasures = $content->getFeaturedMeasures();
+        foreach ($featuredMeasures as &$featuredMeasure) {
+            if (($featuredMeasure['photoDocumentId'] ?? null) === $original->getId()) {
+                $featuredMeasure['photoDocumentId'] = $replacement->getId();
+            }
+        }
+        unset($featuredMeasure);
+        $content
+            ->setPhotos($photos)
+            ->setFeaturedMeasures($featuredMeasures);
 
         if ($content->getCoverDocumentId() === $original->getId()) {
             $content->setCoverDocumentId($replacement->getId());
@@ -184,7 +212,16 @@ final class FinalReportContentEditor
             $exclusion['replacedDocumentIds'] = array_values(array_unique($replacedDocumentIds));
         }
         $photos[] = $exclusion;
-        $content->setPhotos($photos);
+        $featuredMeasures = $content->getFeaturedMeasures();
+        foreach ($featuredMeasures as &$featuredMeasure) {
+            if (($featuredMeasure['photoDocumentId'] ?? null) === $document->getId()) {
+                $featuredMeasure['photoDocumentId'] = null;
+            }
+        }
+        unset($featuredMeasure);
+        $content
+            ->setPhotos($photos)
+            ->setFeaturedMeasures($featuredMeasures);
 
         if ($content->getCoverDocumentId() === $document->getId()) {
             $content->setCoverDocumentId(null);
@@ -289,12 +326,27 @@ final class FinalReportContentEditor
     /**
      * @param mixed $submitted
      * @param array<int, PlanMeasure> $planMeasures
-     * @return array<int, array{planMeasureId:int, text:string|null}>
+     * @param list<int> $selectedDocumentIds
+     * @param array<int, array<string, mixed>> $current
+     * @return array<int, array{planMeasureId:int, text:string|null, origin:string, photoDocumentId:int|null}>
      */
-    private function normalizeFeaturedMeasures(mixed $submitted, array $planMeasures): array
+    private function normalizeFeaturedMeasures(
+        mixed $submitted,
+        array $planMeasures,
+        array $selectedDocumentIds,
+        array $current,
+    ): array
     {
         if (!is_array($submitted)) {
             throw new \InvalidArgumentException('Invalid featured measures payload.');
+        }
+
+        $currentByPlanMeasureId = [];
+        foreach ($current as $item) {
+            $currentId = $this->positiveId($item['planMeasureId'] ?? null);
+            if ($currentId !== null) {
+                $currentByPlanMeasureId[$currentId] = $item;
+            }
         }
 
         $result = [];
@@ -306,9 +358,33 @@ final class FinalReportContentEditor
             if ($id === null || !isset($planMeasures[$id])) {
                 throw new \InvalidArgumentException('A featured measure does not belong to the active plan.');
             }
+
+            if (array_key_exists('origin', $values)) {
+                throw new \InvalidArgumentException('Featured measure origin is server-controlled.');
+            }
+
+            $currentItem = $currentByPlanMeasureId[$id] ?? [];
+            $text = FinalReportRichText::sanitize($values['text'] ?? null, 2000);
+            $currentText = FinalReportRichText::sanitize($currentItem['text'] ?? null, 2000);
+            $currentOrigin = in_array($currentItem['origin'] ?? null, ['manual', 'ai'], true)
+                ? $currentItem['origin']
+                : 'manual';
+            $rawPhotoDocumentId = array_key_exists('photoDocumentId', $values)
+                ? $values['photoDocumentId']
+                : ($currentItem['photoDocumentId'] ?? null);
+            $photoDocumentId = $this->positiveId($rawPhotoDocumentId);
+            if ($rawPhotoDocumentId !== null && $rawPhotoDocumentId !== '' && $photoDocumentId === null) {
+                throw new \InvalidArgumentException('Invalid featured measure photo reference.');
+            }
+            if ($photoDocumentId !== null && !in_array($photoDocumentId, $selectedDocumentIds, true)) {
+                throw new \InvalidArgumentException('A featured measure photo must belong to the selected report gallery.');
+            }
+
             $result[] = [
                 'planMeasureId' => $id,
-                'text' => $this->text($values['text'] ?? null, 2000),
+                'text' => $text,
+                'origin' => $text === $currentText ? $currentOrigin : 'manual',
+                'photoDocumentId' => $photoDocumentId,
             ];
         }
 
@@ -425,8 +501,13 @@ final class FinalReportContentEditor
 
         $result = [];
         foreach (self::MANUAL_SECTIONS as $section) {
-            $text = $this->text($submitted[$section] ?? null, 10000);
-            $currentText = $this->text($current[$section]['text'] ?? null, 10000);
+            // #79: the introduction editor is hidden, but historic content and origin remain intact.
+            if ($section === 'introduction' && !array_key_exists($section, $submitted)) {
+                $result[$section] = $current[$section] ?? ['text' => null, 'origin' => 'manual'];
+                continue;
+            }
+            $text = FinalReportRichText::sanitize($submitted[$section] ?? null, 10000);
+            $currentText = FinalReportRichText::sanitize($current[$section]['text'] ?? null, 10000);
             $currentOrigin = $current[$section]['origin'] ?? 'manual';
             $result[$section] = [
                 'text' => $text,

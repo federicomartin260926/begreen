@@ -59,6 +59,7 @@ import CrewAssignmentController from './controllers/crew_assignment_controller.j
 import CrewImportController from './controllers/crew_import_controller.js';
 import FinalReportPhotoReplaceController from './controllers/final_report_photo_replace_controller.js';
 import FinalReportEditorController from './controllers/final_report_editor_controller.js';
+import FinalReportRichTextController from './controllers/final_report_rich_text_controller.js';
 
 const application = Application.start();
 application.register('project', ProjectController);
@@ -92,6 +93,7 @@ application.register('crew-assignment', CrewAssignmentController);
 application.register('crew-import', CrewImportController);
 application.register('final-report-photo-replace', FinalReportPhotoReplaceController);
 application.register('final-report-editor', FinalReportEditorController);
+application.register('final-report-rich-text', FinalReportRichTextController);
 
 // 7) bootstrap-select (CSS estático + JS dinámico para asegurar window.bootstrap listo)
 import 'bootstrap-select/dist/css/bootstrap-select.min.css';

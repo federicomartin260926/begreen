@@ -1,7 +1,10 @@
 <section class="pdf-page report-design-final-cover">
-  {% if coverPhoto %}<img class="photo" src="{{ coverPhoto.dataUri }}" alt="">{% endif %}
-  <h1>{{ 'backend.final_report.title'|trans }}</h1><h2>{{ report.project.name }}</h2>
-  {% if report.project.type %}<p>{{ report.project.type }}</p>{% endif %}
-  {% if report.project.mainLocation or report.project.country %}<p>{{ report.project.mainLocation }}{% if report.project.mainLocation and report.project.country %}, {% endif %}{{ report.project.country }}</p>{% endif %}
-  {% if coverPhoto and (coverPhoto.caption or coverPhoto.author) %}<p class="muted">{{ coverPhoto.caption }}{% if coverPhoto.author %} · {{ coverPhoto.author }}{% endif %}</p>{% endif %}
+  {% if coverPhoto %}<img class="photo pdf-cover-photo" src="{{ coverPhoto.dataUri }}" alt="">{% endif %}
+  <h1>{{ 'backend.final_report.title'|trans }}</h1>
+  <h2 class="pdf-cover-project">{{ report.project.name }}{% if report.project.mainLocation %} ({{ report.project.mainLocation }}){% elseif report.project.country %} ({{ report.project.country }}){% endif %}</h2>
+  {% if coverPhoto and (coverPhoto.caption or coverPhoto.author) %}<p class="muted pdf-cover-credit">{{ coverPhoto.caption }}{% if coverPhoto.author %} · {{ coverPhoto.author }}{% endif %}</p>{% endif %}
+  {% if texts.executive_summary.text|default(null) %}
+    <h3 class="pdf-cover-summary-title">{{ 'backend.final_report.sections.executive_summary'|trans }}</h3>
+    <div class="pdf-rich-text pdf-cover-summary">{{ formattedTexts.executive_summary|default('')|raw }}</div>
+  {% endif %}
 </section>

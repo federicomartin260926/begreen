@@ -67,6 +67,13 @@ final readonly class FinalReportPdfBuilder
                 'isCover' => $content->getCoverDocumentId() === $id,
             ]);
         }
+        usort($photos, static fn (array $left, array $right): int =>
+            ((int) ($left['position'] ?? PHP_INT_MAX)) <=> ((int) ($right['position'] ?? PHP_INT_MAX))
+            ?: $left['documentId'] <=> $right['documentId']);
+        $photosByDocumentId = [];
+        foreach ($photos as $photo) {
+            $photosByDocumentId[$photo['documentId']] = $photo;
+        }
 
         $implementationById = [];
         foreach ($report['implementation']['measures'] ?? [] as $measure) {
@@ -77,21 +84,52 @@ final readonly class FinalReportPdfBuilder
             $planById[$measure['planMeasureId'] ?? 0] = $measure;
         }
         $featured = [];
+        $featuredPhotoDocumentIds = [];
         foreach ($content->getFeaturedMeasures() as $item) {
             $id = $item['planMeasureId'] ?? null;
             if (is_int($id) && isset($planById[$id])) {
+                $photo = null;
+                if (array_key_exists('photoDocumentId', $item)) {
+                    $photoDocumentId = $item['photoDocumentId'];
+                    if (is_int($photoDocumentId) && isset($photosByDocumentId[$photoDocumentId])) {
+                        $photo = $photosByDocumentId[$photoDocumentId];
+                    }
+                } else {
+                    foreach ($photos as $candidate) {
+                        if (($candidate['planMeasureId'] ?? null) === $id) {
+                            $photo = $candidate;
+                            break;
+                        }
+                    }
+                }
+                if ($photo !== null) {
+                    $featuredPhotoDocumentIds[$photo['documentId']] = true;
+                }
                 $featured[] = array_merge($item, [
                     'plan' => $planById[$id],
                     'implementation' => $implementationById[$id] ?? null,
+                    'photo' => $photo,
+                    'formattedText' => FinalReportRichText::render($item['text'] ?? null),
                 ]);
             }
+        }
+        foreach ($photos as &$photo) {
+            $photo['usedInFeatured'] = isset($featuredPhotoDocumentIds[$photo['documentId']]);
+        }
+        unset($photo);
+
+        $formattedTexts = [];
+        foreach ($content->getManualTexts() as $section => $entry) {
+            $formattedTexts[$section] = FinalReportRichText::render($entry['text'] ?? null);
         }
 
         $data = [
             'project' => $project,
             'report' => $report,
             'content' => $content,
+            'includeTechnicalAnnex' => $content->isTechnicalAnnexIncluded(),
             'texts' => $content->getManualTexts(),
+            'formattedTexts' => $formattedTexts,
             'featuredMeasures' => $featured,
             'photos' => $photos,
             'coverPhoto' => current(array_filter($photos, static fn (array $photo): bool => $photo['isCover'])) ?: null,

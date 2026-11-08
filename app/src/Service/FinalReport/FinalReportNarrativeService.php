@@ -6,10 +6,14 @@ namespace App\Service\FinalReport;
 
 use App\Entity\FinalReportContent;
 use App\Service\Ai\AiReportProviderInterface;
+use App\Service\Ai\Dto\AiReportCategorySummary;
 use App\Service\Ai\Dto\AiReportRequest;
 
 final readonly class FinalReportNarrativeService
 {
+    private const FEATURED_MEASURE_SECTION = 'featured_measure';
+    private const FEATURED_MEASURE_TEXT_MAX_LENGTH = 2000;
+
     public const GENERATED_SECTIONS = [
         'executive_summary',
         'implementation',
@@ -98,6 +102,164 @@ final readonly class FinalReportNarrativeService
         return $updated;
     }
 
+    /**
+     * @param array<string, mixed> $report
+     * @return array{section:string, text:string, origin:string}
+     */
+    public function generateSection(
+        FinalReportContent $content,
+        array $report,
+        string $section,
+        string $locale,
+        bool $replaceManual = false,
+    ): array {
+        if (!in_array($section, ['executive_summary', 'implementation', 'featured_storytelling'], true)) {
+            throw new \InvalidArgumentException('Unknown final report narrative section.');
+        }
+        $this->assertProject($content, $report);
+        $context = $this->factualContext($content, $report, $locale);
+        if ($section === 'featured_storytelling' && $context['featuredMeasures'] === []) {
+            throw new \InvalidArgumentException('No featured measures selected.');
+        }
+        $texts = $content->getManualTexts();
+        $current = $texts[$section] ?? [];
+        $isManual = ($current['origin'] ?? 'manual') !== 'ai'
+            && trim((string) ($current['text'] ?? '')) !== '';
+        if ($isManual && !$replaceManual) {
+            throw new \InvalidArgumentException('Manual text requires explicit replacement.');
+        }
+
+        $context['scope'] = 'single_section';
+        $context['targetSection'] = $section;
+        $request = new AiReportRequest(
+            $locale,
+            [],
+            'final_sustainability_report',
+            $context,
+            $section === 'executive_summary' ? [] : [$section],
+        );
+        $result = $this->provider->generate($request);
+        if ($section === 'executive_summary') {
+            if ($result->categorySummaries !== []) {
+                throw new \InvalidArgumentException('Unexpected sections in the AI result.');
+            }
+            $generated = $result->generalConclusion;
+        } else {
+            if (count($result->categorySummaries) !== 1
+                || ($result->categorySummaries[0]->categoryKey ?? null) !== $section) {
+                throw new \InvalidArgumentException('Unexpected sections in the AI result.');
+            }
+            $generated = $result->categorySummaries[0]->summary;
+        }
+        $text = trim($generated);
+        if ($text === '' || mb_strlen($text) > 10000) {
+            throw new \InvalidArgumentException('Invalid generated section narrative.');
+        }
+        $texts[$section] = ['text' => $text, 'origin' => 'ai'];
+        $content->setManualTexts($texts);
+
+        return ['section' => $section, 'text' => $text, 'origin' => 'ai'];
+    }
+
+    /**
+     * @param array<string, mixed> $report
+     * @return array{planMeasureId:int, text:string, origin:string}
+     */
+    public function generateFeaturedMeasure(
+        FinalReportContent $content,
+        array $report,
+        int $planMeasureId,
+        string $locale,
+        bool $replaceManual = false,
+    ): array {
+        $this->assertProject($content, $report);
+
+        $featuredMeasures = $content->getFeaturedMeasures();
+        $targetIndex = null;
+        $target = null;
+        foreach ($featuredMeasures as $index => $featuredMeasure) {
+            if (($featuredMeasure['planMeasureId'] ?? null) === $planMeasureId) {
+                $targetIndex = $index;
+                $target = $featuredMeasure;
+                break;
+            }
+        }
+        if (!is_int($targetIndex) || !is_array($target)) {
+            throw new \InvalidArgumentException('The measure is not selected as featured.');
+        }
+
+        $planMeasure = $this->findReportMeasure($report['plan']['measures'] ?? [], $planMeasureId);
+        $implementation = $this->findReportMeasure($report['implementation']['measures'] ?? [], $planMeasureId);
+        if ($planMeasure === null || $implementation === null) {
+            throw new \InvalidArgumentException('The measure does not belong to the active sustainability plan.');
+        }
+
+        $currentText = trim((string) ($target['text'] ?? ''));
+        $currentOrigin = in_array($target['origin'] ?? null, ['manual', 'ai'], true)
+            ? $target['origin']
+            : 'manual';
+        if ($currentText !== '' && $currentOrigin === 'manual' && !$replaceManual) {
+            throw new \InvalidArgumentException('Manual featured measure text requires explicit replacement.');
+        }
+
+        $request = new AiReportRequest(
+            $locale,
+            [],
+            'final_sustainability_report',
+            [
+                'scope' => self::FEATURED_MEASURE_SECTION,
+                'project' => $this->featuredMeasureProjectContext($report['project'] ?? []),
+                'measure' => [
+                    'planMeasureId' => $planMeasureId,
+                    'definition' => [
+                        'name' => $planMeasure['measure']['name'] ?? null,
+                        'description' => $planMeasure['measure']['description'] ?? null,
+                        'implementationGuidance' => $planMeasure['measure']['implementationGuidance'] ?? null,
+                    ],
+                    'decision' => [
+                        'applicable' => $planMeasure['decision']['applicable'] ?? null,
+                        'willImplement' => $planMeasure['decision']['willImplement'] ?? null,
+                        'primary' => $planMeasure['decision']['primary'] ?? null,
+                        'critical' => $planMeasure['decision']['critical'] ?? null,
+                    ],
+                    'implementation' => [
+                        'state' => $implementation['state'] ?? null,
+                        'actionTaken' => $implementation['actionTaken'] ?? null,
+                        'incident' => $implementation['incident'] ?? null,
+                        'observations' => $implementation['observations'] ?? null,
+                        'verification' => $implementation['verification'] ?? false,
+                    ],
+                    'existingEditorialText' => $currentText !== '' ? $currentText : null,
+                ],
+            ],
+            [self::FEATURED_MEASURE_SECTION],
+        );
+
+        $result = $this->provider->generate($request);
+        if (count($result->categorySummaries) !== 1) {
+            throw new \InvalidArgumentException('The AI result does not contain exactly one featured measure summary.');
+        }
+        $summary = $result->categorySummaries[0] ?? null;
+        if (!$summary instanceof AiReportCategorySummary
+            || $summary->categoryKey !== self::FEATURED_MEASURE_SECTION) {
+            throw new \InvalidArgumentException('The AI result does not contain the featured measure summary.');
+        }
+        $generatedText = trim($summary->summary);
+        if ($generatedText === '' || mb_strlen($generatedText) > self::FEATURED_MEASURE_TEXT_MAX_LENGTH) {
+            throw new \InvalidArgumentException('The generated featured measure text is invalid.');
+        }
+
+        $featuredMeasures[$targetIndex]['text'] = $generatedText;
+        $featuredMeasures[$targetIndex]['origin'] = 'ai';
+        $content->setFeaturedMeasures($featuredMeasures);
+
+        return [
+            'planMeasureId' => $planMeasureId,
+            'text' => $generatedText,
+            'origin' => 'ai',
+        ];
+    }
+
     /** @param array<string, mixed> $report */
     private function assertProject(FinalReportContent $content, array $report): void
     {
@@ -106,6 +268,37 @@ final readonly class FinalReportNarrativeService
         if ($contentProjectId === null || $contentProjectId !== $reportProjectId) {
             throw new \InvalidArgumentException('The final report content does not belong to the requested project.');
         }
+    }
+
+    /**
+     * @param mixed $measures
+     * @return array<string, mixed>|null
+     */
+    private function findReportMeasure(mixed $measures, int $planMeasureId): ?array
+    {
+        if (!is_array($measures)) {
+            return null;
+        }
+        foreach ($measures as $measure) {
+            if (is_array($measure) && ($measure['planMeasureId'] ?? null) === $planMeasureId) {
+                return $measure;
+            }
+        }
+
+        return null;
+    }
+
+    /** @param mixed $project @return array{name:mixed, type:mixed, country:mixed, mainLocation:mixed} */
+    private function featuredMeasureProjectContext(mixed $project): array
+    {
+        $project = is_array($project) ? $project : [];
+
+        return [
+            'name' => $project['name'] ?? null,
+            'type' => $project['type'] ?? null,
+            'country' => $project['country'] ?? null,
+            'mainLocation' => $project['mainLocation'] ?? null,
+        ];
     }
 
     /** @param array<string, mixed> $report @return array<string, mixed> */

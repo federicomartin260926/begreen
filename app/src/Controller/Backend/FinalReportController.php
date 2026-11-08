@@ -23,6 +23,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -56,15 +57,19 @@ final class FinalReportController extends AbstractController
         ActiveProjectService $activeProjectService,
         EntityManagerInterface $entityManager,
         FinalReportContentEditor $editor,
-    ): RedirectResponse {
+    ): Response {
         [$project, $plan] = $this->activeContext($activeProjectService, $entityManager);
         $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
         $this->assertCsrf($request, 'final_report_save_'.$project->getId());
+        $jsonResponse = $request->getPreferredFormat() === 'json';
 
         $content = $this->findContent($project, $entityManager) ?? (new FinalReportContent())->setProject($project);
         try {
             $editor->update($content, $project, $plan, $request->request->all());
         } catch (\InvalidArgumentException $exception) {
+            if ($jsonResponse) {
+                return $this->json(['ok' => false], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
             $this->addFlash('danger', $exception->getMessage());
 
             return $this->redirectToRoute('backend_final_report_index');
@@ -72,6 +77,9 @@ final class FinalReportController extends AbstractController
 
         $entityManager->persist($content);
         $entityManager->flush();
+        if ($jsonResponse) {
+            return $this->json(['ok' => true]);
+        }
         $this->addFlash('success', 'backend.final_report.flash.saved');
 
         return $this->redirectToRoute('backend_final_report_index');
@@ -125,6 +133,128 @@ final class FinalReportController extends AbstractController
         }
 
         return $this->redirectToRoute('backend_final_report_index');
+    }
+
+    #[Route('/narrative/{section}/generate', name: 'section_narrative_generate', methods: ['POST'],
+        requirements: ['section' => 'executive_summary|implementation|featured_storytelling'])]
+    public function generateSectionNarrative(
+        string $section,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        EntityManagerInterface $entityManager,
+        FinalReportDataBuilder $dataBuilder,
+        FinalReportNarrativeService $narrativeService,
+        LoggerInterface $aiLogger,
+        TranslatorInterface $translator,
+    ): JsonResponse {
+        [$project, $plan] = $this->activeContext($activeProjectService, $entityManager);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $this->assertCsrf($request, 'final_report_section_ai_'.$project->getId().'_'.$section);
+        $content = $this->findContent($project, $entityManager)
+            ?? (new FinalReportContent())->setProject($project);
+        $replaceManual = (string) $request->request->get('replaceManual') === '1';
+        try {
+            $generated = $narrativeService->generateSection(
+                $content,
+                $dataBuilder->build($project, $plan),
+                $section,
+                $request->getLocale(),
+                $replaceManual,
+            );
+            $entityManager->persist($content);
+            $entityManager->flush();
+
+            return $this->json($generated);
+        } catch (AiReportException) {
+            return $this->json([
+                'error' => $translator->trans('backend.final_report.section_ai_error', [], 'messages', $request->getLocale()),
+            ], Response::HTTP_BAD_GATEWAY);
+        } catch (\InvalidArgumentException $exception) {
+            $aiLogger->error('Final report scoped narrative validation failed.', [
+                'feature' => 'final_report_scoped_narrative',
+                'exception_class' => $exception::class,
+                'failure_category' => 'application_validation',
+                'project_id' => $project->getId(),
+                'section' => $section,
+            ]);
+            return $this->json([
+                'error' => $translator->trans('backend.final_report.section_ai_error', [], 'messages', $request->getLocale()),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    #[Route(
+        '/featured/{planMeasureId}/narrative/generate',
+        name: 'featured_narrative_generate',
+        methods: ['POST'],
+        requirements: ['planMeasureId' => '\d+'],
+    )]
+    public function generateFeaturedNarrative(
+        int $planMeasureId,
+        Request $request,
+        ActiveProjectService $activeProjectService,
+        EntityManagerInterface $entityManager,
+        FinalReportDataBuilder $dataBuilder,
+        FinalReportNarrativeService $narrativeService,
+        LoggerInterface $aiLogger,
+        TranslatorInterface $translator,
+    ): JsonResponse {
+        [$project, $plan] = $this->activeContext($activeProjectService, $entityManager);
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        $this->assertCsrf(
+            $request,
+            'final_report_featured_ai_'.$project->getId().'_'.$planMeasureId,
+        );
+        $content = $this->findContent($project, $entityManager) ?? (new FinalReportContent())->setProject($project);
+        $replaceManual = (string) $request->request->get('replaceManual') === '1';
+
+        try {
+            $generated = $narrativeService->generateFeaturedMeasure(
+                $content,
+                $dataBuilder->build($project, $plan),
+                $planMeasureId,
+                $request->getLocale(),
+                $replaceManual,
+            );
+            $entityManager->persist($content);
+            $entityManager->flush();
+
+            return $this->json([
+                ...$generated,
+                'message' => $translator->trans(
+                    'backend.final_report.flash.narrative_updated',
+                    ['%count%' => 1],
+                    'messages',
+                    $request->getLocale(),
+                ),
+            ]);
+        } catch (AiReportException) {
+            return $this->json([
+                'error' => $translator->trans(
+                    'backend.final_report.flash.narrative_failed',
+                    [],
+                    'messages',
+                    $request->getLocale(),
+                ),
+            ], Response::HTTP_BAD_GATEWAY);
+        } catch (\InvalidArgumentException $exception) {
+            $aiLogger->error('Featured measure narrative generation failed.', [
+                'feature' => 'final_report_featured_measure_narrative',
+                'exception_class' => $exception::class,
+                'failure_category' => 'application_validation',
+                'project_id' => $project->getId(),
+                'plan_measure_id' => $planMeasureId,
+            ]);
+
+            return $this->json([
+                'error' => $translator->trans(
+                    'backend.final_report.flash.narrative_failed',
+                    [],
+                    'messages',
+                    $request->getLocale(),
+                ),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
     }
 
     #[Route('/preview', name: 'preview', methods: ['GET'])]

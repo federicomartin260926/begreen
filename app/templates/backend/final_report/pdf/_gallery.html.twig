@@ -1,1 +1,3 @@
-{% if photos|filter(photo => not photo.isCover) is not empty %}<section class="pdf-page report-design-final-gallery"><h2>{{ 'backend.final_report.pdf.gallery'|trans }}</h2>{% for photo in photos %}{% if not photo.isCover %}<div><img class="photo" src="{{ photo.dataUri }}" alt=""><p>{{ photo.caption|default('') }}{% if photo.author %} · {{ photo.author }}{% endif %}</p></div>{% endif %}{% endfor %}</section>{% endif %}
+{# #79: componente legado conservado para no invalidar diseños #65 aprobados.
+   La galería no se representa en PDF; las fotos permanecen disponibles
+   como portada y como evidencias de medidas destacadas. #}

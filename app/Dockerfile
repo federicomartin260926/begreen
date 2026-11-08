@@ -8,9 +8,9 @@ ENV COMPOSER_ALLOW_SUPERUSER=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl unzip zip ca-certificates poppler-utils \
     libicu-dev libzip-dev libxml2-dev libonig-dev \
-    libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
+    libpng-dev libjpeg62-turbo-dev libfreetype6-dev libwebp-dev \
     libcurl4-openssl-dev nodejs npm \
- && docker-php-ext-configure gd --with-freetype --with-jpeg \
+ && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
  && docker-php-ext-install -j"$(nproc)" intl mbstring pdo_mysql zip gd xml dom opcache curl bcmath \
  && rm -rf /var/lib/apt/lists/*
 

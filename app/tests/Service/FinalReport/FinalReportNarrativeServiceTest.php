@@ -11,6 +11,7 @@ use App\Service\Ai\Dto\AiReportCategorySummary;
 use App\Service\Ai\Dto\AiReportRequest;
 use App\Service\Ai\Dto\AiReportResult;
 use App\Service\FinalReport\FinalReportNarrativeService;
+use App\Exception\Ai\AiTimeoutException;
 use PHPUnit\Framework\TestCase;
 
 final class FinalReportNarrativeServiceTest extends TestCase
@@ -180,6 +181,226 @@ final class FinalReportNarrativeServiceTest extends TestCase
         (new FinalReportNarrativeService($provider))->generate($content, $this->report(31), 'es');
     }
 
+    public function testGeneratesOnlyOneFeaturedMeasureWithWhitelistedFactualContext(): void
+    {
+        $provider = new class implements AiReportProviderInterface {
+            public ?AiReportRequest $request = null;
+
+            public function generate(AiReportRequest $request): AiReportResult
+            {
+                $this->request = $request;
+
+                return new AiReportResult(
+                    'Unused',
+                    [new AiReportCategorySummary('featured_measure', ' Relato factual generado. ')],
+                    [],
+                    'Unused',
+                );
+            }
+        };
+        $content = (new FinalReportContent())
+            ->setProject($this->project(40))
+            ->setFeaturedMeasures([
+                ['planMeasureId' => 70, 'text' => null, 'origin' => 'manual', 'photoDocumentId' => 5],
+                ['planMeasureId' => 71, 'text' => 'No cambiar', 'origin' => 'manual', 'photoDocumentId' => null],
+            ])
+            ->setManualTexts(['conclusion' => ['text' => 'Conclusión manual', 'origin' => 'manual']]);
+        $report = $this->featuredReport(40, 70, 'implemented');
+        $report['emissions'] = ['totalKgCo2e' => 999];
+        $report['ods'] = [['code' => '13']];
+        $report['documents'] = [['name' => 'private.pdf']];
+
+        $generated = (new FinalReportNarrativeService($provider))->generateFeaturedMeasure(
+            $content,
+            $report,
+            70,
+            'es',
+        );
+
+        self::assertSame([
+            'planMeasureId' => 70,
+            'text' => 'Relato factual generado.',
+            'origin' => 'ai',
+        ], $generated);
+        self::assertSame(['featured_measure'], $provider->request?->sectionKeys);
+        self::assertSame('es', $provider->request?->locale);
+        self::assertSame('featured_measure', $provider->request?->factualContext['scope']);
+        self::assertSame('implemented', $provider->request?->factualContext['measure']['implementation']['state']);
+        self::assertSame(['name', 'type', 'country', 'mainLocation'], array_keys($provider->request?->factualContext['project'] ?? []));
+        self::assertArrayNotHasKey('emissions', $provider->request?->factualContext ?? []);
+        self::assertArrayNotHasKey('ods', $provider->request?->factualContext ?? []);
+        self::assertArrayNotHasKey('documents', $provider->request?->factualContext ?? []);
+        self::assertArrayNotHasKey('responsibleCrewMembers', $provider->request?->factualContext['measure']['implementation'] ?? []);
+        self::assertSame('No cambiar', $content->getFeaturedMeasures()[1]['text']);
+        self::assertSame(5, $content->getFeaturedMeasures()[0]['photoDocumentId']);
+        self::assertSame('Conclusión manual', $content->getManualTexts()['conclusion']['text']);
+    }
+
+    public function testFeaturedMeasureContextPreservesRealStateAndRequestedLanguage(): void
+    {
+        $provider = new class implements AiReportProviderInterface {
+            /** @var list<AiReportRequest> */
+            public array $requests = [];
+
+            public function generate(AiReportRequest $request): AiReportResult
+            {
+                $this->requests[] = $request;
+
+                return new AiReportResult('Unused', [
+                    new AiReportCategorySummary('featured_measure', 'Generated narrative'),
+                ], [], 'Unused');
+            }
+        };
+        $service = new FinalReportNarrativeService($provider);
+
+        foreach (['pending', 'in_progress', 'implemented'] as $index => $state) {
+            $id = 80 + $index;
+            $service->generateFeaturedMeasure(
+                (new FinalReportContent())->setProject($this->project(41))->setFeaturedMeasures([[
+                    'planMeasureId' => $id,
+                    'text' => null,
+                    'origin' => 'manual',
+                ]]),
+                $this->featuredReport(41, $id, $state),
+                $id,
+                'en',
+            );
+        }
+
+        self::assertSame(['pending', 'in_progress', 'implemented'], array_map(
+            static fn (AiReportRequest $request): mixed => $request->factualContext['measure']['implementation']['state'],
+            $provider->requests,
+        ));
+        self::assertSame(['en', 'en', 'en'], array_map(
+            static fn (AiReportRequest $request): string => $request->locale,
+            $provider->requests,
+        ));
+    }
+
+    public function testManualFeaturedTextRequiresExplicitReplacementAndLegacyOriginIsManual(): void
+    {
+        $provider = $this->createMock(AiReportProviderInterface::class);
+        $provider->expects(self::never())->method('generate');
+        $content = (new FinalReportContent())->setProject($this->project(42))->setFeaturedMeasures([[
+            'planMeasureId' => 90,
+            'text' => 'Texto antiguo sin origen',
+        ]]);
+
+        try {
+            (new FinalReportNarrativeService($provider))->generateFeaturedMeasure(
+                $content,
+                $this->featuredReport(42, 90, 'pending'),
+                90,
+                'es',
+            );
+            self::fail('Manual text should require explicit replacement.');
+        } catch (\InvalidArgumentException) {
+            self::assertSame('Texto antiguo sin origen', $content->getFeaturedMeasures()[0]['text']);
+            self::assertArrayNotHasKey('origin', $content->getFeaturedMeasures()[0]);
+        }
+    }
+
+    public function testExplicitReplacementAndAiRegenerationSetAiOrigin(): void
+    {
+        $provider = new class implements AiReportProviderInterface {
+            public int $calls = 0;
+
+            public function generate(AiReportRequest $request): AiReportResult
+            {
+                ++$this->calls;
+
+                return new AiReportResult('Unused', [
+                    new AiReportCategorySummary('featured_measure', 'Relato '.$this->calls),
+                ], [], 'Unused');
+            }
+        };
+        $content = (new FinalReportContent())->setProject($this->project(43))->setFeaturedMeasures([[
+            'planMeasureId' => 91,
+            'text' => 'Manual',
+            'origin' => 'manual',
+        ]]);
+        $service = new FinalReportNarrativeService($provider);
+
+        $service->generateFeaturedMeasure($content, $this->featuredReport(43, 91, 'in_progress'), 91, 'es', true);
+        $service->generateFeaturedMeasure($content, $this->featuredReport(43, 91, 'in_progress'), 91, 'es');
+
+        self::assertSame(2, $provider->calls);
+        self::assertSame('Relato 2', $content->getFeaturedMeasures()[0]['text']);
+        self::assertSame('ai', $content->getFeaturedMeasures()[0]['origin']);
+    }
+
+    public function testInvalidFeaturedResultsAndProviderFailurePreservePreviousContent(): void
+    {
+        $results = [
+            new AiReportResult('Unused', [new AiReportCategorySummary('featured_measure', '   ')], [], 'Unused'),
+            new AiReportResult('Unused', [new AiReportCategorySummary('featured_measure', str_repeat('x', 2001))], [], 'Unused'),
+            new AiReportResult('Unused', [new AiReportCategorySummary('other', 'Wrong key')], [], 'Unused'),
+        ];
+        foreach ($results as $result) {
+            $provider = $this->createStub(AiReportProviderInterface::class);
+            $provider->method('generate')->willReturn($result);
+            $content = (new FinalReportContent())->setProject($this->project(44))->setFeaturedMeasures([[
+                'planMeasureId' => 92,
+                'text' => 'Relato IA anterior',
+                'origin' => 'ai',
+            ]]);
+
+            try {
+                (new FinalReportNarrativeService($provider))->generateFeaturedMeasure(
+                    $content,
+                    $this->featuredReport(44, 92, 'implemented'),
+                    92,
+                    'es',
+                );
+                self::fail('Invalid AI result should be rejected.');
+            } catch (\InvalidArgumentException) {
+                self::assertSame('Relato IA anterior', $content->getFeaturedMeasures()[0]['text']);
+                self::assertSame('ai', $content->getFeaturedMeasures()[0]['origin']);
+            }
+        }
+
+        $provider = $this->createStub(AiReportProviderInterface::class);
+        $provider->method('generate')->willThrowException(new AiTimeoutException('timeout'));
+        $content = (new FinalReportContent())->setProject($this->project(44))->setFeaturedMeasures([[
+            'planMeasureId' => 92,
+            'text' => 'Relato IA anterior',
+            'origin' => 'ai',
+        ]]);
+        try {
+            (new FinalReportNarrativeService($provider))->generateFeaturedMeasure(
+                $content,
+                $this->featuredReport(44, 92, 'implemented'),
+                92,
+                'es',
+            );
+            self::fail('Provider failure should be propagated.');
+        } catch (AiTimeoutException) {
+            self::assertSame('Relato IA anterior', $content->getFeaturedMeasures()[0]['text']);
+            self::assertSame('ai', $content->getFeaturedMeasures()[0]['origin']);
+        }
+    }
+
+    public function testRejectsNonFeaturedOrForeignPlanMeasureBeforeProviderCall(): void
+    {
+        $provider = $this->createMock(AiReportProviderInterface::class);
+        $provider->expects(self::never())->method('generate');
+        $service = new FinalReportNarrativeService($provider);
+        $project = $this->project(45);
+
+        foreach ([
+            [(new FinalReportContent())->setProject($project), $this->featuredReport(45, 93, 'pending'), 93],
+            [(new FinalReportContent())->setProject($project)->setFeaturedMeasures([['planMeasureId' => 94, 'text' => null]]), $this->featuredReport(45, 93, 'pending'), 94],
+            [(new FinalReportContent())->setProject($this->project(46))->setFeaturedMeasures([['planMeasureId' => 95, 'text' => null]]), $this->featuredReport(45, 95, 'pending'), 95],
+        ] as [$content, $report, $id]) {
+            try {
+                $service->generateFeaturedMeasure($content, $report, $id, 'es');
+                self::fail('Invalid target measure should be rejected.');
+            } catch (\InvalidArgumentException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
     private function project(int $id): Project
     {
         $project = (new Project())->setName('Proyecto final');
@@ -198,6 +419,44 @@ final class FinalReportNarrativeServiceTest extends TestCase
             'emissions' => ['available' => false, 'validRecordCount' => 0, 'totalKgCo2e' => null, 'byCategory' => [], 'byPhase' => []],
             'ods' => [],
             'commitment' => [],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function featuredReport(int $projectId, int $planMeasureId, string $state): array
+    {
+        return [
+            'project' => [
+                'id' => $projectId,
+                'name' => 'Proyecto final',
+                'type' => 'rodaje',
+                'country' => 'ES',
+                'mainLocation' => 'Madrid',
+                'phases' => [['code' => 'production']],
+            ],
+            'plan' => ['measures' => [[
+                'planMeasureId' => $planMeasureId,
+                'measure' => [
+                    'name' => 'Movilidad sostenible',
+                    'description' => 'Reducir desplazamientos',
+                    'implementationGuidance' => 'Priorizar transporte colectivo',
+                ],
+                'decision' => [
+                    'applicable' => true,
+                    'willImplement' => true,
+                    'primary' => 'true',
+                    'critical' => false,
+                ],
+            ]]],
+            'implementation' => ['measures' => [[
+                'planMeasureId' => $planMeasureId,
+                'state' => $state,
+                'actionTaken' => 'Acción documentada',
+                'incident' => null,
+                'observations' => 'Observación factual',
+                'verification' => true,
+                'responsibleCrewMembers' => [['name' => 'Dato personal excluido']],
+            ]]],
         ];
     }
 

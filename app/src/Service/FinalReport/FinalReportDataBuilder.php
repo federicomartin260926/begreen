@@ -107,7 +107,7 @@ final class FinalReportDataBuilder
                     'planMeasureId' => $planMeasure->getId(),
                     'measure' => $measure instanceof Measure ? [
                         'id' => $measure->getId(),
-                        'name' => $measure->getDisplayNameForReview(),
+                        'name' => $measure->getName(),
                         'description' => $measure->getDescription(),
                         'implementationGuidance' => $measure->getImplementation(),
                     ] : null,
@@ -152,7 +152,7 @@ final class FinalReportDataBuilder
             return [
                 'planMeasureId' => $planMeasure->getId(),
                 'measureId' => $measure?->getId(),
-                'measureName' => $measure?->getDisplayNameForReview(),
+                'measureName' => $measure?->getName(),
                 'state' => $state,
                 'actionTaken' => $this->optionalText($planMeasure->getActionTaken()),
                 'incident' => $this->optionalText($planMeasure->getExecutionIncident()),

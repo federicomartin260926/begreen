@@ -1,1 +1,29 @@
-{% if featuredMeasures is not empty or texts.featured_storytelling.text|default(null) %}<section class="pdf-page report-design-final-featured"><h2>{{ 'backend.final_report.featured_title'|trans }}</h2>{% if texts.featured_storytelling.text|default(null) %}<p>{{ texts.featured_storytelling.text|nl2br }}</p>{% endif %}{% for item in featuredMeasures %}<h3>{{ item.plan.measure.name|default('backend.final_report.measure'|trans) }}</h3>{% if item.text %}<p>{{ item.text|nl2br }}</p>{% endif %}{% if item.implementation %}<p class="muted">{{ 'backend.final_report.state'|trans }}: {{ ('backend.final_report.states.' ~ item.implementation.state)|trans }}</p>{% endif %}{% endfor %}</section>{% endif %}
+{% if featuredMeasures is not empty or texts.featured_storytelling.text|default(null) %}
+<section class="pdf-page report-design-final-featured">
+  <h2>{{ 'backend.final_report.featured_title'|trans }}</h2>
+  {% if texts.featured_storytelling.text|default(null) %}
+    <p>{{ formattedTexts.featured_storytelling|default('')|raw }}</p>
+  {% endif %}
+  {% for item in featuredMeasures %}
+    <article class="pdf-featured-measure">
+      <h3>{{ item.plan.measure.name|default('backend.final_report.measure'|trans) }}</h3>
+      {% if item.implementation %}
+        <p class="muted pdf-featured-state">{{ 'backend.final_report.state'|trans }}: {{ ('backend.final_report.states.' ~ item.implementation.state)|trans }}</p>
+      {% endif %}
+      {% if item.photo %}
+        <table class="pdf-featured-layout" role="presentation"><tbody><tr>
+          <td class="pdf-featured-image-cell">
+            <img class="pdf-featured-photo" src="{{ item.photo.dataUri }}" alt="">
+            {% if item.photo.caption or item.photo.author %}
+              <div class="muted pdf-featured-caption">{{ item.photo.caption|default('') }}{% if item.photo.author %}{% if item.photo.caption %} · {% endif %}{{ item.photo.author }}{% endif %}</div>
+            {% endif %}
+          </td>
+          <td class="pdf-featured-story-cell">{% if item.text %}<div class="pdf-featured-story">{{ item.formattedText|default('')|raw }}</div>{% endif %}</td>
+        </tr></tbody></table>
+      {% elseif item.text %}
+        <div class="pdf-featured-story">{{ item.formattedText|default('')|raw }}</div>
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>
+{% endif %}

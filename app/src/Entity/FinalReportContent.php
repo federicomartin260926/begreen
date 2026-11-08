@@ -20,7 +20,8 @@ class FinalReportContent
     private ?Project $project = null;
 
     /**
-     * Selected PlanMeasure IDs and optional editorial descriptions.
+     * Selected PlanMeasure IDs, editorial descriptions, server-controlled origin
+     * and an optional reference to a selected report photo.
      *
      * @var array<int, array<string, mixed>>
      */
@@ -45,6 +46,9 @@ class FinalReportContent
      */
     #[ORM\Column(type: 'json')]
     private array $manualTexts = [];
+
+    #[ORM\Column(name: 'include_technical_annex', type: 'boolean', options: ['default' => true])]
+    private bool $includeTechnicalAnnex = true;
 
     public function getId(): ?int
     {
@@ -95,6 +99,18 @@ class FinalReportContent
     public function setCoverDocumentId(?int $coverDocumentId): self
     {
         $this->coverDocumentId = $coverDocumentId;
+
+        return $this;
+    }
+
+    public function isTechnicalAnnexIncluded(): bool
+    {
+        return $this->includeTechnicalAnnex;
+    }
+
+    public function setIncludeTechnicalAnnex(bool $includeTechnicalAnnex): self
+    {
+        $this->includeTechnicalAnnex = $includeTechnicalAnnex;
 
         return $this;
     }
