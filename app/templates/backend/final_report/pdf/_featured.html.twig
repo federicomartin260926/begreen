@@ -14,9 +14,6 @@
         <table class="pdf-featured-layout" role="presentation"><tbody><tr>
           <td class="pdf-featured-image-cell">
             <img class="pdf-featured-photo" src="{{ item.photo.dataUri }}" alt="">
-            {% if item.photo.caption or item.photo.author %}
-              <div class="muted pdf-featured-caption">{{ item.photo.caption|default('') }}{% if item.photo.author %}{% if item.photo.caption %} · {% endif %}{{ item.photo.author }}{% endif %}</div>
-            {% endif %}
           </td>
           <td class="pdf-featured-story-cell">{% if item.text %}<div class="pdf-featured-story">{{ item.formattedText|default('')|raw }}</div>{% endif %}</td>
         </tr></tbody></table>

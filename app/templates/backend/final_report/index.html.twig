@@ -128,6 +128,7 @@
       <div class="fr-plan-states">
         {% for state in ['implemented', 'in_progress', 'pending', 'not_implemented', 'discarded', 'not_applicable'] %}
           {% set count = stateCounts[state]|default(0) %}
+          {% if count > 0 %}
           {% set percentage = measureTotal > 0 ? (count * 100 / measureTotal)|round(0) : 0 %}
           <div class="fr-plan-row" data-state="{{ state }}">
             <span>{{ ('backend.final_report.pdf.states.' ~ state)|trans }}</span>
@@ -136,13 +137,14 @@
             </div>
             <span class="text-end"><strong>{{ count }}</strong> <small class="text-muted">({{ percentage }}%)</small></span>
           </div>
+          {% endif %}
         {% endfor %}
       </div>
       <p class="text-muted small mb-0 mt-3">{{ 'backend.final_report.pdf.state_note'|trans }}</p>
     </div>
   </section>
 
-  <section class="card border-0 shadow-sm mb-4" aria-labelledby="final-report-implementation"><div class="card-header bg-white py-3"><h2 class="h4 mb-0" id="final-report-implementation">4. {{ 'backend.final_report.cards.implementation'|trans }}</h2></div><div class="card-body"><div class="row g-3 mb-3"><div class="col-md-4"><div class="border rounded p-2"><small class="text-muted d-block">{{ 'backend.final_report.measures'|trans }}</small><strong>{{ report.implementation.summary.totalMeasures }}</strong></div></div><div class="col-md-4"><div class="border rounded p-2"><small class="text-muted d-block">{{ 'backend.final_report.states.implemented'|trans }}</small><strong>{{ report.implementation.summary.implementedMeasures }}</strong></div></div></div>{{ _self.editorial('implementation', content, 3, project, canEdit) }}</div></section>
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="final-report-implementation"><div class="card-header bg-white py-3"><h2 class="h4 mb-0" id="final-report-implementation">4. {{ 'backend.final_report.cards.implementation'|trans }}</h2></div><div class="card-body">{{ _self.editorial('implementation', content, 3, project, canEdit) }}</div></section>
 
   <section class="card border-0 shadow-sm mb-4" aria-labelledby="final-report-featured">
     <div class="card-header bg-white py-3"><h2 class="h4 mb-0" id="final-report-featured">5. {{ 'backend.final_report.cards.featured'|trans }}</h2></div>

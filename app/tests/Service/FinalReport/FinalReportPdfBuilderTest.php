@@ -175,10 +175,11 @@ final class FinalReportPdfBuilderTest extends TestCase
         self::assertSame(50, $data['featuredMeasures'][0]['photo']['documentId']);
         self::assertStringContainsString('Movilidad sostenible', $html);
         self::assertStringContainsString('Comentario destacado', $html);
-        self::assertSame(2, substr_count($html, 'Pie de portada'));
+        self::assertSame(1, substr_count($html, 'Pie de portada'));
         self::assertStringNotContainsString('Pie de galería', $html);
         self::assertStringNotContainsString('report-design-final-gallery', $html);
         self::assertStringContainsString('pdf-featured-image-cell', $html);
+        self::assertStringNotContainsString('<div class="muted pdf-featured-caption">', $html);
         self::assertStringContainsString('pdf-featured-story-cell', $html);
         self::assertStringContainsString('2.696,02 kg CO2e', $html);
         self::assertStringContainsString('Energía', $html);
@@ -295,7 +296,7 @@ final class FinalReportPdfBuilderTest extends TestCase
         self::assertSame([50, 50], array_column(array_column($data['featuredMeasures'], 'photo'), 'documentId'));
         self::assertSame(50, $data['coverPhoto']['documentId']);
         self::assertTrue($data['photos'][0]['usedInFeatured']);
-        self::assertSame(3, substr_count($html, 'Crédito compartido'));
+        self::assertSame(1, substr_count($html, 'Crédito compartido'));
         self::assertSame('Galería complementaria', $data['photos'][1]['caption']);
         self::assertSame(0, substr_count($html, 'Galería complementaria'));
         self::assertStringNotContainsString('report-design-final-gallery', $html);
