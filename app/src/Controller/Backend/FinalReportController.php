@@ -43,8 +43,18 @@ final class FinalReportController extends AbstractController
         FinalReportDataBuilder $dataBuilder,
         FinalReportContentEditor $editor,
     ): Response {
-        [$project, $plan] = $this->activeContext($activeProjectService, $entityManager);
+        $project = $activeProjectService->getActiveProject();
+        if (!$project instanceof Project) {
+            throw $this->createNotFoundException('No active project.');
+        }
         $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+
+        $plan = $entityManager->getRepository(Plan::class)->findOneBy(['project' => $project]);
+        if (!$plan instanceof Plan) {
+            $this->addFlash('warning', 'Para generar el Informe Final de Sostenibilidad, primero debes crear el Plan de Sostenibilidad de este proyecto.');
+
+            return $this->redirectToRoute('backend_project_index');
+        }
 
         $content = $this->findContent($project, $entityManager) ?? (new FinalReportContent())->setProject($project);
 
