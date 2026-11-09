@@ -1,4 +1,4 @@
-<section class="pdf-page report-design-final-cover">
+<section class="pdf-page report-design-final-cover{% if not coverPhoto %} report-design-final-cover--no-image{% endif %}">
   {% if coverPhoto %}<img class="photo pdf-cover-photo" src="{{ coverPhoto.dataUri }}" alt="">{% endif %}
   <h1>{{ 'backend.final_report.title'|trans }}</h1>
   <h2 class="pdf-cover-project">{{ report.project.name }}{% if report.project.mainLocation %} ({{ report.project.mainLocation }}){% elseif report.project.country %} ({{ report.project.country }}){% endif %}</h2>

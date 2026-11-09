@@ -261,7 +261,15 @@ export default class extends Controller {
 
     this.photoOperationSubmitting = true;
     const submitters = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
-    submitters.forEach((submitter) => { submitter.disabled = true; });
+    submitters.forEach((submitter) => {
+      submitter.disabled = true;
+      submitter.setAttribute('aria-busy', 'true');
+      const spinner = document.createElement('span');
+      spinner.className = 'spinner-border spinner-border-sm me-2';
+      spinner.setAttribute('aria-hidden', 'true');
+      spinner.dataset.photoOperationSpinner = '1';
+      submitter.prepend(spinner);
+    });
     this.renderPhotoOperationStatus(this.photoSavingMessageValue, false);
 
     try {
@@ -279,7 +287,11 @@ export default class extends Controller {
       HTMLFormElement.prototype.submit.call(form);
     } catch (error) {
       this.photoOperationSubmitting = false;
-      submitters.forEach((submitter) => { submitter.disabled = false; });
+      submitters.forEach((submitter) => {
+        submitter.disabled = false;
+        submitter.removeAttribute('aria-busy');
+        submitter.querySelector('[data-photo-operation-spinner]')?.remove();
+      });
       this.renderPhotoOperationStatus(error.message || this.photoSaveErrorMessageValue, true);
     }
   }

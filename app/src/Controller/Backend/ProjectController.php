@@ -3,6 +3,7 @@
 namespace App\Controller\Backend;
 
 use App\Entity\{CrewDepartment, CrewPosition, EmissionRecord, Plan, Project, ProjectCompany, ProjectFundingSource, ProjectMembership, ProjectPhaseDate, User};
+use App\Entity\FinalReportContent;
 use App\Form\{ProjectType, CrewMemberCollectionType};
 use App\Repository\{CrewDepartmentRepository, CrewMemberRepository, CrewPositionRepository, ProjectBillingDocumentRepository, ProjectRepository, EmissionRecordRepository, PlanRepository};
 use App\Security\ProjectVoter;
@@ -74,7 +75,8 @@ class ProjectController extends AbstractController
         PlanRepository $planRepository,
         EmissionRecordRepository $emissionRecordRepository,
         ActiveProjectService $activeProjectService,
-        Request $request
+        Request $request,
+        EntityManagerInterface $entityManager
     ): Response {
         /** @var User $user */
         $user                   = $this->getUser();
@@ -200,6 +202,7 @@ class ProjectController extends AbstractController
                 ->getQuery()
                 ->getSingleScalarResult();
             $projectBillingDocumentCount = (int) $this->billingDocumentRepository->count(['project' => $project]);
+            $hasFinalReportActivity = $entityManager->getRepository(FinalReportContent::class)->count(['project' => $project]) > 0;
             $emissionsTotal += $projectEmissionSum;
             $billingDocumentsTotal += $projectBillingDocumentCount;
 
@@ -211,6 +214,7 @@ class ProjectController extends AbstractController
                 emissionSum: $projectEmissionSum,
                 billingDocumentCount: $projectBillingDocumentCount,
                 isActive: $activeProject && $activeProject->getId() === $project->getId(),
+                hasFinalReportActivity: $hasFinalReportActivity,
             );
             $dashboardProjects[] = $dashboardProject;
 
@@ -317,7 +321,8 @@ class ProjectController extends AbstractController
         int $emissionCount,
         float $emissionSum,
         int $billingDocumentCount,
-        bool $isActive
+        bool $isActive,
+        bool $hasFinalReportActivity
     ): array {
         $planStatus = $plan?->getStatus();
         $planLabel = $planStatus !== null
@@ -442,10 +447,10 @@ class ProjectController extends AbstractController
                 [
                     'code' => '06',
                     'label' => $this->t->trans('backend.projects.dashboard.phase_names.report'),
-                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.not_started'),
-                    'state' => 'not_started',
+                    'stateLabel' => $this->t->trans('backend.projects.dashboard.phases.common.'.($hasFinalReportActivity ? 'in_progress' : 'not_started')),
+                    'state' => $hasFinalReportActivity ? 'in_progress' : 'not_started',
                     'icon' => 'bi-file-earmark-text',
-                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.report').' · '.$this->t->trans('backend.projects.dashboard.phases.common.not_started'),
+                    'title' => $this->t->trans('backend.projects.dashboard.phase_names.report').' · '.$this->t->trans('backend.projects.dashboard.phases.common.'.($hasFinalReportActivity ? 'in_progress' : 'not_started')),
                     'primaryTarget' => 'report',
                 ],
                 [
