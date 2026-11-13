@@ -48,15 +48,8 @@
                     <div class="card-footer bg-white p-2 mt-auto d-flex align-items-center justify-content-center commercial-plan-comparison__footer">
                         {% if plan.current %}
                             <div class="text-center small text-success fw-semibold">{{ 'backend.commercial_plan_comparison.current_plan'|trans }}</div>
-                        {% elseif plan.upgrade %}
-                            <form method="post" action="{{ path('backend_project_subscription_checkout', {id: project.id, phase: comparison.phase, targetTier: plan.upgrade.targetTier}) }}" class="w-100">
-                                <input type="hidden" name="_token" value="{{ csrf_token('project_subscription_checkout_' ~ project.id ~ '_' ~ comparison.phase ~ '_' ~ plan.upgrade.targetTier) }}">
-                                <button type="submit" class="btn btn-sm {{ plan.code == 'pro' ? 'btn-success' : 'btn-primary' }} w-100">
-                                    {{ 'backend.commercial_plan_comparison.upgrade_to'|trans({'%tier%': plan.name, '%price%': plan.upgrade.priceLabel}) }}
-                                </button>
-                            </form>
                         {% else %}
-                            <div class="text-center small text-muted">{{ 'backend.commercial_plan_comparison.not_selectable'|trans }}</div>
+                            <div class="text-center small text-muted">{{ 'backend.subscription.flash.checkout_temporarily_unavailable'|trans }}</div>
                         {% endif %}
                     </div>
                 </section>

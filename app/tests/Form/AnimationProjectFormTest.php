@@ -8,7 +8,6 @@ use App\Enum\CommercialPhase;
 use App\Enum\ProjectCatalog;
 use App\Form\ProjectType;
 use App\Repository\CommercialPlanRepository;
-use App\Repository\ProjectSubscriptionRepository;
 use App\Service\Animation\AnimationConfigurationCatalog;
 use App\Service\CommercialPlanResolver;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -210,10 +209,7 @@ final class AnimationProjectFormTest extends KernelTestCase
                 ->setCode($code)
                 ->setName(ucfirst($code)),
         );
-        $resolver = new CommercialPlanResolver(
-            $planRepository,
-            $this->createMock(ProjectSubscriptionRepository::class),
-        );
+        $resolver = new CommercialPlanResolver($planRepository);
         self::getContainer()->set(CommercialPlanResolver::class, $resolver);
 
         return self::getContainer()->get('form.factory')->create(ProjectType::class, $project, [

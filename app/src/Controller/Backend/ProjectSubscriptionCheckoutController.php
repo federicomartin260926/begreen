@@ -5,7 +5,6 @@ namespace App\Controller\Backend;
 use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
-use App\Exception\PendingStripeCheckoutException;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\StripeCheckoutReconciliationResult;
@@ -45,39 +44,13 @@ final class ProjectSubscriptionCheckoutController extends AbstractController
             return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
         }
 
-        $pendingCheckout = $this->checkoutService->inspectPendingCheckout($project, $phase);
-        if ($pendingCheckout->shouldVerify()) {
-            $reconciliation = $this->checkoutService->reconcilePendingCheckout($project, $phase);
-            if ($reconciliation->isConfirmed()) {
-                $this->activeProjectService->setActiveProject($project);
-                $this->addFlash('success', 'backend.subscription.flash.success_confirmed');
+        $this->activeProjectService->setActiveProject($project);
+        $this->addFlash('warning', 'backend.subscription.flash.checkout_temporarily_unavailable');
 
-                return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
-            }
-
-            $this->activeProjectService->setActiveProject($project);
-            $this->addFlash('info', 'backend.subscription.flash.success_pending');
-
-            return $this->redirectToRoute('backend_project_billing', ['phase' => $phase->value, '_fragment' => 'billing-project-'.$project->getId()]);
-        }
-
-        try {
-            $checkoutUrl = $this->checkoutService->startCheckout($project, $phase, $targetTier, $this->getUser());
-        } catch (\InvalidArgumentException) {
-            $this->activeProjectService->setActiveProject($project);
-            $this->addFlash('warning', 'backend.subscription.flash.upgrade_not_allowed');
-            return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
-        } catch (PendingStripeCheckoutException) {
-            $this->activeProjectService->setActiveProject($project);
-            $this->addFlash('warning', 'backend.subscription.flash.pending_payment_exists');
-            return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
-        } catch (\Throwable) {
-            $this->activeProjectService->setActiveProject($project);
-            $this->addFlash('danger', 'backend.subscription.flash.checkout_failed');
-            return $this->redirectToRoute('backend_plan_review', self::REVIEW_DEFAULTS);
-        }
-
-        return new RedirectResponse($checkoutUrl);
+        return $this->redirectToRoute('backend_project_plan_comparison', [
+            'id' => $project->getId(),
+            'phase' => $phase->value,
+        ]);
     }
 
     #[Route('/{id}/subscription/{phase}/success/{targetTier}', name: 'subscription_success', methods: ['GET'], requirements: ['phase' => 'elaboration|implementation'])]

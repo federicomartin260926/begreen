@@ -4,81 +4,67 @@
 
 {% block breadcrumb %}
     {{ parent() }}
-    <li class="breadcrumb-item active" aria-current="page">
-        {{ 'backend.commercial_plans.list.breadcrumb'|trans }}
-    </li>
+    <li class="breadcrumb-item active" aria-current="page">{{ 'backend.commercial_plans.list.breadcrumb'|trans }}</li>
 {% endblock %}
 
 {% block body %}
 <div class="container-fluid px-0 backend-admin-shell">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <h2 class="mb-1">{{ 'backend.commercial_plans.list.h2'|trans }}</h2>
-                    <p class="text-muted mb-0">{{ 'backend.commercial_plans.list.subtitle'|trans }}</p>
-                </div>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover green_table_1" data-controller="datatable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>{{ 'backend.commercial_plans.list.table.phase'|trans }}</th>
-                            <th>{{ 'backend.commercial_plans.list.table.name'|trans }}</th>
-                            <th>{{ 'backend.commercial_plans.list.table.code'|trans }}</th>
-                            <th class="text-end">{{ 'backend.commercial_plans.list.table.price'|trans }}</th>
-                            <th>{{ 'backend.commercial_plans.list.table.status'|trans }}</th>
-                            <th class="text-center">{{ 'backend.commercial_plans.list.table.sort_order'|trans }}</th>
-                            <th class="text-center dt-head-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for plan in plans %}
-                            <tr>
-                                <td>{{ plan.id }}</td>
-                                <td>{{ ('backend.commercial_phases.' ~ plan.phase.value)|trans }}</td>
-                                <td>
-                                    <strong>{{ plan.name }}</strong>
-                                    {% if plan.description %}
-                                        <div class="text-muted small">{{ plan.description }}</div>
-                                    {% endif %}
-                                </td>
-                                <td><code>{{ plan.code }}</code></td>
-                                <td class="text-end text-nowrap">
-                                    {% if plan.priceAmount is not null %}
-                                        {{ (plan.priceAmount / 100)|number_format(2, ',', '.') }} {{ plan.priceCurrency }}
-                                    {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if plan.active %}
-                                        <span class="badge bg-success">{{ 'backend.common.yes'|trans }}</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">{{ 'backend.common.no'|trans }}</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">{{ plan.sortOrder }}</td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center align-items-center">
-                                        <a
-                                            href="{{ path('admin_commercial_plans_edit', {id: plan.id}) }}"
-                                            data-bs-toggle="popover"
-                                            data-bs-trigger="hover"
-                                            data-bs-content="{{ 'backend.common.edit'|trans }}"
-                                            class="btn">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="8" class="text-center text-muted">{{ 'backend.commercial_plans.list.empty'|trans }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    {% set spanish = app.request.locale starts with 'es' %}
+    <div class="mb-4">
+        <h2 class="mb-1">{{ 'backend.commercial_plans.list.h2'|trans }}</h2>
+        <p class="text-muted mb-0">{{ spanish ? 'Un único nivel Basic, Standard o Pro por proyecto. Las capacidades se configuran por fase.' : 'One Basic, Standard or Pro tier per project. Capabilities are configured by phase.' }}</p>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover green_table_1" data-controller="datatable">
+            <thead>
+                <tr>
+                    <th>{{ 'backend.commercial_plans.list.table.name'|trans }}</th>
+                    <th>{{ 'backend.commercial_plans.list.table.code'|trans }}</th>
+                    <th>{{ spanish ? 'Precio por proyecto (bajo / medio / alto)' : 'Per-project price (low / mid / high)' }}</th>
+                    <th>{{ 'backend.commercial_plans.list.table.status'|trans }}</th>
+                    <th class="text-center">{{ 'backend.commercial_plans.list.table.sort_order'|trans }}</th>
+                    <th class="text-center dt-head-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tier in tiers %}
+                    <tr>
+                        <td data-order="{{ tier.sortOrder is not null ? tier.sortOrder : 999 }}"><strong>{{ tier.elaboration ? tier.elaboration.name : tier.name }}</strong></td>
+                        <td><code>{{ tier.code }}</code></td>
+                        <td class="text-nowrap">
+                            {% if tier.code == 'basic' %}
+                                {{ spanish ? 'Gratis' : 'Free' }}
+                            {% else %}
+                                {% for amount in tier.prices %}{{ (amount / 100)|number_format(0, ',', '.') }} €{% if not loop.last %} / {% endif %}{% endfor %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if tier.editId is null %}
+                                <span class="badge bg-warning text-dark">{{ spanish ? 'Configuración incompleta' : 'Incomplete configuration' }}</span>
+                            {% elseif not tier.consistentStatus %}
+                                <span class="badge bg-warning text-dark">{{ spanish ? 'Estado inconsistente entre fases' : 'Inconsistent phase status' }}</span>
+                            {% elseif tier.active %}
+                                <span class="badge bg-success">{{ 'backend.common.yes'|trans }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ 'backend.common.no'|trans }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ tier.sortOrder is not null ? tier.sortOrder : '—' }}</td>
+                        <td class="text-center">
+                            {% if tier.editId is not null %}
+                                <a href="{{ path('admin_commercial_plans_edit', {id: tier.editId}) }}"
+                                   data-bs-toggle="popover" data-bs-trigger="hover"
+                                   data-bs-content="{{ 'backend.common.edit'|trans }}" class="btn"
+                                   aria-label="{{ 'backend.common.edit'|trans }} {{ tier.code }}">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="text-muted small mt-2">{{ spanish ? 'Los importes se calculan según el tipo y tamaño del proyecto; no se editan por fase. Stripe y la configuración interna de pagos permanecen sin cambios.' : 'Prices depend on project type and size; they are not edited per phase. Stripe and internal payment settings remain unchanged.' }}</p>
 </div>
 {% endblock %}

@@ -98,6 +98,13 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $measurePending = $this->createMeasure(702, 3);
         $plan = $this->createPlan($project, $measureBasic, $measurePending);
 
+        // The first measure was already decided; the current Elaboration rules
+        // also require at least 50 characters of observations to be complete.
+        // Leave the second measure pending to verify navigation to index 1.
+        $firstPlanMeasure = $plan->getPlanMeasures()->first();
+        self::assertInstanceOf(PlanMeasure::class, $firstPlanMeasure);
+        $firstPlanMeasure->setObservations(str_repeat('Medida ya documentada y justificada en elaboración. ', 2));
+
         $client = $this->createFakeStripeClient();
         $client->checkout->sessions->retrieveReturn = (object) [
             'id' => 'cs_success_pending',
@@ -171,8 +178,8 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $response = $controller->confirmPending($project, CommercialPhase::ELABORATION, $request);
 
         self::assertInstanceOf(RedirectResponse::class, $response);
-        self::assertStringContainsString('/backend/project/43/billing/elaboration', $response->getTargetUrl());
-        self::assertStringContainsString('from=index', $response->getTargetUrl());
+        // The current billing screen is phase-scoped; the fragment selects this project.
+        self::assertSame('/backend/project/billing/elaboration#billing-project-43', $response->getTargetUrl());
         self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
         self::assertSame('pi_manual_1', $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStripePaymentIntentId());
@@ -204,7 +211,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $response = $controller->cancelReturn($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_PRO, $request);
 
         self::assertInstanceOf(RedirectResponse::class, $response);
-        self::assertStringContainsString('/backend/project/44/billing/elaboration', $response->getTargetUrl());
+        self::assertSame('/backend/project/billing/elaboration#billing-project-44', $response->getTargetUrl());
         self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
         self::assertSame(ProjectSubscription::TIER_PRO, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTargetTier());
@@ -333,6 +340,39 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
         $controller->checkout($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_STANDARD, $request);
     }
 
+    public function testValidLegacyCheckoutPostIsBlockedBeforeCallingStripe(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $project = $this->createProject(48, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_BASIC);
+        $client = $this->createFakeStripeClient();
+        $service = $this->createCheckoutService($client, $this->makeDefaultCommercialPlans());
+        $activeProjectService = $this->createMock(ActiveProjectService::class);
+        $activeProjectService->expects(self::once())->method('setActiveProject')->with($project);
+
+        $controller = new ProjectSubscriptionCheckoutController($service, $activeProjectService);
+        $controller->setContainer($container);
+        $this->setAdminToken();
+
+        $request = $this->createRequest();
+        $request->request->set(
+            '_token',
+            $container->get('security.csrf.token_manager')
+                ->getToken('project_subscription_checkout_48_elaboration_standard')
+                ->getValue()
+        );
+
+        $response = $controller->checkout($project, CommercialPhase::ELABORATION, ProjectSubscription::TIER_STANDARD, $request);
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertStringContainsString('/backend/project/48/plans/elaboration', $response->getTargetUrl());
+        self::assertSame([], $client->checkout->sessions->createCalls);
+        self::assertSame(
+            ['backend.subscription.flash.checkout_temporarily_unavailable'],
+            $request->getSession()->getFlashBag()->all()['warning'] ?? []
+        );
+    }
+
     private function createCheckoutService(FakeStripeClient $client, array $plans, bool $expectFlush = false, ?array $measures = null, ?Plan $plan = null): StripeProjectCheckoutService
     {
         $gate = $this->makeProjectFeatureGate($plans);
@@ -419,7 +459,7 @@ final class ProjectSubscriptionCheckoutControllerTest extends KernelTestCase
 
     private function createProject(int $id, string $status, string $tier, ?string $targetTier = null, ?string $sessionId = null): Project
     {
-        $project = new Project();
+        $project = (new Project())->setCommercialTier($tier);
         $this->setEntityId($project, $id);
 
         $subscription = (new ProjectSubscription())

@@ -88,10 +88,8 @@ final class ProjectControllerFormTest extends KernelTestCase
             ['id' => 'DESC']
         );
         self::assertInstanceOf(Project::class, $project);
-        self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getStatus());
-        self::assertSame(ProjectSubscription::TIER_BASIC, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
-        self::assertSame(ProjectSubscription::STATUS_ACTIVE, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getStatus());
+        self::assertSame(Project::COMMERCIAL_TIER_BASIC, $project->getCommercialTier());
+        self::assertCount(0, $project->getSubscriptions());
         self::assertCount(1, $project->getProjectCompanies());
         self::assertSame('Fantasy', $project->getProjectCompanies()->first()->getName());
         self::assertCount(1, $project->getProjectFundingSources());
@@ -219,7 +217,8 @@ final class ProjectControllerFormTest extends KernelTestCase
         $content = (string) $response->getContent();
 
         self::assertStringContainsString('Plan actual', $content);
-        self::assertStringContainsString('Mejorar plan', $content);
+        self::assertStringContainsString('Comparar y mejorar plan', $content);
+        self::assertStringNotContainsString('Mejorar plan', $content);
         self::assertStringNotContainsString('Tier comercial', $content);
         self::assertStringNotContainsString('Facturación del proyecto', $content);
         self::assertStringNotContainsString('Gestionar facturación', $content);
@@ -281,7 +280,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         self::assertSame(ProjectSubscription::TIER_STANDARD, $project->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
     }
 
-    public function testCloneCreatesBothBasicSubscriptions(): void
+    public function testCloneCreatesOneCanonicalBasicTierWithoutSubscriptions(): void
     {
         self::bootKernel();
         $container = self::getContainer();
@@ -299,8 +298,8 @@ final class ProjectControllerFormTest extends KernelTestCase
 
         $clonedProject = $entityManager->getRepository(Project::class)->findOneBy(['name' => 'Proyecto clon test (copia)']);
         self::assertInstanceOf(Project::class, $clonedProject);
-        self::assertSame(ProjectSubscription::TIER_BASIC, $clonedProject->getSubscriptionForPhase(CommercialPhase::ELABORATION)?->getTier());
-        self::assertSame(ProjectSubscription::TIER_BASIC, $clonedProject->getSubscriptionForPhase(CommercialPhase::IMPLEMENTATION)?->getTier());
+        self::assertSame(Project::COMMERCIAL_TIER_BASIC, $clonedProject->getCommercialTier());
+        self::assertCount(0, $clonedProject->getSubscriptions());
     }
 
     #[DataProvider('cloneAuthorizationCases')]
@@ -461,7 +460,7 @@ final class ProjectControllerFormTest extends KernelTestCase
         );
     }
 
-    public function testCreatedPageShowsBasicPlanAndUpgradeCta(): void
+    public function testCreatedPageShowsSingleBasicPlanWithoutCheckoutCta(): void
     {
         self::bootKernel();
         $container = self::getContainer();
@@ -478,11 +477,12 @@ final class ProjectControllerFormTest extends KernelTestCase
         $content = (string) $response->getContent();
 
         self::assertStringContainsString('Proyecto creado correctamente', $content);
-        self::assertStringContainsString('Plan de Elaboración', $content);
+        self::assertStringContainsString('Plan del proyecto', $content);
         self::assertStringContainsString('Basic', $content);
-        self::assertStringContainsString('Mejorar plan', $content);
+        self::assertStringContainsString('La contratación online está temporalmente no disponible.', $content);
+        self::assertStringNotContainsString('Mejorar plan', $content);
         self::assertStringContainsString('Continuar con plan Basic', $content);
-        self::assertStringContainsString('/backend/project/billing/elaboration#billing-project-' . $project->getId(), $content);
+        self::assertStringNotContainsString('subscription/elaboration/checkout', $content);
     }
 
     public function testCreatedRedirectsWhenProjectDoesNotExist(): void

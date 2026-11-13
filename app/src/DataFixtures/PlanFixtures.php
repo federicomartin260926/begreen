@@ -7,6 +7,7 @@ use App\Entity\Plan;
 use App\Entity\PlanMeasure;
 use App\Entity\Protocol;
 use App\Entity\Project;
+use App\Entity\SustainabilityPlanBlockAnswer;
 use App\Repository\MeasureRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
@@ -15,185 +16,133 @@ use Doctrine\Persistence\ObjectManager;
 
 final class PlanFixtures extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
-    public function __construct(
-        private readonly MeasureRepository $measureRepository,
-    ) {
-    }
+    public function __construct(private readonly MeasureRepository $measureRepository) {}
 
-    public static function getGroups(): array
-    {
-        return ['plans', 'demo'];
-    }
-
-    public function getDependencies(): array
-    {
-        return [
-            ProjectFixtures::class,
-            MeasureFixtures::class,
-        ];
-    }
+    public static function getGroups(): array { return ['plans', 'demo']; }
+    public function getDependencies(): array { return [ProjectFixtures::class, MeasureFixtures::class]; }
 
     public function load(ObjectManager $manager): void
     {
-        $demoEvidencePath = $this->ensureDemoEvidence();
-
-        foreach (FrancProjectPlanData::PROJECTS as $projectName => $definition) {
-            $this->seedFrancPlan(
-                $manager,
-                $projectName,
-                $definition['protocolCode'],
-                $definition['measures'],
-                $demoEvidencePath,
-            );
+        foreach (FrancProjectPlanData::PROJECTS as $projectName => $fixture) {
+            $this->seedFrancPlan($manager, $projectName, $fixture);
         }
-
         $manager->flush();
     }
 
-    /**
-     * @param list<array{
-     *     sortOrder: int,
-     *     name: string,
-     *     isApplicable: ?bool,
-     *     willImplement: ?bool,
-     *     implemented: ?bool,
-     *     isCritical: ?bool,
-     *     observations: ?string,
-     *     actionTaken: ?string,
-     *     executionIncident: ?string,
-     *     hasEvidence: bool
-     * }> $measureDefinitions
-     */
-    private function seedFrancPlan(
-        ObjectManager $manager,
-        string $projectName,
-        string $protocolCode,
-        array $measureDefinitions,
-        string $demoEvidencePath,
-    ): void {
-        /** @var Project|null $project */
+    /** @param array<string, mixed> $fixture */
+    private function seedFrancPlan(ObjectManager $manager, string $projectName, array $fixture): void
+    {
         $project = $manager->getRepository(Project::class)->findOneBy(['name' => $projectName]);
-        if (!$project instanceof Project) {
-            throw new \RuntimeException(sprintf('Project not found for Franc plan seed: %s', $projectName));
+        if (!$project instanceof Project || $project->getCommercialTier() !== $fixture['tier']) {
+            throw new \RuntimeException(sprintf('Project/tier not available for Franc plan seed: %s', $projectName));
         }
-
-        /** @var Protocol|null $protocol */
-        $protocol = $manager->getRepository(Protocol::class)->findOneBy(['code' => $protocolCode]);
+        $protocol = $manager->getRepository(Protocol::class)->findOneBy(['code' => $fixture['protocolCode']]);
         if (!$protocol instanceof Protocol) {
-            throw new \RuntimeException(sprintf('Protocol not found for Franc plan seed: %s', $protocolCode));
+            throw new \RuntimeException(sprintf('Protocol not found for Franc plan seed: %s', $projectName));
         }
-
-        /** @var Plan|null $plan */
         $plan = $manager->getRepository(Plan::class)->findOneBy(['project' => $project]);
         if (!$plan instanceof Plan) {
-            $plan = (new Plan())
-                ->setProject($project)
-                ->setUser($project->getUser() ?? null);
+            $plan = (new Plan())->setProject($project)->setUser($project->getUser());
             $manager->persist($plan);
         } else {
             $this->resetPlan($plan);
         }
-
-        $plan
-            ->setProject($project)
-            ->setUser($project->getUser() ?? null)
+        $plan->setProject($project)
+            ->setUser($project->getUser())
             ->setProtocol($protocol)
             ->setStatus('completo')
             ->markCustomMeasuresCompleted()
             ->setStatusChangedAt(new \DateTimeImmutable())
             ->setCustomMeasures(null);
+        foreach ($fixture['presentedGamificationLevels'] as $level) {
+            $plan->markGamificationLevelPresented($level);
+        }
 
-        $catalogMeasures = $this->measureRepository->getCatalogMeasuresForProtocol($project, $protocol);
-        $measureIndex = $this->indexMeasures($catalogMeasures);
-
-        foreach ($measureDefinitions as $definition) {
-            $measure = $measureIndex[$definition['sortOrder']] ?? null;
-
-            // Las fixtures deben respetar el catálogo contratado del proyecto.
-            // Una definición de FrancProjectPlanData fuera del tier actual no debe
-            // materializarse como PlanMeasure.
-            if (!$measure instanceof Measure) {
-                continue;
+        $measureIndex = $this->indexMeasures($this->measureRepository->getCatalogMeasuresForProtocol($project, $protocol));
+        $definitions = $fixture['measures'];
+        if (count($measureIndex) !== count($definitions)) {
+            throw new \RuntimeException(sprintf('Fixture catalog count mismatch for %s: expected %d, found %d',
+                $projectName, count($definitions), count($measureIndex)));
+        }
+        $definedOrders = array_column($definitions, 'sortOrder');
+        sort($definedOrders);
+        $catalogOrders = array_keys($measureIndex);
+        sort($catalogOrders);
+        if ($definedOrders !== $catalogOrders) {
+            throw new \RuntimeException(sprintf('Fixture catalog sort orders mismatch for %s', $projectName));
+        }
+        $blockAnswers = [];
+        foreach ($fixture['blockAnswers'] as $blockDefinition) {
+            $anchorOrder = $blockDefinition['anchorSortOrder'];
+            $anchorMeasure = $measureIndex[$anchorOrder] ?? null;
+            $block = $anchorMeasure?->getMeasureBlock();
+            if ($block === null) {
+                throw new \RuntimeException(sprintf('Missing fixture block anchor %s/%d', $projectName, $anchorOrder));
             }
-
+            $answer = (new SustainabilityPlanBlockAnswer())
+                ->setMeasureBlock($block)
+                ->setApplies($blockDefinition['applies'])
+                ->setAnsweredBy($project->getUser());
+            $plan->addBlockAnswer($answer);
+            $manager->persist($answer);
+            $blockAnswers[$anchorOrder] = $answer;
+        }
+        foreach ($definitions as $definition) {
+            $order = $definition['sortOrder'];
+            $measure = $measureIndex[$order];
+            if ($measure->getName() !== $definition['name']) {
+                throw new \RuntimeException(sprintf('Fixture measure name mismatch: %s/%d', $projectName, $order));
+            }
             $planMeasure = (new PlanMeasure())
                 ->setMeasure($measure)
                 ->setIsApplicable($definition['isApplicable'])
                 ->setWillImplement($definition['willImplement'])
-                ->setImplemented($definition['implemented'])
                 ->setIsCritical($definition['isCritical'])
                 ->setObservations($definition['observations'])
-                ->setActionTaken($definition['actionTaken'])
-                ->setExecutionIncident($definition['executionIncident'])
-                ->setEvidence($definition['hasEvidence'] ? $demoEvidencePath : null);
-
-            $planMeasure->markAsManual();
+                // Elaboration only: no Implementation decisions/actions/incidents/evidence.
+                ->setImplemented(null)
+                ->setActionTaken(null)
+                ->setExecutionIncident(null)
+                ->setEvidence(null);
+            if (array_key_exists('blockAnchorSortOrder', $definition)) {
+                $anchorOrder = $definition['blockAnchorSortOrder'];
+                $answer = $blockAnswers[$anchorOrder] ?? null;
+                if (!$answer instanceof SustainabilityPlanBlockAnswer
+                    || $answer->applies()
+                    || $measure->getMeasureBlock() !== $measureIndex[$anchorOrder]->getMeasureBlock()) {
+                    throw new \RuntimeException(sprintf('Invalid fixture block skip for %s/%d', $projectName, $order));
+                }
+                $planMeasure->markAsBlockSkipped($answer);
+            } else {
+                $planMeasure->markAsManual();
+            }
             $plan->addPlanMeasure($planMeasure);
             $manager->persist($planMeasure);
         }
     }
 
-    /**
-     * @param iterable<Measure> $measures
-     * @return array<int, Measure>
-     */
+    /** @param iterable<Measure> $measures @return array<int, Measure> */
     private function indexMeasures(iterable $measures): array
     {
         $index = [];
-
         foreach ($measures as $measure) {
-            if (!$measure instanceof Measure) {
-                continue;
+            if (!$measure instanceof Measure) { continue; }
+            $order = (int) $measure->getSortOrder();
+            if (isset($index[$order])) {
+                throw new \RuntimeException(sprintf('Duplicate catalog sortOrder %d', $order));
             }
-
-            $sortOrder = (int) $measure->getSortOrder();
-            if (isset($index[$sortOrder])) {
-                throw new \RuntimeException(sprintf(
-                    'Duplicate catalog measure sort order %d for measures "%s" and "%s".',
-                    $sortOrder,
-                    $index[$sortOrder]->getName(),
-                    $measure->getName(),
-                ));
-            }
-
-            $index[$sortOrder] = $measure;
+            $index[$order] = $measure;
         }
-
         return $index;
-    }
-
-    private function ensureDemoEvidence(): string
-    {
-        $publicPath = '/uploads/evidences/demo/implemented-measure.png';
-        $absolutePath = dirname(__DIR__, 2).'/public'.$publicPath;
-        $directory = dirname($absolutePath);
-
-        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
-            throw new \RuntimeException(sprintf('Unable to create demo evidence directory "%s".', $directory));
-        }
-
-        $png = base64_decode(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL8WQAAAABJRU5ErkJggg==',
-            true,
-        );
-
-        if ($png === false || file_put_contents($absolutePath, $png) === false) {
-            throw new \RuntimeException(sprintf('Unable to create demo evidence "%s".', $absolutePath));
-        }
-
-        return $publicPath;
     }
 
     private function resetPlan(Plan $plan): void
     {
         foreach (clone $plan->getPlanMeasures() as $planMeasure) {
-            if ($planMeasure instanceof PlanMeasure) {
-                $plan->removePlanMeasure($planMeasure);
-            }
+            if ($planMeasure instanceof PlanMeasure) { $plan->removePlanMeasure($planMeasure); }
         }
-
-        foreach (clone $plan->getBlockAnswers() as $blockAnswer) {
-            $plan->removeBlockAnswer($blockAnswer);
+        foreach (clone $plan->getBlockAnswers() as $answer) {
+            $plan->removeBlockAnswer($answer);
         }
     }
 }

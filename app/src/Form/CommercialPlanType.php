@@ -26,43 +26,50 @@ final class CommercialPlanType extends AbstractType
             return $plan instanceof CommercialPlan ? (bool) $plan->getFeature($feature, false) : false;
         };
 
-        $builder
-            ->add('name', TextType::class, [
-                'label' => 'backend.commercial_plans.form.name',
-            ])
-            ->add('description', TextareaType::class, [
+        if (!$options['tier_view']) {
+            $builder
+                ->add('name', TextType::class, [
+                    'label' => 'backend.commercial_plans.form.name',
+                ])
+                ->add('description', TextareaType::class, [
+                    'label' => 'backend.commercial_plans.form.description',
+                    'required' => false,
+                ])
+                ->add('priceAmount', MoneyType::class, [
+                    'label' => 'backend.commercial_plans.form.price_amount',
+                    'required' => false,
+                    'currency' => 'EUR',
+                    'divisor' => 100,
+                    'attr' => ['min' => 0],
+                    'constraints' => [new PositiveOrZero()],
+                ])
+                ->add('priceCurrency', TextType::class, [
+                    'label' => 'backend.commercial_plans.form.price_currency',
+                    'attr' => ['maxlength' => 3, 'style' => 'text-transform: uppercase;'],
+                    'constraints' => [
+                        new NotBlank(),
+                        new Length(min: 3, max: 3),
+                    ],
+                ])
+                ->add('stripePriceId', TextType::class, [
+                    'label' => 'backend.commercial_plans.form.stripe_price_id',
+                    'required' => false,
+                    'attr' => ['maxlength' => 255],
+                    'help' => 'backend.commercial_plans.form.stripe_price_id_help',
+                ]);
+
+            if ($options['show_stripe_upgrade_from_standard_price_id']) {
+                $builder->add('stripeUpgradeFromStandardPriceId', TextType::class, [
+                    'label' => 'backend.commercial_plans.form.stripe_upgrade_from_standard_price_id',
+                    'required' => false,
+                    'attr' => ['maxlength' => 255, 'placeholder' => 'price_...'],
+                    'help' => 'backend.commercial_plans.form.stripe_upgrade_from_standard_price_id_help',
+                ]);
+            }
+        } else {
+            $builder->add('description', TextareaType::class, [
                 'label' => 'backend.commercial_plans.form.description',
                 'required' => false,
-            ])
-            ->add('priceAmount', MoneyType::class, [
-                'label' => 'backend.commercial_plans.form.price_amount',
-                'required' => false,
-                'currency' => 'EUR',
-                'divisor' => 100,
-                'attr' => ['min' => 0],
-                'constraints' => [new PositiveOrZero()],
-            ])
-            ->add('priceCurrency', TextType::class, [
-                'label' => 'backend.commercial_plans.form.price_currency',
-                'attr' => ['maxlength' => 3, 'style' => 'text-transform: uppercase;'],
-                'constraints' => [
-                    new NotBlank(),
-                    new Length(min: 3, max: 3),
-                ],
-            ])
-            ->add('stripePriceId', TextType::class, [
-                'label' => 'backend.commercial_plans.form.stripe_price_id',
-                'required' => false,
-                'attr' => ['maxlength' => 255],
-                'help' => 'backend.commercial_plans.form.stripe_price_id_help',
-            ]);
-
-        if ($options['show_stripe_upgrade_from_standard_price_id']) {
-            $builder->add('stripeUpgradeFromStandardPriceId', TextType::class, [
-                'label' => 'backend.commercial_plans.form.stripe_upgrade_from_standard_price_id',
-                'required' => false,
-                'attr' => ['maxlength' => 255, 'placeholder' => 'price_...'],
-                'help' => 'backend.commercial_plans.form.stripe_upgrade_from_standard_price_id_help',
             ]);
         }
 
@@ -76,16 +83,22 @@ final class CommercialPlanType extends AbstractType
             ->add('watermarkEnabled', CheckboxType::class, [
                 'label' => 'backend.commercial_plans.form.watermark_enabled',
                 'required' => false,
-            ])
-            ->add('active', CheckboxType::class, [
-                'label' => 'backend.commercial_plans.form.active',
-                'required' => false,
-            ])
-            ->add('sortOrder', IntegerType::class, [
-                'label' => 'backend.commercial_plans.form.sort_order',
-                'attr' => ['min' => 0],
-                'constraints' => [new PositiveOrZero()],
-            ])
+            ]);
+
+        if (!$options['tier_view']) {
+            $builder
+                ->add('active', CheckboxType::class, [
+                    'label' => 'backend.commercial_plans.form.active',
+                    'required' => false,
+                ])
+                ->add('sortOrder', IntegerType::class, [
+                    'label' => 'backend.commercial_plans.form.sort_order',
+                    'attr' => ['min' => 0],
+                    'constraints' => [new PositiveOrZero()],
+                ]);
+        }
+
+        $builder
             ->add('allowedScores', ChoiceType::class, [
                 'label' => 'backend.commercial_plans.form.allowed_scores',
                 'mapped' => false,
@@ -163,8 +176,10 @@ final class CommercialPlanType extends AbstractType
         $resolver->setDefaults([
             'data_class' => CommercialPlan::class,
             'show_stripe_upgrade_from_standard_price_id' => false,
+            'tier_view' => false,
         ]);
 
         $resolver->setAllowedTypes('show_stripe_upgrade_from_standard_price_id', 'bool');
+        $resolver->setAllowedTypes('tier_view', 'bool');
     }
 }

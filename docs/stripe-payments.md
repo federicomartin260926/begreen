@@ -1,17 +1,17 @@
 # Stripe Payments
 
-This project uses Stripe Checkout for one-time upgrades per `Project` and commercial phase.
+Stripe Checkout is temporarily disabled for new purchases while the integration is migrated to one commercial plan and one payment per `Project`.
 
 ## Scope
 
 - `basic` remains free.
-- `standard` is purchased once per project and commercial phase.
-- `pro` is purchased once per project and commercial phase.
-- Checkout price IDs live on `CommercialPlan` and are configured from Super Admin.
-- `standard -> pro` uses the `CommercialPlan` data for the target tier and the price difference is derived from plan amounts.
+- The canonical tier is `Project.commercialTier` and applies to Elaboration and Implementation together.
+- Prices come from `ProjectCommercialPricing`, not from phase-scoped `CommercialPlan` amounts or Stripe Price IDs.
+- The legacy checkout POST route validates authorization and CSRF, then refuses to create a Stripe session with a temporary-unavailability message.
+- `standard -> pro` will charge only the difference for the same price band when iteration 2 implements the new checkout.
 - Begreen does not issue its own invoices in this phase.
 - Stripe is the official source of truth for payment and invoice data.
-- `ProjectSubscription` stores the current plan/payment state for one `Project` + `CommercialPhase`.
+- `ProjectSubscription` is retained for legacy billing history and is not used to resolve current feature rights.
 - `ProjectBillingDocument` stores the billing documents associated with the project subscription, including the private local PDF copy when available.
 - Checkout uses Stripe Price IDs directly. Product IDs are not stored in Begreen.
 
@@ -33,9 +33,11 @@ STRIPE_SUCCESS_URL="https://example.com/backend/project/{PROJECT_ID}/subscriptio
 STRIPE_CANCEL_URL="https://example.com/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/cancel/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}"
 ```
 
-## Flow
+## Legacy flow (disabled for new checkout)
 
-1. The user starts the checkout from the plan measures page, plan review page or billing view.
+The flow below documents the retained legacy reconciliation code. Step 1 is disabled and no new phase checkout can be started.
+
+1. The user previously started checkout from the plan measures page, plan review page or billing view.
 2. Begreen creates a Stripe Checkout Session in `payment` mode.
 3. The selected phase subscription is marked as `pending_payment`.
 4. Metadata includes `project_id`, `commercial_phase`, `current_tier`, `target_tier`, `commercial_plan_code`, and upgrade metadata when applicable.

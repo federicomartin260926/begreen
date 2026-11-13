@@ -81,6 +81,44 @@
             </div>
 
             <div class="bg-light border rounded-4 p-2 p-md-3">
+                {% if checkoutEnabled %}
+                    <div class="border rounded-3 bg-white p-3 mx-2 mt-2 mb-3">
+                        <div class="fw-semibold mb-1">Plan comercial del proyecto</div>
+                        <p class="small text-muted mb-3">Una única contratación para Elaboración e Implementación. Pago seguro en Stripe (entorno de pruebas).</p>
+                        {% if pendingPaymentStatus is not null %}
+                            <div class="alert alert-warning py-2 mb-2">
+                                Existe un intento de pago pendiente de revisar ({{ pendingPaymentStatus }}). Antes de iniciar otro, verifica el resultado en Stripe.
+                            </div>
+                            <form method="post" action="{{ path('backend_project_commercial_checkout_verify', {id: project.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('project_commercial_checkout_verify_' ~ project.id) }}">
+                                <input type="hidden" name="phase" value="{{ phase.value }}">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Verificar pago en Stripe</button>
+                            </form>
+                        {% elseif checkoutOffers is not empty %}
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                {% for targetTier, offer in checkoutOffers %}
+                                    <form method="post" action="{{ path('backend_project_commercial_checkout_start', {id: project.id, targetTier: targetTier}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('project_commercial_checkout_start_' ~ project.id ~ '_' ~ targetTier) }}">
+                                        <input type="hidden" name="phase" value="{{ phase.value }}">
+                                        <button type="submit" class="btn {{ targetTier == 'pro' ? 'btn-success' : 'btn-primary' }}">
+                                            {{ offer.isUpgrade ? 'Mejorar a Pro' : ('Contratar ' ~ (targetTier|capitalize)) }}
+                                            · {{ (offer.amountCents / 100)|number_format(2, ',', '.') }} €
+                                        </button>
+                                    </form>
+                                {% endfor %}
+                            </div>
+                            <div class="small text-muted mt-2">El importe se calcula en el servidor y se vuelve a comprobar antes de confirmar el pago.</div>
+                        {% elseif checkoutPricingUnavailable %}
+                            <div class="alert alert-warning py-2 mb-0">Completa los datos del proyecto necesarios para calcular su tarifa antes de contratar.</div>
+                        {% else %}
+                            <div class="small text-success">Ya tienes el plan comercial máximo disponible o no hay mejoras activas para este proyecto.</div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info mx-2 mt-2 mb-3">
+                        {{ 'backend.commercial_plan_comparison.checkout_temporarily_unavailable'|trans }}
+                    </div>
+                {% endif %}
                 {% if phase.value == 'implementation' %}
                     {% include 'backend/commercial_plan/_comparison_implementation.html.twig' with {
                         project: project,

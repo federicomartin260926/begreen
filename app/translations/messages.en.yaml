@@ -304,7 +304,8 @@ backend:
     compensation: "Compensation"
     certification: "Certification"
   commercial_plan_comparison:
-    title: "Compare %phase% plans"
+    checkout_temporarily_unavailable: "Plans are shown for information only. Online purchasing is temporarily unavailable."
+    title: "Project plans · %phase% capabilities"
     most_popular: "Most popular"
     current_plan: "Current plan"
     inactive_plan: "Inactive plan"
@@ -956,9 +957,9 @@ backend:
 
     post_create:
       title: "Project created successfully"
-      description: "You now have a project on the Elaboration Basic plan. You can continue with it or upgrade the plan whenever you want."
+      description: "The project uses one Basic plan for Elaboration and Implementation."
       current_plan: "Current plan"
-      plan_context: "Elaboration plan"
+      plan_context: "Project plan"
       upgrade_plan: "Upgrade plan"
       continue_basic: "Continue with Basic plan"
 
@@ -1026,6 +1027,7 @@ backend:
       paid_at: "Paid at:"
     flash:
       invalid_token: "The payment request could not be validated."
+      checkout_temporarily_unavailable: "Online purchasing is temporarily unavailable."
       upgrade_not_allowed: "The requested upgrade is not available for this project."
       pending_payment_exists: "There is already a pending payment in Stripe for this project. Verify or cancel it before starting another checkout."
       checkout_failed: "Stripe checkout could not be started."

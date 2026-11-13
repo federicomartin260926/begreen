@@ -19,6 +19,15 @@ class Project
 {
     use TimestampableTrait;
 
+    public const COMMERCIAL_TIER_BASIC = 'basic';
+    public const COMMERCIAL_TIER_STANDARD = 'standard';
+    public const COMMERCIAL_TIER_PRO = 'pro';
+    public const COMMERCIAL_TIERS = [
+        self::COMMERCIAL_TIER_BASIC,
+        self::COMMERCIAL_TIER_STANDARD,
+        self::COMMERCIAL_TIER_PRO,
+    ];
+
     public const DEFAULT_EMISSION_SOURCE_NAME = 'MITECO';
     public const EMISSION_SOURCE_NAMES = [
         self::DEFAULT_EMISSION_SOURCE_NAME,
@@ -38,6 +47,10 @@ class Project
     #[Assert\NotBlank(message: 'backend.projects.form.validation.type_required')]
     #[Assert\Choice(choices: ['rodaje', 'evento'])]
     private ?string $type = null;
+
+    #[ORM\Column(length: 20, options: ['default' => self::COMMERCIAL_TIER_BASIC])]
+    #[Assert\Choice(choices: self::COMMERCIAL_TIERS)]
+    private string $commercialTier = self::COMMERCIAL_TIER_BASIC;
 
     #[ORM\Column(length: 2)]
     #[Assert\NotBlank(message: 'backend.projects.form.validation.country_required')]
@@ -183,6 +196,19 @@ class Project
 
     public function getType(): ?string { return $this->type; }
     public function setType(?string $type): static { $this->type = $type; return $this; }
+
+    public function getCommercialTier(): string { return $this->commercialTier; }
+    public function setCommercialTier(string $commercialTier): static
+    {
+        $commercialTier = strtolower(trim($commercialTier));
+        if (!in_array($commercialTier, self::COMMERCIAL_TIERS, true)) {
+            throw new \InvalidArgumentException(sprintf('Invalid project commercial tier "%s".', $commercialTier));
+        }
+
+        $this->commercialTier = $commercialTier;
+
+        return $this;
+    }
 
     public function getCountry(): ?string { return $this->country; }
     public function setCountry(?string $country): static { $this->country = $country; return $this; }

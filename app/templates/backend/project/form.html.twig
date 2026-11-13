@@ -38,8 +38,8 @@
         {% endif %}
       </div>
       {% if projectTier is defined and projectTier != 'pro' %}
-        <a href="{{ projectUpgradeUrl }}" class="btn btn-outline-primary">
-          {{ 'backend.projects.form.upgrade_plan'|trans }}
+        <a class="btn btn-outline-success btn-sm" href="{{ path('backend_project_plan_comparison', {'id': project.id, 'phase': 'elaboration'}) }}">
+          Comparar y mejorar plan
         </a>
       {% else %}
         <span class="badge bg-success-subtle text-success border border-success-subtle">

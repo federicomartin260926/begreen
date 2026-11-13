@@ -7,7 +7,6 @@ use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
-use App\Repository\ProjectSubscriptionRepository;
 use LogicException;
 
 final class CommercialPlanResolver
@@ -18,33 +17,17 @@ final class CommercialPlanResolver
 
     public function __construct(
         private readonly CommercialPlanRepository $commercialPlanRepository,
-        private readonly ProjectSubscriptionRepository $subscriptionRepository,
     ) {
     }
 
     public function getSubscription(Project $project, CommercialPhase $phase): ?ProjectSubscription
     {
-        return $project->getSubscriptionForPhase($phase)
-            ?? $this->subscriptionRepository->findOneByProjectAndPhase($project, $phase);
+        return $project->getSubscriptionForPhase($phase);
     }
 
     public function getTierCode(Project $project, CommercialPhase $phase): string
     {
-        $subscription = $this->getSubscription($project, $phase);
-
-        if (!$subscription instanceof ProjectSubscription) {
-            $projectReference = $project->getId() !== null
-                ? (string) $project->getId()
-                : 'unpersisted';
-
-            throw new LogicException(sprintf(
-                'Missing project subscription for project "%s" and phase "%s".',
-                $projectReference,
-                $phase->value
-            ));
-        }
-
-        return $this->normalizeCode($subscription->getTier());
+        return $this->normalizeCode($project->getCommercialTier());
     }
 
     public function getPlanForProject(Project $project, CommercialPhase $phase): CommercialPlan

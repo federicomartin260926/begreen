@@ -27,6 +27,11 @@ final class StripeProjectWebhookService
 
     public function processCompletedCheckoutSession(array $sessionData): void
     {
+        // A signed completion event is not proof of settlement for delayed methods.
+        if (($sessionData['payment_status'] ?? null) !== 'paid') {
+            return;
+        }
+
         $subscription = $this->findSubscription($sessionData);
         if (!$subscription) {
             return;
@@ -102,11 +107,13 @@ final class StripeProjectWebhookService
             return;
         }
 
-        $sessionId = (string) ($sessionData['id'] ?? $sessionData['session_id'] ?? '');
-        if ($sessionId !== '' && $subscription->getStripeCheckoutSessionId() === $sessionId && $subscription->getStatus() === ProjectSubscription::STATUS_ACTIVE) {
+        // Failures/expiry only interrupt this precise in-flight checkout, not
+        // a previously active historical purchase or an unrelated PaymentIntent.
+        if ($subscription->getStatus() !== ProjectSubscription::STATUS_PENDING_PAYMENT) {
             return;
         }
 
+        $sessionId = (string) ($sessionData['id'] ?? $sessionData['session_id'] ?? '');
         $subscription
             ->setStatus(ProjectSubscription::STATUS_CANCELLED)
             ->setLastPaymentStatus($status);
@@ -154,33 +161,34 @@ final class StripeProjectWebhookService
 
     private function findSubscription(array $sessionData): ?ProjectSubscription
     {
-        $sessionId = (string) ($sessionData['id'] ?? $sessionData['session_id'] ?? '');
-        if ($sessionId !== '') {
-            $subscription = $this->subscriptionRepository->findOneByStripeCheckoutSessionId($sessionId);
-            $phase = $this->resolvePhase($sessionData);
-            if ($subscription && $phase instanceof CommercialPhase && $subscription->getPhase() === $phase) {
-                return $subscription;
-            }
-            if ($subscription) {
-                return null;
-            }
-        }
-
-        $projectId = (int) ($sessionData['project_id'] ?? 0);
-        if ($projectId <= 0) {
+        // Never fall back to project + phase. A delayed or unrelated event may
+        // contain valid metadata yet refer to another (or unknown) checkout.
+        $sessionId = $this->normalizeString($sessionData['id'] ?? $sessionData['session_id'] ?? null);
+        if ($sessionId === null || !str_starts_with($sessionId, 'cs_')) {
             return null;
         }
+
+        $subscription = $this->subscriptionRepository->findOneByStripeCheckoutSessionId($sessionId);
+        if (!$subscription instanceof ProjectSubscription || $subscription->getStripeCheckoutSessionId() !== $sessionId) {
+            return null;
+        }
+
         $phase = $this->resolvePhase($sessionData);
-        if (!$phase instanceof CommercialPhase) {
+        $project = $subscription->getProject();
+        $projectId = $sessionData['project_id'] ?? null;
+        if (
+            !$phase instanceof CommercialPhase
+            || $subscription->getPhase() !== $phase
+            || !$project instanceof Project
+            || $project->getId() === null
+            || (!is_string($projectId) && !is_int($projectId))
+            || !ctype_digit((string) $projectId)
+            || (int) $projectId !== $project->getId()
+        ) {
             return null;
         }
 
-        $project = $this->projectRepository->find($projectId);
-        if (!$project instanceof Project) {
-            return null;
-        }
-
-        return $this->subscriptionRepository->findOneByProjectAndPhase($project, $phase);
+        return $subscription;
     }
 
     private function resolveTargetTier(array $sessionData, ProjectSubscription $subscription): ?string

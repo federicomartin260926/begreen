@@ -3,7 +3,10 @@
 namespace App\Controller\Admin;
 
 use App\Entity\CommercialPlan;
-use App\Form\CommercialPlanType;
+use App\Enum\CommercialPhase;
+use App\Entity\Project;
+use App\Form\CommercialTierType;
+use App\Service\ProjectCommercialPricing;
 use App\Repository\CommercialPlanRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -16,31 +19,81 @@ use Symfony\Component\Routing\Annotation\Route;
 final class CommercialPlanController extends AbstractController
 {
     #[Route('/', name: 'index', methods: ['GET'])]
-    public function index(CommercialPlanRepository $commercialPlanRepository): Response
+    public function index(CommercialPlanRepository $commercialPlanRepository, ProjectCommercialPricing $pricing): Response
     {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
+        $phasePlans = $commercialPlanRepository->findBy([], [
+            'phase' => 'ASC',
+            'sortOrder' => 'ASC',
+            'id' => 'ASC',
+        ]);
+
+        $byCode = [];
+        foreach ($phasePlans as $plan) {
+            $byCode[$plan->getCode()][$plan->getPhase()->value] = $plan;
+        }
+
+        $tiers = [];
+        foreach ([Project::COMMERCIAL_TIER_BASIC, Project::COMMERCIAL_TIER_STANDARD, Project::COMMERCIAL_TIER_PRO] as $code) {
+            $elaboration = $byCode[$code][CommercialPhase::ELABORATION->value] ?? null;
+            $implementation = $byCode[$code][CommercialPhase::IMPLEMENTATION->value] ?? null;
+            $complete = $elaboration instanceof CommercialPlan && $implementation instanceof CommercialPlan;
+
+            $tiers[] = [
+                'code' => $code,
+                'name' => ucfirst($code),
+                'elaboration' => $elaboration,
+                'implementation' => $implementation,
+                'editId' => $complete ? $elaboration->getId() : null,
+                'active' => $complete && $elaboration->isActive() && $implementation->isActive(),
+                'consistentStatus' => $complete && $elaboration->isActive() === $implementation->isActive(),
+                'sortOrder' => $elaboration?->getSortOrder(),
+                'prices' => $pricing->getTierPricesCents($code),
+            ];
+        }
+
         return $this->render('admin/commercial_plan/index.html.twig', [
-            'plans' => $commercialPlanRepository->findBy([], [
-                'phase' => 'ASC',
-                'sortOrder' => 'ASC',
-                'id' => 'ASC',
-            ]),
+            'tiers' => $tiers,
         ]);
     }
 
     #[Route('/{id}/edit', name: 'edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, CommercialPlan $commercialPlan, EntityManagerInterface $entityManager): Response
-    {
+    public function edit(
+        Request $request,
+        CommercialPlan $commercialPlan,
+        CommercialPlanRepository $commercialPlanRepository,
+        ProjectCommercialPricing $pricing,
+        EntityManagerInterface $entityManager,
+    ): Response {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
-        $form = $this->createForm(CommercialPlanType::class, $commercialPlan, [
-            'show_stripe_upgrade_from_standard_price_id' => strtolower(trim((string) $commercialPlan->getCode())) === 'pro',
+        $code = $commercialPlan->getCode();
+        if (!in_array($code, [Project::COMMERCIAL_TIER_BASIC, Project::COMMERCIAL_TIER_STANDARD, Project::COMMERCIAL_TIER_PRO], true)) {
+            throw $this->createNotFoundException('Unknown commercial tier.');
+        }
+
+        $phasePlans = $commercialPlanRepository->findBy(['code' => $code]);
+        $byPhase = [];
+        foreach ($phasePlans as $plan) {
+            $byPhase[$plan->getPhase()->value] = $plan;
+        }
+        $elaboration = $byPhase[CommercialPhase::ELABORATION->value] ?? null;
+        $implementation = $byPhase[CommercialPhase::IMPLEMENTATION->value] ?? null;
+        if (!$elaboration instanceof CommercialPlan || !$implementation instanceof CommercialPlan) {
+            throw $this->createNotFoundException('A commercial tier requires both phase configurations.');
+        }
+
+        $form = $this->createForm(CommercialTierType::class, null, [
+            'elaboration_plan' => $elaboration,
+            'implementation_plan' => $implementation,
         ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->applyEditableValues($commercialPlan, $form);
+            $this->applySharedValues($elaboration, $implementation, $form);
+            $this->applyEditableValues($elaboration, $form->get('elaboration'));
+            $this->applyEditableValues($implementation, $form->get('implementation'));
             $entityManager->flush();
 
             $this->addFlash('success', 'backend.commercial_plans.flash.updated');
@@ -49,9 +102,22 @@ final class CommercialPlanController extends AbstractController
         }
 
         return $this->render('admin/commercial_plan/form.html.twig', [
-            'plan' => $commercialPlan,
+            'tier' => $code,
             'form' => $form->createView(),
+            'priceBands' => $pricing->getTierPricesCents($code),
+            'statusMismatch' => $elaboration->isActive() !== $implementation->isActive(),
         ]);
+    }
+
+    private function applySharedValues(CommercialPlan $elaboration, CommercialPlan $implementation, FormInterface $form): void
+    {
+        $name = trim((string) $form->get('name')->getData());
+        $active = (bool) $form->get('active')->getData();
+        $sortOrder = (int) $form->get('sortOrder')->getData();
+
+        foreach ([$elaboration, $implementation] as $plan) {
+            $plan->setName($name)->setActive($active)->setSortOrder($sortOrder);
+        }
     }
 
     private function applyEditableValues(CommercialPlan $commercialPlan, FormInterface $form): void

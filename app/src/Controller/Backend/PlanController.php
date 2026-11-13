@@ -415,7 +415,7 @@ class PlanController extends AbstractController
         $projectTierDisplayLabel = $this->t->trans('backend.plan.tier.level.' . $projectTier);
         $projectTierSummary = $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project, CommercialPhase::ELABORATION);
-        $upgradeCta = $this->buildUpgradeCta($project, $plan, CommercialPhase::ELABORATION, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
+        $upgradeCta = $this->buildUpgradeCta($project, $plan, CommercialPhase::ELABORATION, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository, false);
         $gamificationMessage = $this->gamificationService->claimPendingMessageForDisplayWithLock(
             $em,
             $plan,
@@ -515,7 +515,8 @@ class PlanController extends AbstractController
             $elaborationTier,
             $checkoutService->getAvailableUpgradeTargets($project, $elaborationPhase),
             $commercialPlanRepository,
-            $measureRepository
+            $measureRepository,
+            false
         );
         $implementationUpgradeCta = $this->buildUpgradeCta(
             $project,
@@ -524,7 +525,8 @@ class PlanController extends AbstractController
             $implementationTier,
             $checkoutService->getAvailableUpgradeTargets($project, $implementationPhase),
             $commercialPlanRepository,
-            $measureRepository
+            $measureRepository,
+            false
         );
         $hasImplementationActivity = $this->collaborationService->hasImplementationActivity($plan);
         $gamificationMessage = $this->gamificationService->claimPendingMessageForDisplayWithLock(
@@ -806,7 +808,7 @@ class PlanController extends AbstractController
         $projectTierLabel = $this->t->trans('backend.plan.tier.level.' . $projectTier);
         $projectTierSummary = $this->featureGate->getPlanDescription($project, $reviewPhase) ?? $this->t->trans('backend.plan.tier.basic_summary');
         $availableUpgradeTargets = $checkoutService->getAvailableUpgradeTargets($project, $reviewPhase);
-        $upgradeCta = $this->buildUpgradeCta($project, $plan, $reviewPhase, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository);
+        $upgradeCta = $this->buildUpgradeCta($project, $plan, $reviewPhase, $projectTier, $availableUpgradeTargets, $commercialPlanRepository, $measureRepository, false);
         $verificationSources = $this->taxonomyPresenter->verificationSourceCatalog(
             $em->getRepository(VerificationSource::class)->findBy([], [
                 'sortOrder' => 'ASC',

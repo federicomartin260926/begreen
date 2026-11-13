@@ -3,11 +3,13 @@
 namespace App\Tests\Service;
 
 use App\Entity\Plan;
+use App\Entity\Project;
 use App\Entity\Protocol;
 use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
 use App\Service\CommercialPlanComparisonBuilder;
+use App\Service\ProjectCommercialPricing;
 use App\Tests\Support\CommercialPlanTestHelpers;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -102,6 +104,37 @@ final class CommercialPlanComparisonBuilderTest extends KernelTestCase
         self::assertTrue($observations['values']['basic']['enabled']);
         self::assertTrue($observations['values']['standard']['enabled']);
         self::assertTrue($observations['values']['pro']['enabled']);
+    }
+
+    public function testProjectComparisonUsesCentralPricingAndDoesNotExposeCheckout(): void
+    {
+        self::bootKernel();
+        $plans = $this->makeDefaultCommercialPlans();
+        $repository = $this->createMock(CommercialPlanRepository::class);
+        $repository->method('findByPhaseOrdered')->willReturn([$plans['basic'], $plans['standard'], $plans['pro']]);
+        $project = (new Project())
+            ->setType('rodaje')
+            ->setFilmingType('tv_series')
+            ->setCommercialTier(Project::COMMERCIAL_TIER_STANDARD);
+
+        $comparison = (new CommercialPlanComparisonBuilder(
+            $repository,
+            $this->createMock(MeasureRepository::class),
+            self::getContainer()->get('translator'),
+            null,
+            new ProjectCommercialPricing(),
+        ))->build(
+            CommercialPhase::ELABORATION,
+            $project->getCommercialTier(),
+            null,
+            [],
+            $project,
+        );
+
+        self::assertSame(0, $comparison['plans']['basic']['priceAmount']);
+        self::assertSame(74900, $comparison['plans']['standard']['priceAmount']);
+        self::assertSame(149900, $comparison['plans']['pro']['priceAmount']);
+        self::assertNull($comparison['plans']['pro']['upgrade']);
     }
 
     /**

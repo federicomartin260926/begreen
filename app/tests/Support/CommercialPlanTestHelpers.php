@@ -7,7 +7,6 @@ use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
-use App\Repository\ProjectSubscriptionRepository;
 use App\Service\CommercialPlanResolver;
 
 trait CommercialPlanTestHelpers
@@ -27,7 +26,7 @@ trait CommercialPlanTestHelpers
         ];
     }
 
-    private function makeCommercialPlanResolver(array $plans = [], ?ProjectSubscriptionRepository $subscriptionRepository = null): CommercialPlanResolver
+    private function makeCommercialPlanResolver(array $plans = []): CommercialPlanResolver
     {
         $planRepository = $this->createMock(CommercialPlanRepository::class);
         $indexedPlans = [];
@@ -64,18 +63,13 @@ trait CommercialPlanTestHelpers
             }
         );
 
-        $subscriptionRepository ??= $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProjectAndPhase')->willReturnCallback(
-            static fn (Project $project, CommercialPhase $phase): ?ProjectSubscription => null
-        );
-
-        return new CommercialPlanResolver($planRepository, $subscriptionRepository);
+        return new CommercialPlanResolver($planRepository);
     }
 
-    private function makeProjectFeatureGate(array $plans = [], ?ProjectSubscriptionRepository $subscriptionRepository = null): \App\Service\ProjectFeatureGate
+    private function makeProjectFeatureGate(array $plans = []): \App\Service\ProjectFeatureGate
     {
         return new \App\Service\ProjectFeatureGate(
-            $this->makeCommercialPlanResolver($plans, $subscriptionRepository)
+            $this->makeCommercialPlanResolver($plans)
         );
     }
 
@@ -86,7 +80,7 @@ trait CommercialPlanTestHelpers
 
     private function makeProjectWithTiers(string $elaborationTier, string $implementationTier): Project
     {
-        $project = new Project();
+        $project = (new Project())->setCommercialTier($elaborationTier);
         foreach ([
             [CommercialPhase::ELABORATION, $elaborationTier],
             [CommercialPhase::IMPLEMENTATION, $implementationTier],

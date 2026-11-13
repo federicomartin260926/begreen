@@ -98,7 +98,7 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.validation_summary'));
     }
 
-    public function testPhaseTiersAreIndependent(): void
+    public function testBothPhasesUseTheSameProjectTierWithPhaseSpecificFeatures(): void
     {
         $gate = $this->makeProjectFeatureGate($this->makeDefaultCommercialPlans());
         $project = $this->makeProjectWithTiers(ProjectSubscription::TIER_PRO, ProjectSubscription::TIER_BASIC);
@@ -107,17 +107,17 @@ final class ProjectFeatureGateTest extends TestCase
         self::assertSame([1, 2, 3, 4, 5], $gate->getAllowedScores($project, CommercialPhase::ELABORATION));
         self::assertTrue($gate->canUseFeature($project, CommercialPhase::ELABORATION, 'sustainability_plan.custom_measures'));
 
-        self::assertSame(ProjectSubscription::TIER_BASIC, $gate->getTier($project, CommercialPhase::IMPLEMENTATION));
-        self::assertFalse($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.checklist'));
-        self::assertFalse($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.responsibles'));
-        self::assertFalse($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.internal_notes'));
-        self::assertSame(10, $gate->getMaxEvidenceCount($project, CommercialPhase::IMPLEMENTATION));
-        self::assertTrue($gate->hasWatermark($project, CommercialPhase::IMPLEMENTATION));
+        self::assertSame(ProjectSubscription::TIER_PRO, $gate->getTier($project, CommercialPhase::IMPLEMENTATION));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.checklist'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.responsibles'));
+        self::assertTrue($gate->canUseFeature($project, CommercialPhase::IMPLEMENTATION, 'sustainability_plan.internal_notes'));
+        self::assertNull($gate->getMaxEvidenceCount($project, CommercialPhase::IMPLEMENTATION));
+        self::assertFalse($gate->hasWatermark($project, CommercialPhase::IMPLEMENTATION));
     }
 
     private function createProjectWithTier(string $tier): Project
     {
-        $project = new Project();
+        $project = (new Project())->setCommercialTier($tier);
         foreach ([
             [CommercialPhase::ELABORATION, $tier],
             [CommercialPhase::IMPLEMENTATION, $tier],

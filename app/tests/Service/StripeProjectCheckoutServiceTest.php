@@ -31,6 +31,65 @@ final class StripeProjectCheckoutServiceTest extends TestCase
 {
     use CommercialPlanTestHelpers;
 
+    public function testProjectQuoteBuildsStripePriceDataWithoutStartingCheckout(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $service = $this->createService($client, $this->makeDefaultCommercialPlans());
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC, projectId: 42)
+            ->setType('rodaje')
+            ->setFilmingType('feature');
+
+        $payload = $service->buildProjectCheckoutSessionPayload(
+            $project, Project::COMMERCIAL_TIER_STANDARD,
+            'https://example.test/success', 'https://example.test/cancel',
+        );
+        self::assertSame(49900, $payload['line_items'][0]['price_data']['unit_amount']);
+        self::assertSame('eur', $payload['line_items'][0]['price_data']['currency']);
+        self::assertSame('prod_TESTSTANDARD', $payload['line_items'][0]['price_data']['product']);
+        self::assertArrayNotHasKey('product_data', $payload['line_items'][0]['price_data']);
+        self::assertArrayNotHasKey('price', $payload['line_items'][0]);
+        self::assertSame('project_v1', $payload['metadata']['commercial_scope']);
+        self::assertSame('mid', $payload['metadata']['price_band']);
+        self::assertSame('49900', $payload['metadata']['quoted_amount_cents']);
+        self::assertSame('basic', $payload['metadata']['current_tier']);
+        self::assertSame('standard', $payload['metadata']['target_tier']);
+        self::assertArrayNotHasKey('commercial_phase', $payload['metadata']);
+        self::assertSame($payload['metadata'], $payload['payment_intent_data']['metadata']);
+        self::assertSame([], $client->checkout->sessions->createCalls);
+        self::assertSame(Project::COMMERCIAL_TIER_BASIC, $project->getCommercialTier());
+    }
+
+    public function testStandardToProQuoteChargesOnlyDifference(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $service = $this->createService($client, $this->makeDefaultCommercialPlans());
+        $project = $this->createProject(ProjectSubscription::TIER_STANDARD, projectId: 42)
+            ->setCommercialTier(Project::COMMERCIAL_TIER_STANDARD)
+            ->setType('evento')
+            ->setEventModality('presencial')
+            ->setEventAttendeesCount(1001);
+
+        $payload = $service->buildProjectCheckoutSessionPayload($project, 'pro', 'https://example.test/success', 'https://example.test/cancel');
+        self::assertSame(75000, $payload['line_items'][0]['price_data']['unit_amount']);
+        self::assertSame('prod_TESTPRO', $payload['line_items'][0]['price_data']['product']);
+        self::assertSame('high', $payload['metadata']['price_band']);
+        self::assertSame('75000', $payload['metadata']['quoted_amount_cents']);
+        self::assertSame([], $client->checkout->sessions->createCalls);
+    }
+
+    public function testProjectQuoteRejectsUnavailableTierWithoutCallingStripe(): void
+    {
+        $client = $this->createFakeStripeClient();
+        $service = $this->createService($client, $this->makeDefaultCommercialPlans());
+        $project = $this->createProject(ProjectSubscription::TIER_BASIC, projectId: 42)
+            ->setCommercialTier(Project::COMMERCIAL_TIER_PRO)
+            ->setType('rodaje')
+            ->setFilmingType('short');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $service->buildProjectCheckoutSessionPayload($project, 'standard', 'https://example.test/success', 'https://example.test/cancel');
+    }
+
     public function testBasicProjectCheckoutCreatesPendingSubscriptionAndUsesStandardPrice(): void
     {
         $sessionId = 'cs_test_basic_standard';
@@ -98,7 +157,9 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $plans = $this->makeDefaultCommercialPlans();
         $plans['implementation_standard']->setStripePriceId('price_implementation_standard');
         $service = $this->createService($client, $plans, true);
-        $project = $this->createProject(ProjectSubscription::TIER_PRO, projectId: 43);
+        $project = $this->createProject(ProjectSubscription::TIER_PRO, projectId: 43)
+            // This test deliberately exercises the retained legacy phase-only checkout.
+            ->setCommercialTier(Project::COMMERCIAL_TIER_BASIC);
         $implementationSubscription = (new ProjectSubscription())
             ->setPhase(CommercialPhase::IMPLEMENTATION)
             ->setTier(ProjectSubscription::TIER_BASIC)
@@ -742,12 +803,15 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         $basicMeasure = $this->createMeasure(201, 5);
         $pendingMeasure = $this->createMeasure(202, 3);
         $project = $this->createProject(ProjectSubscription::TIER_STANDARD, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_PRO, 'cs_paid_upgrade_complete', 42);
+        // A previously completed plan must satisfy the current observations rule
+        // for every visible measure (50 or more characters each).
+        $validObservations = str_repeat('Observación válida sobre esta medida y su aplicación. ', 2);
         $plan = $this->createPlan($project, [
             $basicMeasure,
             $pendingMeasure,
         ], [
-            $this->createPlanMeasure(true, false, true),
-            $this->createPlanMeasure(true, false, true),
+            $this->createPlanMeasure(true, false, true)->setObservations($validObservations),
+            $this->createPlanMeasure(true, false, true)->setObservations($validObservations),
         ]);
 
         $service = $this->createService($client, $plans, true, null, $plan, [$basicMeasure, $pendingMeasure]);
@@ -811,6 +875,8 @@ final class StripeProjectCheckoutServiceTest extends TestCase
             'https://example.test/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/success/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}',
             'https://example.test/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/cancel/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}',
             $completionService,
+            'prod_TESTSTANDARD',
+            'prod_TESTPRO',
         );
     }
 
@@ -910,7 +976,8 @@ final class StripeProjectCheckoutServiceTest extends TestCase
         ?int $projectId = null
     ): Project
     {
-        $project = new Project();
+        // Current capabilities are resolved from the project's canonical tier.
+        $project = (new Project())->setCommercialTier($tier);
         if ($projectId !== null) {
             $this->setEntityId($project, $projectId);
         }

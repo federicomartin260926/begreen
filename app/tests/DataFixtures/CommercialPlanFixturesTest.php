@@ -74,21 +74,21 @@ final class CommercialPlanFixturesTest extends TestCase
         ], $keys);
 
         self::assertSame([
-            'Elaboración Basic',
-            'Elaboración Standard',
-            'Elaboración Pro',
-            'Implementación Basic',
-            'Implementación Standard',
-            'Implementación Pro',
+            'Basic',
+            'Standard',
+            'Pro',
+            'Basic',
+            'Standard',
+            'Pro',
         ], array_map(static fn (CommercialPlan $plan): string => $plan->getName(), $persistedPlans));
 
         self::assertSame([
             0,
-            2900,
-            4900,
+            -1,
+            -1,
             0,
-            2900,
-            4900,
+            -1,
+            -1,
         ], array_map(static fn (CommercialPlan $plan): int => $plan->getPriceAmount() ?? -1, $persistedPlans));
 
         $stripePriceIds = [];
@@ -101,19 +101,19 @@ final class CommercialPlanFixturesTest extends TestCase
 
         self::assertSame([
             'elaboration:basic' => null,
-            'elaboration:standard' => 'price_1TtuAORudvqjmqq94aHX3Om4',
-            'elaboration:pro' => 'price_1TttueRudvqjmqq9BkITaeEb',
+            'elaboration:standard' => null,
+            'elaboration:pro' => null,
             'implementation:basic' => null,
-            'implementation:standard' => 'price_1TttwkRudvqjmqq9KlY7cJdx',
-            'implementation:pro' => 'price_1TttxeRudvqjmqq95jlhpWXG',
+            'implementation:standard' => null,
+            'implementation:pro' => null,
         ], $stripePriceIds);
         self::assertSame([
             'elaboration:basic' => null,
             'elaboration:standard' => null,
-            'elaboration:pro' => 'price_1Ttu7aRudvqjmqq97V6Ilj3L',
+            'elaboration:pro' => null,
             'implementation:basic' => null,
             'implementation:standard' => null,
-            'implementation:pro' => 'price_1Ttu8IRudvqjmqq9DxbI41sP',
+            'implementation:pro' => null,
         ], $stripeUpgradePriceIds);
 
         $elaborationPlans = [];

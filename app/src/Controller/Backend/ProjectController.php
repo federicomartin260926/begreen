@@ -30,8 +30,8 @@ use App\Exception\Ai\AiReportException;
 use App\Exception\Ai\AiProviderNotConfiguredException;
 use App\Service\CrewImport\Dto\CrewImportExtraction;
 use App\Service\CrewImport\Dto\CrewImportProposal;
-use App\Entity\ProjectSubscription;
 use App\Service\ProjectFeatureGate;
+use App\Service\ProjectCommercialPricing;
 use App\Service\ProjectCompanyLogoStorage;
 use App\Service\ProjectUploadPolicy;
 use App\Service\StripeInvoiceStorageService;
@@ -67,6 +67,7 @@ class ProjectController extends AbstractController
         private readonly SustainabilityPlanImplementationPhaseService $implementationPhaseService,
         private readonly ProjectCompanyLogoStorage $companyLogoStorage,
         private readonly AnimationProjectConfigurationUpdater $animationConfigurationUpdater,
+        private readonly ?ProjectCommercialPricing $commercialPricing = null,
     ) {}
 
     #[Route('/', name: 'index')]
@@ -163,9 +164,9 @@ class ProjectController extends AbstractController
         $dashboardProjects = [];
         $dashboardEmissionProjects = [];
         $tierCounts = [
-            ProjectSubscription::TIER_BASIC => 0,
-            ProjectSubscription::TIER_STANDARD => 0,
-            ProjectSubscription::TIER_PRO => 0,
+            Project::COMMERCIAL_TIER_BASIC => 0,
+            Project::COMMERCIAL_TIER_STANDARD => 0,
+            Project::COMMERCIAL_TIER_PRO => 0,
         ];
         $planCounts = [
             'completo' => 0,
@@ -380,6 +381,7 @@ class ProjectController extends AbstractController
             'tierCode' => $projectTierCode,
             'tierLabel' => $this->featureGate->getPlanLabel($project, CommercialPhase::ELABORATION),
             'tierDescription' => $this->featureGate->getPlanDescription($project, CommercialPhase::ELABORATION),
+            'commercialPrices' => $this->buildCommercialPrices($project),
             'isActive' => $isActive,
             'createdAt' => $project->getCreatedAt(),
             'plan' => [
@@ -554,6 +556,27 @@ class ProjectController extends AbstractController
         return $name;
     }
 
+    /** @return array<string, string>|null */
+    private function buildCommercialPrices(Project $project): ?array
+    {
+        $pricing = $this->commercialPricing ?? new ProjectCommercialPricing();
+
+        try {
+            return [
+                Project::COMMERCIAL_TIER_BASIC => $this->formatCommercialPrice($pricing->getAmountCents($project, Project::COMMERCIAL_TIER_BASIC)),
+                Project::COMMERCIAL_TIER_STANDARD => $this->formatCommercialPrice($pricing->getAmountCents($project, Project::COMMERCIAL_TIER_STANDARD)),
+                Project::COMMERCIAL_TIER_PRO => $this->formatCommercialPrice($pricing->getAmountCents($project, Project::COMMERCIAL_TIER_PRO)),
+            ];
+        } catch (\DomainException) {
+            return null;
+        }
+    }
+
+    private function formatCommercialPrice(int $amountCents): string
+    {
+        return number_format($amountCents / 100, 0, ',', '.').' €';
+    }
+
     #[Route('/new', name: 'new')]
     public function new(
         Request $request,
@@ -564,7 +587,6 @@ class ProjectController extends AbstractController
         $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
 
         $project = new Project();
-        $this->ensureBasicSubscriptions($project);
 
         // Fases por defecto
         foreach (['actividad', 'preproduccion', 'postproduccion'] as $phaseName) {
@@ -603,8 +625,6 @@ class ProjectController extends AbstractController
                 ->setProjectRole('owner');
 
             $project->addProjectMembership($membership);
-
-            $this->ensureBasicSubscriptions($project);
 
             $newLogoPaths = [];
             $newProjectDocumentFiles = [];
@@ -897,7 +917,6 @@ class ProjectController extends AbstractController
 
         // 1) Clonar datos básicos del proyecto
         $newProject = new Project();
-        $this->ensureBasicSubscriptions($newProject);
         $newProject
             ->setName($project->getName() . ' (copia)')
             ->setType($project->getType())
@@ -981,68 +1000,6 @@ class ProjectController extends AbstractController
         $this->addFlash('success', 'backend.projects.flash.cloned');
 
         return $this->redirectToRoute('backend_project_index');
-    }
-
-    private function ensureBasicSubscriptions(Project $project): void
-    {
-        $this->ensureBasicSubscription($project, CommercialPhase::ELABORATION);
-        $this->ensureBasicSubscription($project, CommercialPhase::IMPLEMENTATION);
-    }
-
-    private function ensureBasicSubscription(Project $project, CommercialPhase $phase): ProjectSubscription
-    {
-        $subscription = $project->getSubscriptionForPhase($phase);
-        if (!$subscription) {
-            $subscription = new ProjectSubscription();
-            $subscription->setPhase($phase);
-            $project->addSubscription($subscription);
-        }
-
-        $subscription
-            ->setTier(ProjectSubscription::TIER_BASIC)
-            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-            ->setSource(ProjectSubscription::SOURCE_SYSTEM)
-            ->setCurrency('EUR')
-            ->setPaidAmountCents(null)
-            ->setPaymentReference(null)
-            ->setStripeCheckoutSessionId(null)
-            ->setStripePaymentIntentId(null)
-            ->setStripeInvoiceId(null)
-            ->setStripeCustomerId(null)
-            ->setStripeHostedInvoiceUrl(null)
-            ->setStripeInvoicePdfUrl(null)
-            ->setLastPaymentStatus(null)
-            ->setPaidAt(null)
-            ->setTargetTier(null);
-
-        return $subscription;
-    }
-
-    private function syncCommercialTier(Project $project, string $tier, EntityManagerInterface $em): void
-    {
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION) ?? new ProjectSubscription();
-        $subscription->setPhase(CommercialPhase::ELABORATION);
-        $subscription
-            ->setProject($project)
-            ->setTier(in_array($tier, [ProjectSubscription::TIER_BASIC, ProjectSubscription::TIER_STANDARD, ProjectSubscription::TIER_PRO], true) ? $tier : ProjectSubscription::TIER_BASIC)
-            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-            ->setSource(ProjectSubscription::SOURCE_MANUAL)
-            ->setPaidAmountCents(null)
-            ->setPaymentReference(null)
-            ->setStripeCheckoutSessionId(null)
-            ->setStripePaymentIntentId(null)
-            ->setStripeInvoiceId(null)
-            ->setStripeCustomerId(null)
-            ->setStripeHostedInvoiceUrl(null)
-            ->setStripeInvoicePdfUrl(null)
-            ->setLastPaymentStatus(null)
-            ->setPaidAt(null)
-            ->setTargetTier(null);
-
-        if (!$project->getSubscriptionForPhase(CommercialPhase::ELABORATION)) {
-            $project->addSubscription($subscription);
-            $em->persist($subscription);
-        }
     }
 
     private function normalizeProject(Project $project): void

@@ -3,6 +3,7 @@
 namespace App\Tests\Controller\Backend;
 
 use App\Controller\Backend\ProjectBillingController;
+use App\Entity\ProjectCommercialPayment;
 use App\Entity\Project;
 use App\Entity\ProjectBillingDocument;
 use App\Entity\ProjectMembership;
@@ -13,8 +14,14 @@ use App\Repository\CommercialPlanRepository;
 use App\Repository\MeasureRepository;
 use App\Repository\PlanRepository;
 use App\Repository\ProjectBillingDocumentRepository;
+use App\Repository\ProjectCommercialPaymentRepository;
+use App\Repository\ProjectMembershipRepository;
+use App\Repository\ProjectRepository;
 use App\Service\ActiveProjectService;
 use App\Service\CommercialPlanComparisonBuilder;
+use App\Service\ProjectCommercialCheckoutService;
+use App\Service\ProjectCommercialInvoiceSyncService;
+use App\Service\ProjectCommercialPricing;
 use App\Service\StripeProjectCheckoutService;
 use App\Service\StripeInvoiceStorageService;
 use App\Tests\Support\CommercialPlanTestHelpers;
@@ -30,6 +37,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 final class ProjectBillingControllerTest extends KernelTestCase
 {
@@ -69,123 +77,39 @@ final class ProjectBillingControllerTest extends KernelTestCase
 
         self::assertIsString($content);
         self::assertStringContainsString('href="/backend/plan/measures"', $content);
-        self::assertStringContainsString('/backend/project/96/subscription/elaboration/checkout/standard', $content);
-        self::assertStringContainsString('/backend/project/96/subscription/elaboration/checkout/pro', $content);
+        self::assertStringContainsString('La contratación online está temporalmente no disponible.', $content);
+        self::assertStringNotContainsString('/backend/project/96/subscription/elaboration/checkout/standard', $content);
+        self::assertStringNotContainsString('/backend/project/96/subscription/elaboration/checkout/pro', $content);
         self::assertStringNotContainsString('/backend/project/96/subscription/elaboration/checkout/basic', $content);
     }
 
-    public function testBillingPageShowsDocumentsAndActions(): void
+    public function testOverviewShowsHistoricalDocumentsFromBothPhasesTogetherWithoutPhaseTabs(): void
     {
         self::bootKernel();
         $container = self::getContainer();
         $this->setAdminToken();
 
-        $project = $this->createProject(86, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
-        $subscription
-            ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
-            ->setLastPaymentStatus('paid')
-            ->setStripeCheckoutSessionId('cs_test_86')
-            ->setStripePaymentIntentId('pi_test_86')
-            ->setStripeInvoiceId('in_test_86')
-            ->setStripeCustomerId('cus_test_86')
-            ->setPaymentReference('INV-TEST-86')
-            ->setStripeHostedInvoiceUrl('https://invoice.test/view')
-            ->setStripeInvoicePdfUrl('https://invoice.test/pdf');
-
-        $document = $this->createDocument($project, $subscription, 12);
-        $document
-            ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setPurchaseLabel('Elaboración Standard')
-            ->setPaymentReference('INV-TEST-86')
-            ->setStripeCheckoutSessionId('cs_test_86')
-            ->setStripePaymentIntentId('pi_test_86')
-            ->setStripeInvoiceId('in_test_86')
-            ->setStripeCustomerId('cus_test_86')
-            ->setHostedInvoiceUrl('https://invoice.test/view')
-            ->setInvoicePdfUrl('https://invoice.test/pdf')
-            ->setLocalPath('stripe-invoices/project-86/invoice-in_test_86.pdf')
-            ->setDownloadedAt(new \DateTimeImmutable('2026-06-04 11:00:00'))
-            ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'));
-
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value], ['from' => 'index']);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
-
-        $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
-
-        $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
-        $billingRepository->expects(self::once())
-            ->method('findBySubscriptionOrdered')
-            ->with($subscription)
-            ->willReturn([$document]);
-
-        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
-        $invoiceStorage->expects(self::once())
-            ->method('hasLocalCopy')
-            ->with($document)
-            ->willReturn(true);
-
-        $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class));
-        $controller->setContainer($container);
-
-        $response = $controller($project, CommercialPhase::ELABORATION, $request);
-        $content = $response->getContent();
-
-        self::assertIsString($content);
-        self::assertStringContainsString('Fases', $content);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/elaboration', $content);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/implementation', $content);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/plans/elaboration?from=billing', $content);
-        self::assertStringContainsString('billing_from=index', $content);
-        self::assertStringContainsString('Documentos de facturación', $content);
-        self::assertStringContainsString('Ver factura', $content);
-        self::assertStringContainsString('Descargar PDF', $content);
-        self::assertStringContainsString('Concepto', $content);
-        self::assertStringContainsString('Elaboración Standard', $content);
-        self::assertStringNotContainsString('Actualizar referencias desde Stripe', $content);
-        self::assertStringContainsString('billing/elaboration/document/12/view?from=index', $content);
-        self::assertStringContainsString('billing/elaboration/document/12/download?from=index', $content);
-        self::assertStringContainsString('billingDocumentModal12', $content);
-        self::assertStringContainsString('Abrir en nueva pestaña', $content);
-        self::assertStringContainsString('INV-TEST-86', $content);
-        self::assertStringContainsString('cs_test_86', $content);
-        self::assertStringContainsString('pi_test_86', $content);
-    }
-
-    public function testBillingPageShowsImplementationTabAndKeepsDocumentsSeparatedByPhase(): void
-    {
-        self::bootKernel();
-        $container = self::getContainer();
-        $this->setAdminToken();
-
-        $project = $this->createProject(86, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
+        $project = $this->createProject(86, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD)
+            ->setName('Proyecto histórico')
+            ->setCommercialTier(Project::COMMERCIAL_TIER_PRO);
         $elaborationSubscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
         $elaborationSubscription
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
             ->setPaidAmountCents(2900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
-            ->setLastPaymentStatus('paid');
-
+            ->setLastPaymentStatus('paid')
+            ->setPaymentReference('INV-ELAB-86');
         $implementationSubscription = (new ProjectSubscription())
             ->setPhase(CommercialPhase::IMPLEMENTATION)
-            ->setTier(ProjectSubscription::TIER_STANDARD)
+            ->setTier(ProjectSubscription::TIER_PRO)
             ->setStatus(ProjectSubscription::STATUS_ACTIVE)
             ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(2900)
+            ->setPaidAmountCents(4900)
             ->setCurrency('EUR')
             ->setPaidAt(new \DateTimeImmutable('2026-06-05 10:00:00'))
-            ->setLastPaymentStatus('paid');
+            ->setLastPaymentStatus('paid')
+            ->setPaymentReference('INV-IMPL-86');
         $project->addSubscription($implementationSubscription);
 
         $elaborationDocument = $this->createDocument($project, $elaborationSubscription, 12);
@@ -195,472 +119,375 @@ final class ProjectBillingControllerTest extends KernelTestCase
             ->setCurrency('EUR')
             ->setPurchaseLabel('Elaboración Standard')
             ->setPaymentReference('INV-ELAB-86')
-            ->setStripeCheckoutSessionId('cs_elab_86')
-            ->setStripePaymentIntentId('pi_elab_86')
-            ->setStripeInvoiceId('in_elab_86')
-            ->setStripeCustomerId('cus_elab_86')
-            ->setHostedInvoiceUrl('https://invoice.test/elaboration')
-            ->setInvoicePdfUrl('https://invoice.test/elaboration.pdf')
-            ->setLocalPath('stripe-invoices/project-86/invoice-in_elab_86.pdf')
-            ->setDownloadedAt(new \DateTimeImmutable('2026-06-04 11:00:00'))
+            ->setLocalPath('stripe-invoices/project-86/invoice-elaboration.pdf')
             ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'));
-
         $implementationDocument = $this->createDocument($project, $implementationSubscription, 21);
         $implementationDocument
             ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(2900)
+            ->setAmountCents(4900)
             ->setCurrency('EUR')
-            ->setPurchaseLabel('Implementación Standard')
+            ->setPurchaseLabel('Implementación Pro')
             ->setPaymentReference('INV-IMPL-86')
-            ->setStripeCheckoutSessionId('cs_impl_86')
-            ->setStripePaymentIntentId('pi_impl_86')
-            ->setStripeInvoiceId('in_impl_86')
-            ->setStripeCustomerId('cus_impl_86')
-            ->setHostedInvoiceUrl('https://invoice.test/implementation')
-            ->setInvoicePdfUrl('https://invoice.test/implementation.pdf')
-            ->setLocalPath('stripe-invoices/project-86/invoice-in_impl_86.pdf')
-            ->setDownloadedAt(new \DateTimeImmutable('2026-06-05 11:00:00'))
+            ->setLocalPath('stripe-invoices/project-86/invoice-implementation.pdf')
             ->setPaidAt(new \DateTimeImmutable('2026-06-05 10:00:00'));
 
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value], ['from' => 'index']);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
+        $this->pushRequest('backend_project_billing_overview');
 
         $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::exactly(2))
-            ->method('setActiveProject')
-            ->with($project);
+        $activeProjectService->expects(self::never())->method('setActiveProject');
 
         $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
         $billingRepository->expects(self::exactly(2))
             ->method('findBySubscriptionOrdered')
-            ->willReturnCallback(static function (ProjectSubscription $subscription) use ($elaborationDocument, $implementationDocument): array {
-                return $subscription->getPhase() === CommercialPhase::ELABORATION
-                    ? [$elaborationDocument]
-                    : [$implementationDocument];
-            });
+            ->willReturnCallback(static fn (ProjectSubscription $subscription): array => $subscription->getPhase() === CommercialPhase::ELABORATION
+                ? [$elaborationDocument]
+                : [$implementationDocument]);
 
         $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
         $invoiceStorage->expects(self::exactly(2))
             ->method('hasLocalCopy')
-            ->willReturnCallback(static function (ProjectBillingDocument $document): bool {
-                return true;
-            });
-
-        $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class));
-        $controller->setContainer($container);
-
-        $elaborationResponse = $controller($project, CommercialPhase::ELABORATION, $request);
-        $elaborationContent = $elaborationResponse->getContent();
-
-        self::assertIsString($elaborationContent);
-        self::assertStringContainsString('Fases', $elaborationContent);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/elaboration', $elaborationContent);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/implementation', $elaborationContent);
-        self::assertStringContainsString('Elaboración Standard', $elaborationContent);
-        self::assertStringNotContainsString('Implementación Standard', $elaborationContent);
-
-        $implementationRequest = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::IMPLEMENTATION->value], ['from' => 'index']);
-        $implementationResponse = $controller($project, CommercialPhase::IMPLEMENTATION, $implementationRequest);
-        $implementationContent = $implementationResponse->getContent();
-
-        self::assertIsString($implementationContent);
-        self::assertStringContainsString('Fases', $implementationContent);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/elaboration', $implementationContent);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/billing/implementation', $implementationContent);
-        self::assertStringContainsString('/backend/project/' . $project->getId() . '/plans/implementation?from=billing', $implementationContent);
-        self::assertStringContainsString('Implementación Standard', $implementationContent);
-        self::assertStringNotContainsString('Elaboración Standard', $implementationContent);
-    }
-
-    public function testBillingPageHidesStripeTechnicalDetailsForNormalUsers(): void
-    {
-        self::bootKernel();
-        $container = self::getContainer();
-        $entityManager = $container->get(EntityManagerInterface::class);
-
-        $userEmail = sprintf('user89_%s@example.test', uniqid());
-
-        $user = (new User())
-            ->setName('User')
-            ->setSurnames('Normal')
-            ->setEmail($userEmail)
-            ->setPassword('password')
-            ->setRoles(['ROLE_USER']);
-        $entityManager->persist($user);
-        $entityManager->flush();
-
-        $project = (new Project())
-            ->setName('Proyecto normal')
-            ->setType('rodaje')
-            ->setCountry('ES')
-            ->setUser($user);
-
-        $subscription = (new ProjectSubscription())
-            ->setPhase(CommercialPhase::ELABORATION)
-            ->setTier(ProjectSubscription::TIER_STANDARD)
-            ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-            ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
-            ->setLastPaymentStatus('paid')
-            ->setStripeCheckoutSessionId('cs_test_89')
-            ->setStripePaymentIntentId('pi_test_89')
-            ->setStripeInvoiceId('in_test_89')
-            ->setStripeCustomerId('cus_test_89')
-            ->setPaymentReference('cs_test_a1LvgirVsq49dTzNPCjqSpsqVAaHQvHFo266VsnvqaVEDIhX8AiLUFxIcE')
-            ->setStripeHostedInvoiceUrl('https://invoice.test/view')
-            ->setStripeInvoicePdfUrl('https://invoice.test/pdf');
-        $project->addSubscription($subscription);
-
-        $membership = (new ProjectMembership())
-            ->setUser($user)
-            ->setProject($project)
-            ->setProjectRole('member');
-        $project->addProjectMembership($membership);
-
-        $entityManager->persist($project);
-        $entityManager->persist($membership);
-        $entityManager->persist($subscription);
-        $entityManager->flush();
-
-        $this->setUserToken($user);
-
-        $document = $this->createDocument($project, $subscription, 13);
-        $document
-            ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setPaymentReference('cs_test_a1LvgirVsq49dTzNPCjqSpsqVAaHQvHFo266VsnvqaVEDIhX8AiLUFxIcE')
-            ->setStripeCheckoutSessionId('cs_test_89')
-            ->setStripePaymentIntentId('pi_test_89')
-            ->setStripeInvoiceId('in_test_89')
-            ->setStripeCustomerId('cus_test_89')
-            ->setHostedInvoiceUrl('https://invoice.test/view')
-            ->setInvoicePdfUrl('https://invoice.test/pdf')
-            ->setLocalPath('stripe-invoices/project-89/invoice-in_test_89.pdf')
-            ->setDownloadedAt(new \DateTimeImmutable('2026-06-04 11:00:00'))
-            ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'));
-
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value], ['from' => 'index']);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
-
-        $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
-
-        $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
-        $billingRepository->expects(self::once())
-            ->method('findBySubscriptionOrdered')
-            ->with($subscription)
-            ->willReturn([$document]);
-
-        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
-        $invoiceStorage->expects(self::once())
-            ->method('hasLocalCopy')
-            ->with($document)
             ->willReturn(true);
 
         $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class));
         $controller->setContainer($container);
 
-        $response = $controller($project, CommercialPhase::ELABORATION, $request);
+        $response = $controller->overview(...$this->overviewRepositories([$project]));
         $content = $response->getContent();
 
         self::assertIsString($content);
-        self::assertStringContainsString('Ver factura', $content);
-        self::assertStringContainsString('Descargar PDF', $content);
-        self::assertStringContainsString('Referencia de pago', $content);
-        self::assertStringContainsString('cs_test_a1Lv...UFxIcE', $content);
-        self::assertStringNotContainsString('cs_test_a1LvgirVsq49dTzNPCjqSpsqVAaHQvHFo266VsnvqaVEDIhX8AiLUFxIcE', $content);
-        self::assertStringNotContainsString('Checkout Session ID', $content);
-        self::assertStringNotContainsString('Payment Intent ID', $content);
-        self::assertStringNotContainsString('Invoice ID', $content);
-        self::assertStringNotContainsString('Customer ID', $content);
-        self::assertStringNotContainsString('Actualizar referencias desde Stripe', $content);
-        self::assertStringNotContainsString('Verificar pago en Stripe', $content);
-        self::assertStringNotContainsString('Abrir en Stripe', $content);
-        self::assertStringNotContainsString('Sincronizar desde Stripe', $content);
+        self::assertStringContainsString('Elaboración Standard', $content);
+        self::assertStringContainsString('Implementación Pro', $content);
+        self::assertStringContainsString('/backend/project/86/billing/elaboration/document/12/view', $content);
+        self::assertStringContainsString('/backend/project/86/billing/implementation/document/21/view', $content);
+        self::assertStringContainsString('Plan comercial único del proyecto', $content);
+        self::assertStringNotContainsString('nav-tabs', $content);
+        self::assertStringNotContainsString('/backend/project/billing/implementation', $content);
     }
 
-    public function testBillingPageShowsEmptyStateWhenThereAreNoDocuments(): void
+    public function testOverviewShowsNewProjectPaymentInvoiceAndProjectScopedActions(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $this->setAdminToken();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $connection = $entityManager->getConnection();
+        $connection->beginTransaction();
+        $pdf = tempnam(sys_get_temp_dir(), 'bgmf_invoice_');
+        self::assertIsString($pdf);
+        file_put_contents($pdf, "%PDF-1.4\n% project payment test\n");
+
+        try {
+            $project = $this->newPersistableProject('Proyecto pago unificado');
+            $entityManager->persist($project);
+            $entityManager->flush();
+            $payment = $this->newCommercialPayment($project);
+            $payment->markCheckoutCreated('cs_project_86', 'https://checkout.stripe.com/c/pay/project-86')
+                ->markPaid('pi_project_86', 'in_project_86', 'cus_project_86');
+            $entityManager->persist($payment);
+            $entityManager->flush();
+
+            $document = $this->createDocument($project, null, 112);
+            $document
+                ->setStatus(ProjectBillingDocument::STATUS_PAID)
+                ->setAmountCents(24900)
+                ->setCurrency('EUR')
+                ->setStripeCheckoutSessionId('cs_project_86')
+                ->setStripeInvoiceId('in_project_86')
+                ->setLocalPath('stripe-invoices/project-payment-86.pdf');
+
+            $this->pushRequest('backend_project_billing_overview');
+            $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
+            $billingRepository->method('findOneBy')->willReturn($document);
+            $billingRepository->method('findOneByProjectAndId')->with($project, 112)->willReturn($document);
+            $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
+            $invoiceStorage->expects(self::once())->method('hasLocalCopy')->with($document)->willReturn(true);
+            $invoiceStorage->method('getLocalInvoiceAbsolutePath')->with($document)->willReturn($pdf);
+            $controller = $this->createBillingController(
+                $this->createMock(ActiveProjectService::class),
+                $billingRepository,
+                $invoiceStorage,
+                $entityManager,
+            );
+            $controller->setContainer($container);
+
+            $response = $controller->overview(...$this->overviewRepositories([$project]));
+            $content = $response->getContent();
+            self::assertIsString($content);
+            self::assertStringContainsString('Pagos del plan único del proyecto', $content);
+            self::assertStringContainsString('BASIC → STANDARD', $content);
+            self::assertStringContainsString('249,00 EUR', $content);
+            self::assertStringContainsString('Factura Stripe: in_project_86', $content);
+            self::assertStringContainsString('/backend/project/'.$project->getId().'/billing/project-document/112/view', $content);
+            self::assertStringContainsString('/backend/project/'.$project->getId().'/billing/project-document/112/download', $content);
+            self::assertStringNotContainsString('/subscription/elaboration/checkout', $content);
+            self::assertInstanceOf(BinaryFileResponse::class, $controller->viewProjectInvoice($project, 112));
+            self::assertInstanceOf(BinaryFileResponse::class, $controller->downloadProjectInvoice($project, 112));
+
+            $outsider = (new User())
+                ->setName('Sin')
+                ->setSurnames('Acceso')
+                ->setEmail('outsider_'.uniqid().'@example.test')
+                ->setPassword('password')
+                ->setRoles(['ROLE_USER']);
+            $entityManager->persist($outsider);
+            $entityManager->flush();
+            $this->setUserToken($outsider);
+            try {
+                $controller->viewProjectInvoice($project, 112);
+                self::fail('A non-member accessed a private project invoice.');
+            } catch (AccessDeniedException) {
+                self::assertTrue(true);
+            }
+        } finally {
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+            @unlink($pdf);
+        }
+    }
+
+    public function testOverviewHidesStripeTechnicalDetailsForNormalUsers(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $connection = $entityManager->getConnection();
+        $connection->beginTransaction();
+
+        try {
+            $user = (new User())
+                ->setName('User')
+                ->setSurnames('Normal')
+                ->setEmail('user89_'.uniqid().'@example.test')
+                ->setPassword('password')
+                ->setRoles(['ROLE_USER']);
+            $project = $this->newPersistableProject('Proyecto normal')->setUser($user);
+            $subscription = (new ProjectSubscription())
+                ->setPhase(CommercialPhase::ELABORATION)
+                ->setTier(ProjectSubscription::TIER_STANDARD)
+                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
+                ->setSource(ProjectSubscription::SOURCE_STRIPE)
+                ->setPaymentReference('cs_test_a1LvgirVsq49dTzNPCjqSpsqVAaHQvHFo266VsnvqaVEDIhX8AiLUFxIcE')
+                ->setStripeCheckoutSessionId('cs_test_89')
+                ->setStripePaymentIntentId('pi_test_89')
+                ->setStripeInvoiceId('in_test_89')
+                ->setStripeCustomerId('cus_test_89');
+            $project->addSubscription($subscription);
+            $membership = (new ProjectMembership())->setUser($user)->setProject($project)->setProjectRole('member');
+            $project->addProjectMembership($membership);
+            $entityManager->persist($user);
+            $entityManager->persist($project);
+            $entityManager->persist($membership);
+            $entityManager->flush();
+            $this->setUserToken($user);
+
+            $document = $this->createDocument($project, $subscription, 13);
+            $document
+                ->setStatus(ProjectBillingDocument::STATUS_PAID)
+                ->setPaymentReference('cs_test_a1LvgirVsq49dTzNPCjqSpsqVAaHQvHFo266VsnvqaVEDIhX8AiLUFxIcE')
+                ->setStripeCheckoutSessionId('cs_test_89')
+                ->setStripePaymentIntentId('pi_test_89')
+                ->setStripeInvoiceId('in_test_89')
+                ->setStripeCustomerId('cus_test_89')
+                ->setHostedInvoiceUrl('https://invoice.test/private')
+                ->setLocalPath('stripe-invoices/project-89/invoice.pdf');
+            $this->pushRequest('backend_project_billing_overview');
+            $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
+            $billingRepository->method('findBySubscriptionOrdered')->with($subscription)->willReturn([$document]);
+            $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
+            $invoiceStorage->method('hasLocalCopy')->with($document)->willReturn(true);
+            $controller = $this->createBillingController(
+                $this->createMock(ActiveProjectService::class),
+                $billingRepository,
+                $invoiceStorage,
+                $entityManager,
+            );
+            $controller->setContainer($container);
+            $projectRepository = $this->createMock(ProjectRepository::class);
+            $membershipRepository = $this->createMock(ProjectMembershipRepository::class);
+            $membershipRepository->expects(self::once())->method('projectsOf')->with($user)->willReturn([$project]);
+            $container->get('twig')->addGlobal('userProjects', [$project]);
+            $container->get('twig')->addGlobal('activeProject', $project);
+
+            $content = $controller->overview($projectRepository, $membershipRepository)->getContent();
+            self::assertIsString($content);
+            self::assertStringNotContainsString(
+                'cs_test_a1LvgirVsq49dTzNPCjqSpsqVAaHQvHFo266VsnvqaVEDIhX8AiLUFxIcE',
+                $content,
+                'The unified overview must not expose a full Stripe Checkout reference to a normal user.',
+            );
+            self::assertStringContainsString('cs_test_a1Lv...UFxIcE', $content);
+            self::assertStringNotContainsString('pi_test_89', $content);
+            self::assertStringNotContainsString('in_test_89', $content);
+            self::assertStringNotContainsString('cus_test_89', $content);
+            self::assertStringNotContainsString('https://invoice.test/private', $content);
+            self::assertStringNotContainsString('Abrir factura en Stripe', $content);
+            self::assertStringNotContainsString('Sincronizar factura de Stripe', $content);
+        } finally {
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+        }
+    }
+
+    public function testOverviewShowsNoDocumentsAndOmitsProjectsWithoutBillableActivity(): void
     {
         self::bootKernel();
         $container = self::getContainer();
         $this->setAdminToken();
 
-        $project = $this->createProject(87, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
-        $subscription
-            ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
-            ->setLastPaymentStatus('paid');
-
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value]);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
-
-        $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
-
+        $billable = $this->createProject(87, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD)->setName('Proyecto con actividad');
+        $inactive = $this->createProject(88, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_BASIC)->setName('Proyecto sin actividad');
+        $this->pushRequest('backend_project_billing_overview');
         $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
-        $billingRepository->expects(self::once())
-            ->method('findBySubscriptionOrdered')
-            ->with($subscription)
-            ->willReturn([]);
-
+        $billingRepository->expects(self::exactly(2))->method('findBySubscriptionOrdered')->willReturn([]);
         $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
         $invoiceStorage->expects(self::never())->method('hasLocalCopy');
-
-        $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class));
+        $controller = $this->createBillingController($this->createMock(ActiveProjectService::class), $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class));
         $controller->setContainer($container);
-
-        $response = $controller($project, CommercialPhase::ELABORATION, $request);
-        $content = $response->getContent();
-
+        $content = $controller->overview(...$this->overviewRepositories([$billable, $inactive]))->getContent();
         self::assertIsString($content);
+        self::assertStringContainsString('Proyecto con actividad', $content);
+        self::assertStringNotContainsString('Proyecto sin actividad', $content);
         self::assertStringContainsString('No hay documentos de facturación todavía', $content);
         self::assertStringNotContainsString('Ver factura', $content);
         self::assertStringNotContainsString('Descargar PDF', $content);
     }
 
-    public function testBillingPageShowsUpgradeCtaWhenThereIsNoActivePlan(): void
+    public function testComparisonBlocksNewCheckoutWhileProjectPaymentIsPending(): void
     {
         self::bootKernel();
         $container = self::getContainer();
         $this->setAdminToken();
-
-        $project = (new Project())
-            ->setName('Proyecto sin plan')
-            ->setType('rodaje')
-            ->setCountry('ES');
-        $this->setEntityId($project, 90);
-
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value], ['from' => 'project']);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
-
-        $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
-
-        $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
-        $billingRepository->expects(self::never())->method('findBySubscriptionOrdered');
-
-        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
-        $invoiceStorage->expects(self::never())->method('hasLocalCopy');
-
-        $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class));
-        $controller->setContainer($container);
-
-        $response = $controller($project, CommercialPhase::ELABORATION, $request);
-        $content = $response->getContent();
-
-        self::assertIsString($content);
-        self::assertStringContainsString('No hay un plan activo para este proyecto.', $content);
-        self::assertStringContainsString('Stripe Price ID no configurado', $content);
-        self::assertStringNotContainsString('/backend/project/' . $project->getId() . '/plans/elaboration', $content);
-        self::assertStringNotContainsString('Actualizar a Standard', $content);
-        self::assertStringNotContainsString('Actualizar a Pro', $content);
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $connection = $entityManager->getConnection();
+        $connection->beginTransaction();
+        try {
+            $project = $this->newPersistableProject('Proyecto checkout pendiente');
+            $entityManager->persist($project);
+            $entityManager->flush();
+            $payment = $this->newCommercialPayment($project);
+            $payment->markCheckoutCreated('cs_pending_project', 'https://checkout.stripe.com/c/pay/pending', new \DateTimeImmutable('+1 hour'));
+            $entityManager->persist($payment);
+            $entityManager->flush();
+            $request = $this->pushRequest('backend_project_plan_comparison', ['id' => $project->getId(), 'phase' => 'elaboration']);
+            $container->get('twig')->addGlobal('userProjects', [$project]);
+            $container->get('twig')->addGlobal('activeProject', $project);
+            $activeProjectService = $this->createMock(ActiveProjectService::class);
+            $activeProjectService->expects(self::once())->method('setActiveProject')->with($project);
+            $controller = $this->createBillingController(
+                $activeProjectService,
+                $this->createMock(ProjectBillingDocumentRepository::class),
+                $this->createMock(StripeInvoiceStorageService::class),
+                $entityManager,
+                checkoutEnabled: true,
+            );
+            $controller->setContainer($container);
+            $content = $controller->comparison($project, CommercialPhase::ELABORATION, $request)->getContent();
+            self::assertIsString($content);
+            self::assertStringContainsString('intento de pago pendiente de revisar (pending)', $content);
+            self::assertStringContainsString('/backend/project/'.$project->getId().'/commercial-checkout/verify', $content);
+            self::assertStringNotContainsString('/commercial-checkout/start/', $content);
+            self::assertStringNotContainsString('/subscription/elaboration/checkout', $content);
+        } finally {
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+        }
     }
 
-    public function testBillingPageShowsPendingUpgradeWhenThereIsAnActiveUpgradeCheckout(): void
+    public function testReusableProjectCheckoutReturnsStoredUrlWithoutCallingStripe(): void
     {
         self::bootKernel();
         $container = self::getContainer();
-        $this->setAdminToken();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $connection = $entityManager->getConnection();
+        $connection->beginTransaction();
+        try {
+            $project = $this->newPersistableProject('Proyecto checkout reutilizable');
+            $entityManager->persist($project);
+            $entityManager->flush();
+            $payment = $this->newCommercialPayment($project);
+            $payment->markCheckoutCreated('cs_reusable_project', 'https://checkout.stripe.com/c/pay/reusable', new \DateTimeImmutable('+1 hour'));
+            $entityManager->persist($payment);
+            $entityManager->flush();
 
-        $project = $this->createProject(91, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
-        $subscription
-            ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
-            ->setLastPaymentStatus('checkout_created')
-            ->setStripeCheckoutSessionId('cs_upgrade_91')
-            ->setTargetTier(ProjectSubscription::TIER_PRO);
-
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value], ['from' => 'project']);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
-
-        $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
-
-        $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
-        $billingRepository->expects(self::once())
-            ->method('findBySubscriptionOrdered')
-            ->with($subscription)
-            ->willReturn([]);
-
-        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
-        $invoiceStorage->expects(self::never())->method('hasLocalCopy');
-
-        $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class));
-        $controller->setContainer($container);
-
-        $response = $controller($project, CommercialPhase::ELABORATION, $request);
-        $content = $response->getContent();
-
-        self::assertIsString($content);
-        self::assertStringContainsString('Actualización pendiente', $content);
-        self::assertStringContainsString('20,00 €', $content);
+            $stripe = $this->createFakeStripeClient();
+            $service = new ProjectCommercialCheckoutService(
+                $stripe,
+                $this->createProjectQuoteService($stripe),
+                $container->get(ProjectCommercialPaymentRepository::class),
+                $entityManager,
+            );
+            $url = $service->startCheckout($project, Project::COMMERCIAL_TIER_STANDARD, 'https://example.test/success', 'https://example.test/cancel');
+            self::assertSame('https://checkout.stripe.com/c/pay/reusable', $url);
+            self::assertSame(ProjectCommercialPayment::STATUS_PENDING, $payment->getStatus());
+            self::assertSame([], $stripe->checkout->sessions->createCalls);
+        } finally {
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+        }
     }
 
-    public function testBillingPageShowsContinuePaymentForReusablePendingCheckout(): void
+    public function testExpiredProjectPaymentAllowsFreshProjectCheckoutOffer(): void
     {
         self::bootKernel();
         $container = self::getContainer();
         $this->setAdminToken();
-
-        $project = $this->createProject(94, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
-        $subscription
-            ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setLastPaymentStatus('checkout_created')
-            ->setStripeCheckoutSessionId('cs_pending_open')
-            ->setTargetTier(ProjectSubscription::TIER_PRO);
-
-        $plans = $this->makeDefaultCommercialPlans();
-        $plans['standard']->setStripePriceId('price_standard');
-        $plans['pro']->setStripePriceId('price_pro_full');
-        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
-        $plans['implementation_standard']->setStripePriceId('price_implementation_standard');
-        $plans['implementation_pro']->setStripePriceId('price_implementation_pro_full');
-        $plans['implementation_pro']->setStripeUpgradeFromStandardPriceId('price_implementation_upgrade');
-
-        $client = $this->createFakeStripeClient();
-        $client->checkout->sessions->retrieveReturn = (object) [
-            'id' => 'cs_pending_open',
-            'status' => 'open',
-            'payment_status' => 'unpaid',
-            'url' => 'https://stripe.test/checkout',
-            'expires_at' => time() + 3600,
-            'metadata' => (object) [
-                'project_id' => (string) $project->getId(),
-                'commercial_phase' => CommercialPhase::ELABORATION->value,
-                'target_tier' => ProjectSubscription::TIER_PRO,
-            ],
-        ];
-
-        $checkoutService = $this->createCheckoutService($client, $plans);
-
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value], ['from' => 'project']);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
-
-        $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
-
-        $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
-        $billingRepository->expects(self::once())
-            ->method('findBySubscriptionOrdered')
-            ->with($subscription)
-            ->willReturn([]);
-
-        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
-        $invoiceStorage->expects(self::never())->method('hasLocalCopy');
-
-        $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class), $checkoutService);
-        $controller->setContainer($container);
-
-        $response = $controller($project, CommercialPhase::ELABORATION, $request);
-        $content = $response->getContent();
-
-        self::assertIsString($content);
-        self::assertStringContainsString('Continuar pago', $content);
-        self::assertStringContainsString('Cancelar intento de pago', $content);
-        self::assertStringContainsString('Esta sesión de pago sigue abierta', $content);
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $connection = $entityManager->getConnection();
+        $connection->beginTransaction();
+        try {
+            $project = $this->newPersistableProject('Proyecto checkout expirado');
+            $entityManager->persist($project);
+            $entityManager->flush();
+            $payment = $this->newCommercialPayment($project);
+            $payment->markCheckoutCreated('cs_expired_project', 'https://checkout.stripe.com/c/pay/expired')
+                ->markInterrupted(ProjectCommercialPayment::STATUS_EXPIRED);
+            $entityManager->persist($payment);
+            $entityManager->flush();
+            $request = $this->pushRequest('backend_project_plan_comparison', ['id' => $project->getId(), 'phase' => 'elaboration']);
+            $container->get('twig')->addGlobal('userProjects', [$project]);
+            $container->get('twig')->addGlobal('activeProject', $project);
+            $controller = $this->createBillingController(
+                $this->createMock(ActiveProjectService::class),
+                $this->createMock(ProjectBillingDocumentRepository::class),
+                $this->createMock(StripeInvoiceStorageService::class),
+                $entityManager,
+                checkoutEnabled: true,
+            );
+            $controller->setContainer($container);
+            $content = $controller->comparison($project, CommercialPhase::ELABORATION, $request)->getContent();
+            self::assertIsString($content);
+            self::assertStringContainsString('/backend/project/'.$project->getId().'/commercial-checkout/start/standard', $content);
+            self::assertStringContainsString('/backend/project/'.$project->getId().'/commercial-checkout/start/pro', $content);
+            self::assertStringNotContainsString('intento de pago pendiente de revisar', $content);
+            self::assertStringNotContainsString('/subscription/elaboration/checkout', $content);
+        } finally {
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+        }
     }
 
-    public function testBillingPageShowsRetryPaymentForExpiredPendingCheckout(): void
+    public function testHistoricalBillingUrlsRedirectToUnifiedOverview(): void
     {
         self::bootKernel();
-        $container = self::getContainer();
         $this->setAdminToken();
+        $controller = $this->createBillingController(
+            $this->createMock(ActiveProjectService::class),
+            $this->createMock(ProjectBillingDocumentRepository::class),
+            $this->createMock(StripeInvoiceStorageService::class),
+            $this->createMock(EntityManagerInterface::class),
+        );
+        $controller->setContainer(self::getContainer());
 
-        $project = $this->createProject(95, ProjectSubscription::STATUS_PENDING_PAYMENT, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
-        $subscription
-            ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setLastPaymentStatus('expired')
-            ->setStripeCheckoutSessionId('cs_pending_expired')
-            ->setTargetTier(ProjectSubscription::TIER_PRO);
-
-        $plans = $this->makeDefaultCommercialPlans();
-        $plans['standard']->setStripePriceId('price_standard');
-        $plans['pro']->setStripePriceId('price_pro_full');
-        $plans['pro']->setStripeUpgradeFromStandardPriceId('price_upgrade');
-        $plans['implementation_standard']->setStripePriceId('price_implementation_standard');
-        $plans['implementation_pro']->setStripePriceId('price_implementation_pro_full');
-        $plans['implementation_pro']->setStripeUpgradeFromStandardPriceId('price_implementation_upgrade');
-
-        $client = $this->createFakeStripeClient();
-        $client->checkout->sessions->retrieveReturn = (object) [
-            'id' => 'cs_pending_expired',
-            'status' => 'expired',
-            'payment_status' => 'unpaid',
-            'metadata' => (object) [
-                'project_id' => (string) $project->getId(),
-                'commercial_phase' => CommercialPhase::ELABORATION->value,
-                'target_tier' => ProjectSubscription::TIER_PRO,
-            ],
-        ];
-
-        $checkoutService = $this->createCheckoutService($client, $plans);
-
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value], ['from' => 'project']);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
-
-        $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
-
-        $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
-        $billingRepository->expects(self::once())
-            ->method('findBySubscriptionOrdered')
-            ->with($subscription)
-            ->willReturn([]);
-
-        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
-        $invoiceStorage->expects(self::never())->method('hasLocalCopy');
-
-        $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class), $checkoutService);
-        $controller->setContainer($container);
-
-        $response = $controller($project, CommercialPhase::ELABORATION, $request);
-        $content = $response->getContent();
-
-        self::assertIsString($content);
-        self::assertStringContainsString('Reintentar pago', $content);
-        self::assertStringContainsString('Cancelar intento de pago', $content);
-        self::assertStringContainsString('La sesión actual ya no es reutilizable', $content);
+        foreach ([CommercialPhase::ELABORATION, CommercialPhase::IMPLEMENTATION] as $phase) {
+            $this->pushRequest('backend_project_billing', ['phase' => $phase->value]);
+            $response = $controller($phase);
+            self::assertSame('/backend/project/billing', $response->getTargetUrl());
+        }
     }
 
     public function testDocumentRoutesServeLocalPdfAndSyncDocument(): void
@@ -710,9 +537,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $twig->addGlobal('activeProject', $project);
 
         $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::exactly(3))
-            ->method('setActiveProject')
-            ->with($project);
+        $activeProjectService->expects(self::never())->method('setActiveProject');
 
         $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
         $billingRepository->method('findOneByProjectAndId')->with($project, 12)->willReturn($document);
@@ -745,77 +570,68 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $syncResponse = $controller->syncInvoice($project, CommercialPhase::ELABORATION, 12, $syncRequest);
 
         self::assertInstanceOf(RedirectResponse::class, $syncResponse);
-        self::assertStringContainsString('/backend/project/88/billing/elaboration', $syncResponse->getTargetUrl());
-        self::assertStringContainsString('from=index', $syncResponse->getTargetUrl());
+        self::assertSame('/backend/project/billing', $syncResponse->getTargetUrl());
     }
 
-    public function testBillingPageShowsRetryInvoiceActionWhenInvoiceIsNotLocallyAvailable(): void
+    public function testOverviewOffersProjectInvoiceRetryAndRejectsInvalidCsrf(): void
     {
         self::bootKernel();
         $container = self::getContainer();
         $this->setAdminToken();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $connection = $entityManager->getConnection();
+        $connection->beginTransaction();
+        try {
+            $project = $this->newPersistableProject('Proyecto factura pendiente');
+            $entityManager->persist($project);
+            $entityManager->flush();
+            $payment = $this->newCommercialPayment($project);
+            $payment->markCheckoutCreated('cs_invoice_pending', 'https://checkout.stripe.com/c/pay/invoice-pending')
+                ->markPaid('pi_invoice_pending');
+            $entityManager->persist($payment);
+            $entityManager->flush();
 
-        $project = $this->createProject(92, ProjectSubscription::STATUS_ACTIVE, ProjectSubscription::TIER_STANDARD);
-        $subscription = $project->getSubscriptionForPhase(CommercialPhase::ELABORATION);
-        $subscription
-            ->setSource(ProjectSubscription::SOURCE_STRIPE)
-            ->setPaidAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setPaidAt(new \DateTimeImmutable('2026-06-04 10:00:00'))
-            ->setLastPaymentStatus('paid')
-            ->setStripeCheckoutSessionId('cs_test_92')
-            ->setStripeInvoiceId('in_test_92')
-            ->setStripeHostedInvoiceUrl('https://invoice.test/view')
-            ->setStripeInvoicePdfUrl(null);
+            $request = $this->pushRequest('backend_project_billing_overview');
+            $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
+            $billingRepository->method('findOneBy')->willReturn(null);
+            $controller = $this->createBillingController(
+                $this->createMock(ActiveProjectService::class),
+                $billingRepository,
+                $this->createMock(StripeInvoiceStorageService::class),
+                $entityManager,
+                checkoutEnabled: true,
+            );
+            $controller->setContainer($container);
+            $content = $controller->overview(...$this->overviewRepositories([$project]))->getContent();
+            self::assertIsString($content);
+            self::assertStringContainsString('Factura Stripe: pendiente de sincronización', $content);
+            self::assertStringContainsString('/backend/project/'.$project->getId().'/billing/project-payment/'.$payment->getId().'/sync-invoice', $content);
+            self::assertStringContainsString('Sincronizar factura de Stripe', $content);
+            self::assertStringNotContainsString('/billing/project-document/', $content);
 
-        $document = $this->createDocument($project, $subscription, 14);
-        $document
-            ->setStatus(ProjectBillingDocument::STATUS_PAID)
-            ->setAmountCents(2900)
-            ->setCurrency('EUR')
-            ->setPaymentReference('INV-TEST-92')
-            ->setStripeCheckoutSessionId('cs_test_92')
-            ->setStripeInvoiceId('in_test_92')
-            ->setStripeCustomerId('cus_test_92')
-            ->setHostedInvoiceUrl('https://invoice.test/view')
-            ->setInvoicePdfUrl(null)
-            ->setLocalPath(null)
-            ->setDownloadedAt(null);
-
-        $request = $this->pushRequest('backend_project_billing', ['id' => $project->getId(), 'phase' => CommercialPhase::ELABORATION->value], ['from' => 'project']);
-        $twig = self::getContainer()->get('twig');
-        $twig->addGlobal('userProjects', [$project]);
-        $twig->addGlobal('activeProject', $project);
-
-        $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
-
-        $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
-        $billingRepository->expects(self::once())
-            ->method('findBySubscriptionOrdered')
-            ->with($subscription)
-            ->willReturn([$document]);
-
-        $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
-        $invoiceStorage->expects(self::once())
-            ->method('hasLocalCopy')
-            ->with($document)
-            ->willReturn(false);
-
-        $controller = $this->createBillingController($activeProjectService, $billingRepository, $invoiceStorage, $this->createMock(EntityManagerInterface::class));
-        $controller->setContainer($container);
-
-        $response = $controller($project, CommercialPhase::ELABORATION, $request);
-        $content = $response->getContent();
-
-        self::assertIsString($content);
-        self::assertStringContainsString('Descargar factura', $content);
-        self::assertStringContainsString('Abrir factura en Stripe', $content);
-        self::assertStringContainsString('Sin factura disponible todavía', $content);
-        self::assertStringNotContainsString('Ver factura', $content);
-        self::assertStringNotContainsString('Descargar PDF', $content);
+            $request->request->set('_token', 'invalid-token');
+            try {
+                $controller->syncProjectInvoice(
+                    $project,
+                    (int) $payment->getId(),
+                    $request,
+                    new ProjectCommercialInvoiceSyncService(
+                        $this->createFakeStripeClient(),
+                        $billingRepository,
+                        $this->createMock(StripeInvoiceStorageService::class),
+                        $entityManager,
+                        'sk_test_dummy',
+                    ),
+                );
+                self::fail('Project invoice synchronization accepted an invalid CSRF token.');
+            } catch (AccessDeniedException) {
+                self::assertTrue(true);
+            }
+        } finally {
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+        }
     }
 
     public function testSyncInvoiceShowsSpecificAdminReasonWhenInvoicePdfIsMissing(): void
@@ -859,9 +675,7 @@ final class ProjectBillingControllerTest extends KernelTestCase
         $twig->addGlobal('activeProject', $project);
 
         $activeProjectService = $this->createMock(ActiveProjectService::class);
-        $activeProjectService->expects(self::once())
-            ->method('setActiveProject')
-            ->with($project);
+        $activeProjectService->expects(self::never())->method('setActiveProject');
 
         $billingRepository = $this->createMock(ProjectBillingDocumentRepository::class);
         $billingRepository->method('findOneByProjectAndId')->with($project, 15)->willReturn($document);
@@ -911,8 +725,11 @@ final class ProjectBillingControllerTest extends KernelTestCase
         ProjectBillingDocumentRepository $billingRepository,
         StripeInvoiceStorageService $invoiceStorage,
         EntityManagerInterface $entityManager,
-        ?StripeProjectCheckoutService $checkoutService = null
+        ?StripeProjectCheckoutService $checkoutService = null,
+        bool $checkoutEnabled = false,
+        string $stripeSecretKey = 'sk_test_dummy',
     ): ProjectBillingController {
+        $this->ensureTemporaryCommercialPaymentTable();
         $plans = $this->makeDefaultCommercialPlans();
         $plans['standard']->setStripePriceId('price_standard');
         $plans['pro']->setStripePriceId('price_pro_full');
@@ -961,7 +778,9 @@ final class ProjectBillingControllerTest extends KernelTestCase
             $this->createMock(\Symfony\Component\Routing\Generator\UrlGeneratorInterface::class),
             null,
             null,
-            self::getContainer()->get(\App\Service\SustainabilityPlanCompletionService::class)
+            self::getContainer()->get(\App\Service\SustainabilityPlanCompletionService::class),
+            'prod_TESTSTANDARD',
+            'prod_TESTPRO',
         );
 
         return new ProjectBillingController(
@@ -974,12 +793,17 @@ final class ProjectBillingControllerTest extends KernelTestCase
             $planRepository,
             $measureRepository,
             self::getContainer()->get('translator'),
-            $entityManager
+            $entityManager,
+            new ProjectCommercialPricing(),
+            self::getContainer()->get(ProjectCommercialPaymentRepository::class),
+            $stripeSecretKey,
+            $checkoutEnabled,
         );
     }
 
-    private function createCheckoutService(FakeStripeClient $client, array $plans): StripeProjectCheckoutService
+    private function createProjectQuoteService(FakeStripeClient $client): StripeProjectCheckoutService
     {
+        $plans = $this->makeDefaultCommercialPlans();
         $commercialPlanRepository = $this->createMock(CommercialPlanRepository::class);
         $commercialPlanRepository->method('findActiveByPhaseAndCode')->willReturnCallback(
             static function (CommercialPhase $phase, string $code) use ($plans): ?\App\Entity\CommercialPlan {
@@ -1009,8 +833,74 @@ final class ProjectBillingControllerTest extends KernelTestCase
             $urlGenerator,
             'https://example.test/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/success/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}',
             'https://example.test/backend/project/{PROJECT_ID}/subscription/{COMMERCIAL_PHASE}/cancel/{TARGET_TIER}?session_id={CHECKOUT_SESSION_ID}',
-            self::getContainer()->get(\App\Service\SustainabilityPlanCompletionService::class)
+            self::getContainer()->get(\App\Service\SustainabilityPlanCompletionService::class),
+            'prod_TESTSTANDARD',
+            'prod_TESTPRO',
         );
+    }
+
+    /** @return array{ProjectRepository, ProjectMembershipRepository} */
+    private function overviewRepositories(array $projects): array
+    {
+        self::getContainer()->get('twig')->addGlobal('userProjects', $projects);
+        self::getContainer()->get('twig')->addGlobal('activeProject', $projects[0] ?? null);
+        $projectRepository = $this->createMock(ProjectRepository::class);
+        $projectRepository->method('findBy')->with([], ['name' => 'ASC'])->willReturn($projects);
+
+        return [$projectRepository, $this->createMock(ProjectMembershipRepository::class)];
+    }
+
+    private function newPersistableProject(string $name): Project
+    {
+        $this->ensureTemporaryCommercialPaymentTable();
+
+        return (new Project())
+            ->setName($name)
+            ->setType('rodaje')
+            ->setFilmingType('short')
+            ->setCountry('ES')
+            ->setCommercialTier(Project::COMMERCIAL_TIER_BASIC);
+    }
+
+    private function newCommercialPayment(Project $project): ProjectCommercialPayment
+    {
+        return new ProjectCommercialPayment(
+            $project,
+            Project::COMMERCIAL_TIER_BASIC,
+            Project::COMMERCIAL_TIER_STANDARD,
+            'low',
+            24900,
+            (new ProjectCommercialPricing())->getPricingFingerprint($project),
+        );
+    }
+
+    private function ensureTemporaryCommercialPaymentTable(): void
+    {
+        self::getContainer()->get(EntityManagerInterface::class)->getConnection()->executeStatement(<<<'SQL'
+            CREATE TEMPORARY TABLE IF NOT EXISTS project_commercial_payment (
+                id INT AUTO_INCREMENT NOT NULL,
+                project_id INT NOT NULL,
+                from_tier VARCHAR(20) NOT NULL,
+                target_tier VARCHAR(20) NOT NULL,
+                price_band VARCHAR(10) NOT NULL,
+                amount_cents INT NOT NULL,
+                currency VARCHAR(3) NOT NULL DEFAULT 'EUR',
+                pricing_fingerprint VARCHAR(64) NOT NULL,
+                status VARCHAR(20) NOT NULL,
+                stripe_checkout_session_id VARCHAR(255) DEFAULT NULL,
+                stripe_checkout_url VARCHAR(2048) DEFAULT NULL,
+                stripe_checkout_expires_at DATETIME DEFAULT NULL,
+                stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,
+                stripe_invoice_id VARCHAR(255) DEFAULT NULL,
+                stripe_customer_id VARCHAR(255) DEFAULT NULL,
+                created_at DATETIME NOT NULL,
+                paid_at DATETIME DEFAULT NULL,
+                review_reason VARCHAR(100) DEFAULT NULL,
+                UNIQUE INDEX uniq_project_commercial_payment_session (stripe_checkout_session_id),
+                INDEX idx_project_commercial_payment_project_status (project_id, status),
+                PRIMARY KEY(id)
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB
+            SQL);
     }
 
     private function pushRequest(string $route, array $routeParams = [], array $queryParams = []): Request
@@ -1028,7 +918,12 @@ final class ProjectBillingControllerTest extends KernelTestCase
 
     private function createProject(int $id, string $status, string $tier): Project
     {
-        $project = new Project();
+        $project = (new Project())
+            ->setName('Proyecto '.$id)
+            ->setType('rodaje')
+            ->setFilmingType('short')
+            ->setCountry('ES')
+            ->setCommercialTier($tier);
         $this->setEntityId($project, $id);
 
         $subscription = (new ProjectSubscription())

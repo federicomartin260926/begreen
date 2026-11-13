@@ -261,16 +261,83 @@ final class StripeProjectWebhookServiceTest extends TestCase
         self::assertSame(ProjectSubscription::TIER_STANDARD, $subscription->getTargetTier());
     }
 
-    private function createService(ProjectSubscription $subscription): StripeProjectWebhookService
+    public function testUnpaidCompletionCannotActivateLegacySubscription(): void
+    {
+        $subscription = $this->createSubscription(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT);
+        $subscription->setStripeCheckoutSessionId('cs_test_unpaid');
+        $subscription->setTargetTier(ProjectSubscription::TIER_PRO);
+        $service = $this->createService($subscription, false);
+        $service->processCompletedCheckoutSession([
+            'id' => 'cs_test_unpaid', 'project_id' => '42',
+            'commercial_phase' => 'elaboration', 'target_tier' => 'pro',
+            'payment_status' => 'unpaid',
+        ]);
+        self::assertSame(ProjectSubscription::TIER_BASIC, $subscription->getTier());
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $subscription->getStatus());
+    }
+
+    public function testUnrelatedCheckoutCannotActivateOrCancelKnownLegacySubscription(): void
+    {
+        $subscription = $this->createSubscription(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT);
+        $subscription->setStripeCheckoutSessionId('cs_test_original');
+        $subscription->setTargetTier(ProjectSubscription::TIER_STANDARD);
+        $service = $this->createService($subscription, false);
+        $data = [
+            'id' => 'cs_test_other', 'project_id' => 42,
+            'commercial_phase' => 'elaboration', 'target_tier' => 'standard',
+            'payment_status' => 'paid',
+        ];
+        $service->processCompletedCheckoutSession($data);
+        $service->processCheckoutSessionExpired($data);
+        self::assertSame(ProjectSubscription::TIER_BASIC, $subscription->getTier());
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $subscription->getStatus());
+    }
+
+    public function testPaymentIntentCannotCancelLegacyCheckoutByProjectAndPhase(): void
+    {
+        $subscription = $this->createSubscription(ProjectSubscription::TIER_STANDARD, ProjectSubscription::STATUS_PENDING_PAYMENT);
+        $subscription->setStripeCheckoutSessionId('cs_test_original');
+        $subscription->setTargetTier(ProjectSubscription::TIER_PRO);
+        $service = $this->createService($subscription, false);
+        $service->processPaymentFailed([
+            'id' => 'pi_test_different', 'project_id' => 42,
+            'commercial_phase' => 'elaboration', 'target_tier' => 'pro',
+        ]);
+        self::assertSame(ProjectSubscription::TIER_STANDARD, $subscription->getTier());
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $subscription->getStatus());
+    }
+
+    public function testValidSessionWithDifferentProjectIdCannotActivateLegacyPayment(): void
+    {
+        $subscription = $this->createSubscription(ProjectSubscription::TIER_BASIC, ProjectSubscription::STATUS_PENDING_PAYMENT);
+        $subscription->setStripeCheckoutSessionId('cs_test_actual');
+        $subscription->setTargetTier(ProjectSubscription::TIER_STANDARD);
+        $service = $this->createService($subscription, false);
+        $service->processCompletedCheckoutSession([
+            'id' => 'cs_test_actual', 'project_id' => 999,
+            'commercial_phase' => 'elaboration', 'target_tier' => 'standard',
+            'payment_status' => 'paid',
+        ]);
+        self::assertSame(ProjectSubscription::TIER_BASIC, $subscription->getTier());
+        self::assertSame(ProjectSubscription::STATUS_PENDING_PAYMENT, $subscription->getStatus());
+    }
+
+    private function createService(ProjectSubscription $subscription, bool $expectFlush = true): StripeProjectWebhookService
     {
         $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
         $subscriptionRepository->method('findOneByStripeCheckoutSessionId')->willReturn($subscription);
 
+        $project = (new Project())->addSubscription($subscription);
+        (new \ReflectionProperty(Project::class, 'id'))->setValue($project, 42);
         $projectRepository = $this->createMock(ProjectRepository::class);
-        $projectRepository->method('find')->willReturn((new Project())->addSubscription($subscription));
+        $projectRepository->expects(self::never())->method('find');
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->expects(self::atLeastOnce())->method('flush');
+        if ($expectFlush) {
+            $entityManager->expects(self::atLeastOnce())->method('flush');
+        } else {
+            $entityManager->expects(self::never())->method('flush');
+        }
         $invoiceStorage = $this->createMock(StripeInvoiceStorageService::class);
         $invoiceStorage->method('upsertFromStripeCheckout')->willReturn(new \App\Entity\ProjectBillingDocument());
 
@@ -295,10 +362,7 @@ final class StripeProjectWebhookServiceTest extends TestCase
         $commercialPlanRepository = $this->createMock(CommercialPlanRepository::class);
         $commercialPlanRepository->method('findActiveByPhaseAndCode')->willReturn(null);
 
-        $subscriptionRepository = $this->createMock(ProjectSubscriptionRepository::class);
-        $subscriptionRepository->method('findOneByProjectAndPhase')->willReturn(null);
-
-        return new ProjectFeatureGate(new CommercialPlanResolver($commercialPlanRepository, $subscriptionRepository));
+        return new ProjectFeatureGate(new CommercialPlanResolver($commercialPlanRepository));
     }
 
     private function createSubscription(string $tier, string $status, CommercialPhase $phase = CommercialPhase::ELABORATION): ProjectSubscription

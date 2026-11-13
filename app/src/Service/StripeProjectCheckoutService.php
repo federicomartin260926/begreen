@@ -13,6 +13,7 @@ use App\Repository\CommercialPlanRepository;
 use App\Repository\PlanRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Stripe\StripeClient;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Throwable;
 
@@ -34,7 +35,85 @@ final class StripeProjectCheckoutService
         private readonly ?string $successUrlTemplate,
         private readonly ?string $cancelUrlTemplate,
         private readonly SustainabilityPlanCompletionService $planCompletionService,
+        #[Autowire(env: 'STRIPE_STANDARD_PRODUCT_ID')]
+        private readonly ?string $standardStripeProductId = null,
+        #[Autowire(env: 'STRIPE_PRO_PRODUCT_ID')]
+        private readonly ?string $proStripeProductId = null,
     ) {
+    }
+
+    /**
+     * Build one quote per project without calling Stripe or changing local state.
+     * This is intentionally NOT yet connected to a payment route: the project-
+     * scoped webhook and reconciliation must be implemented before enabling it.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildProjectCheckoutSessionPayload(
+        Project $project,
+        string $targetTier,
+        string $successUrl,
+        string $cancelUrl,
+        ?User $user = null,
+    ): array {
+        $projectId = $project->getId();
+        if ($projectId === null || $projectId <= 0) {
+            throw new \InvalidArgumentException('Project must be persisted before checkout.');
+        }
+
+        $currentTier = $project->getCommercialTier();
+        if (!$this->isValidTargetTier($targetTier) || $this->tierRank($targetTier) <= $this->tierRank($currentTier)) {
+            throw new \InvalidArgumentException('Invalid project-level upgrade.');
+        }
+
+        $pricing = new ProjectCommercialPricing();
+        $band = $pricing->getPriceBand($project);
+        $amountCents = $currentTier === Project::COMMERCIAL_TIER_STANDARD
+            ? $pricing->getUpgradeAmountCents($project, $currentTier, $targetTier)
+            : $pricing->getAmountCents($project, $targetTier);
+        if ($amountCents <= 0) {
+            throw new \LogicException('Project checkout amount must be positive.');
+        }
+
+        // Use the permanent Stripe product for the target tier, retaining
+        // a server-side dynamic amount (no fixed Stripe Price IDs).
+        $productId = $targetTier === Project::COMMERCIAL_TIER_STANDARD
+            ? trim($this->standardStripeProductId ?? '')
+            : trim($this->proStripeProductId ?? '');
+        if (preg_match('/^prod_[A-Za-z0-9]+$/D', $productId) !== 1) {
+            throw new \DomainException('Stripe product is not configured for the requested project tier.');
+        }
+
+        $metadata = array_filter([
+            'commercial_scope' => 'project_v1',
+            'project_id' => (string) $projectId,
+            'current_tier' => $currentTier,
+            'target_tier' => $targetTier,
+            'price_band' => $band,
+            'quoted_amount_cents' => (string) $amountCents,
+            'pricing_fingerprint' => $pricing->getPricingFingerprint($project),
+            'user_id' => $user?->getId() !== null ? (string) $user->getId() : null,
+        ], static fn ($value) => $value !== null);
+
+        return [
+            'mode' => 'payment',
+            'success_url' => $successUrl,
+            'cancel_url' => $cancelUrl,
+            'customer_creation' => 'always',
+            'invoice_creation' => ['enabled' => true],
+            'billing_address_collection' => 'required',
+            'line_items' => [[
+                'price_data' => [
+                    'currency' => 'eur',
+                    'unit_amount' => $amountCents,
+                    'product' => $productId,
+                ],
+                'quantity' => 1,
+            ]],
+            'client_reference_id' => (string) $projectId,
+            'metadata' => $metadata,
+            'payment_intent_data' => ['metadata' => $metadata],
+        ];
     }
 
     public function getAvailableUpgradeTargets(Project $project, CommercialPhase $phase): array

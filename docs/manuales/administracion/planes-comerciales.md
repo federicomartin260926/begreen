@@ -1,24 +1,25 @@
 # Planes comerciales
 
-Administración → Planes comerciales está reservado al Super Administrador. El listado separa la fase comercial de Elaboración o Implementación y muestra nombre, código, precio, estado, orden y acción de edición.
+Administración → Planes comerciales está reservado al Super Administrador. Muestra **tres niveles comerciales por proyecto**: Basic, Standard y Pro. El nivel contratado se guarda en el proyecto; la pantalla no vende ni factura por fases.
 
-## Editar un plan
+## Consultar precios
 
-Condición previa: confirma si vas a modificar la fase de Elaboración o Implementación y dispone de los valores comerciales aprobados.
+La tabla muestra los importes **por proyecto**, calculados por la regla de precios según su tipo/tamaño: Basic 0 €, Standard 249/499/749 € y Pro 499/999/1.499 € (bajo, medio y alto). Estos importes son informativos y no se editan desde la tabla o el formulario de capacidades.
 
-1. Abre el lápiz del plan y confirma la fase y el código mostrados.
-2. Revisa nombre, descripción, precio, moneda, orden, límite de evidencias, estado activo y marca de agua.
-3. Revisa los identificadores Stripe solo si han sido facilitados para el entorno correcto.
-4. Marca las puntuaciones de medidas incluidas.
-5. Configura las funciones disponibles.
-6. Guarda, regresa al listado y comprueba precio, estado y orden.
+## Editar un nivel
 
-Las funciones incluyen PDF por departamentos, exportaciones avanzadas, email, notas internas, responsables, checklist y medidas personalizadas. Si una opción aparece marcada como futura, no la actives ni la ofrezcas como disponible.
+1. Abre el lápiz de Basic, Standard o Pro.
+2. Revisa **nombre, estado y orden**: son valores comunes para ambas fases.
+3. En **Elaboración**, ajusta descripción, límite de evidencias, marca de agua, puntuaciones permitidas y funcionalidades.
+4. En **Implementación**, revisa y ajusta sus capacidades por separado. Son dos configuraciones internas, no dos productos a contratar.
+5. Guarda una sola vez. Los cambios se aplican a las dos configuraciones de fase del mismo nivel.
+
+Las funciones incluyen PDF por departamentos, exportaciones avanzadas, email, notas internas, responsables, checklist y medidas personalizadas. Si una opción se marca como futura, no la ofrezcas como disponible.
 
 ## Impacto y límites
 
-Estos ajustes son catálogo comercial global. No cambian por sí mismos el plan contratado por un proyecto concreto. Modificar un plan comercial no cambia automáticamente la modalidad contratada por los proyectos existentes. Los cambios comerciales por proyecto no forman parte de este procedimiento.
+La edición altera las capacidades globales del nivel y puede afectar a proyectos existentes que tienen contratado ese nivel; no cambia el **nivel comercial** guardado en ningún proyecto. Comprueba el efecto con proyectos de validación antes de habilitar nuevas funcionalidades.
 
-Verifica importe, moneda e identificadores de pago antes de guardar. Los campos **Price ID** solo admiten el identificador facilitado para el entorno correcto; nunca pegues una clave secreta.
+Los precios de `ProjectCommercialPricing`, los importes de checkout y los identificadores Stripe no se alteran mediante este formulario. Los antiguos campos monetarios y Stripe de cada registro interno permanecen almacenados, pero ya no se ofrecen como precio comercial editable por fase. No pegues claves secretas en formularios.
 
-Para comprobar funciones, usa un proyecto de validación con ese plan comercial. Que una casilla quede guardada en el catálogo no demuestra por sí sola que un proyecto anterior haya cambiado de modalidad.
+La base conserva seis registros técnicos (dos fases × tres niveles) para resolver permisos; la administración muestra tres niveles de producto.

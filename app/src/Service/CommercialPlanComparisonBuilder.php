@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Entity\CommercialPlan;
 use App\Entity\Plan;
+use App\Entity\Project;
 use App\Entity\ProjectSubscription;
 use App\Enum\CommercialPhase;
 use App\Repository\CommercialPlanRepository;
@@ -18,6 +19,7 @@ final class CommercialPlanComparisonBuilder
         private readonly MeasureRepository $measureRepository,
         private readonly TranslatorInterface $translator,
         private readonly ?AnimationPlanSynchronizer $animationPlanSynchronizer = null,
+        private readonly ?ProjectCommercialPricing $commercialPricing = null,
     ) {
     }
 
@@ -31,6 +33,7 @@ final class CommercialPlanComparisonBuilder
         string $currentTier,
         ?Plan $projectPlan,
         array $availableUpgradeTargets,
+        ?Project $project = null,
     ): array {
         $currentTier = strtolower(trim($currentTier));
         $upgradeTargets = [];
@@ -60,7 +63,9 @@ final class CommercialPlanComparisonBuilder
             $upgradeAmount = is_array($upgradeTarget) && isset($upgradeTarget['amountCents']) && is_int($upgradeTarget['amountCents'])
                 ? $upgradeTarget['amountCents']
                 : null;
-            $displayAmount = $upgradeAmount ?? $commercialPlan->getPriceAmount();
+            $displayAmount = $project instanceof Project
+                ? $this->resolveProjectPrice($project, $code)
+                : ($upgradeAmount ?? $commercialPlan->getPriceAmount());
             $features = $commercialPlan->getFeatures();
 
             $plans[$code] = [
@@ -78,7 +83,7 @@ final class CommercialPlanComparisonBuilder
                 'allowedScores' => $commercialPlan->getAllowedScores(),
                 'features' => $features,
                 'current' => $code === $currentTier,
-                'upgrade' => $commercialPlan->isActive() && is_array($upgradeTarget) && $upgradeAmount !== null
+                'upgrade' => !($project instanceof Project) && $commercialPlan->isActive() && is_array($upgradeTarget) && $upgradeAmount !== null
                     ? [
                         'targetTier' => $code,
                         'priceAmount' => $upgradeAmount,
@@ -309,5 +314,14 @@ final class CommercialPlanComparisonBuilder
             number_format($priceAmount / 100, 2, ',', '.'),
             $currency === 'EUR' ? '€' : $currency
         );
+    }
+
+    private function resolveProjectPrice(Project $project, string $tier): ?int
+    {
+        try {
+            return ($this->commercialPricing ?? new ProjectCommercialPricing())->getAmountCents($project, $tier);
+        } catch (\DomainException) {
+            return null;
+        }
     }
 }

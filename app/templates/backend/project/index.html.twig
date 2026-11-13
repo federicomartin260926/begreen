@@ -218,6 +218,9 @@
                                     <div class="backend-project-pill__type text-muted">
                                         {{ project.descriptionLabel }}
                                     </div>
+                                    <div class="small mt-1">
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">{{ project.tierLabel }}</span>
+                                    </div>
                                     <div class="backend-project-pill__people">
                                         {% if project.creator %}
                                             {% set creatorName = project.creator.name ?: project.creator.email %}

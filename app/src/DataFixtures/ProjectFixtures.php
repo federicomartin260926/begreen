@@ -3,11 +3,12 @@
 namespace App\DataFixtures;
 
 use App\Entity\Project;
+use App\Entity\ProjectCompany;
+use App\Entity\ProjectDocument;
+use App\Entity\ProjectFundingSource;
 use App\Entity\ProjectMembership;
 use App\Entity\ProjectPhaseDate;
-use App\Entity\ProjectSubscription;
 use App\Entity\User;
-use App\Enum\CommercialPhase;
 use App\Enum\ProjectCatalog;
 use App\Repository\OdsRepository;
 use App\Repository\UserRepository;
@@ -25,20 +26,13 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
         private readonly UserRepository $userRepository,
         private readonly OdsRepository $odsRepository,
     ) {
-        // OdsRepository se mantiene por compatibilidad con la definición actual del servicio.
     }
 
-    public static function getGroups(): array
-    {
-        return ['projects'];
-    }
+    public static function getGroups(): array { return ['projects']; }
 
     public function getDependencies(): array
     {
-        return [
-            UserFixtures::class,
-            MeasureFixtures::class,
-        ];
+        return [UserFixtures::class, MeasureFixtures::class];
     }
 
     public function load(ObjectManager $manager): void
@@ -47,25 +41,15 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
         if ($users === []) {
             throw new \RuntimeException('No se encontró ningún usuario en la base de datos.');
         }
-
         foreach ($users as $index => $user) {
-            if (!$user instanceof User) {
-                continue;
-            }
-
-            if ($user->getEmail() === self::VERIFIER_EMAIL) {
-                // Certificadora externa: sólo proyectos asignados; nunca uno propio.
-                continue;
-            }
-
+            if (!$user instanceof User) { continue; }
+            if ($user->getEmail() === self::VERIFIER_EMAIL) { continue; }
             if ($user->getEmail() === self::FRANC_EMAIL) {
                 $this->createFrancProjects($manager, $user);
                 continue;
             }
-
             $this->createDefaultProject($manager, $user, $index);
         }
-
         $manager->flush();
     }
 
@@ -74,32 +58,23 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
         $userName = $user->getName() ?: $user->getEmail();
         $filmingType = ProjectCatalog::FILMING_TYPES[$index % count(ProjectCatalog::FILMING_TYPES)];
         $distributionMedium = ProjectCatalog::DISTRIBUTION_MEDIA[$index % count(ProjectCatalog::DISTRIBUTION_MEDIA)];
-
         $project = (new Project())
             ->setName("Proyecto $userName")
             ->setCountry('ES')
             ->setType('rodaje')
+            ->setCommercialTier(Project::COMMERCIAL_TIER_BASIC)
             ->setFilmingType($filmingType)
             ->setDistributionMedia([$distributionMedium])
             ->setUser($user)
             ->setEmissionSourceName('MITECO');
-
         if ($filmingType === 'tv_series') {
-            $project
-                ->setEpisodios(8)
-                ->setDuracionEpisodio(45);
+            $project->setEpisodios(8)->setDuracionEpisodio(45);
         }
-
-        $this->persistProjectGraph(
-            $manager,
-            $project,
-            $user,
-            [
-                ['preproduccion', '+1 days', '+15 days'],
-                ['actividad', '+20 days', '+60 days'],
-                ['postproduccion', '+60 days', '+65 days'],
-            ],
-        );
+        $this->persistProjectGraph($manager, $project, $user, [
+            ['preproduccion', '+1 days', '+15 days'],
+            ['actividad', '+20 days', '+60 days'],
+            ['postproduccion', '+60 days', '+65 days'],
+        ]);
     }
 
     private function createFrancProjects(ObjectManager $manager, User $franc): void
@@ -108,99 +83,84 @@ class ProjectFixtures extends Fixture implements DependentFixtureInterface, Fixt
         if (!$verifier instanceof User) {
             throw new \RuntimeException('No se encontró la certificadora QA #82 en fixtures.');
         }
-
-        $event = (new Project())
-            ->setName('EVENTO FRANC')
-            ->setCountry('ES')
-            ->setType('evento')
-            ->setEventTypePrimary('corporativo')
-            ->setEventModality('hibrido')
-            ->setEventAttendeesCount(300)
-            ->setEventOnlineConnections(900)
-            ->setPresupuesto('133000.00')
-            ->setMainLocation('Madrid')
-            ->setEcoManagerStatus('designated')
-            ->setDistributionMedia([])
-            ->setUser($franc)
-            ->setEmissionSourceName('MITECO');
-
-        $this->persistProjectGraph(
-            $manager,
-            $event,
-            $franc,
-            [
-                ['preproduccion', '2026-07-01', '2026-07-15'],
-                ['actividad', '2026-07-16', '2026-07-16'],
-                ['postproduccion', '2026-07-17', '2026-07-17'],
-            ],
-        );
-        $manager->persist((new ProjectMembership())
-            ->setUser($verifier)
-            ->setProject($event)
-            ->setProjectRole('member'));
-
-        $film = (new Project())
-            ->setName('RODAJE ELABORADO')
-            ->setCountry('ES')
-            ->setType('rodaje')
-            ->setFilmingType('advert')
-            ->setDistributionMedia(['tv'])
-            ->setPresupuesto('150000.00')
-            ->setMainLocation('Madrid')
-            ->setEcoManagerStatus('designated')
-            ->setUser($franc)
-            ->setEmissionSourceName('MITECO');
-
-        $this->persistProjectGraph(
-            $manager,
-            $film,
-            $franc,
-            [
-                ['preproduccion', '2026-08-03', '2026-08-14'],
-                ['actividad', '2026-08-17', '2026-08-17'],
-                ['postproduccion', '2026-08-18', '2026-08-31'],
-            ],
-        );
-        $manager->persist((new ProjectMembership())
-            ->setUser($verifier)
-            ->setProject($film)
-            ->setProjectRole('member'));
+        foreach (FrancProjectPlanData::PROJECTS as $name => $fixture) {
+            $data = $fixture['project'];
+            $project = (new Project())
+                ->setName($name)
+                ->setType($data['type'])
+                ->setCountry($data['country'])
+                ->setCommercialTier($fixture['tier'])
+                ->setFilmingType($data['filmingType'])
+                ->setFilmingGenre($data['filmingGenre'])
+                ->setMainLocation($data['mainLocation'])
+                ->setEcoManagerStatus($data['ecoManagerStatus'])
+                ->setPresupuesto($data['presupuesto'])
+                ->setDistributionMedia($data['distributionMedia'])
+                ->setEmissionSourceName($data['emissionSourceName'])
+                ->setUser($franc);
+            $this->persistProjectGraph($manager, $project, $franc, $fixture['phases']);
+            $manager->persist((new ProjectMembership())
+                ->setUser($verifier)->setProject($project)->setProjectRole('member'));
+            foreach ($fixture['companies'] as $company) {
+                $logoPath = $this->installLogoAsset($company['logo']);
+                $manager->persist((new ProjectCompany())
+                    ->setProject($project)
+                    ->setType($company['type'])
+                    ->setName($company['name'])
+                    ->setPosition($company['position'])
+                    ->setLogoPath($logoPath));
+            }
+            foreach ($fixture['fundingSources'] as $funding) {
+                $manager->persist((new ProjectFundingSource())
+                    ->setProject($project)
+                    ->setType($funding['type'])
+                    ->setName($funding['name'])
+                    ->setPercentage($funding['percentage'])
+                    ->setPosition($funding['position']));
+            }
+            // Solo enlaces de documentación de la ficha. No fotos del informe final.
+            foreach ($fixture['documents'] as $document) {
+                $manager->persist((new ProjectDocument())
+                    ->setProject($project)
+                    ->setType($document['type'])
+                    ->setKind('link')
+                    ->setUrl($document['url']));
+            }
+        }
     }
 
-    /**
-     * @param list<array{0: string, 1: string, 2: string}> $phases
-     */
-    private function persistProjectGraph(
-        ObjectManager $manager,
-        Project $project,
-        User $owner,
-        array $phases,
-    ): void {
-        foreach ([CommercialPhase::ELABORATION, CommercialPhase::IMPLEMENTATION] as $commercialPhase) {
-            $subscription = (new ProjectSubscription())
-                ->setPhase($commercialPhase)
-                ->setProject($project)
-                ->setTier(ProjectSubscription::TIER_BASIC)
-                ->setStatus(ProjectSubscription::STATUS_ACTIVE)
-                ->setSource(ProjectSubscription::SOURCE_SYSTEM);
-            $project->addSubscription($subscription);
+    private function installLogoAsset(string $filename): string
+    {
+        if (!preg_match('/^(jacobs-creek|ecoembes)-company-0[1-4]\.png$/D', $filename)) {
+            throw new \RuntimeException('Unexpected fixture logo filename.');
         }
+        $source = __DIR__.'/Resources/franc-demo-company-logos/'.$filename;
+        $relative = '/uploads/demo/company-logos/'.$filename;
+        $destination = dirname(__DIR__, 2).'/public'.$relative;
+        if (!is_file($source)) {
+            throw new \RuntimeException(sprintf('Missing fixture logo %s', $filename));
+        }
+        $directory = dirname($destination);
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new \RuntimeException('Cannot create fixture logo directory.');
+        }
+        if (!copy($source, $destination)) {
+            throw new \RuntimeException(sprintf('Cannot install fixture logo %s', $filename));
+        }
+        return $relative;
+    }
 
+    /** @param list<array{0: string, 1: string, 2: string}> $phases */
+    private function persistProjectGraph(ObjectManager $manager, Project $project, User $owner, array $phases): void
+    {
         $manager->persist($project);
-
-        $membership = (new ProjectMembership())
-            ->setUser($owner)
-            ->setProject($project)
-            ->setProjectRole('owner');
-        $manager->persist($membership);
-
-        foreach ($phases as [$phaseName, $startDate, $endDate]) {
-            $phase = (new ProjectPhaseDate())
-                ->setPhase($phaseName)
+        $manager->persist((new ProjectMembership())->setUser($owner)->setProject($project)->setProjectRole('owner'));
+        foreach ($phases as [$name, $startDate, $endDate]) {
+            $manager->persist((new ProjectPhaseDate())
+                ->setPhase($name)
                 ->setStartDate(new \DateTime($startDate))
                 ->setEndDate(new \DateTime($endDate))
-                ->setProject($project);
-            $manager->persist($phase);
+                ->setProject($project));
         }
     }
 }

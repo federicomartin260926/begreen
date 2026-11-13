@@ -7,6 +7,8 @@ use App\Entity\CommercialPlan;
 use App\Entity\User;
 use App\Enum\CommercialPhase;
 use App\Form\CommercialPlanType;
+use App\Form\CommercialTierType;
+use App\Service\ProjectCommercialPricing;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -124,74 +126,75 @@ final class CommercialPlanControllerTest extends KernelTestCase
         self::assertTrue($plan->getFeature('sustainability_plan.export.email', false));
     }
 
-    public function testEditFormRendersStripeUpgradePriceRightAfterStripePriceId(): void
+    public function testUnifiedTierFormIncludesBothPhasesWithoutEditingPricesOrStripe(): void
     {
         $container = self::getContainer();
+        $elaboration = $this->makePlan(CommercialPhase::ELABORATION, 'pro', 4900);
+        $implementation = $this->makePlan(CommercialPhase::IMPLEMENTATION, 'pro', 8000);
+        $implementation->setStripePriceId('price_implementation_existing');
 
-        $plan = (new CommercialPlan())
-            ->setPhase(CommercialPhase::ELABORATION)
-            ->setCode('pro-test')
-            ->setName('Elaboración Pro')
-            ->setDescription('Plan avanzado.')
-            ->setPriceAmount(4900)
-            ->setPriceCurrency('EUR')
-            ->setStripePriceId('price_pro_test')
-            ->setStripeUpgradeFromStandardPriceId('price_upgrade_live')
-            ->setMaxEvidenceCount(null)
-            ->setWatermarkEnabled(false)
-            ->setActive(true)
-            ->setSortOrder(3)
-            ->setFeatures([
-                'allowed_scores' => [1, 2, 3, 4, 5],
-                'sustainability_plan.department_pdf' => true,
-                'sustainability_plan.export.department_pdf' => true,
-                'sustainability_plan.watermark_free_pdf' => true,
-                'sustainability_plan.history' => true,
-                'sustainability_plan.advanced_exports' => true,
-                'sustainability_plan.export.category' => true,
-                'sustainability_plan.export.department' => true,
-                'sustainability_plan.export.impact_area' => true,
-                'sustainability_plan.export.triple_balance' => true,
-                'sustainability_plan.export.ods' => true,
-                'sustainability_plan.export.excel' => true,
-                'sustainability_plan.internal_notes' => true,
-                'sustainability_plan.responsibles' => true,
-                'sustainability_plan.checklist' => true,
-                'sustainability_plan.custom_measures' => true,
-                'sustainability_plan.validation_summary' => true,
-                'sustainability_plan.branding' => true,
-            ]);
-
-        $form = $container->get('form.factory')->create(CommercialPlanType::class, $plan, [
+        $form = $container->get('form.factory')->create(CommercialTierType::class, null, [
             'csrf_protection' => false,
-            'show_stripe_upgrade_from_standard_price_id' => true,
+            'elaboration_plan' => $elaboration,
+            'implementation_plan' => $implementation,
         ]);
 
-        self::assertTrue($form->has('stripePriceId'));
-        self::assertTrue($form->has('stripeUpgradeFromStandardPriceId'));
+        foreach (['elaboration', 'implementation'] as $phase) {
+            self::assertTrue($form->has($phase));
+            self::assertTrue($form->get($phase)->has('allowedScores'));
+            self::assertTrue($form->get($phase)->has('pdfByDepartments'));
+            self::assertFalse($form->get($phase)->has('priceAmount'));
+            self::assertFalse($form->get($phase)->has('stripePriceId'));
+            self::assertFalse($form->get($phase)->has('active'));
+            self::assertFalse($form->get($phase)->has('sortOrder'));
+        }
 
-        $template = file_get_contents(__DIR__ . '/../../../templates/admin/commercial_plan/form.html.twig');
-        self::assertNotFalse($template);
-        $templateLines = explode("\n", $template);
-        $findLine = static function (array $lines, string $needle): ?int {
-            foreach ($lines as $index => $line) {
-                if (str_contains($line, $needle)) {
-                    return $index + 1;
-                }
-            }
+        $form->submit([
+            'name' => 'Pro renovado',
+            'active' => true,
+            'sortOrder' => 3,
+            'elaboration' => [
+                'description' => 'Elaboración renovada',
+                'maxEvidenceCount' => 20,
+                'allowedScores' => ['1', '2', '5'],
+                'pdfByDepartments' => true,
+                'advancedExports' => true,
+            ],
+            'implementation' => [
+                'description' => 'Implementación renovada',
+                'maxEvidenceCount' => 4,
+                'allowedScores' => ['4', '5'],
+                'pdfByDepartments' => false,
+                'advancedExports' => false,
+            ],
+        ]);
 
-            return null;
-        };
+        self::assertTrue($form->isSubmitted());
+        self::assertTrue($form->isSynchronized());
+        self::assertTrue($form->isValid());
 
-        $stripePriceRowLine = $findLine($templateLines, 'form_row(form.stripePriceId)');
-        $stripeUpgradeRowLine = $findLine($templateLines, 'form_row(form.stripeUpgradeFromStandardPriceId)');
-        $saveButtonLine = $findLine($templateLines, 'backend.common.save_changes');
+        $controller = new CommercialPlanController();
+        $shared = new \ReflectionMethod($controller, 'applySharedValues');
+        $shared->invoke($controller, $elaboration, $implementation, $form);
+        $reflection = new \ReflectionMethod($controller, 'applyEditableValues');
+        $reflection->invoke($controller, $elaboration, $form->get('elaboration'));
+        $reflection->invoke($controller, $implementation, $form->get('implementation'));
 
-        self::assertNotNull($stripePriceRowLine);
-        self::assertNotNull($stripeUpgradeRowLine);
-        self::assertNotNull($saveButtonLine);
-        self::assertTrue($stripePriceRowLine < $stripeUpgradeRowLine);
-        self::assertTrue($stripeUpgradeRowLine < $saveButtonLine);
+        self::assertSame('Pro renovado', $elaboration->getName());
+        self::assertSame('Pro renovado', $implementation->getName());
+        self::assertTrue($elaboration->isActive());
+        self::assertTrue($implementation->isActive());
+        self::assertSame(3, $elaboration->getSortOrder());
+        self::assertSame(3, $implementation->getSortOrder());
+        self::assertSame('Elaboración renovada', $elaboration->getDescription());
+        self::assertSame('Implementación renovada', $implementation->getDescription());
+        self::assertSame([1, 2, 5], $elaboration->getAllowedScores());
+        self::assertSame([4, 5], $implementation->getAllowedScores());
+        self::assertTrue($elaboration->getFeature('sustainability_plan.department_pdf'));
+        self::assertFalse($implementation->getFeature('sustainability_plan.department_pdf'));
+        self::assertSame(4900, $elaboration->getPriceAmount());
+        self::assertSame(8000, $implementation->getPriceAmount());
+        self::assertSame('price_implementation_existing', $implementation->getStripePriceId());
     }
 
     public function testEditFormOnlyShowsStripeUpgradePriceForProPlans(): void
@@ -268,17 +271,14 @@ final class CommercialPlanControllerTest extends KernelTestCase
 
         self::assertStringNotContainsString('backend.commercial_plans.form.', $html);
         self::assertStringContainsString('Editar plan comercial', $html);
-        self::assertStringContainsString('Configura el precio, los límites y las funcionalidades disponibles para este plan.', $html);
+        self::assertStringContainsString('Configuración única del nivel comercial', $html);
         self::assertStringContainsString('Nombre', $html);
-        self::assertStringContainsString('Moneda', $html);
         self::assertStringContainsString('Límite de evidencias', $html);
-        self::assertStringContainsString('Stripe Price ID', $html);
-        self::assertStringContainsString('Se configurará al activar la contratación mediante Stripe.', $html);
-        self::assertStringContainsString('Elaboración Basic', $html);
         self::assertStringContainsString('Elaboración', $html);
+        self::assertStringContainsString('Implementación', $html);
         self::assertStringContainsString('Próximamente', $html);
-        self::assertMatchesRegularExpression('/29[,.]00/', $html);
-        self::assertStringNotContainsString('2900', $html);
+        self::assertStringNotContainsString('Stripe Price ID', $html);
+        self::assertStringContainsString('Gratis', $html);
     }
 
     public function testEditFormRendersTranslatedContentInEnglish(): void
@@ -287,20 +287,17 @@ final class CommercialPlanControllerTest extends KernelTestCase
 
         self::assertStringNotContainsString('backend.commercial_plans.form.', $html);
         self::assertStringContainsString('Edit commercial plan', $html);
-        self::assertStringContainsString('Configure the price, limits and available features for this plan.', $html);
+        self::assertStringContainsString('Single commercial-tier configuration', $html);
         self::assertStringContainsString('Name', $html);
-        self::assertStringContainsString('Currency', $html);
         self::assertStringContainsString('Evidence limit', $html);
-        self::assertStringContainsString('Stripe Price ID', $html);
-        self::assertStringContainsString('It will be configured when Stripe checkout is activated.', $html);
-        self::assertStringContainsString('Implementation Standard', $html);
         self::assertStringContainsString('Implementation', $html);
+        self::assertStringContainsString('Elaboration', $html);
         self::assertStringContainsString('Coming soon', $html);
-        self::assertMatchesRegularExpression('/49[,.]00/', $html);
-        self::assertStringNotContainsString('4900', $html);
+        self::assertStringNotContainsString('Stripe Price ID', $html);
+        self::assertStringContainsString('249 € / 499 € / 749 €', $html);
     }
 
-    public function testIndexDisplaysPhaseColumnAndOrdersByPhaseThenSortOrderThenId(): void
+    public function testIndexGroupsSixInternalPlansIntoThreeCommercialTiers(): void
     {
         $container = self::getContainer();
         $user = (new User())
@@ -318,50 +315,35 @@ final class CommercialPlanControllerTest extends KernelTestCase
         $container->get('request_stack')->push($request);
         $container->get('twig')->addGlobal('userProjects', []);
 
-        $elaborationBasic = (new CommercialPlan())
-            ->setPhase(CommercialPhase::ELABORATION)
-            ->setCode('basic')
-            ->setName('Elaboración Basic')
-            ->setDescription('Plan de Elaboración.')
-            ->setPriceAmount(0)
-            ->setPriceCurrency('EUR')
-            ->setMaxEvidenceCount(10)
-            ->setWatermarkEnabled(true)
-            ->setActive(true)
-            ->setSortOrder(1)
-            ->setFeatures([]);
-        $this->setEntityId($elaborationBasic, 11);
-
-        $implementationPro = (new CommercialPlan())
-            ->setPhase(CommercialPhase::IMPLEMENTATION)
-            ->setCode('pro')
-            ->setName('Implementación Pro')
-            ->setDescription('Plan de Implementación.')
-            ->setPriceAmount(4900)
-            ->setPriceCurrency('EUR')
-            ->setMaxEvidenceCount(null)
-            ->setWatermarkEnabled(false)
-            ->setActive(true)
-            ->setSortOrder(3)
-            ->setFeatures([]);
-        $this->setEntityId($implementationPro, 12);
+        $plans = [];
+        $id = 11;
+        foreach (['basic', 'standard', 'pro'] as $code) {
+            foreach ([CommercialPhase::ELABORATION, CommercialPhase::IMPLEMENTATION] as $phase) {
+                $plan = $this->makePlan($phase, $code, 0);
+                $this->setEntityId($plan, $id++);
+                $plans[] = $plan;
+            }
+        }
 
         $repository = $this->createMock(\App\Repository\CommercialPlanRepository::class);
         $repository->expects(self::once())
             ->method('findBy')
             ->with([], ['phase' => 'ASC', 'sortOrder' => 'ASC', 'id' => 'ASC'])
-            ->willReturn([$elaborationBasic, $implementationPro]);
+            ->willReturn($plans);
 
         $controller = new CommercialPlanController();
         $controller->setContainer($container);
 
-        $response = $controller->index($repository);
+        $response = $controller->index($repository, new ProjectCommercialPricing());
         $content = (string) $response->getContent();
 
-        self::assertStringContainsString('Fase', $content);
-        self::assertStringContainsString('Elaboración', $content);
-        self::assertStringContainsString('Implementación', $content);
-        self::assertTrue(strpos($content, 'Elaboración Basic') < strpos($content, 'Implementación Pro'));
+        self::assertStringNotContainsString('<th>Fase</th>', $content);
+        self::assertSame(3, substr_count($content, '<tr>') - 1);
+        self::assertStringContainsString('249 € / 499 € / 749 €', $content);
+        self::assertStringContainsString('499 € / 999 € / 1.499 €', $content);
+        self::assertStringContainsString('/admin/commercial-plans/11/edit', $content);
+        self::assertStringContainsString('/admin/commercial-plans/13/edit', $content);
+        self::assertStringContainsString('/admin/commercial-plans/15/edit', $content);
     }
 
     public function testCommercialPlanCannotBePersistedWithoutPhase(): void
@@ -404,32 +386,41 @@ final class CommercialPlanControllerTest extends KernelTestCase
             ->setRoles(['ROLE_SUPER_ADMIN'])
             ->setIsVerified(true);
         $container->get('security.token_storage')->setToken(new UsernamePasswordToken($user, 'main', $user->getRoles()));
-
         $container->get('twig')->addGlobal('userProjects', []);
 
-        $plan = (new CommercialPlan())
-            ->setPhase($phase)
-            ->setCode('basic')
-            ->setName($planName)
-            ->setDescription('Temporary description.')
-            ->setPriceAmount($priceAmount)
-            ->setPriceCurrency('EUR')
-            ->setStripePriceId(null)
-            ->setMaxEvidenceCount(10)
-            ->setWatermarkEnabled(true)
-            ->setActive(true)
-            ->setSortOrder(1)
-            ->setFeatures([]);
-
-        $form = $container->get('form.factory')->create(CommercialPlanType::class, $plan, [
+        $code = $phase === CommercialPhase::ELABORATION ? 'basic' : 'standard';
+        $elaboration = $this->makePlan(CommercialPhase::ELABORATION, $code, $priceAmount);
+        $implementation = $this->makePlan(CommercialPhase::IMPLEMENTATION, $code, $priceAmount);
+        $elaboration->setName($planName);
+        $implementation->setName($planName);
+        $form = $container->get('form.factory')->create(CommercialTierType::class, null, [
             'csrf_protection' => false,
-            'show_stripe_upgrade_from_standard_price_id' => false,
+            'elaboration_plan' => $elaboration,
+            'implementation_plan' => $implementation,
         ]);
 
         return $container->get('twig')->render('admin/commercial_plan/form.html.twig', [
-            'plan' => $plan,
+            'tier' => $code,
             'form' => $form->createView(),
+            'priceBands' => (new ProjectCommercialPricing())->getTierPricesCents($code),
+            'statusMismatch' => false,
         ]);
+    }
+
+    private function makePlan(CommercialPhase $phase, string $code, int $priceAmount): CommercialPlan
+    {
+        return (new CommercialPlan())
+            ->setPhase($phase)
+            ->setCode($code)
+            ->setName(ucfirst($code))
+            ->setDescription('Description')
+            ->setPriceAmount($priceAmount)
+            ->setPriceCurrency('EUR')
+            ->setMaxEvidenceCount(10)
+            ->setWatermarkEnabled(false)
+            ->setActive(true)
+            ->setSortOrder(['basic' => 1, 'standard' => 2, 'pro' => 3][$code])
+            ->setFeatures(['allowed_scores' => [4, 5]]);
     }
 
     private function setEntityId(object $entity, int $id): void

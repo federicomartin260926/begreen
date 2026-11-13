@@ -15,14 +15,18 @@ use App\Repository\PlanRepository;
 use App\Repository\ProjectBillingDocumentRepository;
 use App\Repository\ProjectMembershipRepository;
 use App\Repository\ProjectRepository;
+use App\Repository\ProjectCommercialPaymentRepository;
 use App\Security\ProjectVoter;
 use App\Service\ActiveProjectService;
 use App\Service\Animation\AnimationPlanSynchronizer;
 use App\Service\CommercialPlanComparisonBuilder;
+use App\Service\ProjectCommercialPricing;
+use App\Service\ProjectCommercialInvoiceSyncService;
 use App\Service\StripeProjectCheckoutService;
 use App\Service\StripeInvoiceStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -47,13 +51,26 @@ final class ProjectBillingController extends AbstractController
         private readonly MeasureRepository $measureRepository,
         private readonly TranslatorInterface $translator,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ProjectCommercialPricing $commercialPricing,
+        private readonly ProjectCommercialPaymentRepository $commercialPaymentRepository,
+        #[Autowire('%env(STRIPE_SECRET_KEY)%')]
+        private readonly string $stripeSecretKey,
+        #[Autowire('%env(bool:BEGREEN_PROJECT_CHECKOUT_ENABLED)%')]
+        private readonly bool $checkoutEnabled,
         private readonly ?AnimationPlanSynchronizer $animationPlanSynchronizer = null,
     ) {
     }
 
+    // The commercial tier is project-wide. Old phase-specific URLs remain as redirects
+    // so bookmarks and historical links continue to work.
     #[Route('/billing/{phase}', name: 'billing', methods: ['GET'], requirements: ['phase' => 'elaboration|implementation'])]
-    public function __invoke(
-        CommercialPhase $phase,
+    public function __invoke(CommercialPhase $phase): RedirectResponse
+    {
+        return $this->redirectToRoute('backend_project_billing_overview');
+    }
+
+    #[Route('/billing', name: 'billing_overview', methods: ['GET'])]
+    public function overview(
         ProjectRepository $projectRepository,
         ProjectMembershipRepository $projectMembershipRepository,
     ): Response
@@ -72,7 +89,7 @@ final class ProjectBillingController extends AbstractController
         ));
 
         $projectBillings = array_map(
-            fn (Project $project): array => $this->buildProjectBilling($project, $phase),
+            fn (Project $project): array => $this->buildProjectBilling($project, CommercialPhase::ELABORATION),
             $projects,
         );
         $projectBillings = array_values(array_filter(
@@ -81,8 +98,6 @@ final class ProjectBillingController extends AbstractController
         ));
 
         return $this->render('backend/project/billing.html.twig', [
-            'phase' => $phase,
-            'phaseLabel' => $this->translator->trans('backend.commercial_phases.'.$phase->value),
             'projectBillings' => $projectBillings,
             'backUrl' => $this->generateUrl('backend_project_index'),
         ]);
@@ -93,9 +108,7 @@ final class ProjectBillingController extends AbstractController
         $subscription = $project->getSubscriptionForPhase($phase);
         $plan = $this->planRepository->findOneBy(['project' => $project]);
         $pendingCheckoutInspection = $this->checkoutService->inspectPendingCheckout($project, $phase);
-        $availableUpgradeTargets = $subscription instanceof ProjectSubscription
-            ? $this->checkoutService->getAvailableUpgradeTargets($project, $phase)
-            : [];
+        $availableUpgradeTargets = [];
         $hasPendingUpgrade = $subscription
             && $subscription->getTargetTier() !== null
             && $subscription->getStripeCheckoutSessionId() !== null;
@@ -105,24 +118,66 @@ final class ProjectBillingController extends AbstractController
         $showUpgradeCta = $subscription === null || $subscription->getStatus() === ProjectSubscription::STATUS_CANCELLED;
         $pendingUpgrade = $this->buildPendingUpgrade($subscription, $upgradeCta);
         $canManageBilling = $this->isGranted(ProjectVoter::EDIT, $project);
+        // Project-level payments are independent of the legacy phase subscriptions.
+        // This is read-only: the invoice itself is synchronized separately.
+        $projectPayments = $this->commercialPaymentRepository->findByProjectOrdered($project);
+        $projectInvoiceDocuments = [];
+        foreach ($projectPayments as $commercialPayment) {
+            if ($commercialPayment->getStatus() !== \App\Entity\ProjectCommercialPayment::STATUS_PAID
+                || $commercialPayment->getStripeCheckoutSessionId() === null) {
+                continue;
+            }
+            $invoiceDocument = $this->billingDocumentRepository->findOneBy([
+                'project' => $project,
+                'subscription' => null,
+                'stripeCheckoutSessionId' => $commercialPayment->getStripeCheckoutSessionId(),
+            ]);
+            if ($invoiceDocument instanceof ProjectBillingDocument) {
+                $projectInvoiceDocuments[$commercialPayment->getId()] = [
+                    'document' => $invoiceDocument,
+                    'hasLocalCopy' => $this->invoiceStorageService->hasLocalCopy($invoiceDocument),
+                ];
+            }
+        }
         $billingDocuments = [];
         $hasLocalBillingDocument = false;
-        $documents = $subscription instanceof ProjectSubscription
-            ? $this->billingDocumentRepository->findBySubscriptionOrdered($subscription)
-            : [];
-        foreach ($documents as $document) {
-            $hasLocalCopy = $this->invoiceStorageService->hasLocalCopy($document);
-            $hasLocalBillingDocument = $hasLocalBillingDocument || $hasLocalCopy;
-
-            $billingDocuments[] = [
-                'document' => $document,
-                'hasLocalCopy' => $hasLocalCopy,
-            ];
+        // Keep historical Elaboracion/Implementacion documents, but display them
+        // together on one project-level billing page, with their original phase for
+        // authorization of private PDF view/download/sync routes.
+        $legacySubscriptions = [];
+        foreach ([CommercialPhase::ELABORATION, CommercialPhase::IMPLEMENTATION] as $legacyPhase) {
+            $legacySubscription = $project->getSubscriptionForPhase($legacyPhase);
+            if (!$legacySubscription instanceof ProjectSubscription) {
+                continue;
+            }
+            $legacySubscriptions[] = $legacySubscription;
+            foreach ($this->billingDocumentRepository->findBySubscriptionOrdered($legacySubscription) as $document) {
+                $hasLocalCopy = $this->invoiceStorageService->hasLocalCopy($document);
+                $hasLocalBillingDocument = $hasLocalBillingDocument || $hasLocalCopy;
+                $billingDocuments[] = [
+                    'document' => $document,
+                    'hasLocalCopy' => $hasLocalCopy,
+                    'legacyPhase' => $legacyPhase,
+                    'legacySubscription' => $legacySubscription,
+                ];
+            }
         }
+        usort($billingDocuments, static function (array $a, array $b): int {
+            $aDocument = $a['document'];
+            $bDocument = $b['document'];
+            $aTime = ($aDocument->getPaidAt() ?? $aDocument->getIssuedAt())?->getTimestamp() ?? 0;
+            $bTime = ($bDocument->getPaidAt() ?? $bDocument->getIssuedAt())?->getTimestamp() ?? 0;
+
+            return $bTime <=> $aTime;
+        });
 
         return [
             'project' => $project,
             'subscription' => $subscription,
+            'legacySubscriptions' => $legacySubscriptions,
+            'projectPayments' => $projectPayments,
+            'projectInvoiceDocuments' => $projectInvoiceDocuments,
+            'canSyncProjectInvoice' => $canManageBilling && $this->checkoutEnabled && str_starts_with($this->stripeSecretKey, 'sk_test_'),
             'pendingCheckout' => [
                 'status' => $pendingCheckoutInspection->status,
                 'isReusable' => $pendingCheckoutInspection->isReusable(),
@@ -141,24 +196,28 @@ final class ProjectBillingController extends AbstractController
 
     private function hasBillingActivity(array $billing): bool
     {
+        if (($billing['projectPayments'] ?? []) !== []) {
+            return true;
+        }
         if (($billing['billingDocuments'] ?? []) !== []) {
             return true;
         }
 
-        $subscription = $billing['subscription'] ?? null;
-        if (!$subscription instanceof ProjectSubscription) {
-            return false;
+        foreach ($billing['legacySubscriptions'] ?? [] as $subscription) {
+            if ($subscription->getTier() !== ProjectSubscription::TIER_BASIC
+                || $subscription->getPaidAmountCents() !== null
+                || $subscription->getPaidAt() !== null
+                || $subscription->getPaymentReference() !== null
+                || $subscription->getStripeCheckoutSessionId() !== null
+                || $subscription->getStripePaymentIntentId() !== null
+                || $subscription->getStripeInvoiceId() !== null
+                || $subscription->getLastPaymentStatus() !== null
+                || $subscription->getTargetTier() !== null) {
+                return true;
+            }
         }
 
-        return $subscription->getTier() !== ProjectSubscription::TIER_BASIC
-            || $subscription->getPaidAmountCents() !== null
-            || $subscription->getPaidAt() !== null
-            || $subscription->getPaymentReference() !== null
-            || $subscription->getStripeCheckoutSessionId() !== null
-            || $subscription->getStripePaymentIntentId() !== null
-            || $subscription->getStripeInvoiceId() !== null
-            || $subscription->getLastPaymentStatus() !== null
-            || $subscription->getTargetTier() !== null;
+        return false;
     }
 
     #[Route('/{id}/plans/{phase}', name: 'plan_comparison', methods: ['GET'], requirements: ['phase' => 'elaboration|implementation'])]
@@ -168,25 +227,146 @@ final class ProjectBillingController extends AbstractController
         $this->activeProjectService->setActiveProject($project);
 
         $subscription = $project->getSubscriptionForPhase($phase);
-        $availableUpgradeTargets = $subscription instanceof ProjectSubscription
-            ? $this->checkoutService->getAvailableUpgradeTargets($project, $phase)
-            : [];
+        $availableUpgradeTargets = [];
         $comparison = $this->commercialPlanComparisonBuilder->build(
             $phase,
             $this->resolveProjectTier($project, $phase),
             $this->planRepository->findOneBy(['project' => $project]),
             $availableUpgradeTargets,
+            $project,
         );
         $origin = $this->resolveComparisonOrigin($request);
+
+        // The new project checkout is explicitly opt-in, TEST only.
+        // Never take an amount or tier from the browser's form fields.
+        $canUseCheckout = $this->checkoutEnabled && str_starts_with($this->stripeSecretKey, 'sk_test_');
+        $pendingPayment = $canUseCheckout ? $this->commercialPaymentRepository->findInProgressForProject($project) : null;
+        $currentTier = $project->getCommercialTier();
+        $checkoutOffers = [];
+        $checkoutPricingUnavailable = false;
+
+        if ($canUseCheckout && $pendingPayment === null && $currentTier !== Project::COMMERCIAL_TIER_PRO) {
+            foreach ([Project::COMMERCIAL_TIER_STANDARD, Project::COMMERCIAL_TIER_PRO] as $targetTier) {
+                if ($targetTier === $currentTier || !($comparison['plans'][$targetTier]['active'] ?? false)) {
+                    continue;
+                }
+
+                try {
+                    $amountCents = $currentTier === Project::COMMERCIAL_TIER_STANDARD
+                        ? $this->commercialPricing->getUpgradeAmountCents($project, $currentTier, $targetTier)
+                        : $this->commercialPricing->getAmountCents($project, $targetTier);
+                    if ($amountCents <= 0) {
+                        throw new \DomainException('Checkout quote must be positive.');
+                    }
+                    $checkoutOffers[$targetTier] = [
+                        'amountCents' => $amountCents,
+                        'isUpgrade' => $currentTier === Project::COMMERCIAL_TIER_STANDARD,
+                    ];
+                } catch (\DomainException | \InvalidArgumentException) {
+                    // Do not block the comparison screen for an incomplete project.
+                    $checkoutPricingUnavailable = true;
+                }
+            }
+        }
 
         return $this->render('backend/commercial_plan/comparison.html.twig', [
             'project' => $project,
             'phase' => $phase,
             'phaseLabel' => $this->translator->trans('backend.commercial_phases.'.$phase->value),
             'comparison' => $comparison,
+            'checkoutEnabled' => $canUseCheckout,
+            'checkoutOffers' => $checkoutOffers,
+            'checkoutPricingUnavailable' => $checkoutPricingUnavailable,
+            'pendingPaymentStatus' => $pendingPayment?->getStatus(),
             'origin' => $origin,
             'backUrl' => $this->resolveComparisonBackUrl($project, $phase, $origin),
         ]);
+    }
+
+    #[Route('/{id}/billing/project-payment/{paymentId}/sync-invoice', name: 'billing_project_invoice_sync', methods: ['POST'])]
+    public function syncProjectInvoice(Project $project, int $paymentId, Request $request, ProjectCommercialInvoiceSyncService $invoiceSyncService): RedirectResponse
+    {
+        $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
+        if (!$this->checkoutEnabled || !str_starts_with($this->stripeSecretKey, 'sk_test_')) {
+            throw $this->createAccessDeniedException('Project invoice sync is disabled.');
+        }
+        if (!$this->isCsrfTokenValid('project_commercial_invoice_sync_'.$project->getId().'_'.$paymentId, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid invoice synchronization token.');
+        }
+        $payment = $this->commercialPaymentRepository->findOneBy(['id' => $paymentId, 'project' => $project]);
+        if (!$payment instanceof \App\Entity\ProjectCommercialPayment) {
+            throw $this->createNotFoundException();
+        }
+        try {
+            $result = $invoiceSyncService->sync($payment);
+            if (!$result['invoiceFound']) {
+                $this->addFlash('warning', 'Stripe todavía no tiene una factura disponible para este pago.');
+            } elseif (!$result['pdfAvailable']) {
+                $this->addFlash('warning', 'Factura asociada al pago. El PDF todavía no se ha podido descargar; puedes reintentarlo.');
+            } else {
+                $this->addFlash('success', 'Factura de Stripe sincronizada y PDF guardado correctamente.');
+            }
+        } catch (\DomainException $exception) {
+            $this->addFlash('warning', 'La factura de Stripe no coincide con este pago. No se ha modificado el plan.');
+        } catch (\Throwable $exception) {
+            // Never expose Stripe exception messages or API credentials in the browser.
+            $this->addFlash('danger', 'No se pudo sincronizar la factura. Puedes reintentarlo sin repetir el pago.');
+        }
+
+        return $this->redirectToRoute('backend_project_billing_overview', ['_fragment' => 'billing-project-'.$project->getId()]);
+    }
+
+    #[Route('/{id}/billing/project-document/{documentId}/view', name: 'billing_project_document_view', methods: ['GET'])]
+    public function viewProjectInvoice(Project $project, int $documentId): Response
+    {
+        $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+        $document = $this->getProjectInvoiceDocument($project, $documentId);
+        $path = $this->invoiceStorageService->getLocalInvoiceAbsolutePath($document);
+        if ($path === null) {
+            throw $this->createNotFoundException('The invoice PDF is not available.');
+        }
+        $response = new BinaryFileResponse($path);
+        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_INLINE, basename($path));
+        $response->headers->set('Content-Type', 'application/pdf');
+
+        return $response;
+    }
+
+    #[Route('/{id}/billing/project-document/{documentId}/download', name: 'billing_project_document_download', methods: ['GET'])]
+    public function downloadProjectInvoice(Project $project, int $documentId): Response
+    {
+        $this->denyAccessUnlessGranted(ProjectVoter::VIEW, $project);
+        $document = $this->getProjectInvoiceDocument($project, $documentId);
+        $path = $this->invoiceStorageService->getLocalInvoiceAbsolutePath($document);
+        if ($path === null) {
+            throw $this->createNotFoundException('The invoice PDF is not available.');
+        }
+        $response = new BinaryFileResponse($path);
+        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, basename($path));
+        $response->headers->set('Content-Type', 'application/pdf');
+
+        return $response;
+    }
+
+    private function getProjectInvoiceDocument(Project $project, int $documentId): ProjectBillingDocument
+    {
+        $document = $this->billingDocumentRepository->findOneByProjectAndId($project, $documentId);
+        if (!$document instanceof ProjectBillingDocument || $document->getSubscription() !== null
+            || $document->getStripeCheckoutSessionId() === null) {
+            throw $this->createNotFoundException();
+        }
+        $payment = $this->commercialPaymentRepository->findOneBy([
+            'project' => $project,
+            'stripeCheckoutSessionId' => $document->getStripeCheckoutSessionId(),
+            'status' => \App\Entity\ProjectCommercialPayment::STATUS_PAID,
+        ]);
+        if (!$payment instanceof \App\Entity\ProjectCommercialPayment
+            || $payment->getStripeInvoiceId() === null
+            || $payment->getStripeInvoiceId() !== $document->getStripeInvoiceId()) {
+            throw $this->createNotFoundException();
+        }
+
+        return $document;
     }
 
     #[Route('/{id}/billing/{phase}/document/{documentId}/view', name: 'billing_document_view', methods: ['GET'], requirements: ['phase' => 'elaboration|implementation'])]
@@ -283,8 +463,7 @@ final class ProjectBillingController extends AbstractController
             'measures' => $this->generateUrl('backend_plan_measures'),
             'elaboration_done' => $this->generateUrl('backend_plan_done'),
             'review' => $this->generateUrl('backend_plan_review', ['state' => 'all']),
-            'billing' => $this->generateUrl('backend_project_billing', [
-                'phase' => $phase->value,
+            'billing' => $this->generateUrl('backend_project_billing_overview', [
                 '_fragment' => 'billing-project-'.$project->getId(),
             ]),
             default => $this->generateUrl('backend_project_edit', ['id' => $project->getId()]),
@@ -293,9 +472,7 @@ final class ProjectBillingController extends AbstractController
 
     private function redirectToBilling(CommercialPhase $phase = CommercialPhase::ELABORATION): RedirectResponse
     {
-        return $this->redirectToRoute('backend_project_billing', [
-            'phase' => $phase->value,
-        ]);
+        return $this->redirectToRoute('backend_project_billing_overview');
     }
 
     private function isStripeBillingAdmin(): bool
@@ -406,7 +583,7 @@ final class ProjectBillingController extends AbstractController
         if ($options === []) {
             return [
                 'mode' => 'unavailable',
-                'label' => $this->translator->trans('backend.plan.upgrade.price_id_missing'),
+                'label' => $this->translator->trans('backend.subscription.flash.checkout_temporarily_unavailable'),
                 'title' => $this->translator->trans('backend.plan.upgrade.select_title'),
                 'options' => [],
                 'phase' => $phase->value,
@@ -522,7 +699,7 @@ final class ProjectBillingController extends AbstractController
 
     private function resolveProjectTier(Project $project, CommercialPhase $phase): string
     {
-        return $project->getSubscriptionForPhase($phase)?->getTier() ?? ProjectSubscription::TIER_BASIC;
+        return $project->getCommercialTier();
     }
 
     private function formatPlanPrice(?int $priceAmount, string $currency): string

@@ -1,6 +1,6 @@
 # Commercial Tiers
 
-This project uses an internal tier model per `Project` for the sustainability plan.
+This project uses one canonical commercial tier per `Project`, shared by Elaboration and Implementation.
 
 ## Tiers
 
@@ -11,7 +11,7 @@ This project uses an internal tier model per `Project` for the sustainability pl
 ## Defaults
 
 - New projects start as `basic`.
-- If a project has no subscription yet, the feature gate resolves it as `basic`.
+- New projects do not create phase subscriptions to delimit access.
 - Cloned projects also start as `basic`.
 
 ## Sustainability plan rules
@@ -19,7 +19,7 @@ This project uses an internal tier model per `Project` for the sustainability pl
 - `basic`: scores `5` and `4`, maximum `10` evidences per project, PDF watermark enabled.
 - `standard`: scores `5`, `4`, `3`, unlimited evidences, watermark disabled, grouped PDF by departments.
 - `pro`: all scores `5` to `1`, unlimited evidences, watermark disabled, grouped PDF/Excel by categories, departments, impact areas, triple balance and ODS.
-- The effective tier and watermark of the unified PDF are resolved against the commercial phase being downloaded; they are not hardcoded to the elaboration phase.
+- The effective tier always comes from `Project.commercialTier`; the phase still selects the corresponding capability matrix.
 - Observations are available in all three tiers. In the unified PDF, `basic` renders them literally; `standard` and `pro` hide them from the visual document while keeping them available to the AI context when that report is generated.
 - Project-company logos shown on the unified PDF cover are independent from the commercial `sustainability_plan.branding` feature.
 
@@ -47,18 +47,14 @@ The plan review and PDF already consume the measure catalog with support for mul
   - custom measures are excluded from this level;
   - this is a motivational indicator, not formal certification.
 
-## Payments
+## Pricing and payments
 
-- Payment is handled by Stripe Checkout and is one-time per project.
-- `basic` stays free.
-- `standard` is activated with the Standard Stripe price.
-- `pro` is activated with the Pro Stripe price.
-- `standard -> pro` uses the dedicated Stripe price for the difference.
-- Begreen stores Stripe checkout, payment and invoice references in `ProjectSubscription`.
-- Invoice download and hosted invoice links come from Stripe; Begreen does not generate its own invoices in this phase.
-- Webhook processing activates the tier only after Stripe confirms the payment.
-- The success URL is informational only; it does not activate the tier by itself.
-- Implementation details live in [docs/stripe-payments.md](stripe-payments.md).
+- `basic` is free.
+- Audiovisual pricing depends on filming type; event pricing depends only on physically present attendees.
+- `ProjectCommercialPricing` is the canonical source for amounts in integer cents and price bands.
+- Online checkout is temporarily disabled while Stripe is adapted to one payment per project.
+- Legacy phase subscriptions and billing documents remain available only for existing payment history.
+- Implementation status and pending Stripe work live in [docs/stripe-payments.md](stripe-payments.md).
 
 ## Blocked features
 

@@ -1,116 +1,114 @@
 {% extends 'base_backend.html.twig' %}
 
-{% block title %}{{ 'backend.commercial_plans.form.title'|trans({'%name%': plan.name}) }}{% endblock %}
+{% block title %}{{ 'backend.commercial_plans.form.title'|trans({'%name%': tier|capitalize}) }}{% endblock %}
 
 {% block breadcrumb %}
     {{ parent() }}
-    <li class="breadcrumb-item">
-        <a class="text-decoration-none" href="{{ path('admin_commercial_plans_index') }}">{{ 'backend.commercial_plans.list.breadcrumb'|trans }}</a>
-    </li>
-    <li class="breadcrumb-item active" aria-current="page">{{ plan.name }}</li>
+    <li class="breadcrumb-item"><a class="text-decoration-none" href="{{ path('admin_commercial_plans_index') }}">{{ 'backend.commercial_plans.list.breadcrumb'|trans }}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ tier|capitalize }}</li>
 {% endblock %}
 
 {% block body %}
+{% set spanish = app.request.locale starts with 'es' %}
 <div class="container-fluid px-0 backend-admin-shell">
-            <div class="d-flex justify-content-between align-items-start mb-4">
-                <div>
-                    <h2 class="mb-1">{{ 'backend.commercial_plans.form.heading'|trans({'%name%': plan.name}) }}</h2>
-                    <p class="text-muted mb-0">{{ 'backend.commercial_plans.form.subtitle'|trans }}</p>
-                </div>
-                <div class="d-flex gap-2 flex-wrap">
-                    <span class="badge bg-secondary text-uppercase">{{ plan.code }}</span>
-                    <span class="badge bg-info text-dark text-uppercase">{{ ('backend.commercial_phases.' ~ plan.phase.value)|trans }}</span>
-                </div>
-            </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">{{ 'backend.commercial_plans.form.heading'|trans({'%name%': tier|capitalize}) }}</h2>
+            <p class="text-muted mb-0">{{ spanish ? 'Configuración única del nivel comercial con capacidades diferenciadas para Elaboración e Implementación.' : 'Single commercial-tier configuration with separate Elaboration and Implementation capabilities.' }}</p>
+        </div>
+        <span class="badge bg-secondary text-uppercase">{{ tier }}</span>
+    </div>
 
-            {{ form_start(form) }}
-                {{ form_errors(form) }}
+    <div class="alert alert-light border" role="note">
+        <strong>{{ spanish ? 'Precios por proyecto:' : 'Per-project prices:' }}</strong>
+        {% if tier == 'basic' %}
+            {{ spanish ? 'Gratis' : 'Free' }}
+        {% else %}
+            {% for amount in priceBands %}{{ (amount / 100)|number_format(0, ',', '.') }} €{% if not loop.last %} / {% endif %}{% endfor %}
+            <span class="text-muted small">({{ spanish ? 'bajo / medio / alto' : 'low / mid / high' }})</span>
+        {% endif %}
+        <div class="small text-muted">{{ spanish ? 'Estos importes proceden de las reglas de precios del proyecto; los parámetros de Stripe no se modifican desde este formulario.' : 'These amounts come from project pricing rules; Stripe settings cannot be changed from this form.' }}</div>
+    </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">{{ form_row(form.name) }}</div>
-                    <div class="col-md-6 mb-3">{{ form_row(form.priceCurrency) }}</div>
-                </div>
+    {% if statusMismatch %}
+        <div class="alert alert-warning" role="alert">{{ spanish ? 'Las fases tenían estados diferentes. Al guardar se aplicará el estado seleccionado a ambas.' : 'The phases had different statuses. Saving will apply the selected status to both.' }}</div>
+    {% endif %}
 
-                <div class="row">
-                    <div class="col-md-4 mb-3">{{ form_row(form.priceAmount) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.sortOrder) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.maxEvidenceCount) }}</div>
-                </div>
+    {{ form_start(form) }}
+        {{ form_errors(form) }}
+        <h4 class="mb-3">{{ spanish ? 'Configuración general' : 'General configuration' }}</h4>
+        <div class="row">
+            <div class="col-md-6 mb-3">{{ form_row(form.name) }}</div>
+            <div class="col-md-3 mb-3">{{ form_row(form.sortOrder) }}</div>
+            <div class="col-md-3 mb-3">{{ form_row(form.active) }}</div>
+        </div>
 
-                <div class="row">
-                    <div class="{% if form.stripeUpgradeFromStandardPriceId is defined %}col-md-6{% else %}col-md-4{% endif %} mb-3">
-                        {{ form_row(form.stripePriceId) }}
-                    </div>
-
-                    {% if form.stripeUpgradeFromStandardPriceId is defined %}
-                        <div class="col-md-6 mb-3">
-                            {{ form_row(form.stripeUpgradeFromStandardPriceId) }}
+        <div class="accordion mb-4" id="commercialTierPhases">
+            {% for phaseForm in [form.elaboration, form.implementation] %}
+                {% set phaseCode = loop.first ? 'elaboration' : 'implementation' %}
+                {% set sectionId = 'commercialTierPhase' ~ loop.index %}
+                {% set expanded = loop.first or (form.vars.submitted and not form.vars.valid) %}
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="{{ sectionId }}Heading">
+                        <button class="accordion-button{% if not expanded %} collapsed{% endif %}" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#{{ sectionId }}Body"
+                                aria-expanded="{{ expanded ? 'true' : 'false' }}" aria-controls="{{ sectionId }}Body">
+                            {{ ('backend.commercial_phases.' ~ phaseCode)|trans }}
+                        </button>
+                    </h3>
+                    <div id="{{ sectionId }}Body" class="accordion-collapse collapse{% if expanded %} show{% endif %}"
+                         aria-labelledby="{{ sectionId }}Heading" data-bs-parent="#commercialTierPhases">
+                        <div class="accordion-body">
+                            {{ form_errors(phaseForm) }}
+                            <div class="mb-3">{{ form_row(phaseForm.description) }}</div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">{{ form_row(phaseForm.maxEvidenceCount) }}</div>
+                                <div class="col-md-6 mb-3">{{ form_row(phaseForm.watermarkEnabled) }}</div>
+                            </div>
+                            <h5 class="mb-3">{{ 'backend.commercial_plans.form.allowed_scores_heading'|trans }}</h5>
+                            <div class="d-flex flex-wrap gap-4 align-items-center mb-3">
+                                {% for scoreField in phaseForm.allowedScores %}
+                                    <div class="form-check mb-0">
+                                        {{ form_widget(scoreField, {'attr': {'class': 'form-check-input'}}) }}
+                                        {{ form_label(scoreField, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                                    </div>
+                                {% endfor %}
+                                {{ form_errors(phaseForm.allowedScores) }}
+                                {% do phaseForm.allowedScores.setRendered %}
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                                <h5 class="mb-0">{{ 'backend.commercial_plans.form.features_heading'|trans }}</h5>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                                        data-bs-target="#commercialPlanFeaturesInfoModal"
+                                        aria-label="{{ 'backend.commercial_plans.form.features_info_button'|trans }}">
+                                    <i class="bi bi-info-circle"></i>
+                                </button>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.pdfByDepartments) }}</div>
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.advancedExports) }}</div>
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.emailExport) }}</div>
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.internalNotes) }}</div>
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.responsibles) }}</div>
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.checklist) }}</div>
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.customMeasures) }}</div>
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.validationSummary) }}</div>
+                                <div class="col-md-4 mb-3">{{ form_row(phaseForm.branding) }}</div>
+                            </div>
                         </div>
-                    {% endif %}
-                </div>
-
-                <div class="mb-3">{{ form_row(form.description) }}</div>
-
-                <div class="row">
-                    <div class="col-md-4 mb-3">{{ form_row(form.watermarkEnabled) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.active) }}</div>
-                </div>
-
-                <hr class="my-4">
-
-                <div class="row">
-                    <div class="col-12 mb-3">
-                        <h5 class="mb-3">{{ 'backend.commercial_plans.form.allowed_scores_heading'|trans }}</h5>
-
-                        <div class="d-flex flex-wrap gap-4 align-items-center">
-                            {% for scoreField in form.allowedScores %}
-                                <div class="form-check mb-0">
-                                    {{ form_widget(scoreField, {'attr': {'class': 'form-check-input'}}) }}
-                                    {{ form_label(scoreField, null, {'label_attr': {'class': 'form-check-label'}}) }}
-                                </div>
-                            {% endfor %}
-                        </div>
-
-                        {{ form_errors(form.allowedScores) }}
-                        {% do form.allowedScores.setRendered %}
                     </div>
                 </div>
-
-                <hr class="my-4">
-
-                <div class="row">
-                    <div class="col-12 mb-3">
-                        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                            <h5 class="mb-0">{{ 'backend.commercial_plans.form.features_heading'|trans }}</h5>
-                            <button type="button"
-                                    class="btn btn-sm btn-outline-secondary"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#commercialPlanFeaturesInfoModal"
-                                    aria-label="{{ 'backend.commercial_plans.form.features_info_button'|trans }}">
-                                <i class="bi bi-info-circle"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.pdfByDepartments) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.advancedExports) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.emailExport) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.internalNotes) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.responsibles) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.checklist) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.customMeasures) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.validationSummary) }}</div>
-                    <div class="col-md-4 mb-3">{{ form_row(form.branding) }}</div>
-                </div>
-
-                <div class="d-flex justify-content-between mt-4">
-                    <a href="{{ path('admin_commercial_plans_index') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
-                    </a>
-                    <button class="btn btn-primary">
-                        <i class="bi bi-save"></i> {{ 'backend.common.save_changes'|trans }}
-                    </button>
-                </div>
-            {{ form_end(form) }}
+            {% endfor %}
+        </div>
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{{ path('admin_commercial_plans_index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> {{ 'backend.common.back'|trans }}
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> {{ 'backend.common.save_changes'|trans }}
+            </button>
+        </div>
+    {{ form_end(form) }}
 </div>
 
 <div class="modal fade" id="commercialPlanFeaturesInfoModal" tabindex="-1" aria-labelledby="commercialPlanFeaturesInfoModalLabel" aria-hidden="true">

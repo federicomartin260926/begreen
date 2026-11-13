@@ -306,7 +306,8 @@ backend:
     compensation: "Compensación"
     certification: "Certificación"
   commercial_plan_comparison:
-    title: "Comparar planes de %phase%"
+    checkout_temporarily_unavailable: "Los niveles se muestran a título informativo. La contratación online está temporalmente no disponible."
+    title: "Planes del proyecto · capacidades de %phase%"
     most_popular: "Opción más elegida"
     current_plan: "Plan actual"
     inactive_plan: "Plan inactivo"
@@ -958,9 +959,9 @@ backend:
 
     post_create:
       title: "Proyecto creado correctamente"
-      description: "Ya tienes un proyecto con plan de Elaboración Basic. Puedes continuar con él o mejorar el plan cuando quieras."
+      description: "El proyecto usa el plan único Basic para Elaboración e Implementación."
       current_plan: "Plan actual"
-      plan_context: "Plan de Elaboración"
+      plan_context: "Plan del proyecto"
       upgrade_plan: "Mejorar plan"
       continue_basic: "Continuar con plan Basic"
 
@@ -1028,6 +1029,7 @@ backend:
       paid_at: "Fecha de pago:"
     flash:
       invalid_token: "No se pudo validar la solicitud de pago."
+      checkout_temporarily_unavailable: "La contratación online está temporalmente no disponible."
       upgrade_not_allowed: "El upgrade solicitado no está disponible para este proyecto."
       pending_payment_exists: "Ya existe un pago pendiente en Stripe para este proyecto. Verifícalo o cancélalo antes de iniciar otro checkout."
       checkout_failed: "No se pudo iniciar el pago en Stripe."
