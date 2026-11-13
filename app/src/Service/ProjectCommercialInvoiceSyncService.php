@@ -111,7 +111,9 @@ final class ProjectCommercialInvoiceSyncService
 
         // A failed/late PDF download does not roll back a valid invoice reference.
         // It can be retried with the same button without another Stripe Checkout.
-        $pdfAvailable = $this->invoiceStorage->syncInvoicePdf($document);
+        // Refresh the PDF after Stripe confirms this invoice is paid. The storage
+        // service validates the download and atomically replaces the existing file.
+        $pdfAvailable = $this->invoiceStorage->syncInvoicePdf($document, true);
         $this->entityManager->flush();
 
         return ['invoiceFound' => true, 'pdfAvailable' => $pdfAvailable];
