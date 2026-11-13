@@ -132,7 +132,25 @@ final class ProjectCommercialCheckoutController extends AbstractController
                 default => ['info', 'No hay un pago pendiente de confirmar para este proyecto.'],
             };
             $this->addFlash($type, $message);
-        } catch (\DomainException) {
+        } catch (\DomainException $error) {
+            // Log only a whitelisted, non-sensitive cause; never log Stripe IDs or credentials.
+            $reason = match ($error->getMessage()) {
+                'The project must be persisted before payment verification.' => 'project_not_persisted',
+                'The Stripe session is not associated with this project.' => 'session_not_associated',
+                'The pending checkout has no persisted Stripe identity.' => 'missing_stripe_identity',
+                'The returned Stripe session does not match the pending checkout.' => 'returned_session_mismatch',
+                'Stripe session identity or TEST environment does not match the checkout.' => 'stripe_identity_mismatch',
+                'Unexpected Stripe checkout status.' => 'unexpected_stripe_status',
+                'Stripe checkout has no valid amount or currency.' => 'invalid_amount_or_currency',
+                'Invalid Stripe project checkout identity.' => 'invalid_payment_identity',
+                'Unknown Stripe project payment.' => 'unknown_payment',
+                'Stripe checkout metadata does not match the project payment reservation.' => 'payment_metadata_mismatch',
+                default => 'unclassified_domain_exception',
+            };
+            $this->logger->warning('BEGREEN project Stripe reconciliation rejected', [
+                'project_id' => $project->getId(),
+                'reason' => $reason,
+            ]);
             $this->addFlash('danger', 'La sesión de Stripe no corresponde a este proyecto o contiene datos inconsistentes.');
         } catch (\Throwable $error) {
             $this->logger->error('BEGREEN project Stripe reconciliation failed', ['exception_type' => $error::class]);
