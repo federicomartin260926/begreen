@@ -8,22 +8,29 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * The repository root is the deployment wrapper and docs layer.
 * Prefer `make -C app ...` for app tasks unless you are explicitly changing the root deployment setup.
 
-## Environment separation
+## Environment topology
 
-* Keep local dev, Docker dev, and production separate and explicit.
-* Do not mix host-only hacks into production config.
-* Use the documented Docker compose flows.
-* Keep production image-based, not bind-mount based.
-* Do not change production deployment wiring unless explicitly requested.
+* BEGREEN currently has **no production environment**. Treat any future production setup as a new, explicit environment requiring separate authorization and configuration.
+* LOCAL working copy: `/home/fede/www/begreenmyfriend`.
+* DEV server: SSH alias `vps`, repository `/home/fede/www/begreen`, public URL `https://begreen.tech-investments.net`.
+* The VPS that was previously treated as production is now the BEGREEN **DEV** server. Do not refer to it as production in code, documentation, scripts or operational instructions.
+* Keep LOCAL and DEV explicit in commands, logs and reports. Never assume a command target from context alone.
+* Use the documented Docker Compose and Makefile flows. Do not introduce host-only runtime hacks.
+* Prefer the existing DEV deployment targets/scripts over manual file copies or ad-hoc edits on the VPS.
+* Remote commands must make the target repository explicit, for example `ssh vps 'cd /home/fede/www/begreen || exit 1; ...'`.
+* Read-only inspection on DEV is allowed when needed for diagnosis. Any write, schema change, fixture load, deploy or destructive operation on DEV requires task-specific authorization.
 
 ## Secrets and deployment safety
 
 * Never hard-code, commit, echo or log API keys, tokens, passwords or credentials.
 * Secrets belong in the existing environment/configuration mechanism and must stay outside Git.
 * When inspecting configuration, avoid printing secret values; verify presence/configuration without exposing credentials.
-* DEV is the default deployment and validation target unless the task explicitly authorizes another environment.
-* Never deploy to production or change production deployment/configuration implicitly.
-* Treat any production-affecting action as a separate explicit authorization boundary.
+* DEV is the only remote deployment/validation target currently available for BEGREEN.
+* Do not create or assume a production deployment target. A future production environment requires explicit setup and authorization.
+* Do not commit, push or deploy unless the current task explicitly authorizes that action. Keep implementation, commit/push and DEV deployment as separate authorization boundaries when the task flow requires review between them.
+* Deploy DEV through the existing Makefile/deployment workflow. Avoid editing application files directly on the VPS.
+* After deployment, run the smallest relevant DEV smoke/focal validation and report the exact result.
+* If AI/OpenAI functionality is disabled because of an incident or security decision, do not re-enable it or make real external AI calls unless explicitly authorized.
 
 ## Frontend assets
 
@@ -62,7 +69,9 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Do not introduce migrations as the required workflow unless explicitly requested.
 * If `doctrine:schema:validate` fails on mapping, fix the entity mapping first.
 * Do not spend time cleaning residual `dump-sql` drift unless it corresponds to a real missing column, broken mapping, or functional regression.
-* While the project remains in development, schema changes may assume fixtures can be regenerated and existing development data can be discarded.
+* LOCAL remains a development database and may be rebuilt when the task authorizes it.
+* DEV is also a development environment, but do not assume its data may be discarded on every task. Purge/reload or destructive schema/data operations require explicit authorization for that task.
+* Before a risky DEV schema/data operation, take a MariaDB backup unless the task explicitly establishes that no backup is needed.
 
 ## Testing and validation economy
 
@@ -82,6 +91,23 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Update the closest README or docs file when workflows, assets, deployment behavior or functional contracts change.
 * Keep docs aligned with the actual Docker and build flow used by the repo.
 * Avoid documentation churn for small internal refactors that do not affect usage, operations or contracts.
+
+## Git, diff audit and evidence
+
+* Before modifying files, inspect branch, `git status --short`, staged/unstaged changes and relevant untracked files. Do not overwrite or clean unrelated work.
+* Keep each task diff limited to its approved scope. If unrelated changes are already present, preserve them and report the conflict before modifying overlapping files.
+* After a Codex task modifies files, perform an independent LOCAL diff audit with a small Python script and save the evidence in a single TXT under `/tmp`.
+* The audit should verify expected files/scope, suspicious additions/removals, secret leakage and `git diff --check`; it is not a second broad code review.
+* Put long command output, audits and diagnostics in `/tmp/*.txt` instead of flooding the terminal/chat.
+* For small, tightly scoped fixes, prefer a safe local script with precondition checks and abort-on-mismatch over a broad Codex iteration.
+
+## DEV data and canonical fixtures
+
+* Fixture regeneration is an explicit operation, not an automatic post-change step.
+* When DEV fixtures are intentionally regenerated, preserve the canonical demo projects **ECOEMBES** and **JACOB'S CREEK**, including their logos, as requested by Franc.
+* Keep the current Basic / Standard / Pro commercial-plan fixtures consistent with the project-level commercial model.
+* Do not run fixtures on DEV merely to validate unrelated code. Use targeted data/setup whenever possible.
+* Do not use unapproved real/client data as disposable QA data. Prefer dedicated fixtures or controlled test projects.
 
 ## Sustainability domain boundary
 
@@ -105,6 +131,15 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Do not loosen ReportDesign HTML/CSS/security/geometry restrictions merely to satisfy a visual request. If an existing restriction blocks a requested capability, report it before widening the contract.
 * ReportDesign must continue to protect physical A4 geometry, pagination, calculations and authorized data boundaries.
 * Prefer controlled, explicit AI actions over automatic regeneration triggered by unrelated manual edits.
+
+## Commercial plans and Stripe boundaries
+
+* The commercial model is **one plan per project**, not separate plans for Elaboración and Implementación. Do not reintroduce phase-level commercial plans.
+* Current commercial tiers are Basic, Standard and Pro. Capability checks should be based on the project's plan through the established plan/capability layer, not scattered template/controller conditionals.
+* Basic is not certifiable; keep certification eligibility as a commercial capability rather than duplicating the rule across unrelated code.
+* Use Stripe **TEST** for DEV payment validation. Never create real charges, live products/prices or live webhook changes without explicit authorization.
+* Preserve the existing verified-payment activation flow and project-level billing contract. Treat invoice/webhook automation beyond the current contract as separate scope.
+* Never expose Stripe secret keys, webhook signing secrets or private callback configuration in logs, diffs or user-visible output.
 
 ## CodeGraph and repository exploration
 
@@ -173,6 +208,7 @@ If a command is potentially destructive, such as deleting data or resetting the 
 
 ## Project-specific rules
 
+* For user-facing LOCAL command blocks, start with `cd /home/fede/www/begreenmyfriend || exit 1`.
 * Always use Docker/Makefile flows from the project root or `app/` as appropriate.
 * Prefer `make -C app ...` over raw container commands when a target exists.
 * Do not assume services run on default ports without checking configuration.
@@ -181,6 +217,8 @@ If a command is potentially destructive, such as deleting data or resetting the 
 * Do not change the Doctrine schema workflow from `schema:update` to migrations unless explicitly requested.
 * Do not generalize sustainability/measure concepts into versioned catalogs unless explicitly requested.
 * Keep changes small, focused and aligned with the existing Symfony structure.
+* `ROLE_ADMIN` has global project visibility; do not accidentally convert it to membership-scoped access.
+* `ROLE_VERIFIER` is project-scoped through `ProjectMembership`; backend authorization must continue to deny unassigned projects even if UI links are hidden.
 
 ## Definition of done
 
@@ -200,6 +238,7 @@ A change is complete when:
 * This project is still in active development.
 * Do not introduce new legacy fallbacks, compatibility aliases, transitional dual models or synchronization logic unless the task explicitly requires them.
 * Existing compatibility behavior that is already intentional, tested or documented is part of the current contract and must not be removed unless the task explicitly authorizes it.
-* For genuinely new development-only schema changes, prefer updating the Doctrine mapping, applying `doctrine:schema:update`, regenerating fixtures and adapting consumers rather than inventing unnecessary migration or compatibility layers.
+* For genuinely new development-only schema changes, prefer updating the Doctrine mapping and applying `doctrine:schema:update`; regenerate fixtures only when the task actually requires a dataset rebuild.
+* A DEV fixture reload must preserve the canonical fixture contract, including ECOEMBES, JACOB'S CREEK, their logos and the current project-level commercial plans.
 * If it is unclear whether an existing compatibility path is intentional, preserve it and report the ambiguity rather than deleting it.
 * Historical-data compatibility may be introduced when explicitly required by the task or by existing deployed/data contracts.
