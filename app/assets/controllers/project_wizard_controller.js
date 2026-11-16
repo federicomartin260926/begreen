@@ -130,6 +130,16 @@ export default class extends Controller {
   }
 
   async submit(event) {
+    if (this.editModeValue) {
+      const invalidNumericStep = this.firstInvalidNumericStep();
+      if (invalidNumericStep !== null) {
+        event.preventDefault();
+        this.goToStep(invalidNumericStep, { focus: true });
+        this.focusFirstInvalidControl(invalidNumericStep);
+        return;
+      }
+    }
+
     if (!this.multipartSubmitApproved && this.hasMaxRequestSizeValue) {
       event.preventDefault();
       await this.validateMultipartNow();
@@ -249,14 +259,14 @@ export default class extends Controller {
     if (this.hasNextButtonTarget) {
       const showNext = !this.editModeValue && this.currentStep < this.totalSteps;
       this.nextButtonTarget.classList.toggle("d-none", !showNext);
-      this.nextButtonTarget.disabled = !showNext || !this.isStepValid(this.currentStep);
+      this.nextButtonTarget.disabled = !showNext;
     }
 
     if (this.hasSubmitButtonTarget) {
       const showSubmit = this.editModeValue || this.currentStep === this.totalSteps;
       this.submitButtonTarget.classList.toggle("d-none", !showSubmit);
       this.submitButtonTarget.disabled = this.editModeValue
-        ? !this.isStepValid(this.currentStep)
+        ? !this.isStepValid(this.currentStep) || this.firstInvalidNumericStep() !== null
         : !this.isReadyForSubmit();
     }
   }
@@ -657,7 +667,7 @@ export default class extends Controller {
   }
 
   isStepValid(step) {
-    if (this.hasBackendError(step)) {
+    if (this.hasBackendError(step) || !this.validateNumericControlsForStep(step)) {
       return false;
     }
 
@@ -673,6 +683,31 @@ export default class extends Controller {
       default:
         return true;
     }
+  }
+
+  validateNumericControlsForStep(step) {
+    const panel = this.panelForStep(step);
+    if (!panel) return true;
+
+    return Array.from(panel.querySelectorAll('input[type="number"]'))
+      .filter((control) => {
+        if (control.disabled) return false;
+        // Another wizard step can be hidden, but conditional fields inside it must stay excluded.
+        for (let parent = control.parentElement; parent && parent !== panel; parent = parent.parentElement) {
+          if (parent.hidden || parent.classList.contains('d-none') || parent.getAttribute('aria-hidden') === 'true') {
+            return false;
+          }
+        }
+        return true;
+      })
+      .every((control) => control.checkValidity());
+  }
+
+  firstInvalidNumericStep() {
+    for (let step = 1; step <= 4; step += 1) {
+      if (!this.validateNumericControlsForStep(step)) return step;
+    }
+    return null;
   }
 
   isReadyForSubmit() {

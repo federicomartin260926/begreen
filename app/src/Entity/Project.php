@@ -133,6 +133,7 @@ class Project
     private ?string $ecoManagerStatus = null;
 
     #[ORM\Column(type: 'decimal', precision: 14, scale: 2, nullable: true)]
+    #[Assert\GreaterThanOrEqual(value: 0, message: 'El presupuesto no puede ser negativo.')]
     private ?string $presupuesto = null;
 
     #[ORM\Column(type: 'integer', nullable: true)]
