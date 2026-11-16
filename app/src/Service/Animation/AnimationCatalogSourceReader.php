@@ -8,7 +8,7 @@ use RuntimeException;
 
 final class AnimationCatalogSourceReader
 {
-    public const int EXPECTED_ACTIVE_COUNT = 239;
+    public const int EXPECTED_ACTIVE_COUNT = 237;
     public const string EDITORIAL_SHEET = 'Plantilla estándar de medidas';
 
     public function __construct(

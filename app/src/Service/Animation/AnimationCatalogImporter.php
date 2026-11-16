@@ -68,7 +68,10 @@ final class AnimationCatalogImporter
     public function import(array $entries): array
     {
         if (AnimationCatalogSourceReader::EXPECTED_ACTIVE_COUNT !== count($entries)) {
-            throw new RuntimeException('El importador Animation requiere exactamente 239 entradas activas.');
+            throw new RuntimeException(sprintf(
+                'El importador Animation requiere exactamente %d entradas activas.',
+                AnimationCatalogSourceReader::EXPECTED_ACTIVE_COUNT,
+            ));
         }
 
         $this->categoryGhgCache = [];

@@ -35,9 +35,9 @@ final class AnimationCatalogSourceReaderTest extends TestCase
     {
         $entries = self::entries();
 
-        self::assertCount(239, $entries);
-        self::assertCount(239, array_unique(array_keys($entries)));
-        self::assertSame(range(1, 239), array_column(array_map(
+        self::assertCount(237, $entries);
+        self::assertCount(237, array_unique(array_keys($entries)));
+        self::assertSame(range(1, 237), array_column(array_map(
             static fn (AnimationCatalogEntry $entry): array => ['order' => $entry->filter->visualOrder],
             $entries,
         ), 'order'));
@@ -47,12 +47,12 @@ final class AnimationCatalogSourceReaderTest extends TestCase
             $entries,
         ));
         self::assertSame([
-            'OFICINA' => 43,
+            'OFICINA' => 42,
             'CONTENIDOS' => 10,
             'IA' => 23,
             'RODAJE' => 8,
             'TÉCNICAS' => 64,
-            'COMUNES' => 91,
+            'COMUNES' => 90,
         ], $categoryCounts);
 
         foreach ($entries as $catalogId => $entry) {
@@ -65,20 +65,28 @@ final class AnimationCatalogSourceReaderTest extends TestCase
         self::assertArrayNotHasKey('ANI-U201', $entries);
         self::assertArrayNotHasKey('ANI-U121', $entries);
         self::assertArrayNotHasKey('ANI-U135', $entries);
+        self::assertArrayNotHasKey('ANI-U043', $entries);
+        self::assertArrayNotHasKey('ANI-U094', $entries);
     }
 
-    public function testRepresentativeSpanishAndEnglishEditorialTextMatchesV42Exactly(): void
+    public function testRepresentativeSpanishAndEnglishEditorialTextMatchesAuditedCatalogExactly(): void
     {
         $entry = self::entries()['ANI-U058'];
 
-        self::assertSame('Mide el consumo eléctrico del estudio.', $entry->editorial['name']);
-        self::assertSame('Measure studio electricity consumption.', $entry->editorial['nameEn']);
         self::assertSame(
-            'Mide el consumo eléctrico del estudio y utiliza submedición cuando aporte valor. Compara los datos con ocupación, climatización, iluminación y cargas técnicas para detectar tendencias y oportunidades de mejora.',
+            'Mide el consumo eléctrico atribuible a la producción, incluida su parte de las instalaciones utilizadas.',
+            $entry->editorial['name'],
+        );
+        self::assertSame(
+            'Measure electricity consumption attributable to the production, including its share of facilities.',
+            $entry->editorial['nameEn'],
+        );
+        self::assertSame(
+            'Mide el consumo eléctrico en kWh atribuible a la producción, incluida su parte de oficinas, estudios compartidos, teletrabajo, render y otros recursos utilizados. Usa submedición cuando aporte valor y compara cargas técnicas para detectar mejoras. No exige medir la electricidad global de todo el estudio.',
             $entry->editorial['description'],
         );
         self::assertSame(
-            'Measure studio electricity consumption and use submetering where useful. Compare data with occupancy, HVAC, lighting and technical loads to identify trends and improvement opportunities.',
+            'Measure or defensibly estimate electricity consumption attributable to the certified production, including its allocated share of any studio, shared facilities, remote work, IT and render. A whole-studio electricity inventory is not required.',
             $entry->editorial['descriptionEn'],
         );
         self::assertSame('Alto', $entry->expectedImpact);
@@ -109,7 +117,7 @@ final class AnimationCatalogSourceReaderTest extends TestCase
         $second = self::reader()->read(self::WORKBOOK);
 
         self::assertSame(array_keys($first), array_keys($second));
-        self::assertCount(239, array_replace($first, $second));
+        self::assertCount(237, array_replace($first, $second));
     }
 
     public function testFilmAndEventCanKeepTheirExistingNullableIdentityStrategy(): void

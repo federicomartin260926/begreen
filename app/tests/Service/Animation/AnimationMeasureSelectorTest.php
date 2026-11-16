@@ -35,8 +35,8 @@ final class AnimationMeasureSelectorTest extends TestCase
         array $expectedIds,
     ): void {
         $dataset = self::dataset();
-        self::assertCount(239, $dataset);
-        self::assertCount(239, array_filter($dataset, static fn (AnimationMeasure $measure): bool => $measure->active));
+        self::assertCount(237, $dataset);
+        self::assertCount(237, array_filter($dataset, static fn (AnimationMeasure $measure): bool => $measure->active));
 
         $configuration = new AnimationConfiguration(
             techniques: self::mapLabels($techniqueLabels, AnimationConfigurationCatalog::TECHNIQUE_LABELS),
