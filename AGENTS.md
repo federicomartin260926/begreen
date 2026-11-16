@@ -104,7 +104,13 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 ## DEV data and canonical fixtures
 
 * Fixture regeneration is an explicit operation, not an automatic post-change step.
-* When DEV fixtures are intentionally regenerated, preserve the canonical demo projects **ECOEMBES** and **JACOB'S CREEK**, including their logos, as requested by Franc.
+* Franc may edit sustainability measures directly from the **Measures** administration panel in DEV. Until those edits are synchronized, the DEV database may contain intentional catalog changes that are newer than the fixture sources.
+* **Before every DEV fixture purge/reload/reset**, inspect the DEV database for measure-catalog changes made since the last fixture synchronization and reconcile them against the canonical fixture/template sources.
+* Any intentional measure changes found in DEV must be incorporated into the fixture/template sources **before** running fixtures, so that a fixture reload never silently discards Franc's catalog edits.
+* Do not treat the DEV database as the long-term canonical source: after reconciliation, the updated fixture/template sources become canonical again.
+* If the comparison cannot determine whether a DEV measure difference is intentional, stop and report it before running fixtures. Never overwrite an ambiguous catalog change.
+* **Always take a fresh full DEV database backup immediately before any fixture purge/reload/reset**, even when an earlier backup exists for the same task.
+* After a DEV fixture reload, verify that the synchronized measure changes are still present and that the canonical demo projects **ECOEMBES** and **JACOB'S CREEK**, including their logos, remain intact.
 * Keep the current Basic / Standard / Pro commercial-plan fixtures consistent with the project-level commercial model.
 * Do not run fixtures on DEV merely to validate unrelated code. Use targeted data/setup whenever possible.
 * Do not use unapproved real/client data as disposable QA data. Prefer dedicated fixtures or controlled test projects.
