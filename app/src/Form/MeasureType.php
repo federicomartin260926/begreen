@@ -22,6 +22,7 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormEvent;
@@ -42,7 +43,7 @@ class MeasureType extends AbstractType
         $projectType          = $options['projectType'] ?? null;
         $locales              = $options['locales'] ?? ['es','en'];
         $defaultLocale        = $options['default_locale'] ?? 'es';
-        $translatableFields   = $options['translatable_fields'] ?? ['name','nameReview','questionText','gamificationMessage','description','implementation','departmentActionText'];
+        $translatableFields   = $options['translatable_fields'] ?? ['name','nameReview','questionText','gamificationMessage','description','departmentActionText'];
         $existingTranslations = $options['translations'] ?? [];
         $measure              = $builder->getData();
         $verificationLinks    = $measure instanceof Measure ? $measure->getResolvedVerificationSourceLinks() : [];
@@ -180,17 +181,6 @@ class MeasureType extends AbstractType
                 ]);
             }
 
-            // implementation_{loc}
-            if (in_array('implementation', $translatableFields, true)) {
-                $builder->add('implementation_' . $loc, TextareaType::class, [
-                    'label'    => 'backend.measures.form.implementation',
-                    'mapped'   => false,
-                    'required' => false,
-                    'data'     => $existingTranslations[$loc]['implementation'] ?? null,
-                    'attr'     => ['class' => 'form-control', 'rows' => 4],
-                ]);
-            }
-
             // departmentActionText_{loc}
             if (in_array('departmentActionText', $translatableFields, true)) {
                 $builder->add('departmentActionText_' . $loc, TextareaType::class, [
@@ -305,10 +295,23 @@ class MeasureType extends AbstractType
                 'mapped' => false,
                 'data' => $verificationLink3?->getVerificationSource(),
             ])
-            ->add('implementation', TextareaType::class, [
-                'label' => 'backend.measures.form.implementation',
+            ->add('impact', ChoiceType::class, [
+                'label' => 'Impacto',
+                'choices' => ['Bajo' => 'Bajo', 'Medio' => 'Medio', 'Alto' => 'Alto'],
+                'placeholder' => 'Sin especificar',
                 'required' => false,
-                'attr' => ['rows' => 4],
+            ])
+            ->add('difficulty', ChoiceType::class, [
+                'label' => 'Dificultad',
+                'choices' => ['Baja' => 'Baja', 'Media' => 'Media', 'Alta' => 'Alta'],
+                'placeholder' => 'Sin especificar',
+                'required' => false,
+            ])
+            ->add('cost', ChoiceType::class, [
+                'label' => 'Coste',
+                'choices' => ['Bajo' => 'Bajo', 'Medio' => 'Medio', 'Alto' => 'Alto'],
+                'placeholder' => 'Sin especificar',
+                'required' => false,
             ])
             ->add('mandatory', CheckboxType::class, [
                 'label'    => 'backend.measures.form.mandatory',
@@ -350,7 +353,7 @@ class MeasureType extends AbstractType
             'projectType'         => null,       // 'rodaje' | 'evento' | null
             'locales'             => ['es','en'],
             'default_locale'      => 'es',
-            'translatable_fields' => ['name','nameReview','questionText','gamificationMessage','description','implementation','departmentActionText'],
+            'translatable_fields' => ['name','nameReview','questionText','gamificationMessage','description','departmentActionText'],
             'translations'        => [],
         ]);
     }

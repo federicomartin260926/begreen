@@ -144,12 +144,6 @@
                         </div>
 
                         <div class="mb-3">
-                            {{ form_label(form.implementation) }}
-                            {{ form_widget(form.implementation, {'attr': {'class': 'form-control', 'rows': 4}}) }}
-                            {{ form_errors(form.implementation) }}
-                        </div>
-
-                        <div class="mb-3">
                             {{ form_label(form.departmentActionText) }}
                             {{ form_widget(form.departmentActionText, {'attr': {'class': 'form-control', 'rows': 4}}) }}
                             {{ form_errors(form.departmentActionText) }}
@@ -186,12 +180,6 @@
                             {{ form_label(form.description_en) }}
                             {{ form_widget(form.description_en, {'attr': {'class': 'form-control', 'rows': 4}}) }}
                             {{ form_errors(form.description_en) }}
-                        </div>
-
-                        <div class="mb-3">
-                            {{ form_label(form.implementation_en) }}
-                            {{ form_widget(form.implementation_en, {'attr': {'class': 'form-control', 'rows': 4}}) }}
-                            {{ form_errors(form.implementation_en) }}
                         </div>
 
                         <div class="mb-3">
@@ -253,6 +241,16 @@
                     {{ form_widget(form.verificationSourcePriority3, {'attr': {'class': 'form-select'}}) }}
                     {{ form_errors(form.verificationSourcePriority3) }}
                 </div>
+            </div>
+
+            <div class="row">
+                {% for field in [form.impact, form.difficulty, form.cost] %}
+                    <div class="col-md-4 mb-3">
+                        {{ form_label(field) }}
+                        {{ form_widget(field, {'attr': {'class': 'form-select'}}) }}
+                        {{ form_errors(field) }}
+                    </div>
+                {% endfor %}
             </div>
 
             <hr>

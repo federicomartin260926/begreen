@@ -173,6 +173,9 @@ final class MeasureTemplateParserTest extends TestCase
             'Pregunta de prueba',
             'Mensaje de gamificación',
             'Descripción de prueba',
+            'Medio',
+            'Baja',
+            'Bajo',
             'Implementación de medidas de movilidad',
             'Acción por departamento',
             4,
@@ -196,8 +199,11 @@ final class MeasureTemplateParserTest extends TestCase
 
         $report = (new MeasureTemplateParser())->parseSpreadsheet($spreadsheet);
 
-        self::assertSame('OK', $report->getStatus());
+        self::assertSame('OK', $report->getStatus(), json_encode($report->getErrors(), JSON_UNESCAPED_UNICODE));
         self::assertCount(1, $report->getRows());
+        self::assertSame('Medio', $report->getRows()[0]['impact']);
+        self::assertSame('Baja', $report->getRows()[0]['difficulty']);
+        self::assertSame('Bajo', $report->getRows()[0]['cost']);
         self::assertSame('Peach', $report->getRows()[0]['protocol']);
         self::assertSame(4, $report->getRows()[0]['score']);
         self::assertCount(3, $report->getRows()[0]['verificationSources']);
@@ -230,6 +236,9 @@ final class MeasureTemplateParserTest extends TestCase
             'Pregunta de prueba',
             'Mensaje de gamificación',
             'Descripción de prueba',
+            'Medio',
+            'Baja',
+            'Bajo',
             'Implementación de prueba',
             4,
             'Sí',
@@ -251,8 +260,11 @@ final class MeasureTemplateParserTest extends TestCase
 
         $report = (new MeasureTemplateParser())->parseSpreadsheet($spreadsheet);
 
-        self::assertSame('OK', $report->getStatus());
+        self::assertSame('OK', $report->getStatus(), json_encode($report->getErrors(), JSON_UNESCAPED_UNICODE));
         self::assertCount(1, $report->getRows());
+        self::assertSame('Medio', $report->getRows()[0]['impact']);
+        self::assertSame('Baja', $report->getRows()[0]['difficulty']);
+        self::assertSame('Bajo', $report->getRows()[0]['cost']);
         self::assertSame('', $report->getRows()[0]['departmentActionText']);
         self::assertSame('', $report->getRows()[0]['departmentActionTextEn']);
     }

@@ -31,7 +31,7 @@ export default class extends Controller {
     this.populateDepartment([]);
     this.populateMeasureBlock([]);
     if (protoId) {
-      this.loadDepartments(protoId, null);
+      this.loadDepartments(protoId, []);
       this.loadMeasureBlocks(protoId, null);
     }
   }
@@ -58,7 +58,7 @@ export default class extends Controller {
   populateDepartment(items, preselectIds = []) {
     const select = this.departmentTarget;
     if (!select) return;
-    const selectedIds = new Set(preselectIds.map(String));
+    const selectedIds = new Set((preselectIds ?? []).map(String));
 
     // Vaciar
     while (select.firstChild) select.removeChild(select.firstChild);

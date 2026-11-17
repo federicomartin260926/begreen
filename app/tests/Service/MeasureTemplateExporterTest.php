@@ -84,16 +84,19 @@ final class MeasureTemplateExporterTest extends TestCase
         self::assertSame('Medida', (string) $sheet->getCell('F1')->getValue());
         self::assertSame('Pregunta (futuro)', (string) $sheet->getCell('L1')->getValue());
         self::assertSame('Mensaje de gamificación', (string) $sheet->getCell('M1')->getValue());
-        self::assertSame('Acción por departamento', (string) $sheet->getCell('P1')->getValue());
-        self::assertSame('Impacto ambiental', (string) $sheet->getCell('Q1')->getValue());
-        self::assertSame('Departamento', (string) $sheet->getCell('S1')->getValue());
-        self::assertSame('Fuente de verificación', (string) $sheet->getCell('V1')->getValue());
-        self::assertSame('ODS', (string) $sheet->getCell('Y1')->getValue());
-        self::assertSame('Triple balance', (string) $sheet->getCell('AB1')->getValue());
-        self::assertSame('Nombre EN (opcional)', (string) $sheet->getCell('AE1')->getValue());
-        self::assertSame('Pregunta (futuro) EN (opcional)', (string) $sheet->getCell('AG1')->getValue());
-        self::assertSame('Mensaje de gamificación EN (opcional)', (string) $sheet->getCell('AH1')->getValue());
-        self::assertSame('Acción por departamento EN (opcional)', (string) $sheet->getCell('AL1')->getValue());
+        self::assertSame('Impacto (nivel)', (string) $sheet->getCell('O1')->getValue());
+        self::assertSame('Dificultad', (string) $sheet->getCell('P1')->getValue());
+        self::assertSame('Coste', (string) $sheet->getCell('Q1')->getValue());
+        self::assertSame('Acción por departamento', (string) $sheet->getCell('S1')->getValue());
+        self::assertSame('Impacto ambiental', (string) $sheet->getCell('T1')->getValue());
+        self::assertSame('Departamento', (string) $sheet->getCell('V1')->getValue());
+        self::assertSame('Fuente de verificación', (string) $sheet->getCell('Y1')->getValue());
+        self::assertSame('ODS', (string) $sheet->getCell('AB1')->getValue());
+        self::assertSame('Triple balance', (string) $sheet->getCell('AE1')->getValue());
+        self::assertSame('Nombre EN (opcional)', (string) $sheet->getCell('AH1')->getValue());
+        self::assertSame('Pregunta (futuro) EN (opcional)', (string) $sheet->getCell('AJ1')->getValue());
+        self::assertSame('Mensaje de gamificación EN (opcional)', (string) $sheet->getCell('AK1')->getValue());
+        self::assertSame('Acción por departamento EN (opcional)', (string) $sheet->getCell('AO1')->getValue());
 
         self::assertSame('', (string) $sheet->getCell('A2')->getValue());
         self::assertSame('', (string) $sheet->getCell('B2')->getValue());
@@ -103,28 +106,28 @@ final class MeasureTemplateExporterTest extends TestCase
         self::assertSame('', (string) $sheet->getCell('H2')->getValue());
         self::assertSame('', (string) $sheet->getCell('I2')->getValue());
         self::assertSame('', (string) $sheet->getCell('J2')->getValue());
-        self::assertSame('a - Cambio Climático', (string) $sheet->getCell('Q2')->getValue());
-        self::assertSame('b - Recursos', (string) $sheet->getCell('R2')->getValue());
-        self::assertSame('Arte', (string) $sheet->getCell('S2')->getValue());
-        self::assertSame('Cámara', (string) $sheet->getCell('T2')->getValue());
-        self::assertSame('Producción', (string) $sheet->getCell('U2')->getValue());
-        self::assertSame('Certif. / Licencia', (string) $sheet->getCell('V2')->getValue());
-        self::assertSame('Factura / Albarán', (string) $sheet->getCell('W2')->getValue());
-        self::assertSame('Foto', (string) $sheet->getCell('X2')->getValue());
-        self::assertSame('1', (string) $sheet->getCell('Y2')->getValue());
-        self::assertSame('2', (string) $sheet->getCell('Z2')->getValue());
-        self::assertSame('10', (string) $sheet->getCell('AA2')->getValue());
-        self::assertSame('Ambiental (E)', (string) $sheet->getCell('AB2')->getValue());
-        self::assertSame('Económico (M)', (string) $sheet->getCell('AC2')->getValue());
-        self::assertSame('Social (S)', (string) $sheet->getCell('AD2')->getValue());
+        self::assertSame('a - Cambio Climático', (string) $sheet->getCell('T2')->getValue());
+        self::assertSame('b - Recursos', (string) $sheet->getCell('U2')->getValue());
+        self::assertSame('Arte', (string) $sheet->getCell('V2')->getValue());
+        self::assertSame('Cámara', (string) $sheet->getCell('W2')->getValue());
+        self::assertSame('Producción', (string) $sheet->getCell('X2')->getValue());
+        self::assertSame('Certif. / Licencia', (string) $sheet->getCell('Y2')->getValue());
+        self::assertSame('Factura / Albarán', (string) $sheet->getCell('Z2')->getValue());
+        self::assertSame('Foto', (string) $sheet->getCell('AA2')->getValue());
+        self::assertSame('1', (string) $sheet->getCell('AB2')->getValue());
+        self::assertSame('2', (string) $sheet->getCell('AC2')->getValue());
+        self::assertSame('10', (string) $sheet->getCell('AD2')->getValue());
+        self::assertSame('Ambiental (E)', (string) $sheet->getCell('AE2')->getValue());
+        self::assertSame('Económico (M)', (string) $sheet->getCell('AF2')->getValue());
+        self::assertSame('Social (S)', (string) $sheet->getCell('AG2')->getValue());
 
         self::assertArrayHasKey('A1:A2', $sheet->getMergeCells());
-        self::assertArrayHasKey('P1:P2', $sheet->getMergeCells());
-        self::assertArrayHasKey('Q1:R1', $sheet->getMergeCells());
-        self::assertArrayHasKey('S1:U1', $sheet->getMergeCells());
+        self::assertArrayHasKey('S1:S2', $sheet->getMergeCells());
+        self::assertArrayHasKey('T1:U1', $sheet->getMergeCells());
         self::assertArrayHasKey('V1:X1', $sheet->getMergeCells());
         self::assertArrayHasKey('Y1:AA1', $sheet->getMergeCells());
         self::assertArrayHasKey('AB1:AD1', $sheet->getMergeCells());
+        self::assertArrayHasKey('AE1:AG1', $sheet->getMergeCells());
 
         self::assertNotNull($listSheet);
         self::assertSame('peach - Peach', (string) $listSheet->getCell('A1')->getValue());
@@ -141,16 +144,16 @@ final class MeasureTemplateExporterTest extends TestCase
         self::assertStringContainsString("'Listas'!\$F\$1:\$F\$", $sheet->getCell('I3')->getDataValidation()->getFormula1());
         self::assertSame('list', $sheet->getCell('J3')->getDataValidation()->getType());
         self::assertStringContainsString("'Listas'!\$G\$1:\$G\$", $sheet->getCell('J3')->getDataValidation()->getFormula1());
-        self::assertSame('list', $sheet->getCell('Q3')->getDataValidation()->getType());
-        self::assertSame('"X"', $sheet->getCell('Q3')->getDataValidation()->getFormula1());
-        self::assertSame('list', $sheet->getCell('S3')->getDataValidation()->getType());
-        self::assertSame('"X"', $sheet->getCell('S3')->getDataValidation()->getFormula1());
+        self::assertSame('list', $sheet->getCell('T3')->getDataValidation()->getType());
+        self::assertSame('"X"', $sheet->getCell('T3')->getDataValidation()->getFormula1());
         self::assertSame('list', $sheet->getCell('V3')->getDataValidation()->getType());
         self::assertSame('"X"', $sheet->getCell('V3')->getDataValidation()->getFormula1());
         self::assertSame('list', $sheet->getCell('Y3')->getDataValidation()->getType());
         self::assertSame('"X"', $sheet->getCell('Y3')->getDataValidation()->getFormula1());
         self::assertSame('list', $sheet->getCell('AB3')->getDataValidation()->getType());
         self::assertSame('"X"', $sheet->getCell('AB3')->getDataValidation()->getFormula1());
+        self::assertSame('list', $sheet->getCell('AE3')->getDataValidation()->getType());
+        self::assertSame('"X"', $sheet->getCell('AE3')->getDataValidation()->getFormula1());
     }
 
     public function testSpreadsheetCanBeWrittenToXlsxFile(): void
@@ -229,6 +232,9 @@ final class MeasureTemplateExporterTest extends TestCase
             ->setQuestionText('¿Realizarás un inventario?')
             ->setGamificationMessage('Mensaje de gamificación ES')
             ->setDescription('Descripción Peach')
+            ->setImpact('Medio')
+            ->setDifficulty('Baja')
+            ->setCost('Bajo')
             ->setImplementation('Impl Peach')
             ->setDepartmentActionText('Acción por departamento')
             ->setScore(5)
@@ -304,34 +310,40 @@ final class MeasureTemplateExporterTest extends TestCase
         self::assertSame('¿Realizarás un inventario?', (string) $sheet->getCell('L3')->getValue());
         self::assertSame('Mensaje de gamificación ES', (string) $sheet->getCell('M3')->getValue());
         self::assertSame('Descripción Peach', (string) $sheet->getCell('N3')->getValue());
-        self::assertSame('Impl Peach', (string) $sheet->getCell('O3')->getValue());
-        self::assertSame('Acción por departamento', (string) $sheet->getCell('P3')->getValue());
+        self::assertSame('Medio', (string) $sheet->getCell('O3')->getValue());
+        self::assertSame('Baja', (string) $sheet->getCell('P3')->getValue());
+        self::assertSame('Bajo', (string) $sheet->getCell('Q3')->getValue());
+        self::assertSame('Impl Peach', (string) $sheet->getCell('R3')->getValue());
+        self::assertSame('Acción por departamento', (string) $sheet->getCell('S3')->getValue());
 
-        self::assertSame('X', (string) $sheet->getCell('Q3')->getValue());
-        self::assertSame('', (string) $sheet->getCell('R3')->getValue());
-        self::assertSame('X', (string) $sheet->getCell('S3')->getValue());
-        self::assertSame('', (string) $sheet->getCell('T3')->getValue());
-        self::assertSame('X', (string) $sheet->getCell('U3')->getValue());
-        self::assertSame('3', (string) $sheet->getCell('V3')->getValue());
-        self::assertSame('2', (string) $sheet->getCell('W3')->getValue());
-        self::assertSame('1', (string) $sheet->getCell('X3')->getValue());
-        self::assertSame('', (string) $sheet->getCell('Y3')->getValue());
-        self::assertSame('', (string) $sheet->getCell('Z3')->getValue());
-        self::assertSame('X', (string) $sheet->getCell('AA3')->getValue());
-        self::assertSame('X', (string) $sheet->getCell('AB3')->getValue());
+        self::assertSame('X', (string) $sheet->getCell('T3')->getValue());
+        self::assertSame('', (string) $sheet->getCell('U3')->getValue());
+        self::assertSame('X', (string) $sheet->getCell('V3')->getValue());
+        self::assertSame('', (string) $sheet->getCell('W3')->getValue());
+        self::assertSame('X', (string) $sheet->getCell('X3')->getValue());
+        self::assertSame('3', (string) $sheet->getCell('Y3')->getValue());
+        self::assertSame('2', (string) $sheet->getCell('Z3')->getValue());
+        self::assertSame('1', (string) $sheet->getCell('AA3')->getValue());
+        self::assertSame('', (string) $sheet->getCell('AB3')->getValue());
         self::assertSame('', (string) $sheet->getCell('AC3')->getValue());
         self::assertSame('X', (string) $sheet->getCell('AD3')->getValue());
-        self::assertSame('Reducir consumo de combustible EN', (string) $sheet->getCell('AE3')->getValue());
-        self::assertSame('Fuel consumption was reduced', (string) $sheet->getCell('AF3')->getValue());
-        self::assertSame('Will you do an inventory?', (string) $sheet->getCell('AG3')->getValue());
-        self::assertSame('Gamification message EN', (string) $sheet->getCell('AH3')->getValue());
-        self::assertSame('Description EN', (string) $sheet->getCell('AI3')->getValue());
-        self::assertSame('Implementation EN', (string) $sheet->getCell('AJ3')->getValue());
-        self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia', (string) $sheet->getCell('AK3')->getValue());
-        self::assertSame('Department action EN', (string) $sheet->getCell('AL3')->getValue());
+        self::assertSame('X', (string) $sheet->getCell('AE3')->getValue());
+        self::assertSame('', (string) $sheet->getCell('AF3')->getValue());
+        self::assertSame('X', (string) $sheet->getCell('AG3')->getValue());
+        self::assertSame('Reducir consumo de combustible EN', (string) $sheet->getCell('AH3')->getValue());
+        self::assertSame('Fuel consumption was reduced', (string) $sheet->getCell('AI3')->getValue());
+        self::assertSame('Will you do an inventory?', (string) $sheet->getCell('AJ3')->getValue());
+        self::assertSame('Gamification message EN', (string) $sheet->getCell('AK3')->getValue());
+        self::assertSame('Description EN', (string) $sheet->getCell('AL3')->getValue());
+        self::assertSame('Implementation EN', (string) $sheet->getCell('AM3')->getValue());
+        self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia', (string) $sheet->getCell('AN3')->getValue());
+        self::assertSame('Department action EN', (string) $sheet->getCell('AO3')->getValue());
 
         $roundTrip = (new \App\Service\MeasureTemplateParser())->parseSpreadsheet($spreadsheet);
         self::assertSame('Mensaje de gamificación ES', $roundTrip->getRows()[0]['gamificationMessage']);
         self::assertSame('Gamification message EN', $roundTrip->getRows()[0]['gamificationMessageEn']);
+        self::assertSame('Medio', $roundTrip->getRows()[0]['impact']);
+        self::assertSame('Baja', $roundTrip->getRows()[0]['difficulty']);
+        self::assertSame('Bajo', $roundTrip->getRows()[0]['cost']);
     }
 }

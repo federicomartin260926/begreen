@@ -100,6 +100,18 @@ class Measure
     #[ORM\JoinTable(name: 'measure_triple_balance_axes')]
     private Collection $tripleBalanceAxes;
 
+    #[ORM\Column(length: 10, nullable: true)]
+    #[Assert\Choice(choices: ['Bajo', 'Medio', 'Alto'])]
+    private ?string $impact = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    #[Assert\Choice(choices: ['Baja', 'Media', 'Alta'])]
+    private ?string $difficulty = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    #[Assert\Choice(choices: ['Bajo', 'Medio', 'Alto'])]
+    private ?string $cost = null;
+
     #[Gedmo\Translatable]
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $implementation = null;
@@ -305,6 +317,13 @@ class Measure
         $this->tripleBalanceAxes->removeElement($axis);
         return $this;
     }
+
+    public function getImpact(): ?string { return $this->impact; }
+    public function setImpact(?string $impact): static { $this->impact = $impact; return $this; }
+    public function getDifficulty(): ?string { return $this->difficulty; }
+    public function setDifficulty(?string $difficulty): static { $this->difficulty = $difficulty; return $this; }
+    public function getCost(): ?string { return $this->cost; }
+    public function setCost(?string $cost): static { $this->cost = $cost; return $this; }
 
     public function getImplementation(): ?string { return $this->implementation; }
 

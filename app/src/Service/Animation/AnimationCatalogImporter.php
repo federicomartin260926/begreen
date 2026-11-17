@@ -224,6 +224,9 @@ final class AnimationCatalogImporter
             ->setQuestionText($this->nullable($data['questionText'] ?? null))
             ->setGamificationMessage($this->nullable($data['gamificationMessage'] ?? null))
             ->setDescription($this->nullable($data['description'] ?? null))
+            ->setImpact($this->catalogLevel($data['impact'] ?? null, ['Bajo', 'Medio', 'Alto'], 'Impacto'))
+            ->setDifficulty($this->catalogLevel($data['difficulty'] ?? null, ['Baja', 'Media', 'Alta'], 'Dificultad'))
+            ->setCost($this->catalogLevel($data['cost'] ?? null, ['Bajo', 'Medio', 'Alto'], 'Coste'))
             ->setImplementation($this->nullable($data['implementation'] ?? null))
             ->setDepartmentActionText($this->nullable($data['departmentActionText'] ?? null))
             ->setScore((int) ($data['score'] ?? 0))
@@ -259,6 +262,19 @@ final class AnimationCatalogImporter
         $this->syncTranslations($measure, $data);
         ++$summary[$created ? 'created' : 'updated'];
         ++$summary['active'];
+    }
+
+    /** @param list<string> $allowed */
+    private function catalogLevel(mixed $value, array $allowed, string $field): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+        if (!in_array($value, $allowed, true)) {
+            throw new RuntimeException(sprintf('Animation: %s inválido "%s".', $field, $value));
+        }
+        return $value;
     }
 
     private function resolveCategoryGhg(string $name): ?CategoryGhg

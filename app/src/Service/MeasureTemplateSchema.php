@@ -32,6 +32,9 @@ final class MeasureTemplateSchema
             'question_text' => 'Pregunta (futuro)',
             'gamification_message' => 'Mensaje de gamificación',
             'description' => 'Descripción',
+            'impact' => 'Impacto (nivel)',
+            'difficulty' => 'Dificultad',
+            'cost' => 'Coste',
             'implementation' => 'Implementación',
             'department_action_text' => 'Acción por departamento',
             'score' => 'Puntuación',
@@ -84,6 +87,9 @@ final class MeasureTemplateSchema
     public static function isOptionalHeader(string $key): bool
     {
         return in_array($key, [
+            'impact',
+            'difficulty',
+            'cost',
             'name_en',
             'name_review_en',
             'description_en',

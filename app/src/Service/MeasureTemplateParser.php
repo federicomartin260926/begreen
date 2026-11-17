@@ -171,6 +171,9 @@ final class MeasureTemplateParser
             'questionText' => $this->cell($row, $columnMap['question_text'] ?? null),
             'gamificationMessage' => $this->cell($row, $columnMap['gamification_message'] ?? null),
             'description' => $this->cell($row, $columnMap['description'] ?? null),
+            'impact' => $this->cell($row, $columnMap['impact'] ?? null),
+            'difficulty' => $this->cell($row, $columnMap['difficulty'] ?? null),
+            'cost' => $this->cell($row, $columnMap['cost'] ?? null),
             'implementation' => $this->cell($row, $columnMap['implementation'] ?? null),
             'score' => $this->parseScore($this->cell($row, $columnMap['score'] ?? null), $rowNumber, $report),
             'mandatory' => $this->cell($row, $columnMap['mandatory'] ?? null),
@@ -407,6 +410,9 @@ final class MeasureTemplateParser
         $rowData['questionText'] = (string) ($rowData['question_text'] ?? $rowData['questionText'] ?? '');
         $rowData['gamificationMessage'] = (string) ($rowData['gamification_message'] ?? $rowData['gamificationMessage'] ?? '');
         $rowData['description'] = (string) ($rowData['description'] ?? '');
+        $rowData['impact'] = (string) ($rowData['impact'] ?? '');
+        $rowData['difficulty'] = (string) ($rowData['difficulty'] ?? '');
+        $rowData['cost'] = (string) ($rowData['cost'] ?? '');
         $rowData['implementation'] = (string) ($rowData['implementation'] ?? '');
         $rowData['score'] = $this->parseScore((string) ($rowData['score'] ?? ''), $rowNumber, $report);
         $rowData['mandatory'] = (string) ($rowData['mandatory'] ?? '');

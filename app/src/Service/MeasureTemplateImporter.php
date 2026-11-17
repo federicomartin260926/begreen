@@ -185,6 +185,13 @@ final class MeasureTemplateImporter
         $questionText = trim((string) ($rowData['questionText'] ?? '')) ?: null;
         $gamificationMessage = trim((string) ($rowData['gamificationMessage'] ?? '')) ?: null;
         $description = trim((string) ($rowData['description'] ?? '')) ?: null;
+        $impact = $this->validatedLevel($rowData['impact'] ?? '', ['Bajo', 'Medio', 'Alto'], 'Impacto', $rowNumber, $report);
+        $difficulty = $this->validatedLevel($rowData['difficulty'] ?? '', ['Baja', 'Media', 'Alta'], 'Dificultad', $rowNumber, $report);
+        $cost = $this->validatedLevel($rowData['cost'] ?? '', ['Bajo', 'Medio', 'Alto'], 'Coste', $rowNumber, $report);
+        if (count($report->getErrors()) > $errorsBeforeRow) {
+            $summary['errors']++;
+            return;
+        }
         $implementation = trim((string) ($rowData['implementation'] ?? '')) ?: null;
         $score = (int) ($rowData['score'] ?? 0);
         $mandatory = $this->parseMandatory((string) ($rowData['mandatory'] ?? ''));
@@ -219,6 +226,9 @@ final class MeasureTemplateImporter
             ->setQuestionText($questionText)
             ->setGamificationMessage($gamificationMessage)
             ->setDescription($description)
+            ->setImpact($impact)
+            ->setDifficulty($difficulty)
+            ->setCost($cost)
             ->setImplementation($implementation)
             ->setCategory($category)
             ->setCategoryGhg($categoryGhg)
@@ -241,6 +251,9 @@ final class MeasureTemplateImporter
                 'questionText' => $questionText,
                 'gamificationMessage' => $gamificationMessage,
                 'description' => $description,
+                'impact' => $impact,
+                'difficulty' => $difficulty,
+                'cost' => $cost,
                 'implementation' => $implementation,
                 'score' => $score,
                 'mandatory' => $mandatory,
@@ -318,6 +331,20 @@ final class MeasureTemplateImporter
         $measure->setDepartmentActionText($departmentActionText);
 
         $summary[$created ? 'imported' : 'updated']++;
+    }
+
+    /** @param list<string> $allowed */
+    private function validatedLevel(mixed $value, array $allowed, string $label, int $row, MeasureTemplateReport $report): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+        if (!in_array($value, $allowed, true)) {
+            $report->addError('invalid_level', sprintf('Fila %d: %s inválido: "%s".', $row, $label, $value), ['row' => $row, 'field' => $label]);
+            return null;
+        }
+        return $value;
     }
 
     private function resolveProtocol(string $value, MeasureTemplateReport $report, int $rowNumber): ?Protocol
