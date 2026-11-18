@@ -13,7 +13,8 @@
 {% endfor %}
 {% set evidenceList = pm.evidence ? pm.evidence|split("\n")|filter(path => path|trim) : [] %}
 {% set evidenceMetadata = pm.evidenceMetadata ? pm.evidenceMetadata : {} %}
-{% set verificationSources = verificationSources|default([]) %}
+{% set allVerificationSources = verificationSources|default([]) %}
+{% set verificationSources = taxonomyPresenter.verificationSourcesWithQuality(measure) %}
 {% set evidenceCount = evidenceList|length %}
 {% set contextId = 'implementation-context-' ~ measure.id %}
 
@@ -154,6 +155,7 @@
                         evidenceList: evidenceList,
                         evidenceMetadata: evidenceMetadata,
                         verificationSources: verificationSources,
+                        allVerificationSources: allVerificationSources,
                         evidenceCount: evidenceCount,
                         evidenceBlockWrapperClass: ''
                     } only %}

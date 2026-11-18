@@ -81,7 +81,7 @@ class AdminMeasureController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $this->syncMeasureImportVersion($measure);
-            $selectedSources = $this->collectSelectedVerificationSources($form);
+            $selectedSources = $this->collectSelectedVerificationSources($form, $em);
             $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $selectedSources);
             if ($validationErrors !== []) {
                 $this->addFormErrors($form, $validationErrors);
@@ -109,7 +109,7 @@ class AdminMeasureController extends AbstractController
                     $this->catalogAdminService->syncVerificationSources($measure, $selectedSources);
                 } catch (\InvalidArgumentException $e) {
                     $this->addFormErrors($form, [[
-                        'field' => 'verificationSourcePriority1',
+                        'field' => 'verificationSources',
                         'message' => $e->getMessage(),
                     ]]);
                     $syncOk = false;
@@ -179,7 +179,7 @@ class AdminMeasureController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $this->syncMeasureImportVersion($measure);
-            $selectedSources = $this->collectSelectedVerificationSources($form);
+            $selectedSources = $this->collectSelectedVerificationSources($form, $em);
             $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $selectedSources);
             if ($validationErrors !== []) {
                 $this->addFormErrors($form, $validationErrors);
@@ -216,7 +216,7 @@ class AdminMeasureController extends AbstractController
                     $this->catalogAdminService->syncVerificationSources($measure, $selectedSources);
                 } catch (\InvalidArgumentException $e) {
                     $this->addFormErrors($form, [[
-                        'field' => 'verificationSourcePriority1',
+                        'field' => 'verificationSources',
                         'message' => $e->getMessage(),
                     ]]);
                     $syncOk = false;
@@ -247,13 +247,26 @@ class AdminMeasureController extends AbstractController
         ]);
     }
 
-    private function collectSelectedVerificationSources($form): array
+    private function collectSelectedVerificationSources($form, EntityManagerInterface $em): array
     {
-        return [
-            1 => $form->has('verificationSourcePriority1') ? $form->get('verificationSourcePriority1')->getData() : null,
-            2 => $form->has('verificationSourcePriority2') ? $form->get('verificationSourcePriority2')->getData() : null,
-            3 => $form->has('verificationSourcePriority3') ? $form->get('verificationSourcePriority3')->getData() : null,
-        ];
+        $selected = [];
+        foreach ($form as $field) {
+            $name = $field->getName();
+            if (!str_starts_with($name, 'verificationSourceQuality_')) {
+                continue;
+            }
+            $quality = trim((string) $field->getData());
+            if ($quality === '') {
+                continue;
+            }
+            $sourceId = (int) substr($name, strlen('verificationSourceQuality_'));
+            $source = $em->getRepository(VerificationSource::class)->find($sourceId);
+            if ($source instanceof VerificationSource) {
+                $selected[] = ['source' => $source, 'suggestedQuality' => $quality];
+            }
+        }
+
+        return $selected;
     }
 
     private function syncMeasureImportVersion(Measure $measure): void

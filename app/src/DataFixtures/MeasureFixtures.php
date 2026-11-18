@@ -7,6 +7,8 @@ use App\Entity\MeasureBlock;
 use App\Entity\Protocol;
 use App\Service\MeasureTemplateImporter;
 use App\Service\MeasureTemplateParser;
+use App\Service\MeasureTaxonomyOverlayImporter;
+use App\Service\MeasureTaxonomyOverlayReader;
 use App\Repository\MeasureBlockRepository;
 use App\Repository\ProtocolRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -35,6 +37,8 @@ class MeasureFixtures extends Fixture implements DependentFixtureInterface, Fixt
         private readonly TranslatableListener $translatableListener,
         private readonly MeasureTemplateParser $measureTemplateParser,
         private readonly MeasureTemplateImporter $measureTemplateImporter,
+        private readonly MeasureTaxonomyOverlayReader $taxonomyOverlayReader,
+        private readonly MeasureTaxonomyOverlayImporter $taxonomyOverlayImporter,
         private readonly ParameterBagInterface $params,
     ) {}
 
@@ -70,11 +74,13 @@ class MeasureFixtures extends Fixture implements DependentFixtureInterface, Fixt
                 continue;
             }
 
-            $report = $this->measureTemplateParser->parseFile($path);
+            $report = $this->measureTemplateParser->parseFile($path, true);
             $report = $this->measureTemplateImporter->import(
                 report: $report,
                 apply: true,
                 validateCanonical: true,
+                // EVI se valida y sincroniza después con el overlay canónico.
+                deferVerificationSourcesToOverlay: true,
             );
             $this->backfillMeasureSortOrders(
                 $manager,
@@ -90,6 +96,18 @@ class MeasureFixtures extends Fixture implements DependentFixtureInterface, Fixt
                 $summary['imported'] ?? 0,
                 $summary['updated'] ?? 0,
                 $summary['errors'] ?? count($report->getErrors())
+            );
+
+            $overlayPath = $baseDir.'/'.str_replace('_measures.xlsx', '_taxonomy.xlsx', $catalog['filename']);
+            $overlaySummary = $this->taxonomyOverlayImporter->import(
+                $this->taxonomyOverlayReader->read($overlayPath, $catalog['protocolCode'])
+            );
+            echo sprintf(
+                "Taxonomy %s | measures=%d, DEP=%d, EVI=%d\n",
+                basename($overlayPath),
+                $overlaySummary['measures'],
+                $overlaySummary['departmentLinks'],
+                $overlaySummary['evidenceLinks'],
             );
         }
 

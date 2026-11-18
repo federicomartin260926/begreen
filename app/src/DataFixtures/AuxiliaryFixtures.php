@@ -322,6 +322,24 @@ class AuxiliaryFixtures extends Fixture implements FixtureGroupInterface
                 ->setSortOrder($data['sortOrder']);
         }
 
+        // Catálogo EVI definitivo. Las fuentes legacy anteriores se conservan para
+        // resolver evidenceMetadata histórico, pero no forman parte de matrices nuevas.
+        $canonicalSourceIndex = 0;
+        foreach (VerificationSource::CANONICAL_SOURCES as $code => $name) {
+            $index = $canonicalSourceIndex++;
+            $sortOrder = 100 + $index;
+            $source = $upsert($manager, VerificationSource::class, ['code' => $code], function () use ($code, $name, $sortOrder) {
+                return (new VerificationSource())
+                    ->setCode($code)
+                    ->setName($name)
+                    ->setSortOrder($sortOrder);
+            });
+            $source
+                ->setCode($code)
+                ->setName($name)
+                ->setSortOrder($sortOrder);
+        }
+
         // -------------------------
         // Triple balance axes
         // -------------------------

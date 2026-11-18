@@ -9,20 +9,23 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 final class MeasureTemplateParser
 {
-    public function parseFile(string $path): MeasureTemplateReport
+    private bool $ignoreVerificationSources = false;
+
+    public function parseFile(string $path, bool $ignoreVerificationSources = false): MeasureTemplateReport
     {
-        return $this->parseSpreadsheet(IOFactory::load($path));
+        return $this->parseSpreadsheet(IOFactory::load($path), $ignoreVerificationSources);
     }
 
-    public function parseSpreadsheet(Spreadsheet $spreadsheet): MeasureTemplateReport
+    public function parseSpreadsheet(Spreadsheet $spreadsheet, bool $ignoreVerificationSources = false): MeasureTemplateReport
     {
         $sheet = $spreadsheet->getSheetByName(MeasureTemplateSchema::SHEET_TITLE) ?? $spreadsheet->getActiveSheet();
 
-        return $this->parseSheet($sheet);
+        return $this->parseSheet($sheet, $ignoreVerificationSources);
     }
 
-    public function parseSheet(Worksheet $sheet): MeasureTemplateReport
+    public function parseSheet(Worksheet $sheet, bool $ignoreVerificationSources = false): MeasureTemplateReport
     {
+        $this->ignoreVerificationSources = $ignoreVerificationSources;
         $report = new MeasureTemplateReport();
         $report->setSheetName($sheet->getTitle());
         $report->setDimension(sprintf('A1:%s%d', $sheet->getHighestColumn(), $sheet->getHighestRow()));
@@ -208,10 +211,12 @@ final class MeasureTemplateParser
         }
 
         $verificationSources = [];
-        try {
-            $verificationSources = MeasureTemplateSchema::splitVerificationSourcesCell($rowData['verificationSources']);
-        } catch (\InvalidArgumentException $e) {
-            $report->addError('invalid_verification_sources', sprintf('Fila %d: %s', $rowNumber, $e->getMessage()), ['row' => $rowNumber]);
+        if (!$this->ignoreVerificationSources) {
+            try {
+                $verificationSources = MeasureTemplateSchema::splitVerificationSourcesCell($rowData['verificationSources']);
+            } catch (\InvalidArgumentException $e) {
+                $report->addError('invalid_verification_sources', sprintf('Fila %d: %s', $rowNumber, $e->getMessage()), ['row' => $rowNumber]);
+            }
         }
 
         $rowData['verificationSources'] = $verificationSources;
@@ -368,19 +373,29 @@ final class MeasureTemplateParser
                 continue;
             }
 
-            if (!MeasureTemplateSchema::isSelectionMarker($value)) {
-                if (($columnDescriptor['groupKey'] ?? null) === 'verification_sources' && preg_match('/^\d+$/', $value)) {
-                    $label = (string) ($columnDescriptor['label'] ?? '');
-                    $matrixSelections['verificationSources'][] = [
-                        'priority' => (int) $value,
-                        'value' => $label,
-                    ];
+            if ($groupKey === 'verification_sources') {
+                if ($this->ignoreVerificationSources) {
                     continue;
                 }
+                if (!in_array($value, \App\Entity\MeasureVerificationSource::SUGGESTED_QUALITIES, true)) {
+                    $report->addError(
+                        'invalid_evidence_quality',
+                        sprintf('Fila %d, columna %s: calidad sugerida no válida "%s".', $rowNumber, $column, $value),
+                        ['row' => $rowNumber, 'column' => $column, 'value' => $value]
+                    );
+                    continue;
+                }
+                $matrixSelections['verificationSources'][] = [
+                    'suggestedQuality' => $value,
+                    'value' => (string) ($columnDescriptor['label'] ?? ''),
+                ];
+                continue;
+            }
 
+            if (!MeasureTemplateSchema::isSelectionMarker($value)) {
                 $report->addError(
                     'invalid_matrix_value',
-                    sprintf('Fila %d, columna %s: solo se permite "X" o prioridad numérica en la plantilla de selección múltiple.', $rowNumber, $column),
+                    sprintf('Fila %d, columna %s: solo se permite "X" en esta matriz.', $rowNumber, $column),
                     ['row' => $rowNumber, 'column' => $column, 'value' => $value]
                 );
                 continue;
@@ -390,10 +405,6 @@ final class MeasureTemplateParser
             match ($groupKey) {
                 'impact_areas' => $matrixSelections['impactAreas'][] = $label,
                 'departments' => $matrixSelections['departments'][] = $label,
-                'verification_sources' => $matrixSelections['verificationSources'][] = [
-                    'priority' => count($matrixSelections['verificationSources']) + 1,
-                    'value' => $label,
-                ],
                 'ods_items' => $matrixSelections['odsItems'][] = $label,
                 'triple_balance_axes' => $matrixSelections['tripleBalanceAxes'][] = $label,
                 default => null,
@@ -432,7 +443,6 @@ final class MeasureTemplateParser
         $rowData['odsItems'] = implode('; ', array_values($matrixSelections['odsItems']));
         $rowData['impactAreas'] = implode('; ', array_values($matrixSelections['impactAreas']));
         $rowData['tripleBalanceAxes'] = implode('; ', array_values($matrixSelections['tripleBalanceAxes']));
-        usort($matrixSelections['verificationSources'], static fn (array $left, array $right): int => $left['priority'] <=> $right['priority']);
         $rowData['verificationSources'] = array_values($matrixSelections['verificationSources']);
 
         if ($rowData['protocol'] === '') {

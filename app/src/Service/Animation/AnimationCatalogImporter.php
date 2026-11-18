@@ -10,12 +10,10 @@ use App\Entity\EsG;
 use App\Entity\ImpactArea;
 use App\Entity\Measure;
 use App\Entity\MeasureBlock;
-use App\Entity\MeasureVerificationSource;
 use App\Entity\Ods;
 use App\Entity\Protocol;
 use App\Entity\Scope;
 use App\Entity\TripleBalanceAxis;
-use App\Entity\VerificationSource;
 use Doctrine\ORM\EntityManagerInterface;
 use Gedmo\Translatable\Entity\Translation;
 use Gedmo\Translatable\TranslatableListener;
@@ -244,13 +242,10 @@ final class AnimationCatalogImporter
         $odsItems = $this->resolveOds((string) ($data['odsItems'] ?? ''));
         $impactAreas = $this->resolveImpactAreas((string) ($data['impactAreas'] ?? ''));
         $axes = $this->resolveTripleBalanceAxes((string) ($data['tripleBalanceAxes'] ?? ''));
-        $verificationSources = $this->resolveVerificationSources((array) ($data['verificationSources'] ?? []));
-
-        $this->syncCollections($measure, $departments, $odsItems, $impactAreas, $axes, $verificationSources);
+        $this->syncCollections($measure, $departments, $odsItems, $impactAreas, $axes);
         $measure
             ->setDepartment($departments[0] ?? null)
-            ->setOds($odsItems[0] ?? null)
-            ->setVerificationSources($this->verificationSourcesText($verificationSources));
+            ->setOds($odsItems[0] ?? null);
 
         $metadata = $measure->getAnimationMetadata();
         if (!$metadata instanceof AnimationMeasureMetadata) {
@@ -335,12 +330,7 @@ final class AnimationCatalogImporter
             $department = $this->departmentCache[$cacheKey]
                 ?? $repository->findOneBy(['name' => $name, 'projectType' => Protocol::TYPE_RODAJE]);
             if (!$department instanceof Department) {
-                $department = (new Department())
-                    ->setCode($this->slug('animation-department-'.$name))
-                    ->setName($name)
-                    ->setProjectType(Protocol::TYPE_RODAJE)
-                    ->setSortOrder(1000 + $position);
-                $this->em->persist($department);
+                throw new RuntimeException(sprintf('Departamento Animation sin resolver: "%s".', $name));
             }
             $this->departmentCache[$cacheKey] = $department;
             $resolved[] = $department;
@@ -396,31 +386,13 @@ final class AnimationCatalogImporter
         return $resolved;
     }
 
-    /** @param list<array{priority: int, value: string}> $sourceItems @return list<array{source: VerificationSource, priority: int}> */
-    private function resolveVerificationSources(array $sourceItems): array
-    {
-        $resolved = [];
-        $repository = $this->em->getRepository(VerificationSource::class);
-        foreach ($sourceItems as $item) {
-            $name = trim((string) ($item['value'] ?? ''));
-            $source = $repository->findOneBy(['name' => $name]);
-            if (!$source instanceof VerificationSource) {
-                throw new RuntimeException(sprintf('Fuente de verificación Animation sin resolver: "%s".', $name));
-            }
-            $resolved[] = ['source' => $source, 'priority' => (int) ($item['priority'] ?? 0)];
-        }
-
-        return $resolved;
-    }
-
     /**
      * @param list<Department> $departments
      * @param list<Ods> $odsItems
      * @param list<ImpactArea> $impactAreas
      * @param list<TripleBalanceAxis> $axes
-     * @param list<array{source: VerificationSource, priority: int}> $verificationSources
      */
-    private function syncCollections(Measure $measure, array $departments, array $odsItems, array $impactAreas, array $axes, array $verificationSources): void
+    private function syncCollections(Measure $measure, array $departments, array $odsItems, array $impactAreas, array $axes): void
     {
         foreach ($measure->getDepartments()->toArray() as $existing) { $measure->removeDepartment($existing); }
         foreach ($departments as $department) { $measure->addDepartment($department); }
@@ -430,41 +402,6 @@ final class AnimationCatalogImporter
         foreach ($impactAreas as $impactArea) { $measure->addImpactArea($impactArea); }
         foreach ($measure->getTripleBalanceAxes()->toArray() as $existing) { $measure->removeTripleBalanceAxis($existing); }
         foreach ($axes as $axis) { $measure->addTripleBalanceAxis($axis); }
-        $wantedSources = array_map(static fn (array $item): VerificationSource => $item['source'], $verificationSources);
-        foreach ($measure->getVerificationSourceLinks()->toArray() as $existing) {
-            if (!in_array($existing->getVerificationSource(), $wantedSources, true)) {
-                $measure->removeVerificationSourceLink($existing);
-            }
-        }
-        foreach ($verificationSources as $item) {
-            $existingLink = null;
-            foreach ($measure->getVerificationSourceLinks() as $candidate) {
-                if ($candidate->getVerificationSource() === $item['source']) {
-                    $existingLink = $candidate;
-                    break;
-                }
-            }
-            if ($existingLink instanceof MeasureVerificationSource) {
-                $existingLink->setPriority($item['priority']);
-                continue;
-            }
-            $link = (new MeasureVerificationSource())
-                ->setVerificationSource($item['source'])
-                ->setPriority($item['priority']);
-            $measure->addVerificationSourceLink($link);
-            $this->em->persist($link);
-        }
-    }
-
-    /** @param list<array{source: VerificationSource, priority: int}> $items */
-    private function verificationSourcesText(array $items): ?string
-    {
-        $parts = array_map(
-            static fn (array $item): string => sprintf('%d. %s', $item['priority'], $item['source']->getName()),
-            $items,
-        );
-
-        return [] === $parts ? null : implode(' | ', $parts);
     }
 
     /** @param array<string, mixed> $data */

@@ -156,7 +156,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% set sources = pm.measure ? taxonomyPresenter.verificationSourcesWithPriority(pm.measure) : [] %}
+                                        {% set sources = pm.measure ? taxonomyPresenter.verificationSourcesWithQuality(pm.measure) : [] %}
                                         {% if sources is not empty %}
                                             <div class="d-flex flex-wrap gap-1 align-items-center">
                                                 {% for link in sources %}

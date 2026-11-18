@@ -384,7 +384,13 @@ class Measure
     public function getResolvedVerificationSourceLinks(): array
     {
         $links = $this->verificationSourceLinks->toArray();
-        usort($links, static fn (MeasureVerificationSource $left, MeasureVerificationSource $right): int => $left->getPriority() <=> $right->getPriority());
+        usort($links, static function (MeasureVerificationSource $left, MeasureVerificationSource $right): int {
+            $leftSource = $left->getVerificationSource();
+            $rightSource = $right->getVerificationSource();
+
+            return [$leftSource?->getSortOrder() ?? 0, $leftSource?->getCode() ?? '']
+                <=> [$rightSource?->getSortOrder() ?? 0, $rightSource?->getCode() ?? ''];
+        });
 
         return $links;
     }
@@ -412,7 +418,7 @@ class Measure
                 continue;
             }
 
-            $parts[] = sprintf('%d. %s', $link->getPriority(), $this->normalizeVerificationSourceName((string) $source->getName()));
+            $parts[] = sprintf('%s (%s)', $this->normalizeVerificationSourceName((string) $source->getName()), $link->getSuggestedQuality());
         }
 
         return $parts !== [] ? implode(' | ', $parts) : ($this->verificationSources ?? null);

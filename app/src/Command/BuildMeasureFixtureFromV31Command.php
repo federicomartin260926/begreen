@@ -48,6 +48,11 @@ final class BuildMeasureFixtureFromV31Command extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $io->error('Comando legacy no soportado: no genera la matriz canónica DEP/EVI con calidad sugerida.');
+
+        return Command::FAILURE;
+
+        /* @deprecated Flujo conservado temporalmente sólo como referencia histórica. */
 
         $source = (string) ($input->getOption('input') ?: $input->getArgument('path') ?: '');
         $filename = (string) ($input->getOption('filename') ?? '');

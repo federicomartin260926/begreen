@@ -57,7 +57,7 @@
 {% endif %}
 
 {% if showVerificationSources %}
-    {% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
+    {% set verificationLinks = taxonomyPresenter.verificationSourcesWithQuality(measure) %}
     {% if verificationLinks is not empty %}
         <dt class="{{ dtClass|default('col-md-4 col-lg-2') }}">{{ 'backend.plan.review.verification_sources'|trans }}</dt>
         <dd class="{{ ddClass|default('col-md-8 col-lg-10') }} d-flex flex-wrap gap-1 align-items-center">

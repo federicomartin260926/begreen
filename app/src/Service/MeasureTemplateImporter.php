@@ -9,6 +9,7 @@ use App\Entity\EsG;
 use App\Entity\ImpactArea;
 use App\Entity\Measure;
 use App\Entity\MeasureBlock;
+use App\Entity\MeasureVerificationSource;
 use App\Entity\Ods;
 use App\Entity\Protocol;
 use App\Entity\Scope;
@@ -28,6 +29,7 @@ final class MeasureTemplateImporter
      */
     private array $measureBlockCache = [];
     private bool $validateCanonicalMeasures = true;
+    private bool $deferVerificationSourcesToOverlay = false;
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -36,10 +38,16 @@ final class MeasureTemplateImporter
     ) {
     }
 
-    public function import(MeasureTemplateReport $report, bool $apply, bool $validateCanonical = true): MeasureTemplateReport
+    public function import(
+        MeasureTemplateReport $report,
+        bool $apply,
+        bool $validateCanonical = true,
+        bool $deferVerificationSourcesToOverlay = false,
+    ): MeasureTemplateReport
     {
         $this->measureBlockCache = [];
         $this->validateCanonicalMeasures = $validateCanonical;
+        $this->deferVerificationSourcesToOverlay = $deferVerificationSourcesToOverlay;
 
         if (!$apply) {
             $report->setImportSummary([
@@ -101,6 +109,7 @@ final class MeasureTemplateImporter
         } finally {
             $this->translatableListener->setTranslationFallback(true);
             $this->validateCanonicalMeasures = true;
+            $this->deferVerificationSourcesToOverlay = false;
         }
 
         $report->setImportSummary($summary);
@@ -263,7 +272,7 @@ final class MeasureTemplateImporter
                 'scope' => $scope?->getName(),
                 'impactAreas' => array_map(static fn (ImpactArea $impactArea): string => (string) $impactArea->getCode(), $impactAreas),
                 'tripleBalanceAxes' => array_map(static fn (TripleBalanceAxis $axis): string => (string) $axis->getCode(), $tripleBalanceAxes),
-                'verificationSources' => array_map(static fn (array $item): string => sprintf('%d:%s', $item['priority'], $item['source']->getCode()), $verificationSources),
+                'verificationSources' => array_map(static fn (array $item): string => sprintf('%s:%s', $item['suggestedQuality'], $item['source']->getCode()), $verificationSources),
                 'nameEn' => $nameEn,
                 'nameReviewEn' => $nameReviewEn,
                 'questionTextEn' => $questionTextEn,
@@ -281,7 +290,7 @@ final class MeasureTemplateImporter
         $this->syncTripleBalanceAxes($measure, $tripleBalanceAxes);
 
         try {
-            $this->catalogAdminService->syncVerificationSources($measure, $this->mapVerificationSources($verificationSources));
+            $this->catalogAdminService->syncVerificationSources($measure, $verificationSources);
         } catch (\InvalidArgumentException $exception) {
             $report->addError('invalid_verification_sources', sprintf('Fila %d: %s', $rowNumber, $exception->getMessage()), ['row' => $rowNumber]);
             $summary['errors']++;
@@ -300,7 +309,13 @@ final class MeasureTemplateImporter
             ], true)
             && $measure->getImportVersion() === PlanMeasureCatalogResolver::CATALOG_IMPORT_VERSION
         ) {
-            $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $this->mapVerificationSources($verificationSources));
+            $validationErrors = $this->catalogAdminService->validateV23Measure($measure, $verificationSources);
+            if ($this->deferVerificationSourcesToOverlay) {
+                $validationErrors = array_values(array_filter(
+                    $validationErrors,
+                    static fn (array $error): bool => ($error['field'] ?? null) !== 'verificationSources'
+                ));
+            }
             if ($measureBlockValue === '') {
                 $validationErrors = array_values(array_filter(
                     $validationErrors,
@@ -660,18 +675,17 @@ final class MeasureTemplateImporter
     }
 
     /**
-     * @param array<int, array{priority:int, value:string}> $values
-     *
-     * @return array<int, array{priority:int, source:VerificationSource}>
+     * @param list<array{suggestedQuality:string, value:string}> $values
+     * @return list<array{suggestedQuality:string, source:VerificationSource}>
      */
     private function resolveVerificationSources(array $values, int $rowNumber, MeasureTemplateReport $report): array
     {
         $resolved = [];
         foreach ($values as $item) {
-            $priority = (int) ($item['priority'] ?? 0);
+            $quality = trim((string) ($item['suggestedQuality'] ?? ''));
             $value = trim((string) ($item['value'] ?? ''));
-            if ($priority < 1 || $priority > 3 || $value === '') {
-                $report->addError('invalid_verification_source', sprintf('Fila %d con fuente de verificación inválida.', $rowNumber), ['row' => $rowNumber, 'value' => $value, 'priority' => $priority]);
+            if (!in_array($quality, MeasureVerificationSource::SUGGESTED_QUALITIES, true) || $value === '') {
+                $report->addError('invalid_verification_source', sprintf('Fila %d con fuente de verificación inválida.', $rowNumber), ['row' => $rowNumber, 'value' => $value, 'suggestedQuality' => $quality]);
                 continue;
             }
 
@@ -690,29 +704,12 @@ final class MeasureTemplateImporter
             }
 
             $resolved[] = [
-                'priority' => $priority,
+                'suggestedQuality' => $quality,
                 'source' => $source,
             ];
         }
 
-        usort($resolved, static fn (array $left, array $right): int => $left['priority'] <=> $right['priority']);
-
         return $resolved;
-    }
-
-    /**
-     * @param array<int, array{priority:int, source:VerificationSource}> $resolved
-     *
-     * @return array<int, VerificationSource|null>
-     */
-    private function mapVerificationSources(array $resolved): array
-    {
-        $mapped = [1 => null, 2 => null, 3 => null];
-        foreach ($resolved as $item) {
-            $mapped[(int) $item['priority']] = $item['source'];
-        }
-
-        return $mapped;
     }
 
     private function parseMandatory(string $value): bool

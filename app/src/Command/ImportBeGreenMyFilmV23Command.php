@@ -39,6 +39,11 @@ final class ImportBeGreenMyFilmV23Command extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $io->error('Comando legacy no soportado: la taxonomía DEP/EVI se sincroniza mediante el overlay canónico de fixtures.');
+
+        return Command::FAILURE;
+
+        /* @deprecated Flujo conservado temporalmente sólo como referencia histórica. */
         $path = (string) $input->getArgument('path');
 
         if (!is_file($path)) {

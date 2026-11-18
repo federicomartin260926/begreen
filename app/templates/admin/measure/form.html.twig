@@ -225,22 +225,15 @@
             </div>
 
             <hr>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    {{ form_label(form.verificationSourcePriority1) }}
-                    {{ form_widget(form.verificationSourcePriority1, {'attr': {'class': 'form-select'}}) }}
-                    {{ form_errors(form.verificationSourcePriority1) }}
-                </div>
-                <div class="col-md-4 mb-3">
-                    {{ form_label(form.verificationSourcePriority2) }}
-                    {{ form_widget(form.verificationSourcePriority2, {'attr': {'class': 'form-select'}}) }}
-                    {{ form_errors(form.verificationSourcePriority2) }}
-                </div>
-                <div class="col-md-4 mb-3">
-                    {{ form_label(form.verificationSourcePriority3) }}
-                    {{ form_widget(form.verificationSourcePriority3, {'attr': {'class': 'form-select'}}) }}
-                    {{ form_errors(form.verificationSourcePriority3) }}
-                </div>
+            <h3 class="h6">{{ 'backend.measures.form.verification_sources_quality'|trans }}</h3>
+            <div class="row g-2 mb-3">
+                {% for field in form %}
+                    {% if field.vars.name starts with 'verificationSourceQuality_' %}
+                        <div class="col-md-6 col-xl-4">
+                            {{ form_row(field, {'attr': {'class': 'form-select form-select-sm'}}) }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
             </div>
 
             <div class="row">

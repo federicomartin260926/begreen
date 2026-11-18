@@ -12,6 +12,32 @@ class VerificationSource
 {
     use TimestampableTrait;
 
+    /** @var array<string, string> */
+    public const CANONICAL_SOURCES = [
+        'evi-acta' => 'Acta', 'evi-acuerdo' => 'Acuerdo', 'evi-albaran' => 'Albarán',
+        'evi-analitica' => 'Analítica', 'evi-animatic' => 'Animatic', 'evi-aprobacion' => 'Aprobación',
+        'evi-auditoria' => 'Auditoría', 'evi-autorizacion' => 'Autorización', 'evi-billete' => 'Billete',
+        'evi-calculo' => 'Cálculo', 'evi-calendario' => 'Calendario', 'evi-captura' => 'Captura',
+        'evi-carta' => 'Carta', 'evi-cartel' => 'Cartel', 'evi-certificacion' => 'Certificación',
+        'evi-certificado' => 'Certificado', 'evi-checklist' => 'Checklist', 'evi-comparativa' => 'Comparativa',
+        'evi-contrato' => 'Contrato', 'evi-convocatoria' => 'Convocatoria', 'evi-cuestionario' => 'Cuestionario',
+        'evi-declaracion' => 'Declaración', 'evi-dosier' => 'Dosier', 'evi-email' => 'Email',
+        'evi-encuesta' => 'Encuesta', 'evi-estimacion' => 'Estimación', 'evi-etiqueta' => 'Etiqueta',
+        'evi-evaluacion' => 'Evaluación', 'evi-exportacion' => 'Exportación', 'evi-extracto' => 'Extracto',
+        'evi-factura' => 'Factura', 'evi-ficha' => 'Ficha', 'evi-fichaje' => 'Fichaje',
+        'evi-foto' => 'Foto', 'evi-grabacion' => 'Grabación', 'evi-guia' => 'Guía',
+        'evi-guion' => 'Guion', 'evi-historial' => 'Historial', 'evi-informe' => 'Informe',
+        'evi-inspeccion' => 'Inspección', 'evi-inventario' => 'Inventario', 'evi-justificante' => 'Justificante',
+        'evi-listado' => 'Listado', 'evi-mapa' => 'Mapa', 'evi-matriz' => 'Matriz',
+        'evi-medicion' => 'Medición', 'evi-memoria' => 'Memoria', 'evi-montaje' => 'Montaje',
+        'evi-muestra' => 'Muestra', 'evi-nombramiento' => 'Nombramiento', 'evi-nomina' => 'Nómina',
+        'evi-orden' => 'Orden', 'evi-parte' => 'Parte', 'evi-plan' => 'Plan',
+        'evi-plano' => 'Plano', 'evi-politica' => 'Política', 'evi-presupuesto' => 'Presupuesto',
+        'evi-protocolo' => 'Protocolo', 'evi-registro' => 'Registro', 'evi-reserva' => 'Reserva',
+        'evi-respuesta' => 'Respuesta', 'evi-solicitud' => 'Solicitud', 'evi-storyboard' => 'Storyboard',
+        'evi-video' => 'Vídeo',
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]

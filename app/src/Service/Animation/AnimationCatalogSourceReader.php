@@ -39,7 +39,9 @@ final class AnimationCatalogSourceReader
             }
         }
 
-        $report = $this->editorialParser->parseSpreadsheet($spreadsheet);
+        // El XLSX editorial conserva la matriz legacy; #96 la sustituye mediante
+        // el overlay canónico posterior, sin convertir prioridades antiguas.
+        $report = $this->editorialParser->parseSpreadsheet($spreadsheet, true);
         $editorialById = [];
         $rowHasCatalogId = [];
         foreach ($report->getRows() as $editorial) {

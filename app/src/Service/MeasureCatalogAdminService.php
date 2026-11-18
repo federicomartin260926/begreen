@@ -90,11 +90,11 @@ final class MeasureCatalogAdminService
     }
 
     /**
-     * @param array<int, VerificationSource|null> $sourcesByPriority
+     * @param list<array{source:VerificationSource,suggestedQuality:string}> $sources
      *
      * @return array<int, array{field:string, message:string}>
      */
-    public function validateV23Measure(Measure $measure, array $sourcesByPriority): array
+    public function validateV23Measure(Measure $measure, array $sources): array
     {
         if (!$this->isCanonicalV23Measure($measure)) {
             return [];
@@ -145,10 +145,10 @@ final class MeasureCatalogAdminService
         }
 
         try {
-            $normalizedSources = $this->normalizeSourcesByPriority($sourcesByPriority);
+            $normalizedSources = $this->normalizeSources($sources);
         } catch (\InvalidArgumentException $e) {
             $errors[] = [
-                'field' => 'verificationSourcePriority1',
+                'field' => 'verificationSources',
                 'message' => $e->getMessage(),
             ];
 
@@ -157,7 +157,7 @@ final class MeasureCatalogAdminService
 
         if ($normalizedSources === []) {
             $errors[] = [
-                'field' => 'verificationSourcePriority1',
+                'field' => 'verificationSources',
                 'message' => 'La medida v23 debe tener al menos una fuente de verificación.',
             ];
         }
@@ -166,11 +166,11 @@ final class MeasureCatalogAdminService
     }
 
     /**
-     * @param array<int, VerificationSource|null> $sourcesByPriority
+     * @param list<array{source:VerificationSource,suggestedQuality:string}> $sources
      */
-    public function syncVerificationSources(Measure $measure, array $sourcesByPriority): void
+    public function syncVerificationSources(Measure $measure, array $sources): void
     {
-        $normalized = $this->normalizeSourcesByPriority($sourcesByPriority);
+        $normalized = $this->normalizeSources($sources);
 
         foreach ($measure->getVerificationSourceLinks()->toArray() as $existingLink) {
             $measure->removeVerificationSourceLink($existingLink);
@@ -179,38 +179,40 @@ final class MeasureCatalogAdminService
         foreach ($normalized as $item) {
             $link = new MeasureVerificationSource();
             $link
-                ->setPriority($item['priority'])
+                ->setSuggestedQuality($item['suggestedQuality'])
                 ->setVerificationSource($item['source']);
             $measure->addVerificationSourceLink($link);
         }
 
-        $measure->setVerificationSources($this->buildVerificationSourcesSummary($normalized));
+        // La colección normalizada es la única fuente de verdad; el texto legacy
+        // no soporta un catálogo sin límite de asociaciones.
+        $measure->setVerificationSources(null);
     }
 
     /**
-     * @param array<int, VerificationSource|null> $sourcesByPriority
-     *
-     * @return array<int, array{priority:int, source:VerificationSource}>
+     * @param list<array{source:VerificationSource,suggestedQuality:string}> $sources
+     * @return list<array{source:VerificationSource,suggestedQuality:string}>
      */
-    private function normalizeSourcesByPriority(array $sourcesByPriority): array
+    private function normalizeSources(array $sources): array
     {
         $normalized = [];
         $seenSources = [];
 
-        foreach ([1, 2, 3] as $priority) {
-            $source = $sourcesByPriority[$priority] ?? null;
-            if (!$source instanceof VerificationSource) {
-                continue;
+        foreach ($sources as $item) {
+            $source = $item['source'] ?? null;
+            $quality = trim((string) ($item['suggestedQuality'] ?? ''));
+            if (!$source instanceof VerificationSource || !in_array($quality, MeasureVerificationSource::SUGGESTED_QUALITIES, true)) {
+                throw new \InvalidArgumentException('Cada fuente seleccionada debe tener una calidad sugerida válida.');
             }
 
             $sourceId = $source->getId();
             if ($sourceId !== null && isset($seenSources[$sourceId])) {
-                throw new \InvalidArgumentException('No se puede repetir la misma fuente de verificación en varias prioridades.');
+                throw new \InvalidArgumentException('No se puede repetir la misma fuente de verificación.');
             }
 
             $normalized[] = [
-                'priority' => $priority,
                 'source' => $source,
+                'suggestedQuality' => $quality,
             ];
 
             if ($sourceId !== null) {
@@ -222,7 +224,7 @@ final class MeasureCatalogAdminService
     }
 
     /**
-     * @param array<int, array{priority:int, source:VerificationSource}> $normalized
+     * @param list<array{source:VerificationSource,suggestedQuality:string}> $normalized
      */
     private function buildVerificationSourcesSummary(array $normalized): ?string
     {
@@ -232,7 +234,7 @@ final class MeasureCatalogAdminService
 
         $parts = [];
         foreach ($normalized as $item) {
-            $parts[] = sprintf('%d. %s', $item['priority'], $this->normalizeVerificationSourceName((string) $item['source']->getName()));
+            $parts[] = sprintf('%s (%s)', $this->normalizeVerificationSourceName((string) $item['source']->getName()), $item['suggestedQuality']);
         }
 
         return implode(' | ', $parts);

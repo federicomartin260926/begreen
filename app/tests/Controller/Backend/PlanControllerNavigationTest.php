@@ -1809,7 +1809,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame('updated private note', $planMeasure->getInternalNotes());
     }
 
-    public function testUpdateSelectionPersistsEvidenceMetadataForVisibleFilesAndAnyCatalogSource(): void
+    public function testUpdateSelectionPreservesLegacyMetadataForVisibleFiles(): void
     {
         self::bootKernel();
         $basicPlan = $this->makeCommercialPlan('basic', [
@@ -1856,7 +1856,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $measure->addVerificationSourceLink(
             (new MeasureVerificationSource())
                 ->setVerificationSource($sourceAllowed)
-                ->setPriority(1)
+                ->setSuggestedQuality('Alto')
         );
 
         $plan = (new Plan())
@@ -1982,7 +1982,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         ], $planMeasure->getEvidenceMetadata());
     }
 
-    public function testUploadEvidencesStoresNonPriorityCatalogSourceForTheNewFile(): void
+    public function testUploadEvidencesStoresSourceLinkedToMeasureForTheNewFile(): void
     {
         self::bootKernel();
         $controller = $this->getControllerWithFeatureGate(
@@ -2019,7 +2019,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $measure->addVerificationSourceLink(
             (new MeasureVerificationSource())
                 ->setVerificationSource($sourceAllowed)
-                ->setPriority(1)
+                ->setSuggestedQuality('Alto')
         );
 
         $plan = (new Plan())
@@ -2055,7 +2055,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
 
         $request = $this->createRequest([
             'measureId' => (string) $measure->getId(),
-            'source_code' => 'manual',
+            'source_code' => 'invoice',
         ]);
         $request->files->set('evidences', [$uploadedFile]);
 
@@ -2096,7 +2096,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         self::assertSame('/uploads/evidences/existing.pdf' . "\n" . $data['files'][0], $planMeasure->getEvidence());
         self::assertSame([
             '/uploads/evidences/existing.pdf' => 'invoice',
-            $data['files'][0] => 'manual',
+            $data['files'][0] => 'invoice',
         ], $planMeasure->getEvidenceMetadata());
     }
 
@@ -2336,7 +2336,7 @@ final class PlanControllerNavigationTest extends KernelTestCase
         $measure->addVerificationSourceLink(
             (new MeasureVerificationSource())
                 ->setVerificationSource($sourceAllowed)
-                ->setPriority(1)
+                ->setSuggestedQuality('Alto')
         );
 
         $plan = (new Plan())

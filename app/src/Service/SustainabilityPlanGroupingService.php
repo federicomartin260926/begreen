@@ -184,8 +184,8 @@ final class SustainabilityPlanGroupingService
             $this->taxonomyPresenter->tripleBalanceAxes($measure)
         );
         $verificationSources = array_map(
-            static fn (array $source): string => sprintf('%d. %s', $source['priority'], $source['displayName'] ?? $source['name']),
-            $this->taxonomyPresenter->verificationSourcesWithPriority($measure)
+            static fn (array $source): string => sprintf('%s (%s)', $source['displayName'] ?? $source['name'], $source['suggestedQuality']),
+            $this->taxonomyPresenter->verificationSourcesWithQuality($measure)
         );
 
         $responsibles = [];

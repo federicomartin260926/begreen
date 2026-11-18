@@ -18,7 +18,7 @@ final class MeasureTemplateParserTest extends TestCase
             'film' => 'be_green_my_film_measures.xlsx',
             'event' => 'be_green_my_event_measures.xlsx',
         ] as $catalog => $filename) {
-            $report = $parser->parseFile(__DIR__.'/../../public/fixtures/'.$filename);
+            $report = $parser->parseFile(__DIR__.'/../../public/fixtures/'.$filename, true);
 
             self::assertSame('OK', $report->getStatus(), json_encode($report->getErrors(), JSON_UNESCAPED_UNICODE));
             self::assertCount(200, $report->getRows());
@@ -112,9 +112,9 @@ final class MeasureTemplateParserTest extends TestCase
         $sheet->setCellValue('R3', 'X');
         $sheet->setCellValue('S3', 'X');
         $sheet->setCellValue('T3', 'X');
-        $sheet->setCellValue('U3', '1');
-        $sheet->setCellValue('V3', '2');
-        $sheet->setCellValue('W3', '3');
+        $sheet->setCellValue('U3', 'Alto');
+        $sheet->setCellValue('V3', 'Medio');
+        $sheet->setCellValue('W3', 'Bajo');
         $sheet->setCellValue('X3', 'X');
         $sheet->setCellValue('Y3', 'X');
         $sheet->setCellValue('AA3', 'X');
@@ -147,11 +147,11 @@ final class MeasureTemplateParserTest extends TestCase
         self::assertSame('12; 13', $row['odsItems']);
         self::assertSame('Ambiental (E); Social (S); Económico (M)', $row['tripleBalanceAxes']);
         self::assertCount(3, $row['verificationSources']);
-        self::assertSame(1, $row['verificationSources'][0]['priority']);
+        self::assertSame('Alto', $row['verificationSources'][0]['suggestedQuality']);
         self::assertSame('Foto', $row['verificationSources'][0]['value']);
-        self::assertSame(2, $row['verificationSources'][1]['priority']);
+        self::assertSame('Medio', $row['verificationSources'][1]['suggestedQuality']);
         self::assertSame('Factura / Albarán', $row['verificationSources'][1]['value']);
-        self::assertSame(3, $row['verificationSources'][2]['priority']);
+        self::assertSame('Bajo', $row['verificationSources'][2]['suggestedQuality']);
         self::assertSame('Certif. / Licencia', $row['verificationSources'][2]['value']);
     }
 
@@ -186,7 +186,7 @@ final class MeasureTemplateParserTest extends TestCase
             'Alcance 1',
             'a; b',
             'ambiental; social',
-            '1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia',
+            'Alto: Foto | Medio: Factura / Albarán | Bajo: Certif. / Licencia',
             '',
             'Gamification message',
             '',
@@ -207,7 +207,7 @@ final class MeasureTemplateParserTest extends TestCase
         self::assertSame('Peach', $report->getRows()[0]['protocol']);
         self::assertSame(4, $report->getRows()[0]['score']);
         self::assertCount(3, $report->getRows()[0]['verificationSources']);
-        self::assertSame(2, $report->getRows()[0]['verificationSources'][1]['priority']);
+        self::assertSame('Medio', $report->getRows()[0]['verificationSources'][1]['suggestedQuality']);
         self::assertSame('Factura / Albarán', $report->getRows()[0]['verificationSources'][1]['value']);
         self::assertSame('Acción por departamento', $report->getRows()[0]['departmentActionText']);
         self::assertSame('Department action text', $report->getRows()[0]['departmentActionTextEn']);
@@ -248,7 +248,7 @@ final class MeasureTemplateParserTest extends TestCase
             'Alcance 1',
             'a; b',
             'ambiental; social',
-            '1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia',
+            'Alto: Foto | Medio: Factura / Albarán | Bajo: Certif. / Licencia',
             '',
             'Gamification message',
             '',

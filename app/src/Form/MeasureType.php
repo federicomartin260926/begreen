@@ -15,6 +15,8 @@ use App\Entity\CategoryGhg;
 use App\Entity\ImpactArea;
 use App\Entity\TripleBalanceAxis;
 use App\Entity\VerificationSource;
+use App\Entity\MeasureVerificationSource;
+use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\MeasureBlockRepository;
 use App\Repository\ProtocolRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
@@ -35,6 +37,7 @@ class MeasureType extends AbstractType
     public function __construct(
         private readonly ProtocolRepository $protocolRepository,
         private readonly MeasureBlockRepository $measureBlockRepository,
+        private readonly EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -47,9 +50,13 @@ class MeasureType extends AbstractType
         $existingTranslations = $options['translations'] ?? [];
         $measure              = $builder->getData();
         $verificationLinks    = $measure instanceof Measure ? $measure->getResolvedVerificationSourceLinks() : [];
-        $verificationLink1    = $verificationLinks[0] ?? null;
-        $verificationLink2    = $verificationLinks[1] ?? null;
-        $verificationLink3    = $verificationLinks[2] ?? null;
+        $verificationQualityByCode = [];
+        foreach ($verificationLinks as $verificationLink) {
+            $code = $verificationLink->getVerificationSource()?->getCode();
+            if ($code !== null) {
+                $verificationQualityByCode[$code] = $verificationLink->getSuggestedQuality();
+            }
+        }
         $measureBlock = $measure instanceof Measure ? $measure->getMeasureBlock() : null;
 
         $addMeasureBlockField = function (FormInterface $form, ?Protocol $protocol) use ($measureBlock): void {
@@ -265,36 +272,6 @@ class MeasureType extends AbstractType
                 'required' => false,
                 'by_reference' => false,
             ])
-            ->add('verificationSourcePriority1', EntityType::class, [
-                'class' => VerificationSource::class,
-                'choice_label' => 'name',
-                'query_builder' => fn($r) => $r->createQueryBuilder('v')->orderBy('v.sortOrder', 'ASC')->addOrderBy('v.code', 'ASC'),
-                'placeholder' => 'backend.common.select',
-                'label' => 'backend.measures.form.verification_source_priority_1',
-                'required' => false,
-                'mapped' => false,
-                'data' => $verificationLink1?->getVerificationSource(),
-            ])
-            ->add('verificationSourcePriority2', EntityType::class, [
-                'class' => VerificationSource::class,
-                'choice_label' => 'name',
-                'query_builder' => fn($r) => $r->createQueryBuilder('v')->orderBy('v.sortOrder', 'ASC')->addOrderBy('v.code', 'ASC'),
-                'placeholder' => 'backend.common.select',
-                'label' => 'backend.measures.form.verification_source_priority_2',
-                'required' => false,
-                'mapped' => false,
-                'data' => $verificationLink2?->getVerificationSource(),
-            ])
-            ->add('verificationSourcePriority3', EntityType::class, [
-                'class' => VerificationSource::class,
-                'choice_label' => 'name',
-                'query_builder' => fn($r) => $r->createQueryBuilder('v')->orderBy('v.sortOrder', 'ASC')->addOrderBy('v.code', 'ASC'),
-                'placeholder' => 'backend.common.select',
-                'label' => 'backend.measures.form.verification_source_priority_3',
-                'required' => false,
-                'mapped' => false,
-                'data' => $verificationLink3?->getVerificationSource(),
-            ])
             ->add('impact', ChoiceType::class, [
                 'label' => 'Impacto',
                 'choices' => ['Bajo' => 'Bajo', 'Medio' => 'Medio', 'Alto' => 'Alto'],
@@ -324,6 +301,25 @@ class MeasureType extends AbstractType
                 'attr'     => ['min' => 1, 'max' => 5, 'step' => 1, 'placeholder' => '1–5'],
                 'help'     => 'backend.measures.form.score_help',
             ]);
+
+        $canonicalSources = $this->entityManager->getRepository(VerificationSource::class)
+            ->createQueryBuilder('v')
+            ->andWhere('v.code IN (:codes)')
+            ->setParameter('codes', array_keys(VerificationSource::CANONICAL_SOURCES))
+            ->orderBy('v.sortOrder', 'ASC')
+            ->addOrderBy('v.code', 'ASC')
+            ->getQuery()
+            ->getResult();
+        foreach ($canonicalSources as $source) {
+            $builder->add('verificationSourceQuality_'.$source->getId(), ChoiceType::class, [
+                'label' => $source->getName(),
+                'choices' => array_combine(MeasureVerificationSource::SUGGESTED_QUALITIES, MeasureVerificationSource::SUGGESTED_QUALITIES),
+                'placeholder' => 'backend.measures.form.evidence_not_applicable',
+                'required' => false,
+                'mapped' => false,
+                'data' => $verificationQualityByCode[$source->getCode()] ?? null,
+            ]);
+        }
 
         $builder->addEventListener(FormEvents::PRE_SET_DATA, static function (FormEvent $event) use ($addMeasureBlockField): void {
             $measure = $event->getData();

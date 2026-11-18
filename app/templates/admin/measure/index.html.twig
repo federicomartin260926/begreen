@@ -275,7 +275,7 @@
                                 <th>{{ 'backend.measures.form.measure_block'|trans }}</th>
                                 <th>{{ 'backend.measures.form.departments'|trans }}</th>
                                 <th>{{ 'backend.measures.form.ods_items'|trans }}</th>
-                                <th>{{ 'backend.measures.form.verification_source_priority_1'|trans }}</th>
+                                <th>{{ 'backend.measures.form.verification_sources_quality'|trans }}</th>
                                 <th>{{ 'backend.measures.form.impact_areas'|trans }}</th>
                                 <th>{{ 'backend.measures.form.triple_balance_axes'|trans }}</th>
                                 <th class="text-center dt-head-center dt-nosort">{{ 'backend.common.actions'|trans }}</th>
@@ -295,7 +295,7 @@
                                 {% if measure.categoryGhg is null %}{% set missing = missing|merge(['Categoría GHG']) %}{% endif %}
                                 {% set departmentsMulti = taxonomyPresenter.departments(measure) %}
                                 {% set odsMulti = taxonomyPresenter.odsBadges(measure) %}
-                                {% set verificationLinks = taxonomyPresenter.verificationSourcesWithPriority(measure) %}
+                                {% set verificationLinks = taxonomyPresenter.verificationSourcesWithQuality(measure) %}
                                 {% set impactAreas = taxonomyPresenter.impactAreas(measure) %}
                                 {% set axes = taxonomyPresenter.tripleBalanceAxes(measure) %}
 
@@ -395,7 +395,7 @@
                                         {% if verificationLinks is not empty %}
                                             <ol class="mb-0 ps-3">
                                                 {% for link in verificationLinks %}
-                                                    <li>{{ link.priority }}. {{ link.displayName }}</li>
+                                                    <li>{{ link.displayName }} <span class="text-muted">({{ link.suggestedQuality }})</span></li>
                                                 {% endfor %}
                                             </ol>
                                         {% else %}

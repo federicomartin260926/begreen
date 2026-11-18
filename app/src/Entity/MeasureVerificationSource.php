@@ -14,6 +14,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 )]
 class MeasureVerificationSource
 {
+    public const SUGGESTED_QUALITIES = ['Alto', 'Medio/alto', 'Medio', 'Medio/bajo', 'Bajo'];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -27,9 +29,10 @@ class MeasureVerificationSource
     #[ORM\JoinColumn(nullable: false)]
     private ?VerificationSource $verificationSource = null;
 
-    #[ORM\Column(type: 'integer')]
-    #[Assert\Choice(choices: [1, 2, 3])]
-    private int $priority;
+    #[ORM\Column(name: 'suggested_quality', length: 10)]
+    #[Assert\Choice(choices: self::SUGGESTED_QUALITIES)]
+    #[Assert\NotBlank]
+    private string $suggestedQuality;
 
     public function getId(): ?int
     {
@@ -58,14 +61,18 @@ class MeasureVerificationSource
         return $this;
     }
 
-    public function getPriority(): int
+    public function getSuggestedQuality(): string
     {
-        return $this->priority;
+        return $this->suggestedQuality;
     }
 
-    public function setPriority(int $priority): self
+    public function setSuggestedQuality(string $suggestedQuality): self
     {
-        $this->priority = $priority;
+        if (!in_array($suggestedQuality, self::SUGGESTED_QUALITIES, true)) {
+            throw new \InvalidArgumentException(sprintf('Calidad sugerida no válida: "%s".', $suggestedQuality));
+        }
+
+        $this->suggestedQuality = $suggestedQuality;
         return $this;
     }
 }

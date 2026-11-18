@@ -244,7 +244,7 @@ final class MeasureTemplateSchema
     }
 
     /**
-     * @return array<int, array{priority:int, value:string}>
+     * @return list<array{suggestedQuality:string, value:string}>
      */
     public static function splitVerificationSourcesCell(?string $value): array
     {
@@ -261,17 +261,15 @@ final class MeasureTemplateSchema
                 continue;
             }
 
-            if (!preg_match('/^\s*(\d{1,2})\s*[\.\:\-)]?\s*(.+?)\s*$/u', $part, $matches)) {
+            if (!preg_match('/^\s*(Alto|Medio\/alto|Medio|Medio\/bajo|Bajo)\s*:\s*(.+?)\s*$/u', $part, $matches)) {
                 throw new \InvalidArgumentException(sprintf('Formato inválido de fuente de verificación: "%s".', $part));
             }
 
             $items[] = [
-                'priority' => (int) $matches[1],
+                'suggestedQuality' => $matches[1],
                 'value' => trim($matches[2]),
             ];
         }
-
-        usort($items, static fn (array $left, array $right): int => $left['priority'] <=> $right['priority']);
 
         return $items;
     }

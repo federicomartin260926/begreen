@@ -228,7 +228,7 @@ final class MeasureTemplateExporter
                 continue;
             }
 
-            $selectedVerificationSources[$this->formatVerificationSourceValue($source)] = (string) $link->getPriority();
+            $selectedVerificationSources[$this->formatVerificationSourceValue($source)] = $link->getSuggestedQuality();
         }
 
         $selectedOds = [];

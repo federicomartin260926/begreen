@@ -59,6 +59,29 @@ final class MeasureDepartmentFixtures extends Fixture implements FixtureGroupInt
         ['name' => 'Sostenibilidad',           'projectType' => 'rodaje', 'sortOrder' => 230],
         ['name' => 'Veterinario y Animales',   'projectType' => 'rodaje', 'sortOrder' => 240],
         ['name' => 'Guion y Dirección',        'projectType' => 'rodaje', 'sortOrder' => 250],
+
+        // Animation comparte el projectType rodaje, pero conserva su taxonomía propia.
+        ['name' => 'Administración y Finanzas', 'projectType' => 'rodaje', 'sortOrder' => 300],
+        ['name' => 'Animación 2D', 'projectType' => 'rodaje', 'sortOrder' => 310],
+        ['name' => 'Animación 3D', 'projectType' => 'rodaje', 'sortOrder' => 320],
+        ['name' => 'Captura / Mocap', 'projectType' => 'rodaje', 'sortOrder' => 330],
+        ['name' => 'Certificadora independiente', 'projectType' => 'rodaje', 'sortOrder' => 340],
+        ['name' => 'Composición / Postproducción', 'projectType' => 'rodaje', 'sortOrder' => 350],
+        ['name' => 'Compras y Proveedores', 'projectType' => 'rodaje', 'sortOrder' => 360],
+        ['name' => 'Dirección creativa / Guion', 'projectType' => 'rodaje', 'sortOrder' => 370],
+        ['name' => 'Diseño / Arte', 'projectType' => 'rodaje', 'sortOrder' => 380],
+        ['name' => 'Instalaciones / Oficina', 'projectType' => 'rodaje', 'sortOrder' => 390],
+        ['name' => 'IT / Sistemas', 'projectType' => 'rodaje', 'sortOrder' => 400],
+        ['name' => 'Legal / Derechos', 'projectType' => 'rodaje', 'sortOrder' => 410],
+        ['name' => 'Marketing / Comunicación', 'projectType' => 'rodaje', 'sortOrder' => 420],
+        ['name' => 'Merchandising / Licencias', 'projectType' => 'rodaje', 'sortOrder' => 430],
+        ['name' => 'Modelado / Rigging', 'projectType' => 'rodaje', 'sortOrder' => 440],
+        ['name' => 'Pipeline / TD', 'projectType' => 'rodaje', 'sortOrder' => 450],
+        ['name' => 'Render / Iluminación', 'projectType' => 'rodaje', 'sortOrder' => 460],
+        ['name' => 'RRHH / Personas', 'projectType' => 'rodaje', 'sortOrder' => 470],
+        ['name' => 'Servicio de prevención competente', 'projectType' => 'rodaje', 'sortOrder' => 480],
+        ['name' => 'Stop-motion / Taller', 'projectType' => 'rodaje', 'sortOrder' => 490],
+        ['name' => 'Storyboard / Preproducción', 'projectType' => 'rodaje', 'sortOrder' => 500],
     ];
 
     public static function getGroups(): array

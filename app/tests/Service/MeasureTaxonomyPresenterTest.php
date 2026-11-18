@@ -41,7 +41,7 @@ final class MeasureTaxonomyPresenterTest extends TestCase
         self::assertCount(1, $presenter->odsItems($measure));
         self::assertSame('12', $presenter->odsItems($measure)[0]['label']);
         self::assertSame('12', $presenter->odsBadges($measure)[0]['badgeLabel']);
-        self::assertSame([], $presenter->verificationSourcesWithPriority($measure));
+        self::assertSame([], $presenter->verificationSourcesWithQuality($measure));
         self::assertTrue($presenter->matchesDepartment($measure, 11));
         self::assertTrue($presenter->matchesOds($measure, 12));
         self::assertFalse($presenter->matchesImpactArea($measure, 99));
@@ -80,16 +80,16 @@ final class MeasureTaxonomyPresenterTest extends TestCase
 
         $linkLate = (new MeasureVerificationSource())
             ->setVerificationSource($sourceA)
-            ->setPriority(2);
+            ->setSuggestedQuality('Bajo');
         $linkEarly = (new MeasureVerificationSource())
             ->setVerificationSource($sourceB)
-            ->setPriority(1);
+            ->setSuggestedQuality('Alto');
         $measure->addVerificationSourceLink($linkLate);
         $measure->addVerificationSourceLink($linkEarly);
 
         $departments = $presenter->departments($measure);
         $odsItems = $presenter->odsItems($measure);
-        $sources = $presenter->verificationSourcesWithPriority($measure);
+        $sources = $presenter->verificationSourcesWithQuality($measure);
         $impactAreas = $presenter->impactAreas($measure);
         $axes = $presenter->tripleBalanceAxes($measure);
 
@@ -101,7 +101,7 @@ final class MeasureTaxonomyPresenterTest extends TestCase
         self::assertSame('13', $odsItems[1]['label']);
         self::assertSame('12', $presenter->odsBadges($measure)[0]['badgeLabel']);
         self::assertSame('13', $presenter->odsBadges($measure)[1]['badgeLabel']);
-        self::assertSame([1, 2], array_map(static fn (array $link): int => $link['priority'], $sources));
+        self::assertSame(['Alto', 'Bajo'], array_column($sources, 'suggestedQuality'));
         self::assertSame('Factura / Albarán', $sources[0]['displayName']);
         self::assertSame('Foto', $sources[1]['displayName']);
         self::assertSame('Cambio Climático', $impactAreas[0]['name']);

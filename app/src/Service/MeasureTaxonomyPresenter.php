@@ -115,9 +115,9 @@ final class MeasureTaxonomyPresenter
     }
 
     /**
-     * @return array<int, array{priority:int, code:string|null, name:string}>
+     * @return array<int, array{suggestedQuality:string, code:string|null, name:string}>
      */
-    public function verificationSourcesWithPriority(Measure $measure): array
+    public function verificationSourcesWithQuality(Measure $measure): array
     {
         $links = $measure->getResolvedVerificationSourceLinks();
 
@@ -125,7 +125,7 @@ final class MeasureTaxonomyPresenter
             $source = $link->getVerificationSource();
 
             return [
-                'priority' => $link->getPriority(),
+                'suggestedQuality' => $link->getSuggestedQuality(),
                 'code' => $source?->getCode(),
                 'name' => (string) ($source?->getName() ?? ''),
                 'displayName' => self::normalizeVerificationSourceName((string) ($source?->getName() ?? '')),

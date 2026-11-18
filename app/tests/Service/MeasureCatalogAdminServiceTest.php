@@ -69,7 +69,7 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         self::assertFalse($summary['isExpected']);
     }
 
-    public function testSyncVerificationSourcesKeepsPriorityOrderAndLegacyString(): void
+    public function testSyncVerificationSourcesSupportsMoreThanThreeQualities(): void
     {
         $service = new MeasureCatalogAdminService();
         $measure = $this->createCanonicalMeasure(5);
@@ -77,18 +77,20 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         $source1 = $this->createVerificationSource(11, 'foto', 'Foto');
         $source2 = $this->createVerificationSource(12, 'factura', 'Factura / Albarán');
         $source3 = $this->createVerificationSource(13, 'certificado', 'Certificado');
+        $source4 = $this->createVerificationSource(14, 'acta', 'Acta');
 
         $service->syncVerificationSources($measure, [
-            1 => $source1,
-            2 => $source2,
-            3 => $source3,
+            ['source' => $source1, 'suggestedQuality' => 'Alto'],
+            ['source' => $source2, 'suggestedQuality' => 'Medio/alto'],
+            ['source' => $source3, 'suggestedQuality' => 'Medio'],
+            ['source' => $source4, 'suggestedQuality' => 'Bajo'],
         ]);
 
         $links = $measure->getResolvedVerificationSourceLinks();
-        self::assertCount(3, $links);
-        self::assertSame([1, 2, 3], array_map(static fn (MeasureVerificationSource $link): int => $link->getPriority(), $links));
-        self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certificado', $measure->getVerificationSources());
-        self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certificado', $measure->getVerificationSourcesSummary());
+        self::assertCount(4, $links);
+        self::assertSame(['Alto', 'Medio/alto', 'Medio', 'Bajo'], array_map(static fn (MeasureVerificationSource $link): string => $link->getSuggestedQuality(), $links));
+        self::assertNull($measure->getVerificationSources());
+        self::assertSame('Foto (Alto) | Factura / Albarán (Medio/alto) | Certificado (Medio) | Acta (Bajo)', $measure->getVerificationSourcesSummary());
     }
 
     public function testSyncVerificationSourcesStripsNumericPrefixesFromLegacyNames(): void
@@ -100,12 +102,11 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         $source2 = $this->createVerificationSource(12, 'factura', '2. Factura / Albarán');
 
         $service->syncVerificationSources($measure, [
-            1 => $source1,
-            2 => $source2,
+            ['source' => $source1, 'suggestedQuality' => 'Alto'],
+            ['source' => $source2, 'suggestedQuality' => 'Bajo'],
         ]);
 
-        self::assertSame('1. Foto | 2. Factura / Albarán', $measure->getVerificationSources());
-        self::assertSame('1. Foto | 2. Factura / Albarán', $measure->getVerificationSourcesSummary());
+        self::assertSame('Foto (Alto) | Factura / Albarán (Bajo)', $measure->getVerificationSourcesSummary());
     }
 
     public function testSyncVerificationSourcesRejectsDuplicateSourceInDifferentPriorities(): void
@@ -117,8 +118,8 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         $service->syncVerificationSources($measure, [
-            1 => $source,
-            2 => $source,
+            ['source' => $source, 'suggestedQuality' => 'Alto'],
+            ['source' => $source, 'suggestedQuality' => 'Bajo'],
         ]);
     }
 
@@ -128,9 +129,7 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         $measure = $this->createCanonicalMeasure(0, false);
 
         $errors = $service->validateV23Measure($measure, [
-            1 => null,
-            2 => null,
-            3 => null,
+            // Sin asociaciones.
         ]);
 
         $fields = array_column($errors, 'field');
@@ -140,7 +139,7 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         self::assertContains('odsItems', $fields);
         self::assertContains('impactAreas', $fields);
         self::assertContains('tripleBalanceAxes', $fields);
-        self::assertContains('verificationSourcePriority1', $fields);
+        self::assertContains('verificationSources', $fields);
     }
 
     private function createCanonicalMeasure(int $score, bool $withTaxonomies = true): Measure
@@ -194,7 +193,7 @@ final class MeasureCatalogAdminServiceTest extends TestCase
 
             $link = (new MeasureVerificationSource())
                 ->setVerificationSource($source)
-                ->setPriority(1);
+                ->setSuggestedQuality('Alto');
             $measure->addVerificationSourceLink($link);
         }
 
@@ -206,7 +205,7 @@ final class MeasureCatalogAdminServiceTest extends TestCase
         $source = (new VerificationSource())
             ->setCode($code)
             ->setName($name)
-            ->setSortOrder(1);
+            ->setSortOrder($id);
         $this->setEntityId($source, $id);
 
         return $source;

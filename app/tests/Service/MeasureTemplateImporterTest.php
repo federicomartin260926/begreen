@@ -288,9 +288,9 @@ final class MeasureTemplateImporterTest extends TestCase
             'impactAreas' => 'a; b',
             'tripleBalanceAxes' => 'ambiental; social',
             'verificationSources' => [
-                ['priority' => 1, 'value' => 'Foto'],
-                ['priority' => 2, 'value' => 'Factura / Albarán'],
-                ['priority' => 3, 'value' => 'Certif. / Licencia'],
+                ['suggestedQuality' => 'Alto', 'value' => 'Foto'],
+                ['suggestedQuality' => 'Medio', 'value' => 'Factura / Albarán'],
+                ['suggestedQuality' => 'Bajo', 'value' => 'Certif. / Licencia'],
             ],
             'nameEn' => '',
             'nameReviewEn' => '',
@@ -320,9 +320,9 @@ final class MeasureTemplateImporterTest extends TestCase
             'impactAreas' => 'c',
             'tripleBalanceAxes' => 'economico',
             'verificationSources' => [
-                ['priority' => 1, 'value' => 'Foto'],
-                ['priority' => 2, 'value' => 'Factura / Albarán'],
-                ['priority' => 3, 'value' => 'Certif. / Licencia'],
+                ['suggestedQuality' => 'Alto', 'value' => 'Foto'],
+                ['suggestedQuality' => 'Medio', 'value' => 'Factura / Albarán'],
+                ['suggestedQuality' => 'Bajo', 'value' => 'Certif. / Licencia'],
             ],
             'nameEn' => '',
             'nameReviewEn' => '',
@@ -350,9 +350,12 @@ final class MeasureTemplateImporterTest extends TestCase
         self::assertCount(2, $persistedMeasures[0]->getResolvedImpactAreas());
         self::assertCount(2, $persistedMeasures[0]->getResolvedTripleBalanceAxes());
         self::assertCount(3, $persistedMeasures[0]->getResolvedVerificationSourceLinks());
-        self::assertSame(1, $persistedMeasures[0]->getResolvedVerificationSourceLinks()[0]->getPriority());
+        self::assertContains('Alto', array_map(
+            static fn (\App\Entity\MeasureVerificationSource $link): string => $link->getSuggestedQuality(),
+            $persistedMeasures[0]->getResolvedVerificationSourceLinks()
+        ));
         self::assertSame('¿Realizarás un inventario?', $persistedMeasures[0]->getQuestionText());
-        self::assertSame('1. Foto | 2. Factura / Albarán | 3. Certif. / Licencia', $persistedMeasures[0]->getVerificationSourcesSummary());
+        self::assertSame('Certif. / Licencia (Bajo) | Factura / Albarán (Medio) | Foto (Alto)', $persistedMeasures[0]->getVerificationSourcesSummary());
         self::assertSame('v23', $persistedMeasures[0]->getImportVersion());
         self::assertSame(70, $category->getSortOrder());
         self::assertSame(10, $departmentProd->getSortOrder());
@@ -727,7 +730,7 @@ final class MeasureTemplateImporterTest extends TestCase
             'impactAreas' => 'a',
             'tripleBalanceAxes' => 'ambiental',
             'verificationSources' => [
-                ['priority' => 1, 'value' => 'Foto'],
+                ['suggestedQuality' => 'Alto', 'value' => 'Foto'],
             ],
             'nameEn' => '',
             'nameReviewEn' => '',
@@ -755,7 +758,7 @@ final class MeasureTemplateImporterTest extends TestCase
             'impactAreas' => 'a',
             'tripleBalanceAxes' => 'ambiental',
             'verificationSources' => [
-                ['priority' => 1, 'value' => 'Foto'],
+                ['suggestedQuality' => 'Alto', 'value' => 'Foto'],
             ],
             'nameEn' => '',
             'nameReviewEn' => '',

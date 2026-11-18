@@ -1,5 +1,6 @@
 {% set evidenceCountLabel = evidenceCount == 1 ? ('backend.plan.review.evidences_attached_count_one'|trans) : ('backend.plan.review.evidences_attached_count_other'|trans) %}
 {% set evidenceBlockWrapperClass = evidenceBlockWrapperClass|default('') %}
+{% set allVerificationSources = allVerificationSources|default(verificationSources) %}
 <div class="{{ evidenceBlockWrapperClass }} mb-3" data-evidence-block data-measure-id="{{ measure.id }}" data-evidence-count="{{ evidenceCount }}">
     <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -54,8 +55,8 @@
                 {% if path %}
                     {% set selectedSourceCode = evidenceMetadata[path]|default('') %}
                     {% set selectedSourceLabel = null %}
-                    {% if verificationSources is not empty and selectedSourceCode is not same as('') %}
-                        {% for source in verificationSources %}
+                    {% if allVerificationSources is not empty and selectedSourceCode is not same as('') %}
+                        {% for source in allVerificationSources %}
                             {% if source.code == selectedSourceCode %}
                                 {% set selectedSourceLabel = source.displayName %}
                             {% endif %}
@@ -120,9 +121,12 @@
                                     data-evidence-source-select="1"
                                     data-evidence-path="{{ path }}">
                                     <option value="">{{ 'backend.plan.review.evidence_source_pending'|trans }}</option>
+                                    {% if selectedSourceCode is not same as('') and selectedSourceLabel and verificationSources|filter(source => source.code == selectedSourceCode) is empty %}
+                                        <option value="{{ selectedSourceCode }}" selected>{{ selectedSourceLabel }}</option>
+                                    {% endif %}
                                     {% for source in verificationSources %}
                                         <option value="{{ source.code }}" {% if source.code == selectedSourceCode %}selected{% endif %}>
-                                            {{ source.displayName }}
+                                            {{ source.displayName }} ({{ source.suggestedQuality }})
                                         </option>
                                     {% endfor %}
                                 </select>
@@ -160,7 +164,7 @@
                                     required>
                                     <option value="">{{ 'backend.common.select'|trans }}</option>
                                     {% for source in verificationSources %}
-                                        <option value="{{ source.code }}">{{ source.displayName }}</option>
+                                        <option value="{{ source.code }}">{{ source.displayName }} ({{ source.suggestedQuality }})</option>
                                     {% endfor %}
                                 </select>
                                 <div

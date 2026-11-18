@@ -251,19 +251,19 @@ final class MeasureTemplateExporterTest extends TestCase
 
         $linkFoto = (new MeasureVerificationSource())
             ->setVerificationSource($sourceFoto)
-            ->setPriority(1);
+            ->setSuggestedQuality('Alto');
         $linkFoto->setMeasure($measure);
         $measure->addVerificationSourceLink($linkFoto);
 
         $linkFactura = (new MeasureVerificationSource())
             ->setVerificationSource($sourceFactura)
-            ->setPriority(2);
+            ->setSuggestedQuality('Medio');
         $linkFactura->setMeasure($measure);
         $measure->addVerificationSourceLink($linkFactura);
 
         $linkCert = (new MeasureVerificationSource())
             ->setVerificationSource($sourceCert)
-            ->setPriority(3);
+            ->setSuggestedQuality('Bajo');
         $linkCert->setMeasure($measure);
         $measure->addVerificationSourceLink($linkCert);
 
@@ -321,9 +321,9 @@ final class MeasureTemplateExporterTest extends TestCase
         self::assertSame('X', (string) $sheet->getCell('V3')->getValue());
         self::assertSame('', (string) $sheet->getCell('W3')->getValue());
         self::assertSame('X', (string) $sheet->getCell('X3')->getValue());
-        self::assertSame('3', (string) $sheet->getCell('Y3')->getValue());
-        self::assertSame('2', (string) $sheet->getCell('Z3')->getValue());
-        self::assertSame('1', (string) $sheet->getCell('AA3')->getValue());
+        self::assertSame('Bajo', (string) $sheet->getCell('Y3')->getValue());
+        self::assertSame('Medio', (string) $sheet->getCell('Z3')->getValue());
+        self::assertSame('Alto', (string) $sheet->getCell('AA3')->getValue());
         self::assertSame('', (string) $sheet->getCell('AB3')->getValue());
         self::assertSame('', (string) $sheet->getCell('AC3')->getValue());
         self::assertSame('X', (string) $sheet->getCell('AD3')->getValue());
@@ -345,5 +345,9 @@ final class MeasureTemplateExporterTest extends TestCase
         self::assertSame('Medio', $roundTrip->getRows()[0]['impact']);
         self::assertSame('Baja', $roundTrip->getRows()[0]['difficulty']);
         self::assertSame('Bajo', $roundTrip->getRows()[0]['cost']);
+        self::assertSame(
+            ['Bajo', 'Medio', 'Alto'],
+            array_column($roundTrip->getRows()[0]['verificationSources'], 'suggestedQuality')
+        );
     }
 }

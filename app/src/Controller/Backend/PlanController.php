@@ -1223,13 +1223,15 @@ class PlanController extends AbstractController
 
                 $currentEvidencePaths = array_fill_keys($planMeasure->getEvidencePaths(), true);
 
-                $allowedSourceCodes = $this->verificationSourceCodes($em);
+                $allowedSourceCodes = $this->verificationSourceCodesForMeasure($planMeasure->getMeasure());
+                $existingMetadata = $planMeasure->getEvidenceMetadata() ?? [];
 
                 $metadata = [];
                 foreach ($rawMetadata as $path => $sourceCode) {
                     $path = trim((string) $path);
                     $sourceCode = trim((string) $sourceCode);
-                    if ($path === '' || $sourceCode === '' || !isset($allowedSourceCodes[$sourceCode]) || !isset($currentEvidencePaths[$path])) {
+                    $keepsLegacySource = trim((string) ($existingMetadata[$path] ?? '')) === $sourceCode;
+                    if ($path === '' || $sourceCode === '' || (!isset($allowedSourceCodes[$sourceCode]) && !$keepsLegacySource) || !isset($currentEvidencePaths[$path])) {
                         continue;
                     }
 
@@ -1655,7 +1657,7 @@ class PlanController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Feature not available for current plan tier'], 403);
         }
 
-        $allowedSourceCodes = $this->verificationSourceCodes($em);
+        $allowedSourceCodes = $this->verificationSourceCodesForMeasure($measure);
         if ($sourceCode === '') {
             return new JsonResponse(['success' => false, 'error' => 'Debes seleccionar una fuente de verificación.'], 400);
         }
@@ -1723,7 +1725,7 @@ class PlanController extends AbstractController
         $em->persist($pm);
         $em->flush();
 
-        $verificationSources = $this->taxonomyPresenter->verificationSourceCatalog(
+        $allVerificationSources = $this->taxonomyPresenter->verificationSourceCatalog(
             $em->getRepository(VerificationSource::class)->findBy([], [
                 'sortOrder' => 'ASC',
                 'name' => 'ASC',
@@ -1741,7 +1743,8 @@ class PlanController extends AbstractController
                 'canManageEvidence' => true,
                 'evidenceList' => $existing,
                 'evidenceMetadata' => $metadata,
-                'verificationSources' => $verificationSources,
+                'verificationSources' => $this->taxonomyPresenter->verificationSourcesWithQuality($measure),
+                'allVerificationSources' => $allVerificationSources,
                 'evidenceCount' => count($existing),
                 'evidenceBlockWrapperClass' => '',
             ]),
@@ -1754,15 +1757,11 @@ class PlanController extends AbstractController
     }
 
     /** @return array<string, true> */
-    private function verificationSourceCodes(EntityManagerInterface $em): array
+    private function verificationSourceCodesForMeasure(?Measure $measure): array
     {
         $codes = [];
-        foreach ($em->getRepository(VerificationSource::class)->findAll() as $source) {
-            if (!$source instanceof VerificationSource) {
-                continue;
-            }
-
-            $code = trim($source->getCode());
+        foreach ($measure?->getResolvedVerificationSourceLinks() ?? [] as $link) {
+            $code = trim((string) $link->getVerificationSource()?->getCode());
             if ($code !== '') {
                 $codes[$code] = true;
             }
