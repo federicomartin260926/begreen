@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
-  static targets = ['protocol', 'department', 'measureBlock'];
+  static targets = ['protocol', 'department', 'measureBlock', 'evidenceCount', 'evidenceBadges', 'evidenceEmpty', 'evidenceUnsaved'];
   static values  = {
     departmentsBase: String,
     measureBlocksBase: String,
@@ -10,6 +10,8 @@ export default class extends Controller {
   };
 
   connect() {
+    // The current form values are the initial saved state; no AJAX save is performed.
+    this.initialEvidenceValues = new Map(this.evidenceControls().map((select) => [select.name, select.value]));
     // Si ya hay un protocolo seleccionado al entrar (edit o default), cargar departamentos
     const protoId = this.protocolTarget?.value;
     if (protoId) {
@@ -22,6 +24,33 @@ export default class extends Controller {
         : (this.currentDepartmentValue ? [this.currentDepartmentValue] : []);
       this.loadDepartments(protoId, preselectIds);
       this.loadMeasureBlocks(protoId, this.currentMeasureBlockValue || null);
+    }
+  }
+
+  evidenceControls() {
+    return Array.from(this.element.querySelectorAll('select[data-evidence-quality="1"]'));
+  }
+
+  onEvidenceQualityChange() {
+    const selected = this.evidenceControls().filter((select) => select.value !== '');
+    if (this.hasEvidenceCountTarget) this.evidenceCountTarget.textContent = String(selected.length);
+
+    if (this.hasEvidenceBadgesTarget) {
+      this.evidenceBadgesTarget.replaceChildren();
+      for (const select of selected) {
+        const badge = document.createElement('span');
+        badge.className = 'badge rounded-pill text-bg-light border text-dark fw-normal';
+        badge.textContent = `${select.dataset.evidenceLabel || ''} · ${select.value}`;
+        this.evidenceBadgesTarget.appendChild(badge);
+      }
+      this.evidenceBadgesTarget.classList.toggle('d-none', selected.length === 0);
+    }
+    if (this.hasEvidenceEmptyTarget) this.evidenceEmptyTarget.classList.toggle('d-none', selected.length !== 0);
+    if (this.hasEvidenceUnsavedTarget) {
+      const dirty = this.evidenceControls().some((select) =>
+        select.value !== this.initialEvidenceValues.get(select.name)
+      );
+      this.evidenceUnsavedTarget.classList.toggle('d-none', !dirty);
     }
   }
 

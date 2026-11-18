@@ -225,15 +225,54 @@
             </div>
 
             <hr>
-            <h3 class="h6">{{ 'backend.measures.form.verification_sources_quality'|trans }}</h3>
-            <div class="row g-2 mb-3">
+            {# #96: evidence controls stay in the same Symfony form, inside the Bootstrap modal. #}
+            <section class="mb-4" aria-labelledby="evidence-sources-heading">
+                <h3 class="h6" id="evidence-sources-heading">{{ 'backend.measures.form.verification_sources_quality'|trans }}</h3>
+                {% set evidenceCount = 0 %}
                 {% for field in form %}
-                    {% if field.vars.name starts with 'verificationSourceQuality_' %}
-                        <div class="col-md-6 col-xl-4">
-                            {{ form_row(field, {'attr': {'class': 'form-select form-select-sm'}}) }}
-                        </div>
+                    {% if field.vars.name starts with 'verificationSourceQuality_' and field.vars.value is not empty %}
+                        {% set evidenceCount = evidenceCount + 1 %}
                     {% endif %}
                 {% endfor %}
+                <p class="mb-2 text-muted small">Evidencias asociadas: <strong data-measure-form-target="evidenceCount">{{ evidenceCount }}</strong></p>
+                <div class="d-flex flex-wrap gap-2 mb-3{{ evidenceCount == 0 ? ' d-none' : '' }}" aria-label="Resumen de evidencias asociadas" data-measure-form-target="evidenceBadges">
+                    {% for field in form %}
+                        {% if field.vars.name starts with 'verificationSourceQuality_' and field.vars.value is not empty %}
+                            <span class="badge rounded-pill text-bg-light border text-dark fw-normal">{{ field.vars.label|trans }} · {{ field.vars.value }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <p class="text-muted small mb-3{{ evidenceCount > 0 ? ' d-none' : '' }}" data-measure-form-target="evidenceEmpty">No hay fuentes de evidencia asociadas.</p>
+                <p class="text-warning-emphasis small mb-2 d-none" role="status" aria-live="polite" data-measure-form-target="evidenceUnsaved">Cambios sin guardar. Pulsa Actualizar para guardarlos.</p>
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#measureEvidenceModal">
+                    Gestionar evidencias
+                </button>
+            </section>
+
+            <div class="modal fade" id="measureEvidenceModal" tabindex="-1" aria-labelledby="measureEvidenceModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 class="modal-title fs-5" id="measureEvidenceModalLabel">{{ 'backend.measures.form.verification_sources_quality'|trans }}</h4>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                {% for field in form %}
+                                    {% if field.vars.name starts with 'verificationSourceQuality_' %}
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            {{ form_row(field, {'attr': {'class': 'form-select form-select-sm', 'data-evidence-quality': '1', 'data-evidence-label': field.vars.label|trans, 'data-action': 'change->measure-form#onEvidenceQualityChange'}}) }}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            <span class="text-muted small">Los cambios se guardan con el botón principal del formulario.</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="row">
