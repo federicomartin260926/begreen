@@ -9,13 +9,16 @@ La aplicación Symfony está operativa y cubre, entre otros, estos ámbitos:
 - gestión de proyectos y wizard de alta;
 - Home/dashboard y proyecto activo por sesión;
 - elaboración e implementación del plan de sostenibilidad como fases diferenciadas;
-- medidas, seguimiento, evidencias y exportaciones según el plan comercial;
-- planes comerciales por fase, Stripe Checkout y facturación de proyecto;
+- medidas, planificación, implementación y seguimiento, evidencias y exportaciones según el plan comercial;
+- un único plan comercial por proyecto (Basic, Standard o Pro), Stripe Checkout y facturación de proyecto;
 - cálculo y gestión de emisiones;
 - administración de catálogos, planes y usuarios;
-- acceso a proyectos mediante membresías de usuario.
+- acceso a proyectos mediante membresías de usuario;
+- rol `ROLE_VERIFIER` limitado a los proyectos asignados mediante membresía.
 
-Los detalles funcionales, límites y trabajo pendiente se documentan en los documentos enlazados a continuación. El modelo actual de usuarios no incluye todavía organizaciones/equipos, roles efectivos por proyecto ni invitaciones de colaboradores.
+El proyecto continúa en fase de desarrollo. Actualmente existen dos entornos operativos: **LOCAL** y **DEV VPS**. No existe todavía un entorno de producción separado.
+
+Los detalles funcionales, límites y trabajo pendiente se documentan en los documentos enlazados a continuación. El modelo actual no introduce organizaciones/equipos ni un sistema general de invitaciones de colaboradores salvo donde la documentación específica indique lo contrario.
 
 ## Documentación funcional y técnica
 
@@ -35,11 +38,11 @@ Los detalles funcionales, límites y trabajo pendiente se documentan en los docu
 - [Tiers comerciales](../docs/commercial-tiers.md): acceso y reglas por nivel.
 - [Funciones de planes comerciales](../docs/commercial-plan-features.md): inventario de funcionalidades visibles.
 - [Comparativas de planes comerciales](../docs/commercial-plan-comparisons.md): criterios de comparación.
-- [Stripe Payments](../docs/stripe-payments.md): Checkout, suscripciones de proyecto y facturación.
+- [Stripe Payments](../docs/stripe-payments.md): Checkout y facturación del proyecto.
 
 ### Usuarios, roles y permisos
 
-- [Usuarios, membresías de proyecto e invitaciones](../docs/users-project-memberships-and-invitations.md): modelo actual, limitaciones y alternativas de colaboración.
+- [Usuarios, membresías de proyecto e invitaciones](../docs/users-project-memberships-and-invitations.md): modelo de acceso y alternativas de colaboración.
 
 ## Stack técnico
 
@@ -62,27 +65,70 @@ El repositorio raíz contiene el Makefile y el envoltorio de despliegue. La apli
 - `app/templates/`: vistas Twig.
 - `app/assets/`: Bootstrap, Stimulus y recursos frontend.
 - `app/translations/`: mensajes ES/EN.
-- `app/public/`: frontend público, assets compilados y subidas.
+- `app/public/`: frontend público, assets compilados, fixtures versionados y subidas.
 - `app/docker/legacy/`: stack Docker anterior conservado como referencia.
 - `docs/`: documentación funcional y técnica especializada.
 
+## Catálogo de medidas
+
+El catálogo canónico actual contiene **637 medidas**:
+
+- Film: 200;
+- Event: 200;
+- Animation: 237.
+
+Los catálogos versionados se mantienen en `app/public/fixtures/` y son la referencia reproducible para la carga del catálogo.
+
+El modelo actual soporta, entre otros:
+
+- departamentos asociados a cada medida;
+- ODS y áreas de impacto;
+- Impacto, Dificultad y Coste;
+- Planificación ES/EN;
+- Implementación y seguimiento ES/EN;
+- múltiples fuentes de evidencia por medida;
+- calidad sugerida de evidencia;
+- metadatos específicos de Animation, incluido el resultado ambiental esperado.
+
+Las columnas técnicas de auditoría y certificación que todavía no estén modeladas en la aplicación permanecen conservadas en las fuentes canónicas hasta que sus requerimientos funcionales se implementen.
+
 ## Entornos Docker
 
-El flujo oficial se ejecuta desde la raíz del repositorio mediante el `Makefile`. Este combina:
+El flujo oficial se ejecuta desde la raíz del repositorio mediante el `Makefile`.
 
-- `app/docker-compose.yml`: servicios base.
-- `app/docker-compose.dev.yml`: desarrollo local.
-- `app/docker-compose.prod.yml`: producción.
+### LOCAL
+
+Combina:
+
+- `app/docker-compose.yml`: servicios base;
+- `app/docker-compose.dev.yml`: configuración de desarrollo local.
+
+Configuración:
+
+- `app/.env`;
+- `app/.env.local` para overrides y secretos no versionados.
+
+### DEV VPS
+
+El entorno remoto de desarrollo añade:
+
+- `app/docker-compose.vps.yml`.
+
+El repositorio remoto está actualmente en:
+
+```text
+/home/fede/www/begreen
+```
+
+El entorno DEV es el único destino remoto disponible actualmente. No debe asumirse ni utilizarse un entorno PROD hasta que exista y se configure expresamente.
 
 Servicios principales:
 
-- `begreen-php`: PHP 8.3 FPM.
-- `begreen-nginx`: Nginx sirviendo `app/public/`.
-- `begreen-db`: MariaDB 11.3.
-- `begreen-phpmyadmin`: solo desarrollo.
-- `begreen-mailpit`: solo desarrollo.
-
-Desarrollo usa `app/.env` y `app/.env.local`; producción usa `app/.env` y `app/.env.prod`.
+- `begreen-php`: PHP 8.3 FPM;
+- `begreen-nginx`: Nginx sirviendo `app/public/`;
+- `begreen-db`: MariaDB 11.3;
+- `begreen-phpmyadmin`: desarrollo;
+- `begreen-mailpit`: desarrollo local cuando está habilitado.
 
 ## Desarrollo local
 
@@ -121,20 +167,34 @@ Los puertos pueden ajustarse mediante `APP_HTTP_PORT`, `APP_DB_PORT`, `APP_PMA_P
 
 ### Fixtures y esquema
 
-En desarrollo, el flujo de esquema oficial es `doctrine:schema:update`:
+En esta fase de desarrollo, el flujo oficial de esquema es `doctrine:schema:update`:
 
 ```bash
 make schema-update
 make fixtures
 ```
 
-Para crear un dump de la base local cargada con fixtures:
+`make fixtures` purga y reconstruye la base de datos del entorno en el que se ejecuta. Debe utilizarse únicamente cuando la tarea lo autorice expresamente.
+
+Para crear un dump de la base LOCAL cargada con fixtures:
 
 ```bash
 make db-dump-fixtures
 ```
 
-`make fixtures` reemplaza los datos de la base de desarrollo. No debe ejecutarse directamente en producción.
+### Protección del catálogo en DEV
+
+Franc puede modificar medidas directamente desde **Administración > Medidas** en DEV. Por ello, antes de cualquier recarga, purge o reset de fixtures en DEV es obligatorio:
+
+1. inspeccionar si existen cambios de catálogo posteriores a la última sincronización conocida;
+2. comparar y reconciliar esas diferencias con las fuentes canónicas;
+3. incorporar a los fixtures/fuentes los cambios intencionales;
+4. detenerse si una diferencia es ambigua;
+5. realizar un backup completo y fresco de la base DEV inmediatamente antes de la operación destructiva;
+6. ejecutar esquema/fixtures solo tras esa comprobación;
+7. verificar después del reload el catálogo y los proyectos demo ECOEMBES y JACOB'S CREEK, incluidos logos y planes comerciales.
+
+La base DEV no es la fuente canónica permanente: una vez reconciliados los cambios intencionales, las fuentes versionadas vuelven a ser la referencia.
 
 ### Assets y pruebas
 
@@ -151,87 +211,58 @@ La suite PHPUnit se ejecuta con:
 make test
 ```
 
-## Prueba de conexión con el proveedor de IA
+Por defecto deben preferirse pruebas focales proporcionales al riesgo del cambio frente a ejecutar toda la suite para modificaciones pequeñas.
 
-El comando `app:ai:test-report` verifica la configuración, autenticación, conexión con el proveedor configurado, generación estructurada y validación y parseo de la respuesta. Opera a través de `AiReportProviderInterface`, por lo que no está ligado conceptualmente a OpenAI ni a Anthropic, y usa exclusivamente datos ficticios sin persistirlos ni escribir archivos.
+## IA y generación narrativa
 
-`AI_PROVIDER` admite `openai` o `anthropic`. Cada proveedor requiere configurar en `app/.env.local` sus variables privadas (`AI_API_KEY` y `AI_MODEL` para OpenAI; `ANTHROPIC_API_KEY` y `ANTHROPIC_MODEL` para Anthropic). `ANTHROPIC_MODEL` no tiene valor por defecto y debe definirse antes de seleccionar Anthropic. No se debe versionar ninguna clave. El comando prueba el proveedor seleccionado realizando una llamada real, por lo que consume saldo o cuota.
+La aplicación dispone de infraestructura para generación narrativa mediante proveedor de IA y de comandos técnicos de diagnóstico/generación.
 
-Las instrucciones del informe narrativo se mantienen en `config/ai_report_prompt.yaml` bajo control de versiones. Su campo `version` forma parte de la vigencia del informe almacenado: debe incrementarse al cambiar las instrucciones para forzar la regeneración automática en la siguiente solicitud, sin incluir el texto completo del prompt en el hash. Las instrucciones actuales están redactadas explícitamente para funcionar bien con `gpt-4.1-mini`, pero siguen siendo compatibles con otros proveedores.
+**Estado operativo actual:** las llamadas reales a proveedores externos de IA están deshabilitadas por decisión de seguridad mientras se mantiene abierta la investigación correspondiente. No deben reactivarse ni ejecutarse comandos que realicen llamadas reales salvo autorización expresa.
 
-Para ejecutarlo en local con una configuración de proveedor válida:
+Las claves y modelos se configuran exclusivamente mediante variables privadas fuera de Git. Nunca deben versionarse, imprimirse ni incluirse en logs.
 
-```bash
-docker compose -p begreen \
-  --env-file app/.env \
-  --env-file app/.env.local \
-  -f app/docker-compose.yml \
-  -f app/docker-compose.dev.yml \
-  exec -T php \
-  php bin/console app:ai:test-report
-```
+Cuando la funcionalidad vuelva a estar autorizada, los comandos existentes podrán utilizarse de acuerdo con su documentación y teniendo en cuenta que una llamada real puede consumir saldo o cuota.
 
-## Generación manual del informe narrativo de IA
+Las instrucciones del informe narrativo se mantienen en `config/ai_report_prompt.yaml` bajo control de versiones. Los cálculos siguen siendo lógica determinista de la aplicación y no deben trasladarse al prompt.
 
-El comando `app:ai:generate-plan-report` genera o reutiliza el informe narrativo de Elaboración del plan asociado a un proyecto existente. Es una herramienta de diagnóstico y prueba manual: no sustituye al flujo normal de generación de PDF.
+## Despliegue DEV VPS
 
-Sintaxis:
+No existe actualmente un entorno de producción separado. El único despliegue remoto se realiza en **DEV VPS**.
+
+Desde el servidor:
 
 ```bash
-php bin/console app:ai:generate-plan-report {projectId} [--locale=es]
+cd /home/fede/www/begreen || exit 1
+make dev-vps-ps
 ```
 
-`projectId` es obligatorio. El comando resuelve el plan de Elaboración asociado al proyecto. La opción `--locale` usa `es` por defecto y admite actualmente `es` y `en`.
-
-Ejemplos:
+Actualización normal de código y dependencias:
 
 ```bash
-# Informe en español
-docker compose -p begreen \
-  --env-file app/.env \
-  --env-file app/.env.local \
-  -f app/docker-compose.yml \
-  -f app/docker-compose.dev.yml \
-  exec -T php \
-  php bin/console app:ai:generate-plan-report 123 --locale=es
-
-# Informe en inglés
-docker compose -p begreen \
-  --env-file app/.env \
-  --env-file app/.env.local \
-  -f app/docker-compose.yml \
-  -f app/docker-compose.dev.yml \
-  exec -T php \
-  php bin/console app:ai:generate-plan-report 123 --locale=en
+cd /home/fede/www/begreen || exit 1
+make dev-vps-update
 ```
 
-El informe se reutiliza mientras su JSON continúe vigente; si el contexto de Elaboración, el proveedor, el modelo o la versión del prompt cambian, se regenera. El archivo privado se guarda en:
-
-```text
-var/storage/ai/{planId}/{locale}.json
-```
-
-Si no existe un informe vigente, el comando puede llamar al proveedor real y consumir saldo o cuota. No lo ejecutes para comprobaciones que no requieran una generación real.
-
-## Despliegue
-
-Los comandos de producción se ejecutan desde la raíz:
+Cuando sea necesario reconstruir imágenes:
 
 ```bash
-make up-prod
-make up-prod-build
-make deploy-prod
-make deploy-prod-build
-make ps-prod
+cd /home/fede/www/begreen || exit 1
+make dev-vps-update-build
 ```
 
-`deploy-prod` y `deploy-prod-build` actualizan el código, instalan dependencias de producción, compilan assets, limpian caché y muestran el SQL pendiente de Doctrine. No aplican el esquema automáticamente. `deploy-prod-full` sí ejecuta la actualización de esquema y debe utilizarse únicamente tras revisar el cambio esperado.
+Los cambios de schema o fixtures requieren autorización específica y no deben introducirse implícitamente dentro de una actualización ordinaria.
 
-Durante la fase de desarrollo, el procedimiento de reemplazo de datos por fixtures requiere una decisión explícita porque sobrescribe la base de producción. Los comandos disponibles son `make db-backup-prod` y `make db-import-prod DUMP=backups/archivo.sql`.
+Antes de una operación destructiva de catálogo en DEV deben cumplirse las reglas de **Protección del catálogo en DEV** descritas anteriormente.
+
+Después de cada despliegue debe ejecutarse el QA focal mínimo necesario para validar la funcionalidad afectada.
 
 ## Proyecto activo
 
-El backend trabaja con un proyecto activo almacenado en la sesión Symfony (`active_project_id`). Si no existe uno válido, `ActiveProjectSubscriber` selecciona el primer proyecto accesible para el usuario. Para usuarios normales, el acceso se determina mediante sus membresías de proyecto; Administradores ven el listado completo.
+El backend trabaja con un proyecto activo almacenado en la sesión Symfony (`active_project_id`). Si no existe uno válido, `ActiveProjectSubscriber` selecciona el primer proyecto accesible para el usuario.
+
+- `ROLE_ADMIN` mantiene visibilidad global de proyectos según el contrato actual.
+- `ROLE_VERIFIER` está limitado a los proyectos asignados mediante `ProjectMembership`.
+- otros usuarios acceden según sus membresías y permisos aplicables.
 
 ## Xdebug
 
@@ -246,6 +277,8 @@ La configuración de VS Code está en [`.vscode/launch.json`](.vscode/launch.jso
 ## Seguridad y configuración
 
 - No incluir secretos reales en Git.
-- Usar `app/.env.local` para overrides locales y `app/.env.prod` para producción.
+- Usar `app/.env.local` para overrides y secretos de LOCAL/DEV, manteniéndolo fuera de control de versiones.
 - `app/.env.example` contiene únicamente valores de ejemplo.
+- No asumir ni configurar `.env.prod` mientras no exista un entorno de producción explícito.
+- No desplegar, modificar schema ni recargar fixtures en DEV sin autorización específica de la tarea.
 - Las variables y el flujo de Stripe están documentados en [Stripe Payments](../docs/stripe-payments.md).
