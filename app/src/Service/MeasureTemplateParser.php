@@ -178,6 +178,7 @@ final class MeasureTemplateParser
             'difficulty' => $this->cell($row, $columnMap['difficulty'] ?? null),
             'cost' => $this->cell($row, $columnMap['cost'] ?? null),
             'implementation' => $this->cell($row, $columnMap['implementation'] ?? null),
+            'implementationFollowUp' => $this->cell($row, $columnMap['implementation_follow_up'] ?? null),
             'score' => $this->parseScore($this->cell($row, $columnMap['score'] ?? null), $rowNumber, $report),
             'mandatory' => $this->cell($row, $columnMap['mandatory'] ?? null),
             'departments' => $this->cell($row, $columnMap['departments'] ?? null),
@@ -193,6 +194,7 @@ final class MeasureTemplateParser
             'gamificationMessageEn' => $this->cell($row, $columnMap['gamification_message_en'] ?? null),
             'descriptionEn' => $this->cell($row, $columnMap['description_en'] ?? null),
             'implementationEn' => $this->cell($row, $columnMap['implementation_en'] ?? null),
+            'implementationFollowUpEn' => $this->cell($row, $columnMap['implementation_follow_up_en'] ?? null),
             'verificationSourcesEn' => $this->cell($row, $columnMap['verification_sources_en'] ?? null),
             'departmentActionText' => $this->cell($row, $columnMap['department_action_text'] ?? null),
             'departmentActionTextEn' => $this->cell($row, $columnMap['department_action_text_en'] ?? null),
@@ -425,6 +427,7 @@ final class MeasureTemplateParser
         $rowData['difficulty'] = (string) ($rowData['difficulty'] ?? '');
         $rowData['cost'] = (string) ($rowData['cost'] ?? '');
         $rowData['implementation'] = (string) ($rowData['implementation'] ?? '');
+        $rowData['implementationFollowUp'] = (string) ($rowData['implementation_follow_up'] ?? $rowData['implementationFollowUp'] ?? '');
         $rowData['score'] = $this->parseScore((string) ($rowData['score'] ?? ''), $rowNumber, $report);
         $rowData['mandatory'] = (string) ($rowData['mandatory'] ?? '');
         $rowData['esg'] = (string) ($rowData['esg'] ?? '');
@@ -435,6 +438,7 @@ final class MeasureTemplateParser
         $rowData['gamificationMessageEn'] = (string) ($rowData['gamification_message_en'] ?? $rowData['gamificationMessageEn'] ?? '');
         $rowData['descriptionEn'] = (string) ($rowData['description_en'] ?? $rowData['descriptionEn'] ?? '');
         $rowData['implementationEn'] = (string) ($rowData['implementation_en'] ?? $rowData['implementationEn'] ?? '');
+        $rowData['implementationFollowUpEn'] = (string) ($rowData['implementation_follow_up_en'] ?? $rowData['implementationFollowUpEn'] ?? '');
         $rowData['verificationSourcesEn'] = (string) ($rowData['verification_sources_en'] ?? $rowData['verificationSourcesEn'] ?? '');
         $rowData['departmentActionText'] = (string) ($rowData['department_action_text'] ?? $rowData['departmentActionText'] ?? '');
         $rowData['departmentActionTextEn'] = (string) ($rowData['department_action_text_en'] ?? $rowData['departmentActionTextEn'] ?? '');

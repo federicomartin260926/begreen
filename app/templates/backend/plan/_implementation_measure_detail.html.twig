@@ -24,6 +24,12 @@
     {% if isAnimation|default(false) %}
         {% include 'backend/plan/_animation_measure_editorial.html.twig' with {measure: measure} only %}
     {% endif %}
+    {% if measure.implementationFollowUp %}
+        <details class="mb-3 small" open>
+            <summary class="fw-semibold">{{ 'backend.plan.measure.implementation_follow_up'|trans }}</summary>
+            <div class="mt-2 text-body" style="white-space: pre-wrap;">{{ measure.implementationFollowUp }}</div>
+        </details>
+    {% endif %}
     <section class="implementation-execution mt-0 rounded-3 p-2 p-md-3"
              data-execution-decision="{{ executionValue }}">
         <div class="row g-2 align-items-center">

@@ -226,6 +226,7 @@ final class AnimationCatalogImporter
             ->setDifficulty($this->catalogLevel($data['difficulty'] ?? null, ['Baja', 'Media', 'Alta'], 'Dificultad'))
             ->setCost($this->catalogLevel($data['cost'] ?? null, ['Bajo', 'Medio', 'Alto'], 'Coste'))
             ->setImplementation($this->nullable($data['implementation'] ?? null))
+            ->setImplementationFollowUp($this->nullable($data['implementationFollowUp'] ?? null))
             ->setDepartmentActionText($this->nullable($data['departmentActionText'] ?? null))
             ->setScore((int) ($data['score'] ?? 0))
             ->setMandatory($this->boolean($data['mandatory'] ?? null))
@@ -416,6 +417,7 @@ final class AnimationCatalogImporter
             'gamificationMessage' => 'gamificationMessageEn',
             'description' => 'descriptionEn',
             'implementation' => 'implementationEn',
+            'implementationFollowUp' => 'implementationFollowUpEn',
             'verificationSources' => 'verificationSourcesEn',
             'departmentActionText' => 'departmentActionTextEn',
         ] as $field => $sourceKey) {

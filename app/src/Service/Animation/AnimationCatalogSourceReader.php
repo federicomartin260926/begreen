@@ -33,7 +33,7 @@ final class AnimationCatalogSourceReader
                 $headers[$label] = $column;
             }
         }
-        foreach (['ID interno', 'Impacto esperado', 'Esfuerzo / coste', 'Complejidad'] as $requiredHeader) {
+        foreach (['ID interno', 'Resultado ambiental esperado', 'Esfuerzo / coste', 'Complejidad'] as $requiredHeader) {
             if (!isset($headers[$requiredHeader])) {
                 throw new RuntimeException(sprintf('Falta la columna editorial requerida "%s".', $requiredHeader));
             }
@@ -56,7 +56,7 @@ final class AnimationCatalogSourceReader
             }
 
             $this->validateEditorial($editorial, $catalogId, $rowNumber);
-            foreach (['Impacto esperado', 'Esfuerzo / coste', 'Complejidad'] as $metadataHeader) {
+            foreach (['Resultado ambiental esperado', 'Esfuerzo / coste', 'Complejidad'] as $metadataHeader) {
                 if ('' === trim((string) $sheet->getCell($headers[$metadataHeader].$rowNumber)->getValue())) {
                     throw new RuntimeException(sprintf('Fila editorial %d (%s) sin %s.', $rowNumber, $catalogId, $metadataHeader));
                 }
@@ -64,7 +64,7 @@ final class AnimationCatalogSourceReader
             $editorialById[$catalogId] = [
                 'row' => $rowNumber,
                 'editorial' => $editorial,
-                'expectedImpact' => trim((string) $sheet->getCell($headers['Impacto esperado'].$rowNumber)->getValue()),
+                'expectedImpact' => trim((string) $sheet->getCell($headers['Resultado ambiental esperado'].$rowNumber)->getValue()),
                 'effortCost' => trim((string) $sheet->getCell($headers['Esfuerzo / coste'].$rowNumber)->getValue()),
                 'complexity' => trim((string) $sheet->getCell($headers['Complejidad'].$rowNumber)->getValue()),
             ];
@@ -130,8 +130,8 @@ final class AnimationCatalogSourceReader
     {
         $required = [
             'protocol', 'projectType', 'measureBlock', 'category', 'name', 'nameReview', 'questionText',
-            'gamificationMessage', 'description', 'implementation', 'departmentActionText', 'nameEn',
-            'nameReviewEn', 'questionTextEn', 'gamificationMessageEn', 'descriptionEn', 'implementationEn',
+            'gamificationMessage', 'description', 'implementation', 'implementationFollowUp', 'departmentActionText', 'nameEn',
+            'nameReviewEn', 'questionTextEn', 'gamificationMessageEn', 'descriptionEn', 'implementationEn', 'implementationFollowUpEn',
             'verificationSourcesEn', 'departmentActionTextEn',
         ];
         foreach ($required as $field) {

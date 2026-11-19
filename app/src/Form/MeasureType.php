@@ -46,7 +46,7 @@ class MeasureType extends AbstractType
         $projectType          = $options['projectType'] ?? null;
         $locales              = $options['locales'] ?? ['es','en'];
         $defaultLocale        = $options['default_locale'] ?? 'es';
-        $translatableFields   = $options['translatable_fields'] ?? ['name','nameReview','questionText','gamificationMessage','description','departmentActionText'];
+        $translatableFields   = $options['translatable_fields'] ?? ['name','nameReview','questionText','gamificationMessage','description','implementation','implementationFollowUp','departmentActionText'];
         $existingTranslations = $options['translations'] ?? [];
         $measure              = $builder->getData();
         $verificationLinks    = $measure instanceof Measure ? $measure->getResolvedVerificationSourceLinks() : [];
@@ -119,6 +119,16 @@ class MeasureType extends AbstractType
                 'required' => false,
                 'attr'     => ['rows' => 4],
             ])
+            ->add('implementation', TextareaType::class, [
+                'label' => 'backend.measures.form.implementation',
+                'required' => false,
+                'attr' => ['rows' => 3],
+            ])
+            ->add('implementationFollowUp', TextareaType::class, [
+                'label' => 'backend.measures.form.implementation_follow_up',
+                'required' => false,
+                'attr' => ['rows' => 3],
+            ])
             ->add('departmentActionText', TextareaType::class, [
                 'label'    => 'backend.measures.form.department_action_text',
                 'required' => false,
@@ -186,6 +196,18 @@ class MeasureType extends AbstractType
                     'data'     => $existingTranslations[$loc]['gamificationMessage'] ?? null,
                     'attr'     => ['class' => 'form-control', 'rows' => 4],
                 ]);
+            }
+
+            foreach (['implementation', 'implementationFollowUp'] as $field) {
+                if (in_array($field, $translatableFields, true)) {
+                    $builder->add($field . '_' . $loc, TextareaType::class, [
+                        'label' => 'backend.measures.form.' . ($field === 'implementation' ? 'implementation' : 'implementation_follow_up'),
+                        'mapped' => false,
+                        'required' => false,
+                        'data' => $existingTranslations[$loc][$field] ?? null,
+                        'attr' => ['rows' => 3],
+                    ]);
+                }
             }
 
             // departmentActionText_{loc}
@@ -349,7 +371,7 @@ class MeasureType extends AbstractType
             'projectType'         => null,       // 'rodaje' | 'evento' | null
             'locales'             => ['es','en'],
             'default_locale'      => 'es',
-            'translatable_fields' => ['name','nameReview','questionText','gamificationMessage','description','departmentActionText'],
+            'translatable_fields' => ['name','nameReview','questionText','gamificationMessage','description','implementation','implementationFollowUp','departmentActionText'],
             'translations'        => [],
         ]);
     }

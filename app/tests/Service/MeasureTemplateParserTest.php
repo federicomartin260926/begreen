@@ -63,7 +63,7 @@ final class MeasureTemplateParserTest extends TestCase
         $sheet->setCellValue('K1', 'Nombre revisión');
         $sheet->setCellValue('L1', 'Pregunta (futuro)');
         $sheet->setCellValue('M1', 'Descripción');
-        $sheet->setCellValue('N1', 'Implementación');
+        $sheet->setCellValue('N1', 'Planificación');
         $sheet->setCellValue('O1', 'Acción por departamento');
         $sheet->setCellValue('P1', 'Impacto ambiental');
         $sheet->setCellValue('R1', 'Departamento');
@@ -74,7 +74,7 @@ final class MeasureTemplateParserTest extends TestCase
         $sheet->setCellValue('AE1', 'Nombre revisión EN (opcional)');
         $sheet->setCellValue('AF1', 'Pregunta (futuro) EN (opcional)');
         $sheet->setCellValue('AG1', 'Descripción EN (opcional)');
-        $sheet->setCellValue('AH1', 'Implementación EN (opcional)');
+        $sheet->setCellValue('AH1', 'Planificación EN — traducción de trabajo');
         $sheet->setCellValue('AI1', 'Fuentes de verificación EN (opcional)');
         $sheet->setCellValue('AJ1', 'Acción por departamento EN (opcional)');
 
@@ -161,7 +161,10 @@ final class MeasureTemplateParserTest extends TestCase
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle(MeasureTemplateSchema::SHEET_TITLE);
 
-        $sheet->fromArray(array_values(MeasureTemplateSchema::headers()), null, 'A1');
+        // Legacy workbook without the two optional #98 follow-up columns.
+        $legacyHeaders = MeasureTemplateSchema::headers();
+        unset($legacyHeaders['implementation_follow_up'], $legacyHeaders['implementation_follow_up_en']);
+        $sheet->fromArray(array_values($legacyHeaders), null, 'A1');
         $sheet->fromArray([
             'Peach',
             'rodaje',
@@ -221,7 +224,10 @@ final class MeasureTemplateParserTest extends TestCase
 
         $legacyHeaders = array_values(array_filter(
             MeasureTemplateSchema::headers(),
-            static fn (string $key): bool => !in_array($key, ['department_action_text', 'department_action_text_en'], true),
+            static fn (string $key): bool => !in_array($key, [
+                'department_action_text', 'department_action_text_en',
+                'implementation_follow_up', 'implementation_follow_up_en',
+            ], true),
             ARRAY_FILTER_USE_KEY
         ));
         $sheet->fromArray($legacyHeaders, null, 'A1');

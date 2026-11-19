@@ -202,6 +202,7 @@ final class MeasureTemplateImporter
             return;
         }
         $implementation = trim((string) ($rowData['implementation'] ?? '')) ?: null;
+        $implementationFollowUp = trim((string) ($rowData['implementationFollowUp'] ?? '')) ?: null;
         $score = (int) ($rowData['score'] ?? 0);
         $mandatory = $this->parseMandatory((string) ($rowData['mandatory'] ?? ''));
         $nameEn = trim((string) ($rowData['nameEn'] ?? '')) ?: null;
@@ -210,6 +211,7 @@ final class MeasureTemplateImporter
         $gamificationMessageEn = trim((string) ($rowData['gamificationMessageEn'] ?? '')) ?: null;
         $descriptionEn = trim((string) ($rowData['descriptionEn'] ?? '')) ?: null;
         $implementationEn = trim((string) ($rowData['implementationEn'] ?? '')) ?: null;
+        $implementationFollowUpEn = trim((string) ($rowData['implementationFollowUpEn'] ?? '')) ?: null;
         $verificationSourcesEn = trim((string) ($rowData['verificationSourcesEn'] ?? '')) ?: null;
         $departmentActionText = trim((string) ($rowData['departmentActionText'] ?? '')) ?: null;
         $departmentActionTextEn = trim((string) ($rowData['departmentActionTextEn'] ?? '')) ?: null;
@@ -239,6 +241,7 @@ final class MeasureTemplateImporter
             ->setDifficulty($difficulty)
             ->setCost($cost)
             ->setImplementation($implementation)
+            ->setImplementationFollowUp($implementationFollowUp)
             ->setCategory($category)
             ->setCategoryGhg($categoryGhg)
             ->setMeasureBlock($measureBlock)
@@ -264,6 +267,7 @@ final class MeasureTemplateImporter
                 'difficulty' => $difficulty,
                 'cost' => $cost,
                 'implementation' => $implementation,
+                'implementationFollowUp' => $implementationFollowUp,
                 'score' => $score,
                 'mandatory' => $mandatory,
                 'departments' => array_map(static fn (Department $department): string => (string) ($department->getCode() ?? $department->getName()), $departments),
@@ -279,6 +283,7 @@ final class MeasureTemplateImporter
                 'gamificationMessageEn' => $gamificationMessageEn,
                 'descriptionEn' => $descriptionEn,
                 'implementationEn' => $implementationEn,
+                'implementationFollowUpEn' => $implementationFollowUpEn,
                 'verificationSourcesEn' => $verificationSourcesEn,
                 'departmentActionText' => $departmentActionText,
                 'departmentActionTextEn' => $departmentActionTextEn,
@@ -339,6 +344,7 @@ final class MeasureTemplateImporter
             $gamificationMessageEn,
             $descriptionEn,
             $implementationEn,
+            $implementationFollowUpEn,
             $verificationSourcesEn,
             $departmentActionTextEn
         );
@@ -794,6 +800,7 @@ final class MeasureTemplateImporter
         ?string $gamificationMessageEn,
         ?string $descriptionEn,
         ?string $implementationEn,
+        ?string $implementationFollowUpEn,
         ?string $verificationSourcesEn,
         ?string $departmentActionTextEn
     ): void {
@@ -807,6 +814,7 @@ final class MeasureTemplateImporter
             'gamificationMessage' => $gamificationMessageEn,
             'description' => $descriptionEn,
             'implementation' => $implementationEn,
+            'implementationFollowUp' => $implementationFollowUpEn,
             'verificationSources' => $verificationSourcesEn,
             'departmentActionText' => $departmentActionTextEn,
         ];

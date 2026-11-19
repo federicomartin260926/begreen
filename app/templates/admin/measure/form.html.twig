@@ -144,6 +144,16 @@
                         </div>
 
                         <div class="mb-3">
+                            {{ form_label(form.implementation) }}
+                            {{ form_widget(form.implementation, {'attr': {'class': 'form-control', 'rows': 3}}) }}
+                            {{ form_errors(form.implementation) }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form_label(form.implementationFollowUp) }}
+                            {{ form_widget(form.implementationFollowUp, {'attr': {'class': 'form-control', 'rows': 3}}) }}
+                            {{ form_errors(form.implementationFollowUp) }}
+                        </div>
+                        <div class="mb-3">
                             {{ form_label(form.departmentActionText) }}
                             {{ form_widget(form.departmentActionText, {'attr': {'class': 'form-control', 'rows': 4}}) }}
                             {{ form_errors(form.departmentActionText) }}
@@ -182,6 +192,16 @@
                             {{ form_errors(form.description_en) }}
                         </div>
 
+                        <div class="mb-3">
+                            {{ form_label(form.implementation_en) }}
+                            {{ form_widget(form.implementation_en, {'attr': {'class': 'form-control', 'rows': 3}}) }}
+                            {{ form_errors(form.implementation_en) }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form_label(form.implementationFollowUp_en) }}
+                            {{ form_widget(form.implementationFollowUp_en, {'attr': {'class': 'form-control', 'rows': 3}}) }}
+                            {{ form_errors(form.implementationFollowUp_en) }}
+                        </div>
                         <div class="mb-3">
                             {{ form_label(form.departmentActionText_en) }}
                             {{ form_widget(form.departmentActionText_en, {'attr': {'class': 'form-control', 'rows': 4}}) }}

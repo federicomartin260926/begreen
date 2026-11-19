@@ -1,69 +1,32 @@
 # =============================================================================
 # Begreen - Root Makefile
 # =============================================================================
-# Ejecutar siempre desde la raíz del repo:
-#   make up
-#   make dev-update
-#   make deploy-prod
+# Ejecutar desde la raíz del repositorio.
+# Entornos disponibles: LOCAL y DEV (VPS). No existe entorno de producción.
+# Configuración base: app/.env + app/.env.local
+# Compose: app/docker-compose.yml + app/docker-compose.dev.yml
+# DEV VPS añade app/docker-compose.vps.yml.
+# Se conserva PROJECT_NAME=begreen para respetar nombres/volúmenes existentes.
 #
-# DEV usa:
-#   app/.env
-#   app/.env.local
-#
-# PROD usa:
-#   app/.env
-#   app/.env.prod
-#
-# Nota:
-# - El Makefile está en raíz, pero los compose siguen en app/.
-# - Se fuerza PROJECT_NAME=app para mantener nombres/volúmenes históricos.
-#
-# -----------------------------------------------------------------------------
-# DESPLIEGUE CON CAMBIOS DE SCHEMA Y/O FIXTURES — FASE DE DESARROLLO
-# -----------------------------------------------------------------------------
-# Mientras Begreen siga en fase de desarrollo, los fixtures son la fuente de
-# verdad. No se preservan datos arbitrarios de DEV/PROD y no se usan migrations.
-#
-# LOCAL:
-#   1. Si cambia el modelo: make schema-update
-#   2. make fixtures
-#      - purga y reconstruye la BD local desde fixtures
-#   3. make schema-dump
-#      - debe terminar con "Nothing to update"
-#   4. make db-dump-fixtures
-#      - genera backups/begreen_clean_fixtures_YYYYMMDD_HHMMSS.sql
-#   5. copiar ese dump a backups/ del VPS
-#
-# PRODUCCIÓN:
-#   1. desplegar el código con make deploy-prod-build
-#   2. make db-import-prod DUMP=backups/<dump-limpio>.sql
-#      - db-import-prod crea SIEMPRE un backup de la BD productiva justo antes
-#        de importar el dump
-#      - el dump limpio sustituye schema y datos por el estado reproducible de
-#        fixtures
-#   3. make schema-dump-prod
-#      - debe terminar con "Nothing to update"
-#   4. validar Doctrine/servicios y hacer QA funcional
-#
-# Si NO hay cambios de schema/fixtures, no es necesario regenerar/importar dump.
-# -----------------------------------------------------------------------------
+# OPERACIONES DE DATOS
+# - En LOCAL, schema-update y fixtures se ejecutan solo cuando la tarea lo autoriza.
+# - fixtures purga y reconstruye la base de datos LOCAL; hacer backup primero.
+# - En DEV, antes de cualquier recarga: reconciliar ediciones manuales de Franc,
+#   hacer backup completo y solicitar autorización expresa para modificar datos.
+# - No ejecutar comandos DEV VPS desde LOCAL por accidente.
 # =============================================================================
 
 PROJECT_NAME := begreen
 
 COMPOSE_DEV := docker compose -p $(PROJECT_NAME) --env-file app/.env --env-file app/.env.local -f app/docker-compose.yml -f app/docker-compose.dev.yml
-COMPOSE_PROD := docker compose -p $(PROJECT_NAME) --env-file app/.env --env-file app/.env.prod -f app/docker-compose.yml -f app/docker-compose.prod.yml
 COMPOSE_DEV_VPS := docker compose -p $(PROJECT_NAME) --env-file app/.env --env-file app/.env.local -f app/docker-compose.yml -f app/docker-compose.dev.yml -f app/docker-compose.vps.yml
 
 PHP_DEV := $(COMPOSE_DEV) exec php
-PHP_PROD := $(COMPOSE_PROD) exec php
 
 .PHONY: \
 	help \
 	up up-build down restart ps logs shell php console composer-install assets-install assets-build cache-clear schema-dump schema-update fixtures db-dump-fixtures test manual-admin-pdf manual-super-admin-pdf manual-pdfs doctor prepare-private-storage \
-	dev-pull dev-update dev-update-build dev-reset-fixtures \
-	up-prod up-prod-build prod-up down-prod restart-prod prod-restart ps-prod logs-prod prod-logs shell-prod php-prod console-prod prod-console composer-install-prod assets-install-prod assets-build-prod cache-clear-prod prod-cache-clear schema-dump-prod schema-update-prod prod-schema-update prepare-private-storage-prod db-backup-prod db-import-prod \
-	prod-pull deploy-prod deploy-prod-build deploy-prod-full
+	dev-pull dev-update dev-update-build dev-reset-fixtures
 
 # =============================================================================
 # HELP
@@ -102,37 +65,10 @@ help:
 	@echo "  make manual-pdfs                 Regenera los dos manuales PDF"
 	@echo "  make doctor                     Diagnóstico rápido dev"
 	@echo ""
-	@echo "PROD - uso común"
-	@echo "  make up-prod                    Levanta prod sin rebuild"
-	@echo "  make up-prod-build              Levanta prod reconstruyendo imágenes"
-	@echo "  make deploy-prod                git pull + up-prod + composer prod + assets + cache + schema dump"
-	@echo "  make deploy-prod-build          git pull + up-prod-build + composer prod + assets + cache + schema dump"
-	@echo "  make deploy-prod-full           Igual que deploy-prod-build, pero también ejecuta schema-update-prod"
-	@echo ""
-	@echo "  Cambios schema/fixtures:"
-	@echo "    LOCAL: fixtures -> schema-dump -> db-dump-fixtures"
-	@echo "    PROD:  deploy-prod-build -> db-import-prod -> schema-dump-prod"
-	@echo "    Ver procedimiento completo documentado en la cabecera del Makefile."
-	@echo ""
-	@echo "PROD - utilidades"
-	@echo "  make down-prod                  Baja prod"
-	@echo "  make restart-prod               Reinicia prod"
-	@echo "  make ps-prod                    Lista contenedores prod"
-	@echo "  make logs-prod                  Logs prod"
-	@echo "  make shell-prod                 Shell dentro del contenedor php prod"
-	@echo "  make console-prod ARGS='...'    Ejecuta bin/console en prod"
-	@echo "  make composer-install-prod      composer install --no-dev en prod"
-	@echo "  make assets-install-prod        npm ci en prod"
-	@echo "  make assets-build-prod          npm run build en prod"
-	@echo "  make cache-clear-prod           Limpia cache prod"
-	@echo "  make schema-dump-prod           Muestra SQL de schema:update en prod"
-	@echo "  make schema-update-prod         Aplica doctrine:schema:update --force en prod"
-	@echo "  make db-backup-prod             Crea backup SQL de la BD prod actual en backups/"
-	@echo "  make db-import-prod DUMP=...    Importa un dump SQL en prod, creando backup previo"
-	@echo ""
-	@echo "Entornos usados:"
-	@echo "  DEV  -> app/.env + app/.env.local"
-	@echo "  PROD -> app/.env + app/.env.prod"
+	@echo "Entornos disponibles: LOCAL y DEV VPS (sin entorno de producción)"
+	@echo "  make dev-vps-ps                Estado de contenedores en DEV VPS (ejecutar allí)"
+	@echo "  make dev-vps-update            Actualiza DEV VPS (requiere autorización)"
+	@echo "  make dev-vps-update-build      Actualiza DEV VPS con reconstrucción (requiere autorización)"
 	@echo ""
 	@echo "Mailpit local:"
 	@echo "  Configurar en app/.env.local:"
@@ -289,119 +225,6 @@ dev-vps-update-build:
 	$(MAKE) assets-build
 	$(MAKE) cache-clear
 
-# =============================================================================
-# PROD COMMANDS
-# =============================================================================
-
-up-prod:
-	$(COMPOSE_PROD) up -d
-	$(MAKE) prepare-private-storage-prod
-
-up-prod-build:
-	$(COMPOSE_PROD) up -d --build
-	$(MAKE) prepare-private-storage-prod
-
-prod-up: up-prod
-
-down-prod:
-	$(COMPOSE_PROD) down
-
-restart-prod:
-	$(COMPOSE_PROD) restart
-
-prod-restart: restart-prod
-
-ps-prod:
-	$(COMPOSE_PROD) ps
-
-logs-prod:
-	$(COMPOSE_PROD) logs -f --tail=100
-
-prod-logs: logs-prod
-
-shell-prod:
-	$(PHP_PROD) sh
-
-php-prod: shell-prod
-
-console-prod:
-	$(PHP_PROD) php bin/console $(ARGS)
-
-prod-console: console-prod
-
-composer-install-prod:
-	$(PHP_PROD) composer install --no-interaction --no-dev --optimize-autoloader
-
-assets-install-prod:
-	$(PHP_PROD) npm ci --no-audit --no-fund
-
-assets-build-prod:
-	$(PHP_PROD) npm run build
-
-cache-clear-prod:
-	$(PHP_PROD) php bin/console cache:clear --env=prod
-
-prod-cache-clear: cache-clear-prod
-
-schema-dump-prod:
-	$(PHP_PROD) php bin/console doctrine:schema:update --dump-sql --env=prod
-
-schema-update-prod:
-	$(PHP_PROD) php bin/console doctrine:schema:update --force --env=prod
-
-prod-schema-update:
-	$(PHP_PROD) php bin/console doctrine:schema:update --dump-sql --env=prod
-
-db-backup-prod:
-	@mkdir -p backups
-	@BACKUP="backups/begreen_prod_backup_$$(date +%Y%m%d_%H%M%S).sql"; \
-	echo "Creating prod DB backup: $$BACKUP"; \
-	$(COMPOSE_PROD) exec -T db sh -lc 'mariadb-dump -h 127.0.0.1 -u"$$MARIADB_USER" -p"$$MARIADB_PASSWORD" "$$MARIADB_DATABASE" --single-transaction --routines --triggers --events' > "$$BACKUP"; \
-	if [ ! -s "$$BACKUP" ]; then echo "ERROR: backup vacío: $$BACKUP"; rm -f "$$BACKUP"; exit 1; fi; \
-	ls -lh "$$BACKUP"; \
-	tail -5 "$$BACKUP"
-
-db-import-prod:
-	@if [ -z "$(DUMP)" ]; then echo "ERROR: usa make db-import-prod DUMP=backups/archivo.sql"; exit 1; fi
-	@if [ ! -s "$(DUMP)" ]; then echo "ERROR: dump no existe o está vacío: $(DUMP)"; exit 1; fi
-	@$(MAKE) db-backup-prod
-	@echo "Importing dump into prod DB: $(DUMP)"
-	@cat "$(DUMP)" | $(COMPOSE_PROD) exec -T db sh -lc 'mariadb -h 127.0.0.1 -u"$$MARIADB_USER" -p"$$MARIADB_PASSWORD" "$$MARIADB_DATABASE"'
-	@echo "Import completed: $(DUMP)"
-
-prepare-private-storage-prod:
-	$(COMPOSE_PROD) exec -u root php sh -lc 'mkdir -p /app/var/private/stripe-invoices /app/var/storage/project-documents && chown -R www-data:www-data /app/var/private && chown www-data:www-data /app/var/storage /app/var/storage/project-documents && chmod -R u+rwX,g+rwX /app/var/private && chmod 750 /app/var/storage /app/var/storage/project-documents'
-
-# =============================================================================
-# PROD WORKFLOWS
-# =============================================================================
-
-prod-pull:
-	git pull
-
-deploy-prod:
-	git pull
-	$(MAKE) up-prod
-	$(MAKE) composer-install-prod
-	$(MAKE) assets-build-prod
-	$(MAKE) cache-clear-prod
-	$(MAKE) schema-dump-prod
-
-deploy-prod-build:
-	git pull
-	$(MAKE) up-prod-build
-	$(MAKE) composer-install-prod
-	$(MAKE) assets-build-prod
-	$(MAKE) cache-clear-prod
-	$(MAKE) schema-dump-prod
-
-deploy-prod-full:
-	git pull
-	$(MAKE) up-prod-build
-	$(MAKE) composer-install-prod
-	$(MAKE) assets-build-prod
-	$(MAKE) cache-clear-prod
-	$(MAKE) schema-update-prod
 # BEGREEN #74 PLAYWRIGHT BEGIN — QA Calculadora desde equipo local contra DEV
 .PHONY: qa-smoke qa-calculator qa-calculator-transport qa-calculator-materials qa-persistence qa-failed qa-report
 qa-smoke:

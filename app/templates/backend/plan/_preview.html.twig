@@ -115,7 +115,15 @@
                         <tbody>
                             {% for pm in measures %}
                                 <tr>
-                                    <td>{{ pm.measure.name }}</td>
+                                    <td>
+                                        {{ pm.measure.name }}
+                                        {% if pm.measure.implementation %}
+                                            <details class="small mt-2">
+                                                <summary>{{ 'backend.plan.measure.planning'|trans }}</summary>
+                                                <div class="mt-1 text-body" style="white-space: pre-wrap;">{{ pm.measure.implementation }}</div>
+                                            </details>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ pm.isApplicable ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
                                     <td>{{ pm.willImplement ? ('backend.plan.preview.yes'|trans) : ('backend.plan.preview.no'|trans) }}</td>
                                     {% if plan.status == 'completo' %}

@@ -118,6 +118,10 @@ class Measure
 
     #[Gedmo\Translatable]
     #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $implementationFollowUp = null;
+
+    #[Gedmo\Translatable]
+    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $departmentActionText = null;
 
     #[Gedmo\Translatable]
@@ -328,6 +332,10 @@ class Measure
     public function getImplementation(): ?string { return $this->implementation; }
 
     public function setImplementation(?string $implementation): static { $this->implementation = $implementation; return $this; }
+
+    public function getImplementationFollowUp(): ?string { return $this->implementationFollowUp; }
+
+    public function setImplementationFollowUp(?string $implementationFollowUp): static { $this->implementationFollowUp = $implementationFollowUp; return $this; }
 
     public function getDepartmentActionText(): ?string { return $this->departmentActionText; }
 

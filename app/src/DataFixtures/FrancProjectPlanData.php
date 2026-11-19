@@ -93,7 +93,7 @@ final class FrancProjectPlanData
             'measures' => [
                 [
                     'sortOrder' => 3,
-                    'name' => 'En la oficina, contrata electricidad 100% de origen renovable.',
+                    'name' => 'En la oficina, si todavía no dispones de un suministro eléctrico 100 % renovable, contrátalo.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => false,
@@ -101,7 +101,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 6,
-                    'name' => 'En la oficina, cambia las bombillas tradicionales por LED e instala sensores de presencia y de luz natural.',
+                    'name' => 'En la oficina, si todavía no lo has hecho, sustituye las bombillas tradicionales por LED e instala sensores de presencia y de luz natural.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => false,
@@ -117,7 +117,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 11,
-                    'name' => 'Usa electricidad de la red eléctrica (al menos el 50% del rodaje).',
+                    'name' => 'Usa electricidad de la red para al menos el 50 % del consumo eléctrico del rodaje.',
                     'isApplicable' => false,
                     'willImplement' => null,
                     'isCritical' => null,
@@ -582,7 +582,7 @@ final class FrancProjectPlanData
             'measures' => [
                 [
                     'sortOrder' => 3,
-                    'name' => 'En la oficina, contrata electricidad 100% de origen renovable.',
+                    'name' => 'En la oficina, si todavía no dispones de un suministro eléctrico 100 % renovable, contrátalo.',
                     'isApplicable' => false,
                     'willImplement' => null,
                     'isCritical' => null,
@@ -590,7 +590,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 4,
-                    'name' => 'En la oficina, instala puntos de separación de residuos (orgánico, papel y envases).',
+                    'name' => 'En la oficina, si todavía no existen, instala puntos de separación de residuos (orgánico, papel y envases).',
                     'isApplicable' => false,
                     'willImplement' => null,
                     'isCritical' => null,
@@ -606,7 +606,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 6,
-                    'name' => 'En la oficina, cambia las bombillas tradicionales por LED e instala sensores de presencia y de luz natural.',
+                    'name' => 'En la oficina, si todavía no lo has hecho, sustituye las bombillas tradicionales por LED e instala sensores de presencia y de luz natural.',
                     'isApplicable' => false,
                     'willImplement' => null,
                     'isCritical' => null,
@@ -630,7 +630,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 11,
-                    'name' => 'Usa electricidad de la red eléctrica (al menos el 50% del rodaje).',
+                    'name' => 'Usa electricidad de la red para al menos el 50 % del consumo eléctrico del rodaje.',
                     'isApplicable' => true,
                     'willImplement' => false,
                     'isCritical' => null,
