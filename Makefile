@@ -69,6 +69,7 @@ help:
 	@echo "  make dev-vps-ps                Estado de contenedores en DEV VPS (ejecutar allí)"
 	@echo "  make dev-vps-update            Actualiza DEV VPS (requiere autorización)"
 	@echo "  make dev-vps-update-build      Actualiza DEV VPS con reconstrucción (requiere autorización)"
+	@echo "  make dev-vps-catalog-audit SINCE=YYYY-MM-DD_HH:MM:SS (solo DEV VPS, READ-ONLY; usar comillas para fecha con espacio)"
 	@echo ""
 	@echo "Mailpit local:"
 	@echo "  Configurar en app/.env.local:"
@@ -224,6 +225,14 @@ dev-vps-update-build:
 	$(MAKE) composer-install
 	$(MAKE) assets-build
 	$(MAKE) cache-clear
+
+# BEGREEN — consulta READ-ONLY de cambios manuales en catálogo DEV VPS.
+# Ejecutar SOLO dentro de /home/fede/www/begreen en el VPS; nunca hace SSH.
+.PHONY: dev-vps-catalog-audit
+dev-vps-catalog-audit:
+	@test "$(CURDIR)" = "/home/fede/www/begreen" || { echo "CATALOG_CHANGE_GUARD=ERROR: solo DEV VPS"; exit 2; }
+	@test -n "$(SINCE)" || { echo "CATALOG_CHANGE_GUARD=ERROR: SINCE obligatorio"; exit 2; }
+	@$(COMPOSE_DEV_VPS) exec -T php php bin/console app:catalog:changes --since="$(SINCE)"
 
 # BEGREEN #74 PLAYWRIGHT BEGIN — QA Calculadora desde equipo local contra DEV
 .PHONY: qa-smoke qa-calculator qa-calculator-transport qa-calculator-materials qa-persistence qa-failed qa-report

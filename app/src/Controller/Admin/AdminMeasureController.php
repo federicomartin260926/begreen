@@ -229,6 +229,8 @@ class AdminMeasureController extends AbstractController
                         $measure->setSortOrder($this->nextMeasureSortOrder($em, $measure));
                     }
 
+                    // Relaciones/traducciones pueden cambiar sin disparar PreUpdate de Measure.
+                    $measure->setUpdatedAt(new \DateTime());
                     $em->flush();
 
                     $this->addFlash('success', 'backend.measures.flash.updated');

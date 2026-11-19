@@ -196,6 +196,16 @@ Franc puede modificar medidas directamente desde **Administración > Medidas** e
 
 La base DEV no es la fuente canónica permanente: una vez reconciliados los cambios intencionales, las fuentes versionadas vuelven a ser la referencia.
 
+La guardia reutilizable se ejecuta únicamente **dentro del repositorio DEV VPS** (no abre SSH ni recarga fixtures):
+
+```bash
+cd /home/fede/www/begreen || exit 1
+make dev-vps-catalog-audit SINCE='2026-11-17 09:34:56'
+```
+
+La consulta solo lee `measure` y devuelve `CATALOG_CHANGE_GUARD=PASS` si no detecta marcas `updated_at` posteriores al corte, o `FAIL` (exit code no cero) con las medidas afectadas en caso contrario. `PASS` no autoriza por sí solo fixtures: comparar fuentes canónicas, decidir, hacer backup fresco y solo entonces recargar. El corte debe actualizarse **después** de sincronizar fixtures y verificar la ausencia de ediciones manuales pendientes. Borrados, modificaciones por SQL u otras rutas que no actualicen `Measure.updatedAt` no son detectables únicamente con este criterio temporal; contrastar también cantidad y contenido cuando existan indicios.
+
+
 ### Assets y pruebas
 
 El frontend usa npm y Webpack Encore:
