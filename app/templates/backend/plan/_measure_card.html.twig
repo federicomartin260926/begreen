@@ -107,7 +107,7 @@
             {% include 'backend/plan/_animation_measure_editorial.html.twig' with {measure: measure} only %}
         {% else %}
         <dl class="row mb-0">
-            {% if measure.implementation and projectType|default(null) != 'evento' %}
+            {% if measure.implementation %}
                 <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.planning'|trans }}</dt>
                 <dd class="col-md-8 col-lg-10">{{ measure.implementation }}</dd>
             {% endif %}
