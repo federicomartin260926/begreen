@@ -108,7 +108,7 @@
         {% else %}
         <dl class="row mb-0">
             {% if measure.implementation and projectType|default(null) != 'evento' %}
-                <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.implementation'|trans }}</dt>
+                <dt class="col-md-4 col-lg-2">{{ 'backend.plan.measure.planning'|trans }}</dt>
                 <dd class="col-md-8 col-lg-10">{{ measure.implementation }}</dd>
             {% endif %}
             {% if measure.description %}
