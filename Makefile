@@ -67,8 +67,9 @@ help:
 	@echo ""
 	@echo "Entornos disponibles: LOCAL y DEV VPS (sin entorno de producción)"
 	@echo "  make dev-vps-ps                Estado de contenedores en DEV VPS (ejecutar allí)"
-	@echo "  make dev-vps-update            Actualiza DEV VPS (requiere autorización)"
-	@echo "  make dev-vps-update-build      Actualiza DEV VPS con reconstrucción (requiere autorización)"
+	@echo "  make dev-vps-update            Código DEV sin rebuild; aborta si detecta cambio de mapeo"
+	@echo "  make dev-vps-update SCHEMA=1   Backup fresco + schema-update + smoke; sin fixtures"
+	@echo "  make dev-vps-update-build      Deshabilitado en DEV (usar volúmenes)"
 	@echo "  make dev-vps-catalog-audit SINCE=YYYY-MM-DD_HH:MM:SS (solo DEV VPS, READ-ONLY; usar comillas para fecha con espacio)"
 	@echo ""
 	@echo "Mailpit local:"
@@ -129,16 +130,19 @@ schema-update:
 	$(PHP_DEV) php bin/console doctrine:schema:update --force
 
 fixtures:
+	@if [ "$(CURDIR)" = "/home/fede/www/begreen" ] && [ "$(ALLOW_DEV_FIXTURES)" != "YES" ]; then \
+	  echo "BLOCKED: DEV fixtures require human audit, a fresh backup and ALLOW_DEV_FIXTURES=YES"; exit 2; fi
 	$(PHP_DEV) php bin/console doctrine:fixtures:load --no-interaction
 
+# Fail-closed, unique, private backup; never print DB contents to deployment logs.
 db-dump-fixtures:
-	@mkdir -p backups
-	@DUMP="backups/begreen_clean_fixtures_$$(date +%Y%m%d_%H%M%S).sql"; \
+	@set -eu; umask 077; mkdir -p backups; \
+	DUMP=$$(mktemp --suffix=.sql "backups/begreen_clean_fixtures_$$(date +%Y%m%d_%H%M%S)_XXXXXX"); \
 	echo "Creating dev DB dump: $$DUMP"; \
-	$(COMPOSE_DEV) exec -T db sh -lc 'mariadb-dump -h 127.0.0.1 -u"$$MARIADB_USER" -p"$$MARIADB_PASSWORD" "$$MARIADB_DATABASE" --single-transaction --routines --triggers --events' > "$$DUMP"; \
-	if [ ! -s "$$DUMP" ]; then echo "ERROR: dump vacío: $$DUMP"; rm -f "$$DUMP"; exit 1; fi; \
-	ls -lh "$$DUMP"; \
-	tail -5 "$$DUMP"
+	if ! $(COMPOSE_DEV) exec -T db sh -lc 'mariadb-dump -h 127.0.0.1 -u"$$MARIADB_USER" -p"$$MARIADB_PASSWORD" "$$MARIADB_DATABASE" --single-transaction --routines --triggers --events' > "$$DUMP"; then \
+	  echo "BACKUP=FAIL"; rm -f "$$DUMP"; exit 1; fi; \
+	if [ ! -s "$$DUMP" ]; then echo "BACKUP=EMPTY"; rm -f "$$DUMP"; exit 1; fi; \
+	printf 'DB_BACKUP=PASS\nDB_BACKUP_BYTES=%s\n' "$$(wc -c < "$$DUMP")"
 
 test:
 	$(PHP_DEV) ./vendor/bin/phpunit
@@ -184,6 +188,8 @@ dev-update-build:
 	$(MAKE) cache-clear
 
 dev-reset-fixtures:
+	@if [ "$(CURDIR)" = "/home/fede/www/begreen" ]; then \
+	  echo "BLOCKED: use the controlled DEV fixtures procedure, never dev-reset-fixtures"; exit 2; fi
 	git pull
 	$(MAKE) up
 	$(MAKE) composer-install
@@ -199,7 +205,7 @@ dev-reset-fixtures:
 .PHONY: dev-vps-up dev-vps-up-build dev-vps-down dev-vps-ps dev-vps-update dev-vps-update-build
 
 dev-vps-up:
-	$(COMPOSE_DEV_VPS) up -d
+	$(COMPOSE_DEV_VPS) up -d --no-build
 	$(MAKE) prepare-private-storage
 
 dev-vps-up-build:
@@ -212,19 +218,14 @@ dev-vps-down:
 dev-vps-ps:
 	$(COMPOSE_DEV_VPS) ps
 
+# Deploy only on DEV VPS: validates Git and schema requirement before pulling.
+# SCHEMA=1 is the operator's explicit authorization for DB schema synchronization.
 dev-vps-update:
-	git pull
-	$(MAKE) dev-vps-up
-	$(MAKE) composer-install
-	$(MAKE) assets-build
-	$(MAKE) cache-clear
+	@SCHEMA="$(SCHEMA)" ALLOW_DESTRUCTIVE_SCHEMA="$(ALLOW_DESTRUCTIVE_SCHEMA)" bash scripts/dev-vps-update.sh
 
+# Do not bypass safety gates with an obsolete image-rebuild workflow.
 dev-vps-update-build:
-	git pull
-	$(MAKE) dev-vps-up-build
-	$(MAKE) composer-install
-	$(MAKE) assets-build
-	$(MAKE) cache-clear
+	@echo "ERROR: deprecated on volume-mounted DEV. Use dev-vps-update (no build)."; exit 2
 
 # BEGREEN — consulta READ-ONLY de cambios manuales en catálogo DEV VPS.
 # Ejecutar SOLO dentro de /home/fede/www/begreen en el VPS; nunca hace SSH.

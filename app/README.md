@@ -246,21 +246,25 @@ cd /home/fede/www/begreen || exit 1
 make dev-vps-ps
 ```
 
-Actualización normal de código y dependencias:
+Actualización normal de código y dependencias (**volúmenes, sin reconstruir imágenes**):
 
 ```bash
 cd /home/fede/www/begreen || exit 1
 make dev-vps-update
 ```
 
-Cuando sea necesario reconstruir imágenes:
+El target ejecuta `git fetch` y verifica los cambios **antes** del pull. Si hay cambios en entidades, migraciones o configuración Doctrine, se detiene sin tocar el código. Después de revisar y autorizar el esquema:
 
 ```bash
 cd /home/fede/www/begreen || exit 1
-make dev-vps-update-build
+make dev-vps-update SCHEMA=1
 ```
 
-Los cambios de schema o fixtures requieren autorización específica y no deben introducirse implícitamente dentro de una actualización ordinaria.
+Con `SCHEMA=1` se crea un backup completo y fresco **antes del pull**, se ejecuta `doctrine:schema:update` si hay diferencias, se comprueba que el esquema quedó sincronizado y se realizan pruebas de arranque, permisos de lectura como `www-data`, Git y HTTP. Una operación DDL destructiva inesperada obliga a revisión adicional (`ALLOW_DESTRUCTIVE_SCHEMA=YES` solo con autorización expresa). El target no ejecuta fixtures ni construye imágenes. La sesión web autenticada requiere QA manual focal después del despliegue.
+
+No utilizar `dev-vps-update-build` en este entorno: está deshabilitado para evitar despliegues que construyan imágenes. Los cambios de Dockerfile/base de PHP requieren una intervención distinta y expresamente autorizada.
+
+Las fixtures de DEV **nunca** se cargan automáticamente: primero auditoría de posibles cambios de Franc, reconciliación, decisión humana y backup completo inmediatamente antes de purgar. Solo después puede invocarse `make fixtures ALLOW_DEV_FIXTURES=YES` en el VPS. No ejecutar `dev-reset-fixtures` en el VPS.
 
 Antes de una operación destructiva de catálogo en DEV deben cumplirse las reglas de **Protección del catálogo en DEV** descritas anteriormente.
 

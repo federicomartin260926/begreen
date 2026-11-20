@@ -29,6 +29,7 @@ This repository is Docker-first. For Symfony app work, prefer the `app/` workflo
 * Do not create or assume a production deployment target. A future production environment requires explicit setup and authorization.
 * Do not commit, push or deploy unless the current task explicitly authorizes that action. Keep implementation, commit/push and DEV deployment as separate authorization boundaries when the task flow requires review between them.
 * Deploy DEV through the existing Makefile/deployment workflow. Avoid editing application files directly on the VPS.
+* For volume-mounted DEV VPS deployments, use `make dev-vps-update` (umask 022 for code, `--no-build`). Mapping changes require reviewed `SCHEMA=1` (fresh database backup and schema validation); fixture reloads are always separate. Do not use `dev-vps-update-build` or ad-hoc `git pull` as a substitute.
 * After deployment, run the smallest relevant DEV smoke/focal validation and report the exact result.
 * If AI/OpenAI functionality is disabled because of an incident or security decision, do not re-enable it or make real external AI calls unless explicitly authorized.
 
