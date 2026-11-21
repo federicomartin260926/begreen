@@ -48,6 +48,10 @@ final class PlanMeasureResumeService
                 return $lastIndex;
             }
 
+            if ($planMeasure->isProfileFiltered() && $planMeasure->isApplicable() === false) {
+                continue;
+            }
+
             if ($this->isStaleBlockSkip($planMeasure)) {
                 return $lastIndex;
             }
@@ -80,12 +84,12 @@ final class PlanMeasureResumeService
 
     private function isActiveBlockSkip(PlanMeasure $planMeasure): bool
     {
-        return $planMeasure->getApplicabilitySource() === 'block_skip' && $this->isBlockSkipStillJustified($planMeasure);
+        return $planMeasure->getApplicabilitySource() === PlanMeasure::APPLICABILITY_BLOCK_SKIP && $this->isBlockSkipStillJustified($planMeasure);
     }
 
     private function isStaleBlockSkip(PlanMeasure $planMeasure): bool
     {
-        return $planMeasure->getApplicabilitySource() === 'block_skip' && !$this->isBlockSkipStillJustified($planMeasure);
+        return $planMeasure->getApplicabilitySource() === PlanMeasure::APPLICABILITY_BLOCK_SKIP && !$this->isBlockSkipStillJustified($planMeasure);
     }
 
     private function isBlockSkipStillJustified(PlanMeasure $planMeasure): bool

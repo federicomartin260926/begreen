@@ -80,6 +80,19 @@
                     {% endif %}
                 </div>
 
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a class="btn btn-sm btn-outline-success" href="{{ path('backend_plan_filters') }}">
+                        <i class="bi bi-funnel me-1"></i>{{ 'backend.plan.filters.edit'|trans }}
+                    </a>
+                    {% if profileExcludedMeasures|default([]) is not empty %}
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                data-bs-toggle="modal" data-bs-target="#profileExcludedMeasuresModal"
+                                aria-controls="profileExcludedMeasuresModal">
+                            <i class="bi bi-slash-circle me-1" aria-hidden="true"></i>{{ 'backend.plan.filters.excluded_button'|trans }} ({{ profileExcludedMeasures|length }})
+                        </button>
+                    {% endif %}
+                </div>
+
             </div>
 
             {% include 'backend/plan/_gamification_message.html.twig' %}
@@ -96,6 +109,42 @@
                 phaseLabel: 'backend.commercial_phases.elaboration'|trans,
                 phaseUpgradeLabel: 'backend.plan.upgrade.elaboration'|trans
             } %}
+
+            {# #93: consulta de excluidas en modal, sin ocupar espacio en Elaboración.
+               No altera ni los filtros ni el denominador de puntos posibles. #}
+            {% if profileExcludedMeasures|default([]) is not empty %}
+                <div class="modal fade" id="profileExcludedMeasuresModal" tabindex="-1"
+                     aria-labelledby="profileExcludedMeasuresModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="profileExcludedMeasuresModalLabel">
+                                    {{ 'backend.plan.filters.excluded_heading'|trans }} ({{ profileExcludedMeasures|length }})
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="{{ 'backend.common.close'|trans }}"></button>
+                            </div>
+                            <div class="modal-body" data-profile-excluded-list>
+                                <p class="small text-muted mb-3">{{ 'backend.plan.filters.excluded_outside_score'|trans }}</p>
+                                <div class="d-flex flex-column gap-2">
+                                    {% for excludedItem in profileExcludedMeasures %}
+                                        {% include 'backend/plan/_profile_exclusion_row.html.twig' with {
+                                            excludedItem: excludedItem,
+                                            total: total,
+                                            isAnimationPlan: isAnimationPlan
+                                        } only %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                    {{ 'backend.common.close'|trans }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
 
             {# ---- CONTENIDO PRINCIPAL ---- #}
             {% if planComplete %}

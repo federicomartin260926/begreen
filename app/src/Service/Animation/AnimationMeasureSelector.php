@@ -7,6 +7,43 @@ use InvalidArgumentException;
 final class AnimationMeasureSelector
 {
     /**
+     * Resolves the commercial catalog without hiding measures excluded by the
+     * project profile. Profile applicability is calculated separately so the
+     * excluded measures remain visible as «No aplica».
+     *
+     * @param list<AnimationMeasure> $dataset
+     * @return list<AnimationMeasure>
+     */
+    public function selectForPlan(AnimationConfiguration $configuration, array $dataset): array
+    {
+        $configuration->assertComplete();
+        $selected = [];
+
+        foreach ($dataset as $measure) {
+            if (!$measure instanceof AnimationMeasure) {
+                throw new InvalidArgumentException('El dataset contiene un elemento que no es AnimationMeasure.');
+            }
+            if (!$measure->active || isset($selected[$measure->id])) {
+                continue;
+            }
+
+            $techniqueMatches = $this->anyCompatible($configuration->techniques(), $measure->techniqueCompatibility);
+            $scoreMatches = $measure->planCompatibility[AnimationConfigurationCatalog::PLANS[$configuration->plan()]] ?? false;
+            $techniqueException = $measure->forceIfTechniqueMatches && $techniqueMatches;
+            $shootingException = $measure->forceIfShooting && true === $configuration->effectiveShooting();
+
+            if ($scoreMatches || $techniqueException || $shootingException) {
+                $selected[$measure->id] = $measure;
+            }
+        }
+
+        $result = array_values($selected);
+        usort($result, static fn (AnimationMeasure $a, AnimationMeasure $b): int => $a->visualOrder <=> $b->visualOrder);
+
+        return $result;
+    }
+
+    /**
      * @param list<AnimationMeasure> $dataset
      *
      * @return list<AnimationMeasure>

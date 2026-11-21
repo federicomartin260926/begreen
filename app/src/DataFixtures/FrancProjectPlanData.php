@@ -133,7 +133,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 16,
-                    'name' => 'Durante al menos el 50 % de las horas de uso, usa generadores de bajas emisiones de partículas y NOx con combustible renovable con certificado de origen.',
+                    'name' => 'Cuando utilices generadores, reposta diésel 100 % renovable con certificado de origen.',
                     'isApplicable' => true,
                     'willImplement' => false,
                     'isCritical' => null,
@@ -149,7 +149,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 18,
-                    'name' => 'Usa luz natural como fuente principal de iluminación (al menos el 50% del rodaje).',
+                    'name' => 'Diseña el rodaje para aprovechar la luz natural y reducir la necesidad de iluminación artificial.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => false,
@@ -157,7 +157,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 19,
-                    'name' => 'Usa luces LED en el rodaje (al menos el 50%).',
+                    'name' => 'Elige luminarias LED como primera opción para la iluminación artificial del rodaje.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -237,7 +237,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 44,
-                    'name' => 'Alquila vehículos eléctricos o híbridos de bajas emisiones, con datos de consumo y emisiones que lo demuestren.',
+                    'name' => 'Prioriza el alquiler de vehículos eléctricos o híbridos para los desplazamientos de la producción.',
                     'isApplicable' => true,
                     'willImplement' => false,
                     'isCritical' => null,
@@ -301,7 +301,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 66,
-                    'name' => 'Elige primero localizaciones que ya existan antes que construir decorados nuevos, siempre que no generen más impacto ambiental.',
+                    'name' => 'Prioriza localizaciones existentes frente a construir decorados, si su impacto ambiental es menor.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -317,7 +317,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 77,
-                    'name' => 'Prioriza alquilar vestuario antes que comprarlo, o comprarlo de segunda mano.',
+                    'name' => 'Prioriza alquilar o adquirir de segunda mano el vestuario, el mobiliario y el atrezzo antes que comprarlos nuevos.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => false,
@@ -325,7 +325,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 92,
-                    'name' => 'Asegura la separación de los residuos que se generan en el set, o demuestra que no se genera ninguno.',
+                    'name' => 'Asegura la separación de los residuos que se generan en el set.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -341,7 +341,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 96,
-                    'name' => 'Calcula en kg los residuos de cada tipo, pesándolos o con estimaciones que se puedan comprobar.',
+                    'name' => 'Registra en kg los residuos de cada tipo mediante pesajes directos o datos de peso del gestor de residuos.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -357,7 +357,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 108,
-                    'name' => 'Apunta el consumo de botellas y de dispensadores de agua.',
+                    'name' => 'Apunta el consumo de botellas y de garrafas de agua.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -413,7 +413,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 137,
-                    'name' => 'Apunta las desviaciones respecto al plan de sostenibilidad del rodaje, con responsables, plazos y acciones para corregirlas, y comprueba que se resuelven.',
+                    'name' => 'Registra y corrige las desviaciones del plan de sostenibilidad, asignando responsables y plazos.',
                     'isApplicable' => true,
                     'willImplement' => false,
                     'isCritical' => null,
@@ -654,7 +654,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 16,
-                    'name' => 'Durante al menos el 50 % de las horas de uso, usa generadores de bajas emisiones de partículas y NOx con combustible renovable con certificado de origen.',
+                    'name' => 'Cuando utilices generadores, reposta diésel 100 % renovable con certificado de origen.',
                     'isApplicable' => true,
                     'willImplement' => false,
                     'isCritical' => null,
@@ -670,7 +670,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 18,
-                    'name' => 'Usa luz natural como fuente principal de iluminación (al menos el 50% del rodaje).',
+                    'name' => 'Diseña el rodaje para aprovechar la luz natural y reducir la necesidad de iluminación artificial.',
                     'isApplicable' => true,
                     'willImplement' => false,
                     'isCritical' => null,
@@ -678,7 +678,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 19,
-                    'name' => 'Usa luces LED en el rodaje (al menos el 50%).',
+                    'name' => 'Elige luminarias LED como primera opción para la iluminación artificial del rodaje.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => false,
@@ -774,7 +774,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 44,
-                    'name' => 'Alquila vehículos eléctricos o híbridos de bajas emisiones, con datos de consumo y emisiones que lo demuestren.',
+                    'name' => 'Prioriza el alquiler de vehículos eléctricos o híbridos para los desplazamientos de la producción.',
                     'isApplicable' => true,
                     'willImplement' => false,
                     'isCritical' => null,
@@ -870,7 +870,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 66,
-                    'name' => 'Elige primero localizaciones que ya existan antes que construir decorados nuevos, siempre que no generen más impacto ambiental.',
+                    'name' => 'Prioriza localizaciones existentes frente a construir decorados, si su impacto ambiental es menor.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -886,7 +886,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 77,
-                    'name' => 'Prioriza alquilar vestuario antes que comprarlo, o comprarlo de segunda mano.',
+                    'name' => 'Prioriza alquilar o adquirir de segunda mano el vestuario, el mobiliario y el atrezzo antes que comprarlos nuevos.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => false,
@@ -902,7 +902,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 92,
-                    'name' => 'Asegura la separación de los residuos que se generan en el set, o demuestra que no se genera ninguno.',
+                    'name' => 'Asegura la separación de los residuos que se generan en el set.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -918,7 +918,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 96,
-                    'name' => 'Calcula en kg los residuos de cada tipo, pesándolos o con estimaciones que se puedan comprobar.',
+                    'name' => 'Registra en kg los residuos de cada tipo mediante pesajes directos o datos de peso del gestor de residuos.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -958,7 +958,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 108,
-                    'name' => 'Apunta el consumo de botellas y de dispensadores de agua.',
+                    'name' => 'Apunta el consumo de botellas y de garrafas de agua.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,
@@ -1098,7 +1098,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 137,
-                    'name' => 'Apunta las desviaciones respecto al plan de sostenibilidad del rodaje, con responsables, plazos y acciones para corregirlas, y comprueba que se resuelven.',
+                    'name' => 'Registra y corrige las desviaciones del plan de sostenibilidad, asignando responsables y plazos.',
                     'isApplicable' => true,
                     'willImplement' => false,
                     'isCritical' => null,
@@ -1138,7 +1138,7 @@ final class FrancProjectPlanData
                 ],
                 [
                     'sortOrder' => 146,
-                    'name' => 'Incorpora acciones o comportamientos sostenibles visibles en pantalla, como reutilizar materiales, ahorrar recursos o moverte de forma sostenible, cuando encajen con la historia de la obra.',
+                    'name' => 'Muestra comportamientos sostenibles en pantalla de forma coherente con la historia.',
                     'isApplicable' => true,
                     'willImplement' => true,
                     'isCritical' => true,

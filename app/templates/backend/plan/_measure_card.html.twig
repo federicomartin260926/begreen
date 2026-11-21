@@ -162,7 +162,7 @@
             {# 1) ¿Quieres incluirla? #}
             <div class="text-center mb-2">{{ 'backend.plan.q.include_in_plan'|trans }}</div>
             <div class="measure-action-group d-flex justify-content-center gap-3">
-                <button
+                {% if allowedDecisions.true|default(true) %}<button
                     type="button"
                     class="btn {% if decision == 'true' %}btn-success{% else %}btn-outline-success{% endif %} px-4"
                     data-plan-measures-target="actionBtn"
@@ -171,9 +171,9 @@
                     data-value="true">
                     {% if decision == 'true' %}<i class="bi bi-check-lg me-1"></i>{% endif %}
                     {{ 'backend.common.yes'|trans }}
-                </button>
+                </button>{% endif %}
 
-                <button
+                {% if allowedDecisions.false|default(true) %}<button
                     type="button"
                     class="btn {% if decision == 'false' %}btn-danger{% else %}btn-outline-danger{% endif %} px-4"
                     data-plan-measures-target="actionBtn"
@@ -182,9 +182,9 @@
                     data-value="false">
                     {% if decision == 'false' %}<i class="bi bi-check-lg me-1"></i>{% endif %}
                     {{ 'backend.common.no'|trans }}
-                </button>
+                </button>{% endif %}
 
-                {% if not isAnimation|default(false) or (measure.animationMetadata and measure.animationMetadata.notApplicableAllowed) %}<button
+                {% if allowedDecisions.na|default(false) %}<button
                     type="button"
                     class="btn {% if decision == 'na' %}btn-secondary{% else %}btn-outline-secondary{% endif %} px-4"
                     data-plan-measures-target="actionBtn"
@@ -195,6 +195,13 @@
                     {{ 'backend.plan.answers.not_applicable_project'|trans }}
                 </button>{% endif %}
             </div>
+
+            {% if allowedDecisions.na|default(false) and applicabilityRule.objectiveCause|default('') %}
+                <div class="alert alert-light border small mt-3 mb-0">
+                    <strong>{{ 'backend.plan.filters.manual_na_condition'|trans }}:</strong>
+                    {{ applicabilityRule.objectiveCause }}
+                </div>
+            {% endif %}
 
             {# 2) ¿Crítica? (se renderiza oculta hasta que Aplica = true) #}
             <div

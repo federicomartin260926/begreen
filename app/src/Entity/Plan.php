@@ -54,6 +54,10 @@ class Plan
     #[ORM\Column(type: Types::JSON)]
     private array $presentedGamificationLevels = [];
 
+    /** @var array<string, bool|string|string[]> */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $filterAnswers = [];
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $gamificationCompleted100At = null;
 
@@ -159,6 +163,20 @@ class Plan
     public function clearCustomMeasuresCompletion(): static
     {
         $this->customMeasuresCompletedAt = null;
+
+        return $this;
+    }
+
+    /** @return array<string, bool|string|string[]> */
+    public function getFilterAnswers(): array
+    {
+        return $this->filterAnswers;
+    }
+
+    /** @param array<string, bool|string|string[]> $filterAnswers */
+    public function setFilterAnswers(array $filterAnswers): static
+    {
+        $this->filterAnswers = $filterAnswers;
 
         return $this;
     }

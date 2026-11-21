@@ -78,7 +78,7 @@ final readonly class AnimationProjectMeasureResolver
             $selectorCatalog[] = $metadata->toAnimationMeasure();
         }
 
-        $selected = $this->selector->select($configuration, $selectorCatalog);
+        $selected = $this->selector->selectForPlan($configuration, $selectorCatalog);
 
         return array_map(
             static fn (AnimationMeasure $measure): Measure => $byCatalogId[$measure->id],

@@ -95,7 +95,7 @@ final class SustainabilityGamificationService
         $firstAffirmativeDecision = $field === 'decision'
             && $before['primaryDecision'] !== 'true'
             && $planMeasure->getPrimaryDecision() === 'true'
-            && $planMeasure->getApplicabilitySource() !== 'block_skip'
+            && $planMeasure->getApplicabilitySource() === PlanMeasure::APPLICABILITY_MANUAL
             && $planMeasure->getFirstDecisionAnsweredAt() === null;
 
         if ($firstAffirmativeDecision) {

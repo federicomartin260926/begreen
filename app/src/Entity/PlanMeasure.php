@@ -11,6 +11,10 @@ use Doctrine\ORM\Mapping as ORM;
 class PlanMeasure
 {
     public const MIN_ACTION_TAKEN_LENGTH = 50;
+    public const APPLICABILITY_MANUAL = 'manual';
+    public const APPLICABILITY_BLOCK_SKIP = 'block_skip';
+    public const APPLICABILITY_FILTER_PENDING = 'profile_filter_null';
+    public const APPLICABILITY_FILTER_APPLICABLE = 'profile_filter_yes';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -46,7 +50,7 @@ class PlanMeasure
     private ?bool $isApplicable = null;
 
     #[ORM\Column(length: 20, options: ['default' => 'manual'])]
-    private string $applicabilitySource = 'manual';
+    private string $applicabilitySource = self::APPLICABILITY_MANUAL;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -172,7 +176,7 @@ class PlanMeasure
 
     public function markAsManual(): static
     {
-        $this->applicabilitySource = 'manual';
+        $this->applicabilitySource = self::APPLICABILITY_MANUAL;
         $this->blockSkipAnswer = null;
 
         return $this;
@@ -180,8 +184,43 @@ class PlanMeasure
 
     public function markAsBlockSkipped(SustainabilityPlanBlockAnswer $blockSkipAnswer): static
     {
-        $this->applicabilitySource = 'block_skip';
+        $this->applicabilitySource = self::APPLICABILITY_BLOCK_SKIP;
         $this->blockSkipAnswer = $blockSkipAnswer;
+
+        return $this;
+    }
+
+    public function markAsProfileFiltered(): static
+    {
+        if (!$this->isProfileFiltered()) {
+            $this->applicabilitySource = $this->isApplicable === true
+                ? self::APPLICABILITY_FILTER_APPLICABLE
+                : self::APPLICABILITY_FILTER_PENDING;
+        }
+        $this->isApplicable = false;
+        $this->blockSkipAnswer = null;
+
+        return $this;
+    }
+
+    public function isProfileFiltered(): bool
+    {
+        return in_array($this->applicabilitySource, [
+            self::APPLICABILITY_FILTER_PENDING,
+            self::APPLICABILITY_FILTER_APPLICABLE,
+        ], true);
+    }
+
+    public function restoreAfterProfileFilter(): static
+    {
+        if (!$this->isProfileFiltered()) {
+            return $this;
+        }
+
+        $this->isApplicable = self::APPLICABILITY_FILTER_APPLICABLE === $this->applicabilitySource
+            ? true
+            : null;
+        $this->applicabilitySource = self::APPLICABILITY_MANUAL;
 
         return $this;
     }

@@ -397,8 +397,13 @@ final class SustainabilityPlanExportController extends AbstractController
         foreach ($rowsByMeasure as $row) {
             $score = max(0, (int) ($row['score'] ?? 0));
             $isApplicable = ($row['applicable'] ?? null) === true;
+            $isNotApplicable = ($row['applicable'] ?? null) === false;
             $isSelected = ($row['selected'] ?? null) === true;
             $isCritical = ($row['critical'] ?? false) === true;
+
+            if ($isNotApplicable) {
+                continue;
+            }
 
             $scoreMax += $score;
 

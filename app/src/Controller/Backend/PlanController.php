@@ -11,6 +11,8 @@ use App\Service\PlanMeasureCatalogResolver;
 use App\Service\PlanMeasureDuplicateResolver;
 use App\Service\PlanMeasureGetOrCreate;
 use App\Service\MeasureTaxonomyPresenter;
+use App\Service\MeasureApplicabilityRuleCatalog;
+use App\Service\PlanFilterApplicabilityService;
 use App\Service\PlanBlockQuestionService;
 use App\Service\SustainabilityPlanCompletionService;
 use App\Service\SustainabilityPlanMeasureOrderer;
@@ -28,7 +30,6 @@ use App\Service\ProtocolAvailabilityResolver;
 use App\Service\Animation\AnimationCatalogImporter;
 use App\Service\Animation\AnimationPlanSynchronizer;
 use App\Service\Animation\AnimationComplianceService;
-use App\Service\Animation\AnimationNotApplicableValidator;
 use App\Service\StripeProjectCheckoutService;
 use App\Security\PlanVoter;
 use App\Security\ProjectVoter;
@@ -95,8 +96,9 @@ class PlanController extends AbstractController
         private ProtocolAvailabilityResolver $protocolAvailabilityResolver,
         private AnimationPlanSynchronizer $animationPlanSynchronizer,
         private AnimationComplianceService $animationComplianceService,
-        private AnimationNotApplicableValidator $animationNotApplicableValidator,
         private PlanMeasureGetOrCreate $planMeasureGetOrCreate,
+        private MeasureApplicabilityRuleCatalog $applicabilityRuleCatalog,
+        private PlanFilterApplicabilityService $filterApplicabilityService,
     ) {}
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -133,8 +135,10 @@ class PlanController extends AbstractController
             return $this->redirectToRoute('backend_plan_review', $this->reviewDefaultFilters());
         }
 
-        // Con protocolo seleccionado -> ir a Medidas
-        return $this->redirectToRoute('backend_plan_measures');
+        // Las preguntas previas se resuelven antes de elaborar las medidas.
+        return $this->redirectToRoute(
+            $plan->getFilterAnswers() === [] ? 'backend_plan_filters' : 'backend_plan_measures'
+        );
     }
 
     #[Route('/welcome', name: 'welcome', methods: ['GET'])]
@@ -237,9 +241,10 @@ class PlanController extends AbstractController
 
         // Persistimos en el plan
         $plan->setProtocol($protocol);
+        $plan->setFilterAnswers([]);
         $em->flush();
 
-        return $this->redirectToRoute('backend_plan_measures');
+        return $this->redirectToRoute('backend_plan_filters');
     }
 
     #[Route('/measures', name: 'measures', methods: ['GET','POST'])]
@@ -394,10 +399,37 @@ class PlanController extends AbstractController
             }
         }
 
+        // #93: mantener identificables las medidas excluidas, aunque el asistente
+        // avance directamente a la primera pendiente. No altera su puntuación.
+        $profileExcludedIds = [];
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            $measureId = $planMeasure->getMeasure()?->getId();
+            if ($measureId !== null && $planMeasure->isProfileFiltered() && $planMeasure->isApplicable() === false) {
+                $profileExcludedIds[$measureId] = true;
+            }
+        }
+
+        $profileExcludedMeasures = [];
+        foreach ($measures as $position => $catalogMeasure) {
+            $measureId = $catalogMeasure->getId();
+            if ($measureId === null || !isset($profileExcludedIds[$measureId])) {
+                continue;
+            }
+
+            $profileExcludedMeasures[] = [
+                'position' => $position + 1,
+                'measure' => $catalogMeasure,
+                'filters' => $this->filterApplicabilityService->automaticExclusionCodes($plan, $catalogMeasure),
+            ];
+        }
+
         $scoreMax = 0;
         $scoreGained = 0;
         foreach ($scoringMeasures as $m) {
             $score = (int) ($m->getScore() ?? 0);
+            if (isset($pmIndex[$m->getId()]) && $pmIndex[$m->getId()]->isApplicable() === false) {
+                continue;
+            }
             $scoreMax += $score;
 
             if ($score > 0 && isset($pmIndex[$m->getId()])) {
@@ -446,6 +478,12 @@ class PlanController extends AbstractController
             'showCustomMeasuresStep' => $showCustomMeasuresStep,
             'gamificationMessage' => $gamificationMessage,
             'isAnimationPlan' => $isAnimationPlan,
+            'allowedDecisions' => $currentMeasure ? [
+                'true' => $this->applicabilityRuleCatalog->allowsDecision($currentMeasure, 'true'),
+                'false' => $this->applicabilityRuleCatalog->allowsDecision($currentMeasure, 'false'),
+                'na' => $this->applicabilityRuleCatalog->allowsDecision($currentMeasure, 'na'),
+            ] : [],
+            'applicabilityRule' => $currentMeasure ? $this->applicabilityRuleCatalog->ruleForMeasure($currentMeasure) : null,
 
             // navegación y medida actual
             'index'            => $index,
@@ -453,6 +491,7 @@ class PlanController extends AbstractController
             'total'            => $total,
             'measure'          => $planComplete ? null : $currentMeasure,
             'planMeasures'     => $visiblePlanMeasures,
+            'profileExcludedMeasures' => $profileExcludedMeasures,
             'canGoNext'        => !$planComplete && $canGoNext,
             'planComplete'     => $planComplete,
             'currentBlockAnswer' => $currentBlockAnswer,
@@ -795,11 +834,32 @@ class PlanController extends AbstractController
 
             $score = $m->getScore();
             if ($score !== null) {
+                if ($pm->isApplicable() === false) {
+                    continue;
+                }
                 $scoreMax += (int) $score;
                 if ($pm->isApplicable() === true && $pm->willImplement() === true) {
                     $scoreGained += (int) $score;
                 }
             }
+        }
+
+        $allowedDecisionByMeasureId = [];
+        $automaticExclusionByMeasureId = [];
+        $applicabilityRuleByMeasureId = [];
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            $catalogMeasure = $planMeasure->getMeasure();
+            $catalogMeasureId = $catalogMeasure?->getId();
+            if (!$catalogMeasure instanceof Measure || $catalogMeasureId === null) {
+                continue;
+            }
+            $allowedDecisionByMeasureId[$catalogMeasureId] = [
+                'true' => $this->applicabilityRuleCatalog->allowsDecision($catalogMeasure, 'true'),
+                'false' => $this->applicabilityRuleCatalog->allowsDecision($catalogMeasure, 'false'),
+                'na' => $this->applicabilityRuleCatalog->allowsDecision($catalogMeasure, 'na'),
+            ];
+            $automaticExclusionByMeasureId[$catalogMeasureId] = $this->filterApplicabilityService->automaticExclusionCodes($plan, $catalogMeasure);
+            $applicabilityRuleByMeasureId[$catalogMeasureId] = $this->applicabilityRuleCatalog->ruleForMeasure($catalogMeasure);
         }
 
         $uiLocale = $request->getLocale();
@@ -841,6 +901,9 @@ class PlanController extends AbstractController
             'implementationGroups' => $implementationView['groups'],
             'isAnimationPlan' => $isAnimationPlan,
             'animationCompliance' => $animationCompliance,
+            'allowedDecisionByMeasureId' => $allowedDecisionByMeasureId,
+            'automaticExclusionByMeasureId' => $automaticExclusionByMeasureId,
+            'applicabilityRuleByMeasureId' => $applicabilityRuleByMeasureId,
             'positionById'     => $positionById,
             'filters'          => [
                 'protocol'          => $protocol,
@@ -910,10 +973,13 @@ class PlanController extends AbstractController
         }
         $requestsNotApplicable = ('decision' === $field && 'na' === $value)
             || ('isApplicable' === $field && 'false' === $value);
-        if ($requestsNotApplicable && !$this->animationNotApplicableValidator->allows($project, $measure)) {
+        $requestedDecision = $field === 'decision'
+            ? (string) $value
+            : ($requestsNotApplicable ? 'na' : null);
+        if ($requestedDecision !== null && !$this->applicabilityRuleCatalog->allowsDecision($measure, $requestedDecision)) {
             return new JsonResponse([
                 'success' => false,
-                'error' => $this->t->trans('backend.plan.animation.not_applicable_forbidden'),
+                'error' => $this->t->trans('backend.plan.filters.decision_forbidden'),
             ], 422);
         }
 
@@ -930,6 +996,12 @@ class PlanController extends AbstractController
         // Respect edit permissions before validation, without creating a Plan for rejected requests.
         if ($plan instanceof Plan) {
             $this->denyAccessUnlessGranted(PlanVoter::EDIT, $plan);
+            if ($requestedDecision !== null && $this->filterApplicabilityService->automaticExclusionCodes($plan, $measure) !== []) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error' => $this->t->trans('backend.plan.filters.auto_decision_forbidden'),
+                ], 422);
+            }
         } else {
             $this->denyAccessUnlessGranted(ProjectVoter::EDIT, $project);
         }
@@ -2546,6 +2618,9 @@ HTML;
                 continue;
             }
             $score = (int) ($m->getScore() ?? 0);
+            if ($pm->isApplicable() === false) {
+                continue;
+            }
             $scoreMax += $score;
 
             if ($score > 0 && $pm->isApplicable() === true && $pm->willImplement() === true) {

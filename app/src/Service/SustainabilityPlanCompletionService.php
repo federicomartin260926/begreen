@@ -155,6 +155,10 @@ final class SustainabilityPlanCompletionService
                 continue;
             }
 
+            if ($planMeasure->isProfileFiltered() && $planMeasure->isApplicable() === false) {
+                continue;
+            }
+
             if ($this->isStaleBlockSkip($plan, $planMeasure)) {
                 $pending[] = [
                     'measure' => $measure,
@@ -214,7 +218,7 @@ final class SustainabilityPlanCompletionService
 
     private function isActiveBlockSkip(Plan $plan, PlanMeasure $planMeasure): bool
     {
-        if ($planMeasure->getApplicabilitySource() !== 'block_skip') {
+        if ($planMeasure->getApplicabilitySource() !== PlanMeasure::APPLICABILITY_BLOCK_SKIP) {
             return false;
         }
 
@@ -223,7 +227,7 @@ final class SustainabilityPlanCompletionService
 
     private function isStaleBlockSkip(Plan $plan, PlanMeasure $planMeasure): bool
     {
-        if ($planMeasure->getApplicabilitySource() !== 'block_skip') {
+        if ($planMeasure->getApplicabilitySource() !== PlanMeasure::APPLICABILITY_BLOCK_SKIP) {
             return false;
         }
 

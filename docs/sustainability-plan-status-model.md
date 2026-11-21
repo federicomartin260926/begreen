@@ -29,6 +29,15 @@ Reglas funcionales:
 - Cuando una medida se bloquea o se omite en pasos posteriores por no ser aplicable, el sistema debe tratarla como `No aplica`, no como `Descartada`.
 - Si una medida se reabre por cambios del plan, su decisión anterior de aplicabilidad no debe perderse salvo que la revisión lo exija.
 
+### 2.1. Aplicabilidad por preguntas previas
+
+- Las respuestas de perfil se guardan en el plan y pueden modificarse durante la elaboración.
+- Una exclusión automática mantiene la medida visible como `No aplica` e identifica los filtros que la causan.
+- Una medida excluida automáticamente no aporta puntos ni forma parte del denominador de puntos posibles.
+- Al cambiar una respuesta se recalcula la aplicabilidad. La transición no borra selección, criticidad, observaciones, evidencias ni datos de implementación existentes.
+- Al dejar de cumplirse la exclusión se restaura el estado aplicable o pendiente que existía antes del filtro.
+- Las decisiones manuales de `No aplica` solo se permiten cuando la modalidad definida para la medida lo autoriza y no se confunden con las exclusiones automáticas.
+
 ## 3. Implementación de una medida
 
 La implementación se calcula a partir del estado real de `PlanMeasure` y de su seguimiento operativo.

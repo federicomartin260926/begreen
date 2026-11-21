@@ -73,7 +73,7 @@ final class PlanBlockQuestionService
             $item = $relations[$measureId];
 
             if ($applies) {
-                if ($item->getApplicabilitySource() === 'block_skip' && $item->getBlockSkipAnswer()?->getId() === $blockAnswer->getId()) {
+                if ($item->getApplicabilitySource() === PlanMeasure::APPLICABILITY_BLOCK_SKIP && $item->getBlockSkipAnswer()?->getId() === $blockAnswer->getId()) {
                     $item
                         ->setIsApplicable(null)
                         ->setWillImplement(null)

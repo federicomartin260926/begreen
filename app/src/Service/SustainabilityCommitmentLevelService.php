@@ -55,6 +55,17 @@ final class SustainabilityCommitmentLevelService
             fn ($measure): bool => $measure instanceof Measure && $this->catalogResolver->isCatalogMeasure($measure, $project)
         ));
         $visibleCatalogMeasures = $this->filterMeasuresBySkippedBlocks($catalogMeasures, $plan);
+        $applicabilityByMeasureId = [];
+        foreach ($plan->getPlanMeasures() as $planMeasure) {
+            $measureId = $planMeasure->getMeasure()?->getId();
+            if ($measureId !== null) {
+                $applicabilityByMeasureId[$measureId] = $planMeasure->isApplicable();
+            }
+        }
+        $visibleCatalogMeasures = array_values(array_filter(
+            $visibleCatalogMeasures,
+            static fn (Measure $measure): bool => ($applicabilityByMeasureId[$measure->getId()] ?? null) !== false,
+        ));
         $totalOfficialPoints = $this->sumMeasureScores($visibleCatalogMeasures);
         $scoreByMeasureId = $this->indexScoresByMeasureId($catalogMeasures);
 

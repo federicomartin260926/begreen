@@ -1,0 +1,11 @@
+{# Fila de solo lectura para una medida excluida por preguntas previas (#93). #}
+<div class="bg-white border rounded-3 p-2 p-md-3" data-profile-excluded-measure>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="text-muted small">{{ 'backend.plan.progress_applicable'|trans({'%current%': excludedItem.position, '%total%': total}) }}</span>
+        <span class="fw-semibold flex-grow-1">{{ isAnimationPlan ? excludedItem.measure.name : (excludedItem.measure.questionText ?: excludedItem.measure.name) }}</span>
+        <span class="badge bg-secondary">{{ 'backend.plan.answers.not_applicable'|trans }}</span>
+    </div>
+    {% if excludedItem.filters is not empty %}
+        <div class="small text-muted mt-1">{{ 'backend.plan.filters.auto_excluded'|trans({'%filters%': excludedItem.filters|join(', ')}) }}</div>
+    {% endif %}
+</div>

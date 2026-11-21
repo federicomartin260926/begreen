@@ -142,6 +142,35 @@ final class SustainabilityCommitmentLevelServiceTest extends TestCase
         self::assertSame(100, $summary['implemented']['percentageRounded']);
     }
 
+    public function testNotApplicableMeasureContributesNeitherPossibleNorObtainedPoints(): void
+    {
+        [$service, $plan, $project, $protocol, $catalogMeasures] = $this->createServiceWithCatalog(2, [5, 5]);
+
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($catalogMeasures[0])
+                ->setIsApplicable(true)
+                ->setWillImplement(true)
+                ->setImplemented(true)
+        );
+        $plan->addPlanMeasure(
+            (new PlanMeasure())
+                ->setMeasure($catalogMeasures[1])
+                ->setIsApplicable(false)
+                ->setApplicabilitySource(PlanMeasure::APPLICABILITY_FILTER_PENDING)
+                ->setWillImplement(true)
+                ->setImplemented(true)
+        );
+
+        $summary = $service->buildSummary($plan, $project);
+
+        self::assertSame(5, $summary['totalOfficialPoints']);
+        self::assertSame(5, $summary['planned']['points']);
+        self::assertSame(5, $summary['implemented']['points']);
+        self::assertSame(100, $summary['planned']['percentageRounded']);
+        self::assertSame(100, $summary['implemented']['percentageRounded']);
+    }
+
     public static function boundaryCases(): array
     {
         return [
@@ -174,7 +203,7 @@ final class SustainabilityCommitmentLevelServiceTest extends TestCase
             ->setName('Be Green My Film');
         $this->setEntityId($protocol, 9001);
 
-        $project = new Project();
+        $project = (new Project())->setCommercialTier(Project::COMMERCIAL_TIER_PRO);
         $subscription = (new ProjectSubscription())
             ->setPhase(CommercialPhase::ELABORATION)
             ->setTier(ProjectSubscription::TIER_PRO)
